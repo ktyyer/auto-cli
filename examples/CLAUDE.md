@@ -173,34 +173,34 @@ DEBUG=false
 ## 可用命令
 
 ### 超级命令（推荐）
-- `/aimax:auto` - 自动完成所有事情（超级命令）
+- `/auto:auto` - 自动完成所有事情（超级命令）
 
 ### 规划类
-- `/aimax:plan` - 创建实现计划
-- `/aimax:deep-plan` - 复杂任务两阶段深度规划（探索+执行）
-- `/aimax:init` - 扫描项目自动生成 CLAUDE.md
+- `/auto:plan` - 创建实现计划
+- `/auto:deep-plan` - 复杂任务两阶段深度规划（探索+执行）
+- `/auto:init` - 扫描项目自动生成 CLAUDE.md
 
 ### 开发类
-- `/aimax:tdd` - 测试驱动开发工作流
-- `/aimax:build-fix` - 修复构建错误
-- `/aimax:refactor-clean` - 代码重构与清理
+- `/auto:tdd` - 测试驱动开发工作流
+- `/auto:build-fix` - 修复构建错误
+- `/auto:refactor-clean` - 代码重构与清理
 
 ### 质量类
-- `/aimax:code-review` - 审查代码质量
-- `/aimax:security-scan` - 安全审计（密钥泄露/注入/配置）
-- `/aimax:test-coverage` - 测试覆盖率分析
-- `/aimax:e2e` - 端到端测试
+- `/auto:code-review` - 审查代码质量
+- `/auto:security-scan` - 安全审计（密钥泄露/注入/配置）
+- `/auto:test-coverage` - 测试覆盖率分析
+- `/auto:e2e` - 端到端测试
 
 ### 自动化类
-- `/aimax:loop` - 状态机分步编排与中断恢复
-- `/aimax:evolve` - 持续迭代优化与回归门禁
+- `/auto:loop` - 状态机分步编排与中断恢复
+- `/auto:evolve` - 持续迭代优化与回归门禁
 
 ### 文档类
-- `/aimax:update-docs` - 更新项目文档
-- `/aimax:update-codemaps` - 更新代码架构图（生成 REPO_MAP.md）
+- `/auto:update-docs` - 更新项目文档
+- `/auto:update-codemaps` - 更新代码架构图（生成 REPO_MAP.md）
 
 ### AI 学习类
-- `/aimax:instinct-status` - 查看 AI 已学习的编码模式
+- `/auto:instinct-status` - 查看 AI 已学习的编码模式
 
 ## Git 工作流
 

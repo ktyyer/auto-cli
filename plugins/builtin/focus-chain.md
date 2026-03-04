@@ -130,9 +130,9 @@ auto-core 在评估复杂度后自动激活 Focus Chain：
 
 ## 与其他命令协作
 
-- `/aimax:deep-plan` → 生成计划 → Focus Chain 跟踪执行
-- `/aimax:loop` → 状态机提供结构化步骤 → Focus Chain 注入提醒
-- `/aimax:evolve` → 迭代过程中保持目标焦点
+- `/auto:deep-plan` → 生成计划 → Focus Chain 跟踪执行
+- `/auto:loop` → 状态机提供结构化步骤 → Focus Chain 注入提醒
+- `/auto:evolve` → 迭代过程中保持目标焦点
 
 ---
 

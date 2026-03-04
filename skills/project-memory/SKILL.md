@@ -60,8 +60,8 @@ session_memory:
 ```
 
 **自动触发时机**：
-- 每次使用 `/aimax:auto` 完成任务后
-- 用户手动触发 `/aimax:memory-save`
+- 每次使用 `/auto:auto` 完成任务后
+- 用户手动触发 `/auto:memory-save`
 - 每次对话结束时自动保存
 
 ---
@@ -141,9 +141,9 @@ project_memory:
 ```
 
 **自动更新时机**：
-- 每次使用 `/aimax:auto` 完成任务
+- 每次使用 `/auto:auto` 完成任务
 - 检测到项目结构变化（新增/删除文件）
-- 手动触发 `/aimax:memory-sync`
+- 手动触发 `/auto:memory-sync`
 
 ---
 
@@ -278,7 +278,7 @@ memory_decay:
 ### 查看记忆状态
 
 ```bash
-/aimax:memory-status
+/auto:memory-status
 ```
 
 输出：
@@ -308,13 +308,13 @@ memory_decay:
 ### 手动保存记忆
 
 ```bash
-/aimax:memory-save
+/auto:memory-save
 ```
 
 ### 同步项目记忆
 
 ```bash
-/aimax:memory-sync
+/auto:memory-sync
 ```
 
 作用：
@@ -325,14 +325,14 @@ memory_decay:
 ### 导出/导入记忆
 
 ```bash
-/aimax:memory-export team-knowledge.yaml
-/aimax:memory-import team-knowledge.yaml
+/auto:memory-export team-knowledge.yaml
+/auto:memory-import team-knowledge.yaml
 ```
 
 ### 清理过期记忆
 
 ```bash
-/aimax:memory-cleanup --older-than 30d
+/auto:memory-cleanup --older-than 30d
 ```
 
 ---
@@ -348,12 +348,12 @@ memory_decay:
 
 ---
 
-## 🎯 与 /aimax:auto 集成
+## 🎯 与 /auto:auto 集成
 
 **自动触发记忆更新**：
 
 ```text
-每次 /aimax:auto 执行流程第 8 步（经验沉淀）时：
+每次 /auto:auto 执行流程第 8 步（经验沉淀）时：
 
 1. 提取 Instinct 模式（已有）
 2. 更新对话记忆（新增）
@@ -436,10 +436,10 @@ integrations:
 
 ### DO ✅
 
-1. **定期同步记忆**：每次重大改动后运行 `/aimax:memory-sync`
+1. **定期同步记忆**：每次重大改动后运行 `/auto:memory-sync`
 2. **维护 FAQ**：遇到重复问题时，手动添加到 FAQ
 3. **导出团队知识**：优秀项目的模式导出共享
-4. **清理过期记忆**：每月运行一次 `/aimax:memory-cleanup`
+4. **清理过期记忆**：每月运行一次 `/auto:memory-cleanup`
 
 ### DON'T ❌
 

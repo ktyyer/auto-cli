@@ -57,7 +57,7 @@ Agentic Loop:
      - 是否需要修正
 ```
 
-**集成到 /aimax:auto**：
+**集成到 /auto:auto**：
 ```markdown
 第 0 步：Agentic 初始化
 第 1-7 步：ReACT 循环（思考→行动→观察→反思→决策）
@@ -199,7 +199,7 @@ class MultiSolutionEvaluator {
 ```yaml
 agentic_loop:
   - 实现 ReACT 循环
-  - 集成到 /aimax:auto
+  - 集成到 /auto:auto
   - 基础轨迹记录
 ```
 

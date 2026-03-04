@@ -9,14 +9,14 @@ builtin: true
 
 # 智能路由大脑 (auto-core v5.0)
 
-> `/aimax:auto` 的核心路由引擎：一个大脑，统一调度所有世界级能力
+> `/auto:auto` 的核心路由引擎：一个大脑，统一调度所有世界级能力
 
 ---
 
 ## 🚀 步骤0：强制会话初始化（每次必须先执行）
 
 ```
-每次执行 /aimax:auto 前，必须完成以下检测：
+每次执行 /auto:auto 前，必须完成以下检测：
 
 1. 读取 CLAUDE.md（如存在）→ 加载项目规范、禁止事项、响应格式
 2. 读取 REPO_MAP.md（如存在）→ 加载仓库符号地图，快速定位代码
@@ -25,7 +25,7 @@ builtin: true
 5. 记录 session_context：{task_type, complexity, files_to_modify}
 
 ⚠️ 如果文件数量 > 50 且不存在 REPO_MAP.md：
-   → 建议用户先运行 /aimax:update-codemaps 生成符号地图
+   → 建议用户先运行 /auto:update-codemaps 生成符号地图
 ```
 
 ---
@@ -83,16 +83,16 @@ ELSE (复杂度 == 简单):
 **每个业务域只有一条能力链：命令 → Agent → Skill**
 
 ```
-功能开发:    /aimax:auto → tdd-guide(Agent) → tdd-workflow(Skill) + superpowers(触发)
-代码审查:    /aimax:code-review → code-reviewer(Agent) → pr-review-toolkit(触发)
-重构清理:    /aimax:refactor-clean → refactor-cleaner(Agent) → code-simplifier(触发)
-安全审计:    /aimax:security-scan → security-reviewer(Agent) → security-review(Skill)
-架构规划:    /aimax:deep-plan → architect(Agent) + planner(Agent)
-文档更新:    /aimax:update-docs → doc-updater(Agent)
-E2E测试:     /aimax:e2e → e2e-runner(Agent)
+功能开发:    /auto:auto → tdd-guide(Agent) → tdd-workflow(Skill) + superpowers(触发)
+代码审查:    /auto:code-review → code-reviewer(Agent) → pr-review-toolkit(触发)
+重构清理:    /auto:refactor-clean → refactor-cleaner(Agent) → code-simplifier(触发)
+安全审计:    /auto:security-scan → security-reviewer(Agent) → security-review(Skill)
+架构规划:    /auto:deep-plan → architect(Agent) + planner(Agent)
+文档更新:    /auto:update-docs → doc-updater(Agent)
+E2E测试:     /auto:e2e → e2e-runner(Agent)
 构建修复:    (已被 auto 门禁整合)
-持续演进:    /aimax:evolve → evaluate → iterate (集成自 adaptive-evolution)
-任务编排:    /aimax:loop → checkpoint → resume (集成自 task-state-machine)
+持续演进:    /auto:evolve → evaluate → iterate (集成自 adaptive-evolution)
+任务编排:    /auto:loop → checkpoint → resume (集成自 task-state-machine)
 ```
 
 ---
@@ -163,7 +163,7 @@ E2E测试:     /aimax:e2e → e2e-runner(Agent)
 1. [Project Memory] 记录本次关键架构决策和遇到的库版本兼容问题
 2. [Instinct] 记录学到的团队编码风格（如：使用 `Result.success()` 包装返回）
 3. [Smart Context] 更新变更过文件的知识向量
-4. 如修改了核心架构 → 提示立刻运行 `/aimax:update-codemaps`
+4. 如修改了核心架构 → 提示立刻运行 `/auto:update-codemaps`
 ```
 
 ---

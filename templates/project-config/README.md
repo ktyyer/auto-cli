@@ -68,8 +68,8 @@ cp /path/to/ai-max/templates/project-config/aimax-loop-state-template.json .aima
 ```
 然后在 Claude Code 中使用：
 ```bash
-/aimax:loop 对当前复杂任务做状态机编排并支持恢复
-/aimax:evolve 为当前项目建立评估驱动的持续优化流程
+/auto:loop 对当前复杂任务做状态机编排并支持恢复
+/auto:evolve 为当前项目建立评估驱动的持续优化流程
 ```
 
 ---

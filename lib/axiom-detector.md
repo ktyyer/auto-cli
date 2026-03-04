@@ -243,12 +243,12 @@ for (Order order : orders) {
 ```
 ```
 
-## 与 /aimax:auto 的集成
+## 与 /auto:auto 的集成
 
 ### 在执行任务前
 
 ```markdown
-## /aimax:auto 执行流程（含 Axiom）
+## /auto:auto 执行流程（含 Axiom）
 
 1. 检测 Axiom
    ```bash

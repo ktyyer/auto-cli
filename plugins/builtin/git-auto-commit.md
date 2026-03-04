@@ -22,7 +22,7 @@ builtin: true
 ## 核心工作流
 
 ### 1. 触发时机
-- 在 `/aimax:auto` 的门禁流程（编译、测试、覆盖率、Lint 均通过）之后，立刻自动触发。
+- 在 `/auto:auto` 的门禁流程（编译、测试、覆盖率、Lint 均通过）之后，立刻自动触发。
 - 用户亦可随时发送指令如："把刚才的修改 commit 一下"。
 
 ### 2. 变更识别
@@ -61,7 +61,7 @@ feat(auth): 实现 JWT 刷新机制
 ### 禁用自动提交
 如果你更习惯手动控制 Git 历史，可以通过全局配置或单次参数禁用：
 ```bash
-/aimax:auto --no-auto-commit 实现用户登录
+/auto:auto --no-auto-commit 实现用户登录
 ```
 
 ### 自动合并与挤压 (Squash)

@@ -124,7 +124,7 @@ console.log(trajectory);
 
 ---
 
-## 🎯 集成到 /aimax:auto
+## 🎯 集成到 /auto:auto
 
 ### 工作流集成
 
@@ -148,7 +148,7 @@ aimax:auto workflow:
 ### 用户界面
 
 ```markdown
-🚀 **/aimax:auto 开始执行**
+🚀 **/auto:auto 开始执行**
 
 📝 **任务**: 实现用户搜索 API
 
@@ -210,7 +210,7 @@ const loop = new AgenticLoop({
 
 ---
 
-**下一步**：集成到 /aimax:auto 命令
+**下一步**：集成到 /auto:auto 命令
 
 **更新时间**：2026-03-03
 **版本**：v4.0.0-alpha

@@ -178,7 +178,7 @@ Conversational State:
   - 需要记忆
 
 AI MAX:
-  - 1 个超级命令（/aimax:auto）
+  - 1 个超级命令（/auto:auto）
   - 零学习成本
   - 智能决策
 ```

@@ -364,7 +364,7 @@ class LocalVectorSearch:
 ### 1. 语义代码搜索
 
 ```bash
-/aimax:search "如何处理用户认证？"
+/auto:search "如何处理用户认证？"
 ```
 
 **AI 流程**：
@@ -395,7 +395,7 @@ class LocalVectorSearch:
 ### 2. 代码导航增强
 
 ```bash
-/aimax:navigate UserService
+/auto:navigate UserService
 ```
 
 输出：
@@ -460,7 +460,7 @@ AI 内部流程：
 ### 索引项目
 
 ```bash
-/aimax:index
+/auto:index
 ```
 
 **流程**：
@@ -494,7 +494,7 @@ AI 内部流程：
 ### 更新索引
 
 ```bash
-/aimax:index-update
+/auto:index-update
 ```
 
 **增量更新**：只重新索引变更的文件（利用 Merkle Tree）
@@ -502,19 +502,19 @@ AI 内部流程：
 ### 搜索代码
 
 ```bash
-/aimax:search "JWT 认证流程"
+/auto:search "JWT 认证流程"
 ```
 
 ### 代码导航
 
 ```bash
-/aimax:navigate UserService
+/auto:navigate UserService
 ```
 
 ### 查看索引状态
 
 ```bash
-/aimax:index-status
+/auto:index-status
 ```
 
 输出：
@@ -632,16 +632,16 @@ compression:
 
 ---
 
-## 🎯 与 /aimax:auto 集成
+## 🎯 与 /auto:auto 集成
 
 **自动触发索引**：
 
 ```text
-首次运行 /aimax:auto 时：
+首次运行 /auto:auto 时：
 
 1. 检测索引是否存在
-   - 不存在 → 自动运行 /aimax:index
-   - 存在但过期 → 自动运行 /aimax:index-update
+   - 不存在 → 自动运行 /auto:index
+   - 存在但过期 → 自动运行 /auto:index-update
 
 2. 后续每次执行前
    - 检查文件变更
@@ -706,8 +706,8 @@ distributed:
 
 ### DO ✅
 
-1. **首次使用先索引**：运行 `/aimax:index` 建立完整索引
-2. **定期更新索引**：代码变更后运行 `/aimax:index-update`
+1. **首次使用先索引**：运行 `/auto:index` 建立完整索引
+2. **定期更新索引**：代码变更后运行 `/auto:index-update`
 3. **合理设置块大小**：400-800 tokens 为宜
 4. **使用混合检索**：向量 + 关键词效果最佳
 

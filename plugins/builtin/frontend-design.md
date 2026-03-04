@@ -287,13 +287,13 @@ type InputState = 'default' | 'hover' | 'focus' | 'error' | 'disabled';
 
 ```bash
 # 创建 UI 组件
-/aimax:auto 写一个登录表单组件
+/auto:auto 写一个登录表单组件
 
 # 应用设计规范
-/aimax:auto 创建一个用户卡片组件，使用卡片设计规范
+/auto:auto 创建一个用户卡片组件，使用卡片设计规范
 
 # 响应式布局
-/aimax:auto 创建一个响应式的产品列表页面
+/auto:auto 创建一个响应式的产品列表页面
 ```
 
 ---

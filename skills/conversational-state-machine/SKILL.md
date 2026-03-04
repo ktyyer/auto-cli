@@ -219,13 +219,13 @@ checkpoint_config:
 
 ```bash
 # 查看所有检查点
-/aimax:checkpoint-list
+/auto:checkpoint-list
 
 # 恢复到指定检查点
-/aimax:checkpoint-resume sess-20260303-001
+/auto:checkpoint-resume sess-20260303-001
 
 # 继续上次对话
-/aimax:resume
+/auto:resume
 ```
 
 **恢复流程**：
@@ -342,7 +342,7 @@ Assistant: [当前] 正在进行代码审查，检查安全漏洞和性能问题
 【意外中断】（网络断开/系统崩溃）
 
 【恢复】
-> /aimax:resume
+> /auto:resume
 
 🔄 **正在恢复对话...**
 
@@ -365,24 +365,24 @@ Assistant: [当前] 正在进行代码审查，检查安全漏洞和性能问题
 ⏳ 第 3 步: TDD 开发 - 进行中
 
 【用户暂停】
-> /aimax:pause
+> /auto:pause
 
 ✅ **已暂停**
 💾 检查点已保存：ckpt-003
-📝 可以稍后使用 /aimax:resume 恢复执行
+📝 可以稍后使用 /auto:resume 恢复执行
 ```
 
 ### 场景 3：跨天继续
 
 ```text
 【昨天】
-> /aimax:auto 实现用户认证系统
+> /auto:auto 实现用户认证系统
 🚀 开始执行...
 ⏳ 第 3 步 - TDD 开发 - 进行中 (60%)
-> /aimax:pause
+> /auto:pause
 
 【今天】
-> /aimax:resume
+> /auto:resume
 
 🔄 **恢复昨天的对话...**
 
@@ -421,16 +421,16 @@ Assistant: [当前] 正在进行代码审查，检查安全漏洞和性能问题
 
 ```bash
 # 查看所有对话
-/aimax:history-list
+/auto:history-list
 
 # 查看对话详情
-/aimax:history-show sess-20260303-001
+/auto:history-show sess-20260303-001
 
 # 搜索对话
-/aimax:history-search "用户认证"
+/auto:history-search "用户认证"
 
 # 删除对话
-/aimax:history-delete sess-20260303-001
+/auto:history-delete sess-20260303-001
 ```
 
 ### 对话索引
@@ -524,7 +524,7 @@ public Result<TokenDTO> login(LoginRequest req) {
 ### 查看当前状态
 
 ```bash
-/aimax:status
+/auto:status
 ```
 
 输出：
@@ -560,38 +560,38 @@ public Result<TokenDTO> login(LoginRequest req) {
 ### 暂停执行
 
 ```bash
-/aimax:pause
+/auto:pause
 ```
 
 ### 恢复执行
 
 ```bash
-/aimax:resume [session_id]
+/auto:resume [session_id]
 ```
 
 ### 保存检查点
 
 ```bash
-/aimax:checkpoint-save [description]
+/auto:checkpoint-save [description]
 ```
 
 ### 查看检查点
 
 ```bash
-/aimax:checkpoint-list
+/auto:checkpoint-list
 ```
 
 ### 查看历史
 
 ```bash
-/aimax:history-list
-/aimax:history-show sess-20260303-001
+/auto:history-list
+/auto:history-show sess-20260303-001
 ```
 
 ### 清理历史
 
 ```bash
-/aimax:history-cleanup --older-than 30d
+/auto:history-cleanup --older-than 30d
 ```
 
 ---
@@ -629,12 +629,12 @@ privacy_config:
 
 ---
 
-## 🎯 与 /aimax:auto 集成
+## 🎯 与 /auto:auto 集成
 
 **自动状态管理**：
 
 ```text
-每次 /aimax:auto 执行时：
+每次 /auto:auto 执行时：
 
 1. 检查是否有未完成的会话
    - 有 → 询问是否恢复

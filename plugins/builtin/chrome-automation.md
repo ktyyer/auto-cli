@@ -227,13 +227,13 @@ test('调试线上页面', async ({ page }) => {
 
 ```bash
 # 自动化登录并抓取数据
-/aimax:auto 自动化登录 example.com 并抓取用户列表
+/auto:auto 自动化登录 example.com 并抓取用户列表
 
 # 调试线上问题
-/aimax:auto 调试 example.com/product 页面的加载问题
+/auto:auto 调试 example.com/product 页面的加载问题
 
 # 生成自动化测试
-/aimax:auto 为登录流程生成 Playwright 测试
+/auto:auto 为登录流程生成 Playwright 测试
 ```
 
 ---

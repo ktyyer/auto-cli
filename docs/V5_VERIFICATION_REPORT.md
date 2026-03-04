@@ -197,16 +197,16 @@
 **auto-core.md 能力链表**（第 82-96 行）:
 
 ```yaml
-功能开发:    /aimax:auto → tdd-guide(Agent) → tdd-workflow(Skill) + superpowers(触发)
-代码审查:    /aimax:code-review → code-reviewer(Agent) → pr-review-toolkit(触发)
-重构清理:    /aimax:refactor-clean → refactor-cleaner(Agent) → code-simplifier(触发)
-安全审计:    /aimax:security-scan → security-reviewer(Agent) → security-review(Skill)
-架构规划:    /aimax:deep-plan → architect(Agent) + planner(Agent)
-文档更新:    /aimax:update-docs → doc-updater(Agent)
-E2E测试:     /aimax:e2e → e2e-runner(Agent)
+功能开发:    /auto:auto → tdd-guide(Agent) → tdd-workflow(Skill) + superpowers(触发)
+代码审查:    /auto:code-review → code-reviewer(Agent) → pr-review-toolkit(触发)
+重构清理:    /auto:refactor-clean → refactor-cleaner(Agent) → code-simplifier(触发)
+安全审计:    /auto:security-scan → security-reviewer(Agent) → security-review(Skill)
+架构规划:    /auto:deep-plan → architect(Agent) + planner(Agent)
+文档更新:    /auto:update-docs → doc-updater(Agent)
+E2E测试:     /auto:e2e → e2e-runner(Agent)
 构建修复:    (已被 auto 门禁整合)
-持续演进:    /aimax:evolve → evaluate → iterate (集成自 adaptive-evolution) ⭐
-任务编排:    /aimax:loop → checkpoint → resume (集成自 task-state-machine) ⭐
+持续演进:    /auto:evolve → evaluate → iterate (集成自 adaptive-evolution) ⭐
+任务编排:    /auto:loop → checkpoint → resume (集成自 task-state-machine) ⭐
 ```
 
 **整合策略**:

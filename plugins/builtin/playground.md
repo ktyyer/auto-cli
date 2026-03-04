@@ -241,13 +241,13 @@ builtin: true
 
 ```bash
 # 生成数据看板
-/aimax:auto 生成一个销售数据可视化看板
+/auto:auto 生成一个销售数据可视化看板
 
 # 生成工具页面
-/aimax:auto 生成一个 JSON 格式化工具
+/auto:auto 生成一个 JSON 格式化工具
 
 # 生成演示页面
-/aimax:auto 生成一个产品演示页面
+/auto:auto 生成一个产品演示页面
 ```
 
 ---

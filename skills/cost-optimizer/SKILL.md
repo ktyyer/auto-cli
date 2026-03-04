@@ -36,10 +36,10 @@ tags: [cost, token, optimization, model-routing, budget]
 ```markdown
 ## 模型使用策略
 
-- `/aimax:deep-plan` — 使用 Opus（规划专用，最多 2 轮）
-- `/aimax:tdd` 执行阶段 — 使用 Sonnet
+- `/auto:deep-plan` — 使用 Opus（规划专用，最多 2 轮）
+- `/auto:tdd` 执行阶段 — 使用 Sonnet
 - 格式化/摘要/生成注释 — 使用 Haiku
-- `/aimax:code-review` — 使用 Sonnet（Opus 仅用于安全审计）
+- `/auto:code-review` — 使用 Sonnet（Opus 仅用于安全审计）
 ```
 
 ### 2. 上下文精简（最高效的降本方法）
@@ -175,7 +175,7 @@ Settings → Usage → Workspace Spend Limit
 
 > **最大的成本陷阱**：让 AI 在同一个长对话中同时做规划和执行，会导致执行阶段携带大量规划对话历史，将成本放大 3-5 倍。
 > 
-> **最高性价比操作**：使用 `/aimax:deep-plan` 生成精炼计划后，开新会话执行，成本可降低 60-70%。
+> **最高性价比操作**：使用 `/auto:deep-plan` 生成精炼计划后，开新会话执行，成本可降低 60-70%。
 
 ---
 

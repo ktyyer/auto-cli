@@ -31,4 +31,4 @@ code-reviewer (Agent)
 
 **输出格式：总评分 + 分级问题列表（严重/重要/轻微）**
 
-> 直接调用：`/aimax:code-review`
+> 直接调用：`/auto:code-review`

@@ -162,18 +162,18 @@ git worktree lock <路径>
 
 ---
 
-## 与 /aimax:loop 协作
+## 与 /auto:loop 协作
 
 每个 Worktree 可以独立运行状态机：
 
 ```bash
 # worktree A 中
-/aimax:loop init "实现用户认证模块"
-/aimax:loop next
+/auto:loop init "实现用户认证模块"
+/auto:loop next
 
 # worktree B 中（独立的状态文件）
-/aimax:loop init "实现订单系统"
-/aimax:loop next
+/auto:loop init "实现订单系统"
+/auto:loop next
 ```
 
 > 每个 worktree 有独立的 `.aimax/state/` 目录，状态互不干扰。

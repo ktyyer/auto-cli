@@ -1,6 +1,6 @@
 # CI 门禁模板
 
-这个目录提供 `/aimax:evolve` 可直接复用的 CI 模板，用于不同技术栈项目的“评估驱动迭代”。
+这个目录提供 `/auto:evolve` 可直接复用的 CI 模板，用于不同技术栈项目的“评估驱动迭代”。
 
 ## 文件说明
 
@@ -31,11 +31,11 @@ cp templates/ci/aimax-pr-eval-comment.yml .github/workflows/
 - Go: `go test ./...`
 
 3. 确保工作流权限允许写评论（默认 `GITHUB_TOKEN` 即可）。
-4. 在 PR 中观察自动评论，失败时回到 `/aimax:evolve` 执行“失败恢复”流程。
+4. 在 PR 中观察自动评论，失败时回到 `/auto:evolve` 执行“失败恢复”流程。
 
 ## 推荐配套
 
-- 用 `/aimax:loop` 先做状态机编排和中断恢复
-- 用 `/aimax:tdd` 先补测试护栏
-- 用 `/aimax:code-review` 补充安全/质量检查
-- 用 `/aimax:evolve` 持续优化并收敛指标
+- 用 `/auto:loop` 先做状态机编排和中断恢复
+- 用 `/auto:tdd` 先补测试护栏
+- 用 `/auto:code-review` 补充安全/质量检查
+- 用 `/auto:evolve` 持续优化并收敛指标

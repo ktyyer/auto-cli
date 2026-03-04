@@ -62,7 +62,7 @@ const results = memoryManager.query('用户认证');
 // Project Memory
 memoryManager.addSession({ task, result, duration });
 memoryManager.addDecision({ topic, decision, rationale });
-memoryManager.addFAQ('如何使用？', '只需 /aimax:auto');
+memoryManager.addFAQ('如何使用？', '只需 /auto:auto');
 
 // Smart Context
 const status = memoryManager.getSmartContextStatus();
@@ -88,7 +88,7 @@ const stats = memoryManager.getStats();
 
 ## 🔄 工作流集成
 
-### /aimax:auto 第 0 步：初始化
+### /auto:auto 第 0 步：初始化
 
 ```javascript
 // 1. 创建 MemoryManager
@@ -115,7 +115,7 @@ if (unfinished.length > 0) {
 }
 ```
 
-### /aimax:auto 第 1 步：应用已学习模式
+### /auto:auto 第 1 步：应用已学习模式
 
 ```javascript
 // 查询相关记忆
@@ -143,7 +143,7 @@ results.faq.forEach(faq => {
 });
 ```
 
-### /aimax:auto 第 2-7 步：Self-Fixing
+### /auto:auto 第 2-7 步：Self-Fixing
 
 ```javascript
 // 执行过程中遇到错误
@@ -171,7 +171,7 @@ try {
 }
 ```
 
-### /aimax:auto 第 8 步：Self-Improving
+### /auto:auto 第 8 步：Self-Improving
 
 ```javascript
 // 记录成功反馈

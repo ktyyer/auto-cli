@@ -33,4 +33,4 @@ refactor-cleaner (Agent)
 
 **输出：清理报告（原行数/清理后行数/圈复杂度变化）**
 
-> 直接调用：`/aimax:refactor-clean`
+> 直接调用：`/auto:refactor-clean`

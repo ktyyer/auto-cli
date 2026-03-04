@@ -174,7 +174,7 @@ find src -name "*.ts" -exec grep -H "^export (class|interface|function|const)" {
 #!/bin/bash
 echo "Updating REPO_MAP.md..."
 # 使用 ai-max 的 update-codemaps 命令
-/aimax:update-codemaps
+/auto:update-codemaps
 ```
 
 ### CI 中更新
@@ -191,9 +191,9 @@ echo "Updating REPO_MAP.md..."
 
 ---
 
-## 与 /aimax:update-codemaps 协作
+## 与 /auto:update-codemaps 协作
 
-`/aimax:update-codemaps` 命令在此技能基础上工作：
+`/auto:update-codemaps` 命令在此技能基础上工作：
 1. 运行 ast-grep / ctags 提取最新符号
 2. 更新 `REPO_MAP.md`
 3. 检测与上次的差异（漂移检测）

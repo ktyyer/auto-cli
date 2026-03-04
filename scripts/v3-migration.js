@@ -145,7 +145,7 @@ async function migrate() {
 description: 自动修复构建和测试错误
 ---
 
-# /aimax:fix — 自动修复
+# /auto:fix — 自动修复
 
 > **一键修复构建和测试错误**
 
@@ -167,18 +167,18 @@ description: 自动修复构建和测试错误
 
 \`\`\`bash
 # 修复构建错误
-/aimax:fix
+/auto:fix
 
 # 修复测试错误
-/aimax:fix --test
+/auto:fix --test
 
 # 修复所有问题
-/aimax:fix --all
+/auto:fix --all
 \`\`\`
 
-## 集成到 /aimax:auto
+## 集成到 /auto:auto
 
-此命令已集成到 \`/aimax:auto\` 的第 6 步（自动化门禁），
+此命令已集成到 \`/auto:auto\` 的第 6 步（自动化门禁），
 构建失败时会自动调用此命令。
 `;
 
@@ -190,7 +190,7 @@ description: 自动修复构建和测试错误
 description: 查看项目状态和记忆
 ---
 
-# /aimax:status — 状态查看
+# /auto:status — 状态查看
 
 > **查看项目当前状态、记忆和建议**
 
@@ -224,7 +224,7 @@ description: 查看项目状态和记忆
 ## 示例
 
 \`\`\`bash
-/aimax:status
+/auto:status
 \`\`\`
 
 ## 输出示例
@@ -262,7 +262,7 @@ description: 查看项目状态和记忆
 description: 显示帮助和使用示例
 ---
 
-# /aimax:help — 帮助文档
+# /auto:help — 帮助文档
 
 > **显示 AI MAX 的使用帮助和示例**
 
@@ -270,52 +270,52 @@ description: 显示帮助和使用示例
 
 \`\`\`bash
 # 唯一入口，自动完成所有事情
-/aimax:auto [任务描述]
+/auto:auto [任务描述]
 
 # 示例
-/aimax:auto 实现用户查询 API
-/aimax:auto 修复登录 bug
-/aimax:auto 重构 UserService
+/auto:auto 实现用户查询 API
+/auto:auto 修复登录 bug
+/auto:auto 重构 UserService
 \`\`\`
 
 ## 核心命令
 
 | 命令 | 用途 | 示例 |
 |------|------|------|
-| \`/aimax:auto\` | 智能超级命令（唯一入口） | \`/aimax:auto 实现功能\` |
-| \`/aimax:plan\` | 规划不执行 | \`/aimax:plan 重构系统\` |
-| \`/aimax:fix\` | 修复构建/测试错误 | \`/aimax:fix\` |
-| \`/aimax:status\` | 查看项目状态 | \`/aimax:status\` |
-| \`/aimax:help\` | 显示此帮助 | \`/aimax:help\` |
+| \`/auto:auto\` | 智能超级命令（唯一入口） | \`/auto:auto 实现功能\` |
+| \`/auto:plan\` | 规划不执行 | \`/auto:plan 重构系统\` |
+| \`/auto:fix\` | 修复构建/测试错误 | \`/auto:fix\` |
+| \`/auto:status\` | 查看项目状态 | \`/auto:status\` |
+| \`/auto:help\` | 显示此帮助 | \`/auto:help\` |
 
 ## 常见任务
 
 ### 功能开发
 \`\`\`bash
-/aimax:auto 实现用户认证功能
-/aimax:auto 添加订单查询接口
-/aimax:auto 创建商品管理模块
+/auto:auto 实现用户认证功能
+/auto:auto 添加订单查询接口
+/auto:auto 创建商品管理模块
 \`\`\`
 
 ### Bug 修复
 \`\`\`bash
-/aimax:auto 修复登录超时问题
-/aimax:auto 解决支付失败 bug
-/aimax:auto 修复数据不一致
+/auto:auto 修复登录超时问题
+/auto:auto 解决支付失败 bug
+/auto:auto 修复数据不一致
 \`\`\`
 
 ### 代码优化
 \`\`\`bash
-/aimax:auto 重构 UserService
-/aimax:auto 优化查询性能
-/aimax:auto 清理重复代码
+/auto:auto 重构 UserService
+/auto:auto 优化查询性能
+/auto:auto 清理重复代码
 \`\`\`
 
 ### 测试相关
 \`\`\`bash
-/aimax:auto 编写单元测试
-/aimax:auto 提高 test coverage
-/aimax:auto 添加集成测试
+/auto:auto 编写单元测试
+/auto:auto 提高 test coverage
+/auto:auto 添加集成测试
 \`\`\`
 
 ## 高级功能
@@ -371,7 +371,7 @@ AI MAX 会自动学习项目的编码模式，越用越聪明。
   console.log('');
   log('Next steps:', 'info');
   log('  1. Review the changes', 'info');
-  log('  2. Test /aimax:auto', 'info');
+  log('  2. Test /auto:auto', 'info');
   log('  3. Update documentation', 'info');
   log('  4. Commit changes', 'info');
 }

@@ -72,7 +72,7 @@ self_aware:
 **实现示例**：
 
 ```text
-用户首次使用：/aimax:auto 实现用户查询 API
+用户首次使用：/auto:auto 实现用户查询 API
 
 [Self-Aware 启动]
   • 扫描项目结构...
@@ -253,7 +253,7 @@ self_fixing:
 **实现示例**：
 
 ```text
-用户：/aimax:auto 实现 UserService
+用户：/auto:auto 实现 UserService
 
 [生成代码]
 ✅ 代码生成完成
@@ -326,7 +326,7 @@ self_building:
 
 ```text
 [场景：首次使用]
-用户：/aimax:auto 实现用户认证
+用户：/auto:auto 实现用户认证
 
 [Self-Building 启动]
   • 检测项目结构...
@@ -345,7 +345,7 @@ self_building:
 ### 典型任务流程
 
 ```text
-用户：/aimax:auto 实现订单查询 API
+用户：/auto:auto 实现订单查询 API
 
 [Step 1: Self-Aware]
   • 检测项目类型：Spring Boot
@@ -443,7 +443,7 @@ confidence_scoring:
 
 ---
 
-## 🎯 与 /aimax:auto 集成
+## 🎯 与 /auto:auto 集成
 
 ### 自动触发时机
 

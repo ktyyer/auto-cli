@@ -32,7 +32,7 @@ instinct:
 
 ## 🔁 PostTask 自动触发协议（无需关键词）
 
-> **每次 `/aimax:auto` 完成后自动执行，不需要用户手动触发**
+> **每次 `/auto:auto` 完成后自动执行，不需要用户手动触发**
 
 ```
 任务完成 → 自动提取以下信息：
@@ -136,7 +136,7 @@ instincts:
 ### 查看已学习的 Instinct
 
 ```bash
-/aimax:instinct-status
+/auto:instinct-status
 ```
 
 输出示例：
@@ -157,7 +157,7 @@ instincts:
 ### 导入 Instinct
 
 ```bash
-/aimax:instinct-import team-instincts.yaml
+/auto:instinct-import team-instincts.yaml
 ```
 
 从团队成员或其他项目导入已学习的模式。
@@ -165,7 +165,7 @@ instincts:
 ### 导出 Instinct
 
 ```bash
-/aimax:instinct-export
+/auto:instinct-export
 ```
 
 将已学习的模式导出为 YAML 文件，方便团队共享。
@@ -173,7 +173,7 @@ instincts:
 ### 进化 Instinct
 
 ```bash
-/aimax:instinct-evolve
+/auto:instinct-evolve
 ```
 
 将相关的 Instinct 聚类合并为更高级的 Skill：
@@ -190,7 +190,7 @@ inst-003 (@Valid 参数校验)
 
 | 机制 | CLAUDE.md | Instinct |
 |------|-----------|----------|
-| 来源 | 人工编写/`/aimax:init` 生成 | 自动学习 |
+| 来源 | 人工编写/`/auto:init` 生成 | 自动学习 |
 | 粒度 | 项目级规范、命令 | 编码级个人习惯 |
 | 更新 | 手动维护 | 自动演进 |
 | 互补 | CLAUDE.md 定义"应该怎样" | Instinct 学习"实际怎样" |
