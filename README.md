@@ -49,14 +49,20 @@ npm install -g auto-cli
 |------|------|
 | `/auto` | 智能超级命令，自动完成需求到实现 |
 | `/auto:plan` | 需求规划 |
+| `/auto:deep-plan` | 深度规划 |
 | `/auto:tdd` | TDD 开发流程 |
 | `/auto:code-review` | 代码审查 |
+| `/auto:security-scan` | 安全扫描 |
 | `/auto:build-fix` | 构建修复 |
 | `/auto:e2e` | E2E 测试 |
 | `/auto:test-coverage` | 覆盖率分析 |
 | `/auto:loop` | 任务状态机编排 |
 | `/auto:evolve` | 持续迭代优化 |
 | `/auto:refactor-clean` | 代码清理 |
+| `/auto:update-docs` | 更新文档 |
+| `/auto:update-codemaps` | 更新架构图 |
+| `/auto:status` | 查看项目状态 |
+| `/auto:help` | 帮助文档 |
 
 ---
 
