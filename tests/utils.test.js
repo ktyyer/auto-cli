@@ -24,9 +24,9 @@ describe('utils.js', () => {
   });
 
   describe('getAutoDir', () => {
-    it('should return path to aimax directory inside .claude', () => {
+    it('should return path to auto directory inside .claude', () => {
       const result = getAutoDir();
-      const expected = path.join(os.homedir(), '.claude', 'aimax');
+      const expected = path.join(os.homedir(), '.claude', 'auto');
       expect(result).toBe(expected);
     });
   });
@@ -40,9 +40,9 @@ describe('utils.js', () => {
   });
 
   describe('getVersionFilePath', () => {
-    it('should return path to .aimax-version file', () => {
+    it('should return path to .auto-version file', () => {
       const result = getVersionFilePath();
-      const expected = path.join(os.homedir(), '.claude', '.aimax-version');
+      const expected = path.join(os.homedir(), '.claude', '.auto-version');
       expect(result).toBe(expected);
     });
   });
@@ -76,7 +76,7 @@ describe('utils.js', () => {
 
     it('should have commands component with correct structure', () => {
       expect(COMPONENTS.commands).toMatchObject({
-        name: 'aimax 斜杠指令',
+        name: 'auto 斜杠指令',
         source: 'commands',
         target: 'commands/auto',
         pattern: '*.md'
@@ -140,7 +140,7 @@ describe('utils.js', () => {
     beforeEach(async () => {
       // Mock getVersionFilePath temporarily
       vi.spyOn(fs, 'pathExists').mockImplementation(async (p) => {
-        if (p.includes('.aimax-version')) {
+        if (p.includes('.auto-version')) {
           return fs.pathExists(testVersionFile);
         }
         return fs.pathExists(p);
@@ -192,7 +192,7 @@ describe('utils.js', () => {
       await saveInstalledVersion('1.0.0', ['agents', 'rules']);
 
       expect(writeJsonMock).toHaveBeenCalledWith(
-        expect.stringContaining('.aimax-version'),
+        expect.stringContaining('.auto-version'),
         expect.objectContaining({
           version: '1.0.0',
           components: ['agents', 'rules'],
@@ -214,7 +214,7 @@ describe('utils.js', () => {
       await saveInstalledVersion('1.0.0', ['skills', 'agents'], installedFiles);
 
       expect(writeJsonMock).toHaveBeenCalledWith(
-        expect.stringContaining('.aimax-version'),
+        expect.stringContaining('.auto-version'),
         expect.objectContaining({
           version: '1.0.0',
           components: ['skills', 'agents'],
