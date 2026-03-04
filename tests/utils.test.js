@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import {
   getClaudeDir,
-  getAimaxDir,
+  getAutoDir,
   getCustomDir,
   getVersionFilePath,
   getInstalledVersion,
@@ -23,9 +23,9 @@ describe('utils.js', () => {
     });
   });
 
-  describe('getAimaxDir', () => {
+  describe('getAutoDir', () => {
     it('should return path to aimax directory inside .claude', () => {
-      const result = getAimaxDir();
+      const result = getAutoDir();
       const expected = path.join(os.homedir(), '.claude', 'aimax');
       expect(result).toBe(expected);
     });
@@ -78,7 +78,7 @@ describe('utils.js', () => {
       expect(COMPONENTS.commands).toMatchObject({
         name: 'aimax 斜杠指令',
         source: 'commands',
-        target: 'commands/aimax',
+        target: 'commands/auto',
         pattern: '*.md'
       });
     });

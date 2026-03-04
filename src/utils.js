@@ -13,8 +13,8 @@ export function getClaudeDir() {
 /**
  * 获取 AI MAX 官方文件目录（更新时会覆盖）
  */
-export function getAimaxDir() {
-  return path.join(getClaudeDir(), 'aimax');
+export function getAutoDir() {
+  return path.join(getClaudeDir(), 'auto');
 }
 
 /**
@@ -28,7 +28,7 @@ export function getCustomDir() {
  * 获取版本文件路径
  */
 export function getVersionFilePath() {
-  return path.join(getClaudeDir(), '.aimax-version');
+  return path.join(getClaudeDir(), '.auto-version');
 }
 
 /**
@@ -91,10 +91,10 @@ export const COMPONENTS = {
     pattern: '*.md'
   },
   commands: {
-    name: 'aimax 斜杠指令',
+    name: 'auto 斜杠指令',
     description: '斜杠命令（/auto:plan, /auto:tdd, /auto:code-review 等）',
     source: 'commands',
-    target: 'commands/aimax',
+    target: 'commands/auto',
     pattern: '*.md'
   },
   skills: {

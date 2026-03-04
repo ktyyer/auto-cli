@@ -10,7 +10,7 @@ export function showBanner() {
   console.log('');
   console.log(chalk.cyan.bold('  ╔═══════════════════════════════════════════╗'));
   console.log(chalk.cyan.bold('  ║                                           ║'));
-  console.log(chalk.cyan.bold('  ║') + chalk.white.bold(`           AI MAX（v${version}）                 `) + chalk.cyan.bold('║'));
+  console.log(chalk.cyan.bold('  ║') + chalk.white.bold(`           Auto CLI（v${version}）                 `) + chalk.cyan.bold('║'));
   console.log(chalk.cyan.bold('  ║') + chalk.gray('     Claude Code 一键能力增强，开箱即用      ') + chalk.cyan.bold('║'));
   console.log(chalk.cyan.bold('  ║                                           ║'));
   console.log(chalk.cyan.bold('  ╚═══════════════════════════════════════════╝'));
@@ -71,7 +71,7 @@ export async function promptUninstallConfirmation() {
     {
       type: 'confirm',
       name: 'confirmed',
-      message: chalk.yellow('确定要卸载 AI MAX 吗？'),
+      message: chalk.yellow('确定要卸载 Auto CLI 吗？'),
       default: false
     }
   ]);
@@ -86,9 +86,9 @@ export async function promptMainMenu() {
   const installedVersion = await getInstalledVersion();
 
   const choices = [
-    { name: '安装 AI MAX', value: 'install' },
-    { name: '更新 AI MAX', value: 'update', disabled: !installedVersion ? '（未安装）' : false },
-    { name: '卸载 AI MAX', value: 'uninstall', disabled: !installedVersion ? '（未安装）' : false },
+    { name: '安装 Auto CLI', value: 'install' },
+    { name: '更新 Auto CLI', value: 'update', disabled: !installedVersion ? '（未安装）' : false },
+    { name: '卸载 Auto CLI', value: 'uninstall', disabled: !installedVersion ? '（未安装）' : false },
     new inquirer.Separator(),
     { name: '查看文档', value: 'docs' },
     { name: '退出', value: 'exit' }

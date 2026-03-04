@@ -35,7 +35,7 @@ program
 // 安装命令
 program
   .command('install')
-  .description('安装 AI MAX')
+  .description('安装 Auto CLI')
   .option('-y, --yes', '跳过确认提示')
   .option('-f, --force', '强制覆盖现有文件（不备份）')
   .action(async (options) => {
@@ -54,7 +54,7 @@ program
 // 更新命令
 program
   .command('update')
-  .description('更新 AI MAX')
+  .description('更新 Auto CLI')
   .option('-y, --yes', '跳过确认提示')
   .action(async (options) => {
     try {
@@ -68,7 +68,7 @@ program
 // 卸载命令
 program
   .command('uninstall')
-  .description('卸载 AI MAX')
+  .description('卸载 Auto CLI')
   .option('-y, --yes', '跳过确认提示')
   .action(async (options) => {
     try {

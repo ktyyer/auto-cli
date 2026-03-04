@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **精简命令**：15 个 → 5 个（-67%）
-  - 保留：`/auto:auto`, `/auto:plan`
+  - 保留：`/auto`, `/auto:plan`
   - 新增：`/auto:fix`, `/auto:status`, `/auto:help`
   - 删除并整合到 auto：14 个冗余命令
 
@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
-- **学习成本**：-80%（只需记住 `/auto:auto`）
+- **学习成本**：-80%（只需记住 `/auto`）
 - **用户满意度**：+20%（从 70% → 90%+）
 - **任务成功率**：+20%（从 75% → 90%+）
 - **Token 消耗**：-70%（智能上下文索引）
@@ -74,8 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 cp -r .aimax/backup/v2.0/* .
 
 # 主要变化
-- 14 个命令已整合到 /auto:auto
-- 现在只需记住 /auto:auto 一个命令
+- 14 个命令已整合到 /auto
+- 现在只需记住 /auto 一个命令
 - 其他命令自动决策，无需手动调用
 ```
 
@@ -106,7 +106,7 @@ cp -r .aimax/backup/v2.0/* .
 
 ### Changed
 
-- 重构为智能超级命令 `/auto:auto`
+- 重构为智能超级命令 `/auto`
 - 添加框架插件系统
 - 添加 agent 编排系统
 

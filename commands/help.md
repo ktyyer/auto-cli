@@ -10,19 +10,19 @@ description: 显示帮助和使用示例
 
 ```bash
 # 唯一入口，自动完成所有事情
-/auto:auto [任务描述]
+/auto [任务描述]
 
 # 示例
-/auto:auto 实现用户查询 API
-/auto:auto 修复登录 bug
-/auto:auto 重构 UserService
+/auto 实现用户查询 API
+/auto 修复登录 bug
+/auto 重构 UserService
 ```
 
 ## 核心命令
 
 | 命令 | 用途 | 示例 |
 |------|------|------|
-| `/auto:auto` | 智能超级命令（唯一入口） | `/auto:auto 实现功能` |
+| `/auto` | 智能超级命令（唯一入口） | `/auto 实现功能` |
 | `/auto:plan` | 规划不执行 | `/auto:plan 重构系统` |
 | `/auto:fix` | 修复构建/测试错误 | `/auto:fix` |
 | `/auto:status` | 查看项目状态 | `/auto:status` |
@@ -32,30 +32,30 @@ description: 显示帮助和使用示例
 
 ### 功能开发
 ```bash
-/auto:auto 实现用户认证功能
-/auto:auto 添加订单查询接口
-/auto:auto 创建商品管理模块
+/auto 实现用户认证功能
+/auto 添加订单查询接口
+/auto 创建商品管理模块
 ```
 
 ### Bug 修复
 ```bash
-/auto:auto 修复登录超时问题
-/auto:auto 解决支付失败 bug
-/auto:auto 修复数据不一致
+/auto 修复登录超时问题
+/auto 解决支付失败 bug
+/auto 修复数据不一致
 ```
 
 ### 代码优化
 ```bash
-/auto:auto 重构 UserService
-/auto:auto 优化查询性能
-/auto:auto 清理重复代码
+/auto 重构 UserService
+/auto 优化查询性能
+/auto 清理重复代码
 ```
 
 ### 测试相关
 ```bash
-/auto:auto 编写单元测试
-/auto:auto 提高 test coverage
-/auto:auto 添加集成测试
+/auto 编写单元测试
+/auto 提高 test coverage
+/auto 添加集成测试
 ```
 
 ## 高级功能

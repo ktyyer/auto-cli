@@ -154,10 +154,10 @@ export async function uninstall(selectedComponents) {
         }
       }
 
-      // 清理空目录（只清理 AI MAX 相关的子目录）
+      // 清理空目录（只清理 Auto CLI 相关的子目录）
       await cleanupEmptyDirs(claudeDir, selectedComponents);
     } else {
-      // 兼容旧版本：没有记录文件列表时，只删除 AI MAX 特定的文件/目录
+      // 兼容旧版本：没有记录文件列表时，只删除 Auto CLI 特定的文件/目录
       spinner.text = '正在移除组件（兼容模式）...';
 
       for (const componentKey of selectedComponents) {
@@ -169,7 +169,7 @@ export async function uninstall(selectedComponents) {
         const targetPath = path.join(claudeDir, component.target);
 
         if (await fs.pathExists(targetPath)) {
-          // 只有 commands/aimax 目录可以整体删除（这是 AI MAX 独占的）
+          // 只有 commands/auto 目录可以整体删除（这是 Auto CLI 独占的）
           if (componentKey === 'commands') {
             await fs.remove(targetPath);
             removedFiles.push(targetPath);
@@ -264,7 +264,7 @@ async function cleanupEmptySubDirs(dirPath) {
 }
 
 /**
- * 清理 AI MAX 相关的空目录
+ * 清理 Auto CLI 相关的空目录
  */
 async function cleanupEmptyDirs(claudeDir, selectedComponents) {
   for (const componentKey of selectedComponents) {
@@ -273,7 +273,7 @@ async function cleanupEmptyDirs(claudeDir, selectedComponents) {
 
     const targetPath = path.join(claudeDir, component.target);
 
-    // 对于 commands/aimax，如果目录为空则删除
+    // 对于 commands/auto，如果目录为空则删除
     if (componentKey === 'commands' && await fs.pathExists(targetPath)) {
       try {
         const items = await fs.readdir(targetPath);
