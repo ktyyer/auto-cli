@@ -1,0 +1,19 @@
+{
+  "run_id": "loop-YYYYMMDD-001",
+  "task": "replace-with-task-description",
+  "current_state": "INTAKE",
+  "current_step_index": 0,
+  "steps_total": 0,
+  "steps": [],
+  "retries": {},
+  "gates": {
+    "build": "pending",
+    "tests": "pending",
+    "lint": "pending",
+    "security": "pending",
+    "eval": "pending"
+  },
+  "next_action": "collect-context",
+  "artifacts": [],
+  "updated_at": "1970-01-01T00:00:00Z"
+}

@@ -1,0 +1,182 @@
+name: aimax-evolution-gates
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  detect-stack:
+    runs-on: ubuntu-latest
+    outputs:
+      has_node: ${{ steps.detect.outputs.has_node }}
+      has_python: ${{ steps.detect.outputs.has_python }}
+      has_java: ${{ steps.detect.outputs.has_java }}
+      has_go: ${{ steps.detect.outputs.has_go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect project stack
+        id: detect
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            echo "has_node=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_node=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f pyproject.toml ] || [ -f requirements.txt ]; then
+            echo "has_python=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_python=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f pom.xml ] || [ -f build.gradle ] || [ -f build.gradle.kts ]; then
+            echo "has_java=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_java=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f go.mod ]; then
+            echo "has_go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  node-gates:
+    needs: detect-stack
+    if: needs.detect-stack.outputs.has_node == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Type check
+        run: npm run typecheck --if-present
+
+      - name: Unit tests
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build --if-present
+
+  python-gates:
+    needs: detect-stack
+    if: needs.detect-stack.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e .; fi
+
+      - name: Lint
+        shell: bash
+        run: |
+          if command -v ruff >/dev/null 2>&1; then
+            ruff check .
+          else
+            echo "ruff not found, skip lint gate."
+          fi
+
+      - name: Unit tests
+        shell: bash
+        run: |
+          if command -v pytest >/dev/null 2>&1; then
+            pytest -q
+          else
+            echo "pytest not found, skip test gate."
+          fi
+
+  java-gates:
+    needs: detect-stack
+    if: needs.detect-stack.outputs.has_java == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Maven tests
+        if: hashFiles('pom.xml') != ''
+        run: mvn -B test
+
+      - name: Gradle tests
+        if: hashFiles('build.gradle', 'build.gradle.kts') != ''
+        run: ./gradlew test
+
+  go-gates:
+    needs: detect-stack
+    if: needs.detect-stack.outputs.has_go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Go test
+        run: go test ./...
+
+  llm-eval-gate:
+    needs: [detect-stack, node-gates, python-gates, java-gates, go-gates]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Optional Promptfoo eval
+        shell: bash
+        run: |
+          if [ -f promptfooconfig.yaml ] || [ -f promptfooconfig.yml ]; then
+            npx -y promptfoo@latest eval
+          else
+            echo "No promptfoo config found, skip LLM eval gate."
+          fi
+
+  summary:
+    needs: [node-gates, python-gates, java-gates, go-gates, llm-eval-gate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print gate summary
+        run: |
+          echo "Node gates:   ${{ needs.node-gates.result }}"
+          echo "Python gates: ${{ needs.python-gates.result }}"
+          echo "Java gates:   ${{ needs.java-gates.result }}"
+          echo "Go gates:     ${{ needs.go-gates.result }}"
+          echo "LLM eval:     ${{ needs.llm-eval-gate.result }}"
