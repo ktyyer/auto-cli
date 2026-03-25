@@ -1,4 +1,4 @@
-name: aimax-evolution-gates
+name: auto-evolution-gates
 
 on:
   pull_request:

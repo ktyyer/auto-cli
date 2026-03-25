@@ -9,7 +9,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "echo 'No linter configured'",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "claude",
@@ -18,14 +20,20 @@
     "ai",
     "agents",
     "workflow",
-    "productivity"
+    "productivity",
+    "programming",
+    "automation"
   ],
-  "author": "",
+  "author": "Auto CLI Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/zhukunpenglinyutong/ai-max"
   },
+  "bugs": {
+    "url": "https://github.com/zhukunpenglinyutong/ai-max/issues"
+  },
+  "homepage": "https://github.com/zhukunpenglinyutong/ai-max#readme",
   "files": [
     "bin",
     "src",
@@ -53,7 +61,8 @@
   },
   "type": "module",
   "devDependencies": {
-    "vitest": "^1.6.0",
-    "@vitest/coverage-v8": "^1.6.0"
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "vitest": "^1.6.0"
   }
 }

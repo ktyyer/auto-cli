@@ -28,3 +28,17 @@ private/
 
 # Local generated knowledge cache
 .claude/knowledge/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Build output
+dist/
+build/
+
+# Temp files
+*.tmp
+*.temp
+.test-*
+.aimax/

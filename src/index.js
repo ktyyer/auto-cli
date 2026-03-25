@@ -7,6 +7,8 @@ import {
   promptMainMenu
 } from './prompts.js';
 import { getInstalledVersion, COMPONENTS } from './utils.js';
+import { logger } from './logger.js';
+import { DOCS_URL } from './config.js';
 
 /**
  * 交互模式 - 主菜单
@@ -67,7 +69,7 @@ export async function runInstall(options = {}) {
   console.log('');
   console.log(chalk.cyan('后续步骤：'));
   console.log(chalk.gray('  1. 重启 Claude Code 以加载新配置'));
-  console.log(chalk.gray('  2. 使用 /auto:plan, /auto:tdd, /auto:code-review 等命令'));
+  console.log(chalk.gray('  2. 使用 /auto:plan, /auto:quest, /auto:tdd, /auto:code-review 等命令'));
   console.log('');
 }
 
@@ -125,7 +127,7 @@ export async function runUninstall(options = {}) {
  * 打开使用文档
  */
 export async function runDocs() {
-  const url = 'https://github.com/zhukunpenglinyutong/ai-max';
+  const url = DOCS_URL;
   console.log('');
   console.log(chalk.cyan('正在打开文档...'));
   console.log(chalk.gray(`  ${url}`));
@@ -146,7 +148,7 @@ export async function runDocs() {
 
   exec(command, (error) => {
     if (error) {
-      console.log(chalk.yellow('无法自动打开浏览器，请手动访问上述链接。'));
+      logger.warn('无法自动打开浏览器，请手动访问上述链接。');
     }
   });
 }

@@ -28,7 +28,7 @@ class SelfStarSystem {
     this.projectPath = projectPath;
     this._patternLearner = null; // 延迟初始化
     this._projectScanner = null; // 延迟初始化
-    this.feedbackFile = path.join(projectPath, '.aimax', 'feedback.json');
+    this.feedbackFile = path.join(projectPath, '.auto', 'feedback.json');
     this.feedback = [];
     this.initialized = false;
     this.initPromise = null;

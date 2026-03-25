@@ -28,7 +28,7 @@ vi.mock('chalk', () => ({
 }));
 
 describe('installer.js', () => {
-  const testDir = path.join(os.tmpdir(), 'aimax-test-' + Date.now());
+  const testDir = path.join(os.tmpdir(), 'auto-test-' + Date.now());
   const testClaudeDir = path.join(testDir, '.claude');
   const testSourceDir = path.join(testDir, 'source');
 
@@ -140,7 +140,7 @@ describe('installer.js', () => {
 
       // Simulate AI MAX installed file
       await fs.writeFile(
-        path.join(skillsDir, 'aimax-skill.md'),
+        path.join(skillsDir, 'auto-skill.md'),
         '# AI MAX Skill'
       );
 
@@ -151,16 +151,16 @@ describe('installer.js', () => {
       );
 
       // Create a version file with recorded installed files
-      const versionFile = path.join(mockClaudeDir, '.aimax-version');
+      const versionFile = path.join(mockClaudeDir, '.auto-version');
       await fs.writeJson(versionFile, {
         version: '1.0.0',
         components: ['skills'],
-        installedFiles: [path.join(skillsDir, 'aimax-skill.md')],
+        installedFiles: [path.join(skillsDir, 'auto-skill.md')],
         installedAt: new Date().toISOString()
       });
 
       // Verify both files exist before uninstall
-      expect(await fs.pathExists(path.join(skillsDir, 'aimax-skill.md'))).toBe(true);
+      expect(await fs.pathExists(path.join(skillsDir, 'auto-skill.md'))).toBe(true);
       expect(await fs.pathExists(path.join(skillsDir, 'other-plugin-skill.md'))).toBe(true);
 
       // Note: This test documents the expected behavior after the fix

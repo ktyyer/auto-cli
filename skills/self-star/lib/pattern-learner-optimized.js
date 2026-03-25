@@ -289,7 +289,7 @@ class PatternLearner {
   constructor(projectPath) {
     this.projectPath = projectPath;
     this.patterns = [];
-    this.patternsFile = path.join(projectPath, '.aimax', 'patterns.json');
+    this.patternsFile = path.join(projectPath, '.auto', 'patterns.json');
     this.cache = new LRUCache();
     this.index = new PatternIndex();
     this.pendingSaves = new Set();

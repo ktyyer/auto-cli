@@ -85,7 +85,7 @@ builtin: true
 
 ### 默认路径
 
-- `.aimax/state/focus-chain.md`
+- `.auto/state/focus-chain.md`
 
 ### 文件格式
 

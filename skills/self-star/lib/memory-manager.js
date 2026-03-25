@@ -19,7 +19,7 @@ class MemoryManager {
   constructor(projectPath) {
     this.projectPath = projectPath;
     this.selfStar = new SelfStarSystem(projectPath);
-    this.memoryDir = path.join(projectPath, '.aimax', 'memory');
+    this.memoryDir = path.join(projectPath, '.auto', 'memory');
     this.ensureMemoryDir();
   }
 

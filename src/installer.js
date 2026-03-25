@@ -196,7 +196,7 @@ export async function uninstall(selectedComponents) {
     }
 
     // 移除版本文件
-    const versionFile = path.join(claudeDir, '.aimax-version');
+    const versionFile = path.join(claudeDir, '.auto-version');
     if (await fs.pathExists(versionFile)) {
       await fs.remove(versionFile);
     }

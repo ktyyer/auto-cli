@@ -100,7 +100,7 @@ AI 内部: 检测到 inst-001（置信度 0.85）
 ### 存储路径
 
 ```
-.aimax/instincts/
+.auto/instincts/
 ├── instincts.yaml         # 所有已学习的 instinct
 ├── candidates.yaml        # 候选模式（尚未确认）
 └── exports/               # 导出文件

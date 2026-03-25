@@ -406,7 +406,7 @@ Assistant: [当前] 正在进行代码审查，检查安全漏洞和性能问题
 ### 历史存储结构
 
 ```
-.aimax/
+.auto/
 ├── conversations/
 │   ├── sess-20260303-001.yaml  # 完整状态
 │   ├── sess-20260303-001.checkpoints/  # 检查点
@@ -603,13 +603,13 @@ privacy_config:
   # 本地存储
   storage:
     type: "local"
-    path: ".aimax/conversations/"
+    path: ".auto/conversations/"
 
   # 加密
   encryption:
     enabled: true
     algorithm: "AES-256"
-    key_file: ".aimax/.key"
+    key_file: ".auto/.key"
 
   # 敏感信息过滤
   sensitive_data_filter:
@@ -689,7 +689,7 @@ class ConversationState:
 class CheckpointManager:
     def save(self, state: dict):
         checkpoint_id = f"ckpt-{uuid.uuid4().hex[:8]}"
-        path = f".aimax/conversations/{session_id}/checkpoints/{checkpoint_id}.yaml"
+        path = f".auto/conversations/{session_id}/checkpoints/{checkpoint_id}.yaml"
         with open(path, 'w') as f:
             yaml.dump(state, f)
         return checkpoint_id

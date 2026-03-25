@@ -14,7 +14,7 @@ export const LOOP_STATES = Object.freeze({
 
 export const DEFAULT_LOOP_STATE_FILE = path.join(
   process.cwd(),
-  '.aimax',
+  '.auto',
   'state',
   'loop-state.json'
 );

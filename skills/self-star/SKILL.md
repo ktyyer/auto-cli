@@ -331,7 +331,7 @@ self_building:
 [Self-Building 启动]
   • 检测项目结构...
   • 识别为 Spring Boot 项目
-  • 创建 .aimax/memory/project-spring-app.yaml
+  • 创建 .auto/memory/project-spring-app.yaml
   • 加载 plugins/framework/java/spring.md
   • 初始化项目记忆
 
@@ -494,7 +494,7 @@ auto_triggers:
 safety:
   # 本地存储
   storage: "local only"
-  path: ".aimax/self-star/"
+  path: ".auto/self-star/"
 
   # 不上传云端
   cloud_sync: false

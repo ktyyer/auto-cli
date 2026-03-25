@@ -129,7 +129,7 @@ console.log(trajectory);
 ### 工作流集成
 
 ```yaml
-aimax:auto workflow:
+auto:auto workflow:
   第 0 步: 初始化
     ├─ 创建 AgenticLoop 实例
     └─ 注册回调函数
@@ -141,7 +141,7 @@ aimax:auto workflow:
 
   第 8 步: 完成
     ├─ 生成完整轨迹报告
-    ├─ 保存到 .aimax/trajectory/
+    ├─ 保存到 .auto/trajectory/
     └─ 展示给用户
 ```
 

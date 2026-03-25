@@ -180,7 +180,7 @@ echo "Updating REPO_MAP.md..."
 ### CI 中更新
 
 ```yaml
-# 在 aimax-evolution-gates.yml 中添加
+# 在 auto-evolution-gates.yml 中添加
 - name: Update repo map
   run: |
     # 检测是否有新的类/接口添加

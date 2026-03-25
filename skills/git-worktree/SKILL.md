@@ -176,7 +176,7 @@ git worktree lock <路径>
 /auto:loop next
 ```
 
-> 每个 worktree 有独立的 `.aimax/state/` 目录，状态互不干扰。
+> 每个 worktree 有独立的 `.auto/state/` 目录，状态互不干扰。
 
 ---
 

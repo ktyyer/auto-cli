@@ -4,12 +4,12 @@
 
 ## 文件说明
 
-- `aimax-evolution-gates.yml`
+- `auto-evolution-gates.yml`
   - 自动检测 Node/Python/Java/Go 项目
   - 按技术栈执行基础门禁（lint/test/build）
   - 支持可选 Promptfoo 评估门禁（若存在 `promptfooconfig.yaml`）
-- `aimax-pr-eval-comment.yml`
-  - 在 `aimax-evolution-gates` 完成后自动汇总结果
+- `auto-pr-eval-comment.yml`
+  - 在 `auto-evolution-gates` 完成后自动汇总结果
   - 以“可更新（sticky）评论”形式回写到 PR
   - 输出门禁统计、任务明细和下一步建议
 
@@ -19,8 +19,8 @@
 
 ```bash
 mkdir -p .github/workflows
-cp templates/ci/aimax-evolution-gates.yml .github/workflows/
-cp templates/ci/aimax-pr-eval-comment.yml .github/workflows/
+cp templates/ci/auto-evolution-gates.yml .github/workflows/
+cp templates/ci/auto-pr-eval-comment.yml .github/workflows/
 ```
 
 2. 按项目实际情况调整命令：

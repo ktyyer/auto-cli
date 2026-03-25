@@ -139,6 +139,22 @@
         "ast-grep-mcp"
       ],
       "description": "AST 语义代码搜索 - 用于 Repo Map 生成和代码模式查找"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "description": "Playwright 浏览器自动化 - 页面交互、无障碍快照、表单填写、真实浏览器控制"
+    },
+    "composio": {
+      "type": "http",
+      "url": "https://mcp.composio.dev",
+      "headers": {
+        "x-api-key": "YOUR_COMPOSIO_API_KEY_HERE"
+      },
+      "description": "Composio 250+ SaaS 集成 - GitHub/Slack/Jira/Linear 等统一接入，托管 OAuth"
     }
   },
   "_comments": {

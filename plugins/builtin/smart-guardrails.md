@@ -17,7 +17,7 @@ builtin: true
 
 ## 🛑 操作级别字典 (Actions Dictionary)
 
-系统将 AI 可以执行的所有操作分为三种基础属性级别（在 `.aimax/guardrails.yaml` 中配置）：
+系统将 AI 可以执行的所有操作分为三种基础属性级别（在 `.auto/guardrails.yaml` 中配置）：
 
 ### 🟢 级别 1: 安全操作 (Safe Actions)
 这类操作没有破坏性，属于在进行分析思考。

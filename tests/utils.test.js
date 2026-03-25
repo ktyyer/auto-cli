@@ -135,7 +135,7 @@ describe('utils.js', () => {
   });
 
   describe('getInstalledVersion', () => {
-    const testVersionFile = path.join(os.tmpdir(), '.aimax-test-version');
+    const testVersionFile = path.join(os.tmpdir(), '.auto-test-version');
 
     beforeEach(async () => {
       // Mock getVersionFilePath temporarily

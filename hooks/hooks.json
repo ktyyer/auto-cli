@@ -85,6 +85,54 @@
         "description": "Warn about console.log statements after edits"
       }
     ],
+    "PostCompaction": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Re-inject critical project context after context compaction\ninput=$(cat)\n\necho '[Hook] Context compaction detected - reminding to reload critical files' >&2\necho '[Hook] Re-read these files to restore project context:' >&2\n\n# Check for CLAUDE.md\nif [ -f 'CLAUDE.md' ]; then\n  echo '[Hook]   - CLAUDE.md (project instructions)' >&2\nfi\n\n# Check for .claude/settings.json\nif [ -f '.claude/settings.json' ]; then\n  echo '[Hook]   - .claude/settings.json (project settings)' >&2\nfi\n\n# Check for active todo/task state\nif [ -f '.auto/state/loop-state.json' ]; then\n  echo '[Hook]   - .auto/state/loop-state.json (active task state)' >&2\nfi\n\necho '[Hook] Use Read tool to reload these files before continuing work' >&2\n\necho \"$input\""
+          }
+        ],
+        "description": "Re-inject critical project context after context window compaction"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Warn if user prompt contains potential secrets\ninput=$(cat)\nprompt=$(echo \"$input\" | jq -r '.prompt // \"\"')\n\n# Check for common secret patterns\nif echo \"$prompt\" | grep -qE '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\\-]{20,}|xoxb-[0-9]{10,}|AKIA[0-9A-Z]{16})'; then\n  echo '[Hook] WARNING: Potential secret/API key detected in your prompt!' >&2\n  echo '[Hook] Patterns found: sk-*, ghp_*, gho_*, glpat-*, xoxb-*, AKIA*' >&2\n  echo '[Hook] Consider using environment variables instead of pasting keys directly' >&2\nfi\n\n# Pass through input data without blocking\necho \"$input\""
+          }
+        ],
+        "description": "Warn if user prompt contains potential secrets (API keys, tokens)"
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Remind team lead to check task list when a teammate goes idle\ninput=$(cat)\nagent_name=$(echo \"$input\" | jq -r '.agent_name // \"unknown\"')\n\necho \"[Hook] Teammate '$agent_name' is now idle\" >&2\necho '[Hook] Consider checking TaskList for unassigned tasks to keep the team productive' >&2\necho '[Hook] Use SendMessage to assign new work or send shutdown_request if done' >&2\n\necho \"$input\""
+          }
+        ],
+        "description": "Remind team lead to check task list and assign work when teammate goes idle"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Quality gate: check for uncommitted changes before allowing task completion\ninput=$(cat)\n\nif git rev-parse --git-dir > /dev/null 2>&1; then\n  uncommitted=$(git status --porcelain 2>/dev/null | head -20)\n  \n  if [ -n \"$uncommitted\" ]; then\n    echo '[Hook] QUALITY GATE: Uncommitted changes detected!' >&2\n    echo '[Hook] Files with pending changes:' >&2\n    echo \"$uncommitted\" | head -10 >&2\n    echo '[Hook] Commit or stash changes before marking task as completed' >&2\n    exit 2\n  fi\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "Quality gate - block task completion if uncommitted changes exist (exit 2 = reject)"
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",

@@ -70,7 +70,7 @@ session_memory:
 
 **作用**：跨会话持久化项目知识
 
-**存储路径**：`.aimax/memory/project-{hash}.yaml`
+**存储路径**：`.auto/memory/project-{hash}.yaml`
 
 ```yaml
 project_memory:
@@ -151,7 +151,7 @@ project_memory:
 
 **作用**：团队共享的编码模式和最佳实践
 
-**存储路径**：`.aimax/memory/team-knowledge.yaml`
+**存储路径**：`.auto/memory/team-knowledge.yaml`
 
 ```yaml
 team_knowledge:
@@ -343,7 +343,7 @@ memory_decay:
 
 1. **本地存储**：所有记忆数据仅存储在本地
 2. **加密存储**：敏感信息（如 API 密钥）自动加密
-3. **Git 忽略**：`.aimax/memory/` 已加入 `.gitignore`
+3. **Git 忽略**：`.auto/memory/` 已加入 `.gitignore`
 4. **选择性上传**：团队知识需要手动导出才可共享
 
 ---

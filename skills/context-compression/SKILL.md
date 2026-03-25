@@ -150,10 +150,10 @@ Claude 的上下文窗口有限（200k token）。在复杂任务中：
 "请压缩当前上下文，保留所有关键决策和文件修改，生成压缩摘要"
 
 # 保存进度检查点
-"请创建当前任务的检查点，保存到 .aimax/state/checkpoint.md"
+"请创建当前任务的检查点，保存到 .auto/state/checkpoint.md"
 
 # 从检查点恢复
-"请读取 .aimax/state/checkpoint.md 并从上次中断处继续"
+"请读取 .auto/state/checkpoint.md 并从上次中断处继续"
 ```
 
 ---
@@ -162,7 +162,7 @@ Claude 的上下文窗口有限（200k token）。在复杂任务中：
 
 ### 路径
 
-`.aimax/state/checkpoint.md`
+`.auto/state/checkpoint.md`
 
 ### 格式
 

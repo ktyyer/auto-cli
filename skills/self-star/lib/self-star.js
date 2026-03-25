@@ -22,7 +22,7 @@ class SelfStarSystem {
     this.projectPath = projectPath;
     this.patternLearner = new PatternLearner(projectPath);
     this.projectScanner = new ProjectScanner(projectPath);
-    this.feedbackFile = path.join(projectPath, '.aimax', 'feedback.json');
+    this.feedbackFile = path.join(projectPath, '.auto', 'feedback.json');
     this.feedback = [];
     this.loadFeedback();
   }

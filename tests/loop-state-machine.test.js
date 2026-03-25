@@ -92,7 +92,7 @@ describe('loop-state-machine', () => {
   });
 
   it('should persist and load state from disk', async () => {
-    const tempDir = path.join(os.tmpdir(), `aimax-loop-${Date.now()}`);
+    const tempDir = path.join(os.tmpdir(), `auto-loop-${Date.now()}`);
     const stateFile = path.join(tempDir, 'loop-state.json');
     const state = createLoopState({
       task: '持久化测试',

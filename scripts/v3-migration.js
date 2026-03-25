@@ -59,7 +59,7 @@ const CONFIG = {
   ],
 
   // 备份目录
-  backupDir: '.aimax/backup/v2.0'
+  backupDir: '.auto/backup/v2.0'
 };
 
 // 工具函数
@@ -366,8 +366,8 @@ AI MAX 会自动学习项目的编码模式，越用越聪明。
   log(`  • New commands: ${CONFIG.newCommands.length}`, 'info');
   log(`  • Total commands: ${5} (from ${15})`, 'success');
   console.log('');
-  log('Backup location: .aimax/backup/v2.0/', 'info');
-  log('To restore: cp -r .aimax/backup/v2.0/* .', 'info');
+  log('Backup location: .auto/backup/v2.0/', 'info');
+  log('To restore: cp -r .auto/backup/v2.0/* .', 'info');
   console.log('');
   log('Next steps:', 'info');
   log('  1. Review the changes', 'info');

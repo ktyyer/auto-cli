@@ -7,7 +7,7 @@ ai-max/
 ├── templates/
 │   └── project-config/
 │       ├── CLAUDE_TEMPLATE.md    # 通用配置模板
-│       ├── aimax-loop-state-template.json # 状态机检查点模板
+│       ├── auto-loop-state-template.json # 状态机检查点模板
 │       ├── README.md             # 本文件
 │       └── examples/             # 示例配置（可选）
 │           ├── spring-cloud.md   # Spring Cloud 项目示例
@@ -61,10 +61,10 @@ cp /path/to/ai-max/templates/project-config/CLAUDE_TEMPLATE.md .claude/CLAUDE.md
 4. **可选：启用持续迭代门禁**:
 ```bash
 mkdir -p .github/workflows
-cp /path/to/ai-max/templates/ci/aimax-evolution-gates.yml .github/workflows/
-cp /path/to/ai-max/templates/ci/aimax-pr-eval-comment.yml .github/workflows/
-mkdir -p .aimax/state
-cp /path/to/ai-max/templates/project-config/aimax-loop-state-template.json .aimax/state/loop-state.json
+cp /path/to/ai-max/templates/ci/auto-evolution-gates.yml .github/workflows/
+cp /path/to/ai-max/templates/ci/auto-pr-eval-comment.yml .github/workflows/
+mkdir -p .auto/state
+cp /path/to/ai-max/templates/project-config/auto-loop-state-template.json .auto/state/loop-state.json
 ```
 然后在 Claude Code 中使用：
 ```bash
@@ -323,7 +323,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 ```bash
 # 1. 安装 AI MAX 通用规则（全局）
-aimax install
+auto install
 
 # 2. 添加项目特定规则（项目级）
 # .claude/CLAUDE.md 会覆盖或补充全局规则

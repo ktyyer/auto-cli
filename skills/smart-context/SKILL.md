@@ -170,7 +170,7 @@ incremental_update:
   # 文件指纹
   file_fingerprint:
     algorithm: "sha256"
-    store: ".aimax/index/fingerprints.db"
+    store: ".auto/index/fingerprints.db"
 
   # 变更检测
   change_detection:
@@ -191,7 +191,7 @@ incremental_update:
   # Merkle Tree 优化
   merkle_tree:
     enabled: true
-    tree_file: ".aimax/index/merkle.tree"
+    tree_file: ".auto/index/merkle.tree"
     benefits:
       - "O(log n) 查找变更"
       - "避免重复索引"
@@ -553,13 +553,13 @@ privacy_config:
   # 本地存储
   storage:
     type: "local"
-    path: ".aimax/index/"
+    path: ".auto/index/"
 
   # 加密
   encryption:
     enabled: true
     algorithm: "AES-256"
-    key_file: ".aimax/.key"
+    key_file: ".auto/.key"
 
   # 文件名混淆
   file_path_obfuscation:
@@ -604,7 +604,7 @@ cache_config:
   # 向量缓存
   vector_cache:
     enabled: true
-    path: ".aimax/cache/vectors/"
+    path: ".auto/cache/vectors/"
 
   # 索引预热
   index_warmup:
@@ -675,7 +675,7 @@ compression:
 pip install chromadb sentence-transformers
 
 # 核心代码（< 200 行）
-python -m aimax.index
+python -m auto.index
 ```
 
 ### 生产级方案

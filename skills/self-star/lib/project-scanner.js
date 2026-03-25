@@ -17,7 +17,7 @@ import path from 'path';
 class ProjectScanner {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.cacheFile = path.join(projectPath, '.aimax', 'project-cache.json');
+    this.cacheFile = path.join(projectPath, '.auto', 'project-cache.json');
     this.cache = null;
     this.loadCache();
   }
