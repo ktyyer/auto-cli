@@ -56,7 +56,7 @@ VERIFY(fail) -> RECOVER -> EXECUTE
 
 ### 默认路径
 
-- `.aimax/state/loop-state.json`
+- `.auto/state/loop-state.json`
 
 ### 快照字段
 
@@ -127,21 +127,21 @@ VERIFY(fail) -> RECOVER -> EXECUTE
 
 ### 终端执行器（可选）
 
-如果你希望在终端里直接驱动检查点状态，可使用 `aimax loop`：
+如果你希望在终端里直接驱动检查点状态，可使用 `auto loop`：
 
 ```bash
 # 初始化
-aimax loop init --task "重构订单结算" --steps "分析,重构,验证"
+auto loop init --task "重构订单结算" --steps "分析,重构,验证"
 
 # 查看状态
-aimax loop status
+auto loop status
 
 # 推进状态（VERIFY 时可带 pass/fail）
-aimax loop next --verify pass
-aimax loop next --verify fail --gates "build=pass,tests=fail"
+auto loop next --verify pass
+auto loop next --verify fail --gates "build=pass,tests=fail"
 
 # 恢复提示
-aimax loop resume
+auto loop resume
 ```
 
 ---

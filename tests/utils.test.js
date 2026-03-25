@@ -123,8 +123,26 @@ describe('utils.js', () => {
       });
     });
 
-    it('should have exactly 7 components', () => {
-      expect(Object.keys(COMPONENTS)).toHaveLength(7);
+    it('should have hooks component with correct structure', () => {
+      expect(COMPONENTS.hooks).toMatchObject({
+        name: 'Hooks（自动化门禁）',
+        source: 'hooks',
+        target: 'hooks',
+        pattern: '*.json'
+      });
+    });
+
+    it('should have mcpConfigs component with correct structure', () => {
+      expect(COMPONENTS.mcpConfigs).toMatchObject({
+        name: 'MCP Configs（外部服务配置）',
+        source: 'mcp-configs',
+        target: 'mcp-configs',
+        pattern: '*.json'
+      });
+    });
+
+    it('should have exactly 9 components', () => {
+      expect(Object.keys(COMPONENTS)).toHaveLength(9);
     });
   });
 

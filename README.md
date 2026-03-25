@@ -129,14 +129,13 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 
 ---
 
-## 复杂度自动路由
+## 按规模自动选择执行模式
 
-| 复杂度 | 触发条件 | AI 策略 |
-|--------|---------|---------|
-| 简单 | 1 文件、修复类 | 直接实现 |
-| 中等 | 2-5 文件、模块级 | TDD + 审查 |
-| 复杂 | 5-10 文件、系统级 | 规划 + TDD + 审查 + 记忆 |
-| 超复杂 | >10 文件 + >2 角色 | Agent Teams 并行编排 |
+| Quest Map 规模 | 执行模式 | 说明 |
+|----------------|---------|------|
+| 1-5 关 | 单 Agent | 主窗口串行逐关执行 |
+| 6-15 关 | Subagent 并行 | 按依赖分组，一次性委派多组 |
+| 15+ 关 | Agent Teams | 多队友网状协作，持续通信 |
 
 ---
 
@@ -148,22 +147,45 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 ┌──────────────────────────────────┐
 │  auto-core v7.0（智能路由大脑）    │
 │                                  │
-│  PHASE 1: DISCOVER               │
-│    扫描 commands/agents/skills/  │
-│    plugins/MCP/hooks 全部能力     │
+│  PHASE 1: DISCOVER（健壮扫描）     │
+│    逐目录扫描 → 绿/黄/红健康报告   │
+│    透明输出能力清单表格            │
 │                                  │
-│  PHASE 2: REASON                 │
-│    AI 推理最佳能力组合            │
-│    产出 Quest 计划（4 大原则）     │
+│  PHASE 2: REASON                │
+│    quest-designer 生成 Quest Map  │
+│    三段推理日志（透明化）         │
+│    文件存在性校验                 │
 │                                  │
 │  PHASE 3: EXECUTE                │
-│    逐条执行 Quest                │
+│    按规模选模式（单/Subagent/Teams）│
 │    动态追加能力                   │
 │                                  │
 │  PHASE 4: VERIFY（全量门禁）      │
 │  PHASE 5: COMMIT（Git 提交）     │
 │  PHASE 6: LEARN（经验沉淀）      │
 └──────────────────────────────────┘
+```
+
+### 透明度输出示例
+
+**PHASE 1 健康检查：**
+```
+📊 能力健康检查:
+  🟢 commands: 15 个  🟢 agents: 11 个  🟢 plugins: 13 个
+  🟢 skills: 17 个  🟡 mcp: 6 个(⚠️需配置)  🟢 hooks: 7 个
+```
+
+**PHASE 2 推理日志：**
+```
+## 🧠 能力匹配分析
+| 能力 | 匹配度 | 匹配理由 |
+|------|--------|---------|
+| quest-designer | ★★★ | 核心职责 |
+
+## 🎯 能力编排决策
+| Quest | 选定能力 | 选择理由 |
+|------|---------|---------|
+| Quest 1.1 | 直接编码 | 简单 UI，无需 Agent |
 ```
 
 ---

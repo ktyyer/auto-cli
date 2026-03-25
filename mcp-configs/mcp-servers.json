@@ -161,6 +161,7 @@
     "usage": "Copy the servers you need to your ~/.claude.json mcpServers section",
     "env_vars": "Replace YOUR_*_HERE placeholders with actual values",
     "disabling": "Use disabledMcpServers array in project config to disable per-project",
-    "context_warning": "Keep under 10 MCPs enabled to preserve context window"
+    "context_warning": "Keep under 10 MCPs enabled to preserve context window",
+    "auto_core_note": "auto-core PHASE 1 scans this file to discover available MCP capabilities. Servers with YOUR_*_HERE placeholders are NOT ready to use — they need API key configuration first."
   }
 }

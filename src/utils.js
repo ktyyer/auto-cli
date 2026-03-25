@@ -128,6 +128,20 @@ export const COMPONENTS = {
     target: 'lib',
     pattern: '**/*',
     recursive: true
+  },
+  hooks: {
+    name: 'Hooks（自动化门禁）',
+    description: 'PreToolUse/PostToolUse/Stop 等 Hook 模板配置',
+    source: 'hooks',
+    target: 'hooks',
+    pattern: '*.json'
+  },
+  mcpConfigs: {
+    name: 'MCP Configs（外部服务配置）',
+    description: 'MCP 服务器模板配置（playwright, supabase, context7 等）',
+    source: 'mcp-configs',
+    target: 'mcp-configs',
+    pattern: '*.json'
   }
 };
 

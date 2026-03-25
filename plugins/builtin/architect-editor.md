@@ -27,9 +27,9 @@ builtin: true
 ## 核心工作流
 
 ### 1. 触发条件
-- 任务复杂度评估为 **中等 (Moderate)** 或 **复杂 (Complex)**。
+- auto-core 推理后判定任务规模较大（Quest Map > 5 关）。
 - 或用户明确指定 `--architect` 标志。
-- 简单任务将直接使用 Editor 模型执行以节省延迟和成本。
+- 小规模任务将直接使用 Editor 模型执行以节省延迟和成本。
 
 ### 2. Architect 阶段 (思考与规划)
 - **输入**：用户需求 + REPO_MAP + 相关文件内容
@@ -81,5 +81,5 @@ function validateUser(id) {
 ## 与 auto-core 集成
 
 在 `auto-core.md` 中的具体位置：
-`步骤 3`：评估完任务复杂度后，路由大脑会自动拉起此双模型流转。
+`步骤 3`：推理完成后，auto-core 会根据任务规模自动拉起此双模型流转。
 `步骤 6`：如果不幸测试失败，错误信息会优先发给 Editor 处理；如果是难以解决的设计错误，会自动退回到 Architect 重新思考。

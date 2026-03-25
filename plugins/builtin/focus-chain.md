@@ -24,7 +24,7 @@ builtin: true
 - 任务预估超过 10 轮对话
 - 任务包含多个子步骤
 - 用户明确要求"保持专注"或"不要忘记"
-- auto-core 评估复杂度为"中等"或"复杂"
+- auto-core 推理后判定任务需要多步骤执行
 
 ---
 
@@ -87,7 +87,13 @@ builtin: true
 
 - `.auto/state/focus-chain.md`
 
-### 文件格式
+### 目录创建（运行时自动）
+
+当 auto-core 或 `/auto` 判定需要激活 Focus Chain 时，必须先确保目录存在：
+```
+Bash("mkdir -p .auto/state")
+```
+然后才创建焦点文件。**不需要 CLI 安装时预先创建此目录**，它是按需在用户项目根目录下动态生成的。
 
 ```markdown
 # Focus Chain
@@ -119,18 +125,18 @@ builtin: true
 
 ## 与 auto-core 集成
 
-auto-core 在评估复杂度后自动激活 Focus Chain：
+auto-core 推理后根据任务规模自动激活 Focus Chain：
 
 ```text
-复杂度 >= 中等 → 激活 Focus Chain
-复杂度 = 简单 → 不激活（避免额外开销）
+Quest Map > 5 关 或多步骤任务 → 激活 Focus Chain
+Quest Map <= 5 关 → 不激活（避免额外开销）
 ```
 
 ---
 
 ## 与其他命令协作
 
-- `/auto:deep-plan` → 生成计划 → Focus Chain 跟踪执行
+- `/auto:plan` → 生成计划 → Focus Chain 跟踪执行
 - `/auto:loop` → 状态机提供结构化步骤 → Focus Chain 注入提醒
 - `/auto:evolve` → 迭代过程中保持目标焦点
 
@@ -139,6 +145,6 @@ auto-core 在评估复杂度后自动激活 Focus Chain：
 ## 核心原则
 
 1. **非侵入** — 焦点注入不干扰正常编码流程
-2. **自适应** — 注入频率根据任务复杂度动态调整
+2. **自适应** — 注入频率根据任务规模动态调整
 3. **可覆盖** — 用户可以明确要求修改计划，扩展范围
 4. **轻量** — 锚点信息尽量精简，不浪费上下文窗口

@@ -40,9 +40,10 @@ export async function install(selectedComponents, options = {}) {
         skippedFiles.push(...files.skipped);
       } else {
         // 只复制匹配的文件
+        const ext = component.pattern.replace('*.', '');
         const files = await fs.readdir(sourcePath);
         for (const file of files) {
-          if (!file.endsWith('.md')) continue;
+          if (!file.endsWith(ext)) continue;
 
           const srcFile = path.join(sourcePath, file);
           const destFile = path.join(targetPath, file);
