@@ -1,6 +1,6 @@
 ---
 name: auto-core
-version: 7.0.0
+version: 7.1.0
 description: 智能路由大脑 - 动态能力发现 + AI 推理编排，自主组合 commands/agents/skills/MCP/hooks 完成任务
 author: auto-cli
 priority: 100
@@ -8,14 +8,23 @@ builtin: true
 _role: design-doc
 ---
 
-# 智能路由大脑 (auto-core v7.0) — 设计文档
+# 智能路由大脑 (auto-core v7.1) — 设计文档
 
 > **本文档是 `/auto:auto` 命令的设计文档，供人类阅读和开发者理解架构。**
 >
 > Claude Code 实际执行时加载的是 `commands/auto.md`（用户通过 `/auto` 触发）。
-> `commands/auto.md` 是本设计文档的实现版本，两者保持逻辑一致。
+> `commands/auto.md` 是本设计文档的精简执行版本（v7.1 瘦身优化）。
 >
 > **如果需要修改执行行为，请同时更新 `commands/auto.md`。**
+
+## v7.1 优化说明
+
+`commands/auto.md` 从 34KB（733 行）瘦身至 ~8KB（~170 行），减少 ~75% Token 消耗，解决 30% 处中断问题。
+
+核心变更：
+1. **移除参考内容**：使用示例、故障排查、最佳实践、内置能力列表等 → 保留在本设计文档
+2. **PHASE 1 扫描优化**：用 `Grep(pattern="^(name|description|tools|model):")` 批量提取 frontmatter，替代逐文件 `Read`（54+ 次 → 4-5 次）
+3. **PHASE 2 prompt 精简**：只传元数据（name + description），不传完整 auto.md 正文
 
 ---
 
@@ -65,17 +74,19 @@ _role: design-doc
 健壮扫描原则：每个目录单独扫描，目录不存在或为空时只输出 WARNING，不崩溃。
 
   Glob("$HOME/.claude/commands/auto/*.md")
-    → 如文件数 > 0：读取每个 frontmatter description → 记录命令列表
+    → 如文件数 > 0：Grep 批量提取 frontmatter（仅 name/description）
+      Grep(pattern="^(name|description|tools|model):", path="[目录路径]", output_mode="content", type="md")
+      → 不读取文件正文，仅提取元数据行
     → 如目录不存在或为空：输出 ⚠️ WARNING "commands 目录为空，跳过"
 
   Glob("$HOME/.claude/agents/*.md")
-    → 同上，记录 Agent 列表（name + description + tools）
+    → 同上，Grep 提取 Agent 列表（name + description + tools）
 
   Glob("$HOME/.claude/plugins/**/*.md")
-    → 同上，记录插件列表（name + description）
+    → 同上，Grep 提取插件列表（name + description）
 
   Glob("$HOME/.claude/skills/**/*.md")
-    → 同上，记录 Skill 列表（name + description）
+    → 同上，Grep 提取 Skill 列表（name + description）
 
   Glob("$HOME/.claude/mcp-configs/*.json")
     → 读取 JSON，过滤 _comments，统计 mcpServers 条目

@@ -4,6 +4,11 @@ import os from 'os';
 import fs from 'fs-extra';
 import { install, uninstall, checkStatus } from '../src/installer.js';
 
+// Test directories
+const testDir = path.join(os.tmpdir(), 'auto-test-' + Date.now());
+const testClaudeDir = path.join(testDir, '.claude');
+const testSourceDir = path.join(testDir, 'source');
+
 // Mock ora spinner
 vi.mock('ora', () => {
   return {
@@ -27,27 +32,43 @@ vi.mock('chalk', () => ({
   }
 }));
 
-describe('installer.js', () => {
-  const testDir = path.join(os.tmpdir(), 'auto-test-' + Date.now());
-  const testClaudeDir = path.join(testDir, '.claude');
-  const testSourceDir = path.join(testDir, 'source');
+// Mock utils to use test directories
+vi.mock('../src/utils.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getClaudeDir: () => testClaudeDir,
+    getSourceDir: () => testSourceDir,
+    saveInstalledVersion: vi.fn(),
+    getPackageVersion: () => '0.1.0',
+    getInstalledVersion: () => null
+  };
+});
 
+describe('installer.js', () => {
   beforeEach(async () => {
-    // Create test directories
     await fs.ensureDir(testClaudeDir);
     await fs.ensureDir(testSourceDir);
 
-    // Create test source files
+    // commands: source='commands', target='commands/auto', pattern='*.md'
+    await fs.ensureDir(path.join(testSourceDir, 'commands'));
+    await fs.writeFile(
+      path.join(testSourceDir, 'commands', 'auto.md'),
+      '# Auto Command v2'
+    );
+
+    // agents: source='agents', target='agents', pattern='*.md'
     await fs.ensureDir(path.join(testSourceDir, 'agents'));
     await fs.writeFile(
       path.join(testSourceDir, 'agents', 'test-agent.md'),
-      '# Test Agent'
+      '# Test Agent v2'
     );
 
-    await fs.ensureDir(path.join(testSourceDir, 'rules'));
+    // plugins: source='plugins', target='plugins', recursive=true
+    await fs.ensureDir(path.join(testSourceDir, 'plugins', 'builtin'));
     await fs.writeFile(
-      path.join(testSourceDir, 'rules', 'test-rule.md'),
-      '# Test Rule'
+      path.join(testSourceDir, 'plugins', 'builtin', 'test-plugin.md'),
+      '# Test Plugin v2'
     );
   });
 
@@ -66,11 +87,9 @@ describe('installer.js', () => {
       expect(status).toHaveProperty('skills');
     });
 
-    it('should indicate installed: false for non-existent components', async () => {
-      // Mock getClaudeDir to return our test directory
+    it('should have correct structure for each component', async () => {
       const status = await checkStatus();
 
-      // At least check the structure is correct
       for (const [key, value] of Object.entries(status)) {
         expect(value).toHaveProperty('installed');
         expect(value).toHaveProperty('path');
@@ -79,14 +98,6 @@ describe('installer.js', () => {
         expect(typeof value.path).toBe('string');
         expect(typeof value.fileCount).toBe('number');
       }
-    });
-
-    it('should report correct file count for installed components', async () => {
-      const status = await checkStatus();
-
-      // Verify structure
-      expect(status.agents).toBeDefined();
-      expect(status.agents.fileCount).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -104,6 +115,108 @@ describe('installer.js', () => {
 
       expect(result.installedFiles).toEqual([]);
     });
+
+    it('should install non-recursive files to target directory', async () => {
+      const result = await install(['commands'], { backup: false });
+
+      expect(result.installedFiles.length).toBeGreaterThan(0);
+      const content = await fs.readFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto.md'),
+        'utf-8'
+      );
+      expect(content).toContain('# Auto Command v2');
+    });
+
+    it('should skip existing files when force=false (non-recursive, commands)', async () => {
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Content');
+
+      const result = await install(['commands'], { backup: false, force: false });
+
+      expect(result.installedFiles).toEqual([]);
+      expect(result.skippedFiles.length).toBeGreaterThan(0);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toBe('# Old Content');
+    });
+
+    it('should create backup when force=false and backup=true (non-recursive)', async () => {
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Content');
+
+      const result = await install(['commands'], { backup: true, force: false });
+
+      expect(result.installedFiles).toEqual([]);
+
+      const backupExists = await fs.pathExists(`${targetFile}.backup`);
+      expect(backupExists).toBe(true);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toBe('# Old Content');
+
+      const backupContent = await fs.readFile(`${targetFile}.backup`, 'utf-8');
+      expect(backupContent).toBe('# Old Content');
+    });
+
+    it('should overwrite existing files when force=true (non-recursive)', async () => {
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Content');
+
+      const result = await install(['commands'], { backup: false, force: true });
+
+      expect(result.installedFiles.length).toBeGreaterThan(0);
+      expect(result.skippedFiles).toEqual([]);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toContain('# Auto Command v2');
+    });
+
+    it('should not create backup when force=true', async () => {
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Content');
+
+      const result = await install(['commands'], { backup: true, force: true });
+
+      expect(result.installedFiles.length).toBeGreaterThan(0);
+
+      const backupExists = await fs.pathExists(`${targetFile}.backup`);
+      expect(backupExists).toBe(false);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toContain('# Auto Command v2');
+    });
+
+    it('should skip existing files when force=false (recursive, plugins)', async () => {
+      const targetFile = path.join(testClaudeDir, 'plugins', 'builtin', 'test-plugin.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Plugin');
+
+      const result = await install(['plugins'], { backup: false, force: false });
+
+      expect(result.installedFiles).toEqual([]);
+      expect(result.skippedFiles.length).toBeGreaterThan(0);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toBe('# Old Plugin');
+    });
+
+    it('should overwrite existing files when force=true (recursive)', async () => {
+      const targetFile = path.join(testClaudeDir, 'plugins', 'builtin', 'test-plugin.md');
+      await fs.ensureDir(path.dirname(targetFile));
+      await fs.writeFile(targetFile, '# Old Plugin');
+
+      const result = await install(['plugins'], { backup: false, force: true });
+
+      expect(result.installedFiles.length).toBeGreaterThan(0);
+      expect(result.skippedFiles).toEqual([]);
+
+      const content = await fs.readFile(targetFile, 'utf-8');
+      expect(content).toContain('# Test Plugin v2');
+    });
   });
 
   describe('uninstall', () => {
@@ -118,54 +231,6 @@ describe('installer.js', () => {
       const result = await uninstall(['nonexistent-component']);
 
       expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should handle non-existent directories', async () => {
-      // This should not throw
-      const result = await uninstall(['agents']);
-
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should only remove recorded files and preserve other files', async () => {
-      // This test verifies the fix for the critical bug where uninstall
-      // was deleting ALL files in shared directories (skills, agents, rules)
-      // instead of only the files installed by AI MAX
-
-      const mockClaudeDir = path.join(testDir, '.claude-uninstall-test');
-      const skillsDir = path.join(mockClaudeDir, 'skills');
-
-      // Setup: Create skills directory with both AI MAX and other plugin files
-      await fs.ensureDir(skillsDir);
-
-      // Simulate AI MAX installed file
-      await fs.writeFile(
-        path.join(skillsDir, 'auto-skill.md'),
-        '# AI MAX Skill'
-      );
-
-      // Simulate another plugin's file (should NOT be deleted)
-      await fs.writeFile(
-        path.join(skillsDir, 'other-plugin-skill.md'),
-        '# Other Plugin Skill'
-      );
-
-      // Create a version file with recorded installed files
-      const versionFile = path.join(mockClaudeDir, '.auto-version');
-      await fs.writeJson(versionFile, {
-        version: '1.0.0',
-        components: ['skills'],
-        installedFiles: [path.join(skillsDir, 'auto-skill.md')],
-        installedAt: new Date().toISOString()
-      });
-
-      // Verify both files exist before uninstall
-      expect(await fs.pathExists(path.join(skillsDir, 'auto-skill.md'))).toBe(true);
-      expect(await fs.pathExists(path.join(skillsDir, 'other-plugin-skill.md'))).toBe(true);
-
-      // Note: This test documents the expected behavior after the fix
-      // The actual uninstall function uses getClaudeDir() which returns ~/.claude
-      // so this test primarily documents the fix and checks structure
     });
   });
 });

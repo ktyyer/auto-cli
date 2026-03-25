@@ -11,7 +11,7 @@ export function getClaudeDir() {
 }
 
 /**
- * 获取 AI MAX 官方文件目录（更新时会覆盖）
+ * 获取 Auto CLI 官方文件目录（更新时会覆盖）
  */
 export function getAutoDir() {
   return path.join(getClaudeDir(), 'auto');

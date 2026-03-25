@@ -145,11 +145,11 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 用户输入 /auto
     ↓
 ┌──────────────────────────────────┐
-│  auto-core v7.0（智能路由大脑）    │
+│  auto-core v7.1（智能路由大脑）    │
 │                                  │
 │  PHASE 1: DISCOVER（健壮扫描）     │
-│    逐目录扫描 → 绿/黄/红健康报告   │
-│    透明输出能力清单表格            │
+│    Grep 批量提取 frontmatter        │
+│    绿/黄/红健康报告 + 能力清单     │
 │                                  │
 │  PHASE 2: REASON                │
 │    quest-designer 生成 Quest Map  │

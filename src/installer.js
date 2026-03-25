@@ -56,10 +56,11 @@ export async function install(selectedComponents, options = {}) {
             if (backup) {
               await fs.copy(destFile, `${destFile}.backup`);
             }
+            skippedFiles.push(destFile);
+          } else {
+            await fs.copy(srcFile, destFile);
+            installedFiles.push(destFile);
           }
-
-          await fs.copy(srcFile, destFile);
-          installedFiles.push(destFile);
         }
       }
     }

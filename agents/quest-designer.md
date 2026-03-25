@@ -15,7 +15,7 @@ model: sonnet
 
 ---
 
-## 四大设计原则
+## 五大设计原则
 
 ### 1. 原子化递进 (Micro-Steps)
 
@@ -54,6 +54,16 @@ model: sonnet
 - 命名规范参考："变量命名请保持与 `src/types/user.ts` 一致的 PascalCase 类型与 camelCase 变量风格"
 
 **目标**：确保产出的代码在目录结构、命名规范、导入路径、错误处理模式上，与现有代码库浑然一体。
+
+### 5. 能力编排透明 (Transparent Capability Orchestration)
+
+每个关卡**必须**说明为什么选择某个 Agent/Skill/Plugin：
+
+- 选择 tdd-guide 而非直接编码的理由是什么？
+- 为什么不选 security-reviewer？（如"本关不涉及用户数据"）
+- 如果选了某个 MCP 服务，为什么不用其他替代方案？
+
+**目标**：让 PM/考官理解每个能力选择的决策逻辑，确保能力编排是 AI 推理的结果，而非随机组合。
 
 ---
 
