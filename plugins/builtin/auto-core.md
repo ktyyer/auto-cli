@@ -337,16 +337,33 @@ FOR EACH quest IN plan:
   TodoWrite: 标记该 quest 为 in_progress
   输出："⏳ 正在执行 Quest [N]: [目标]"
 
-  ── 步骤 B：按选定能力执行 ──
+  ── 步骤 A2（v3 新增）：读取实现蓝图 ──
+  读取该 Quest 的 🧩 实现蓝图，提取：
+    - 方法签名 / 类骨架 → 作为实现的精确模板
+    - 实现要点 → 按顺序执行
+    - 反模式警告 → 硬性约束，不可违反
+
+  ── 步骤 A3（v3 新增）：风险评估 ──
+  读取该 Quest 的 ⚠️ 风险等级：
+    🔴 高风险：Read 所有被影响的共享文件 → 理解影响范围 → git stash 备份 → 谨慎实现
+    🟡 中风险：正常执行，留意蓝图中的备注
+    🟢 低风险：直接实现
+
+  ── 步骤 B：按选定能力 + 蓝图施工 ──
   根据 PHASE 2 为该 quest 选定的能力，执行对应操作：
 
   【直接编码】（最常见）：
-    Read 目标文件 → Edit/Write 应用变更
+    Read 目标文件 → 按 🧩 实现蓝图中的方法签名/类骨架施工 → Edit/Write 应用变更
+    → 严格使用 📁 代码风格参考中的锚点代码片段模式
 
   【调用 Agent】（当 quest 需要专业角色时）：
     Agent({
       subagent_type: "general-purpose",
-      prompt: "[基于该 agent 的 description 构造 prompt]：[quest 目标]"
+      prompt: "[基于该 agent 的 description 构造 prompt]：[quest 目标]
+
+      实现蓝图：[粘贴 🧩 实现蓝图内容]
+      反模式警告：[粘贴蓝图中的反模式]
+      代码风格锚点：[粘贴 📁 中的代码片段]"
     })
 
   【调用 Skill】（当 quest 精确匹配某个 Skill 时）：
@@ -359,27 +376,29 @@ FOR EACH quest IN plan:
 
   【加载 Skill 知识库】（当 quest 涉及特定领域时）：
     Read("$HOME/.claude/skills/[matched-skill].md") → 加载领域最佳实践作为上下文
-    例：后端 API 设计 → Read("$HOME/.claude/skills/backend-patterns.md")
-    例：React 前端 → Read("$HOME/.claude/skills/frontend-patterns.md")
-    例：ClickHouse 查询 → Read("$HOME/.claude/skills/clickhouse-io.md")
 
-  ── 步骤 C：动态能力追加 ──
+  ── 步骤 C：遵守边界限制 + 反模式 ──
+  严格遵守该 quest 的 🚫 边界限制
+  严格遵守 🧩 实现蓝图中的反模式警告（"不要做 X" 是硬约束）
+
+  ── 步骤 D：动态能力追加 ──
   IF 执行过程中发现计划外的需求：
     重新审视能力清单，追加新能力到当前 quest
-    例："实现过程中发现需要数据库迁移 → 追加 Supabase MCP"
-    例："发现代码有安全漏洞 → 追加 security-reviewer Agent"
 
-  ── 步骤 D：遵守边界限制 ──
-  严格遵守该 quest 的 🚫 边界限制
+  ── 步骤 E：合约一致性验证（v3 新增）──
+  IF 该 Quest 产出了合约(CONTRACT)：
+    检查实际代码中的类型/签名是否与 🔗 合约定义一致
+    例：合约定义 createOrder(req: CreateOrderRequest): Result<Long>
+       → 验证实际方法的参数类型和返回类型完全匹配
 
-  ── 步骤 E：迷你验证 ──
-  执行该 quest 的 ✅ 验收标准：
+  ── 步骤 F：迷你验证 ──
+  执行该 quest 的 ✅ 验收标准（语义级验证）：
     Bash 运行相关测试或编译命令
     IF 通过：
       TodoWrite: 标记 completed
       输出："✅ Quest [N] 完成"
     IF 失败：
-      分析错误 → Edit 修复 → 重跑（最多 2 次）
+      按 🔖 回滚方案回滚 → 分析错误 → 修复 → 重跑（最多 2 次）
       IF 仍失败：停止，向用户报告
 
 NEXT quest

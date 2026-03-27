@@ -168,15 +168,24 @@ Hooks: [类型数量 + 摘要]
 | 6-15 关 | Subagent 并行 | 2-3x | 按依赖分组，Agent() 一次性委派多组 |
 | 15+ 关 | Agent Teams | 3-10x | multi-agent-orchestrator 编排 |
 
-每关执行流程（不论模式）：
+每关执行流程（不论模式，严格按 v3 Quest Map 字段执行）：
+
 0. 如 Quest Map > 5 关，激活 Focus Chain：`mkdir -p .auto/state`
-1. 加载该关标注的能力：
+1. **读取 v3 实现蓝图**（🧩）：按蓝图中的方法签名、类骨架、伪代码施工，不是自己理解怎么写
+2. **遵守反模式警告**：蓝图中的"不要做 X"是硬性约束，不是建议
+3. **参考代码片段锚定**（📁）：直接复制蓝图中的 3-5 行锚点代码模式，替换类名/字段名
+4. **检查风险等级**（⚠️）：
+   - 🔴 高风险：先 Read 被影响的共享文件 → 理解影响范围 → 写之前先 `git stash` 备份
+   - 🟡 中风险：正常执行，留意备注
+   - 🟢 低风险：直接实现
+5. 加载该关标注的额外能力：
    - Skill 知识库：`Read("$HOME/.claude/skills/[skill-name].md")`
    - Plugin 规范：`Read("$HOME/.claude/plugins/[category]/[plugin-name].md")`
-2. TDD：先写测试 → 实现 → 重构
-3. 按验收标准逐条验证
-4. 通过 → 下一关；不通过 → 修复 → 重试（最多 2 次）
-5. 发现需要新能力 → 动态追加
+6. TDD：先写测试 → 按蓝图实现 → 重构
+7. **合约一致性检查**（🔗）：如果本 Quest 产出合约，验证产出类型与合约定义一致
+8. 按验收标准（✅）逐条验证
+9. 通过 → 下一关；不通过 → 按 🔖 回滚方案回滚 → 修复 → 重试（最多 2 次）
+10. 发现需要新能力 → 动态追加
 
 > Agent Teams 模式：调用 `multi-agent-orchestrator` agent，它内置完整的 TeamCreate/TaskCreate/SendMessage 编排逻辑。
 
