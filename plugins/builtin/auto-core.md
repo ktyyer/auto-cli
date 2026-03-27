@@ -44,22 +44,38 @@ _role: design-doc
 
 严格按 **PHASE 1 → 2 → 3 → 4 → 5 → 6** 顺序执行。
 
-### ⚠️ 强制规则 — 绝对不可跳过（ALL TASKS, NO EXCEPTIONS）
+### ⚠️ 不可绕过的硬性约束（HARD CONSTRAINTS — 无例外）
 
-**无论用户需求看起来多么简单（哪怕只是改一个变量名），必须严格按顺序执行全部 6 个 PHASE。**
+**以下约束不可协商、不可"灵活解读"、不可以"任务简单"为由绕过。**
 
-1. **禁止跳过 PHASE 1** — 必须扫描项目上下文、技术栈、完整能力清单，输出健康检查报告
-2. **禁止跳过 PHASE 2** — 必须调用 quest-designer 生成 Quest Map（即使只有 1 个 Quest），输出透明度摘要和推理日志
-3. **禁止"直接动手"** — 任何代码修改都必须在 Quest Map 生成并经用户确认之后进行
-4. **禁止"简化流程"** — 不允许因为"任务简单"而合并或省略任何 PHASE
+#### 约束 1：顺序锁定
+PHASE 1 → 2 → 3 → 4 → 5 → 6，不可跳过、不可合并、不可重排。
+- IF 你没有输出能力健康检查报告 → 你不在 PHASE 1，不可进入 PHASE 2
+- IF 你没有调用 `Agent({ subagent_type: "quest-designer" })` → 你没有完成 PHASE 2，不可进入 PHASE 3
+- IF 你没有 Quest Map → 你不可编辑任何代码文件
 
-**即使任务只需要 1 步，仍然必须**：
-- PHASE 1：扫描项目上下文 + 输出能力健康报告
-- PHASE 2：生成 1 个 Quest 的 Quest Map + 输出透明度摘要
-- PHASE 3：执行这 1 个 Quest + 按验收标准验证
-- PHASE 4-6：门禁、提交、沉淀（按实际情况执行）
+#### 约束 2：quest-designer 必须被调用
+PHASE 2 的唯一合法操作是调用 `Agent({ subagent_type: "quest-designer", ... })`。
+- 不可用"我自己分析一下"替代 quest-designer
+- 不可用"这个任务太简单不需要 Quest Map"跳过
+- 即使只有 1 个 Quest，也必须调用 quest-designer 生成标准格式
 
-**违反此规则的后果**：Quest 设计不准确、代码风格不一致、遗漏验收标准。
+#### 约束 3：代码修改的前置条件
+在满足以下全部条件之前，禁止使用 Edit/Write 修改任何项目源代码：
+1. PHASE 1 健康检查报告已输出
+2. quest-designer Agent 已被调用并返回 Quest Map
+3. Quest Map 已展示给用户
+
+#### 约束 4：没有"简单任务"豁免
+哪怕任务是改一个变量名，完整流程仍然是：
+- PHASE 1：扫描 + 健康报告
+- PHASE 2：quest-designer 生成 Quest Map（1 个 Quest 也是 Quest Map）
+- PHASE 3：执行 Quest + 验收
+- PHASE 4：门禁检查
+- PHASE 5：提交（如有变更）
+- PHASE 6：沉淀（如有经验）
+
+**自检指令**：在每个 PHASE 开始前，检查上一个 PHASE 的产出是否存在。如果不存在，回退执行。
 
 ---
 
@@ -154,6 +170,12 @@ MCP 列中标注 ⚠️ 表示需配置 API Key。
     { content: "可用能力: [N] commands, [N] agents, [N] skills, [N] MCP, [N] hooks", status: "completed" },
     { content: "健康状态: [🟢/🟡/🔴]", status: "completed" }
   ])
+
+  🔒 GATE CHECK: PHASE 1 → 2
+    ✓ 健康检查报告已输出
+    ✓ 能力清单已收集
+    → 下一步: 调用 Agent({ subagent_type: "quest-designer" })
+    ⛔ 此时不可: 编辑代码、直接实现、跳到 PHASE 3
 ```
 
 **输出给用户：**
@@ -290,6 +312,14 @@ quest-designer 自主审视能力清单，分析维度：
 
 # 《项目闯关大纲》
 [Quest Map 内容，含 💡 选择理由 字段]
+```
+
+```
+🔒 GATE CHECK: PHASE 2 → 3
+  ✓ Agent({ subagent_type: "quest-designer" }) 已调用并返回
+  ✓ Quest Map 已展示给用户
+  → 下一步: 按 Quest Map 逐关执行
+  ⛔ 如果 quest-designer 未被调用，回退到 PHASE 2 开头
 ```
 
 ---
