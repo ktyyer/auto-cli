@@ -95,16 +95,18 @@ TodoWrite([
 
 ---
 
-## PHASE 2: REASON — quest-designer 统筹分析 + Quest Map
+## PHASE 2: REASON — quest-designer 深度分析 + Quest Map
 
-将 PHASE 1 收集的**完整原始数据**交给 quest-designer（不做预筛选）：
+将 PHASE 1 收集的**完整原始数据**交给 quest-designer v2（不做预筛选）。
+
+quest-designer v2 会自主执行 7 步工作流：需求理解 → **深度代码分析** → **Quest 拆分+依赖排序** → 生成 Quest Map → **自验证评分** → **防幻觉校验** → 输出
 
 ```
 Agent({
   subagent_type: "quest-designer",
   prompt: "你是 quest-designer。以下是项目完整上下文和能力清单：
 
-【用户需求】[一行描述]
+【用户需求】[原始需求描述]
 
 【技术栈】[语言+框架] | 项目规范: [有/无 CLAUDE.md] | Axiom: [有/无]
 
@@ -118,20 +120,16 @@ Hooks: [类型数量 + 摘要]
 
 【现有代码文件】[src/ 下文件路径，每行一个]
 
-按 quest-designer 标准流程执行：
-0. 透明度摘要（能力总数、高匹配数）
-1. 能力匹配分析（★评级 + 匹配理由）
-2. Quest 拆分推理（复杂度评估 + 拆分理由）
-3. 能力编排决策（每关为什么选这个能力）
-4. 输出标准 Quest Map（含 💡 选择理由 字段）
-5. 代码风格参考文件校验（Bash test -f 验证存在性）
-6. 建议执行模式（单Agent/Subagent/Teams）
-
+严格按你的 7 步工作流执行。关键要求：
+- 第2步必须 Read 3-5 个核心文件，理解实际代码结构
+- 第3步必须做变更清单 + 依赖拓扑排序 + 复杂度校准
+- 第5步每个 Quest 自验证 >= 7/10
+- 第6步 Glob 验证所有文件路径
 输出 Quest Map，等待用户确认。"
 })
 ```
 
-> **关键**：quest-designer 看到完整原始数据，分析由它完成，主窗口不做预筛选。
+> **关键**：quest-designer v2 会自主读取项目源代码（不只是文件列表），基于实际代码结构设计 Quest。
 > 产出后等待用户确认，可迭代修改。
 
 ---
