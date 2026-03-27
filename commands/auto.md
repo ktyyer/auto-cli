@@ -60,6 +60,7 @@ PHASE 2 的唯一合法操作是调用 `Agent({ subagent_type: "quest-designer",
 
 ```
 并行执行：
+  Glob("REPO_MAP.md") → 如存在，Read 加载持久化符号表（跳过 1.3 的 src/ 文件扫描）
   Glob("package.json") / Glob("pom.xml") / Glob("go.mod") / Glob("requirements.txt") / Glob("Cargo.toml")
   → 匹配任一即确定技术栈
   → Read 获取依赖和 scripts（仅匹配到的文件）
@@ -93,8 +94,10 @@ PHASE 2 的唯一合法操作是调用 `Agent({ subagent_type: "quest-designer",
   Glob("$HOME/.claude/hooks/*.json")
   → Read JSON，统计 hook 类型数量
 
-  Glob("src/**/*.{java,ts,tsx,js,jsx,py,go}")
-  → 仅收集路径列表，不读取内容（用于代码风格锚点）
+  IF REPO_MAP.md 已在 1.1 加载 → 跳过 src/ 扫描（已有符号表）
+  ELSE：
+    Glob("src/**/*.{java,ts,tsx,js,jsx,py,go}")
+    → 仅收集路径列表，不读取内容（用于代码风格锚点）
 ```
 
 ### 1.4 输出 + Gate Check

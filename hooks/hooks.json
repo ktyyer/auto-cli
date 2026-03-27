@@ -59,20 +59,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Auto-format with Prettier after editing JS/TS files\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  if command -v prettier >/dev/null 2>&1; then\n    prettier --write \"$file_path\" 2>&1 | head -5 >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Auto-lint-fix: format + lint + auto-fix loop (Aider pattern)\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -z \"$file_path\" ] || [ ! -f \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Step 1: Prettier format\nif command -v prettier >/dev/null 2>&1; then\n  prettier --write \"$file_path\" 2>/dev/null\nfi\n\n# Step 2: ESLint auto-fix (if available)\ndir=$(dirname \"$file_path\")\nproject_root=\"$dir\"\nwhile [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n  project_root=$(dirname \"$project_root\")\ndone\n\nif [ -f \"$project_root/.eslintrc.json\" ] || [ -f \"$project_root/.eslintrc.js\" ] || [ -f \"$project_root/.eslintrc.cjs\" ] || [ -f \"$project_root/eslint.config.js\" ] || [ -f \"$project_root/eslint.config.mjs\" ]; then\n  cd \"$project_root\"\n  npx eslint --fix \"$file_path\" 2>/dev/null\n  \n  # Step 3: Check if lint errors remain after auto-fix\n  lint_errors=$(npx eslint \"$file_path\" --format compact 2>/dev/null | grep -c 'Error' || true)\n  if [ \"$lint_errors\" -gt 0 ]; then\n    echo \"[Hook] LINT: $lint_errors error(s) remain after auto-fix in $file_path\" >&2\n    npx eslint \"$file_path\" --format compact 2>/dev/null | head -5 >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
-        "description": "Auto-format JS/TS files with Prettier after edits"
+        "description": "Auto-lint-fix: Prettier format → ESLint --fix → report remaining errors"
       },
       {
         "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx)$\"",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Run TypeScript check after editing TS files\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\" && npx tsc --noEmit --pretty false 2>&1 | grep \"$file_path\" | head -10 >&2 || true\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# TypeScript check with actionable error output\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\"\n    tsc_output=$(npx tsc --noEmit --pretty false 2>&1 | grep \"$(basename \"$file_path\")\" | head -10)\n    if [ -n \"$tsc_output\" ]; then\n      error_count=$(echo \"$tsc_output\" | wc -l)\n      echo \"[Hook] TSC: $error_count type error(s) in $file_path\" >&2\n      echo \"$tsc_output\" >&2\n      echo \"[Hook] Fix these type errors before proceeding\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
           }
         ],
-        "description": "TypeScript check after editing .ts/.tsx files"
+        "description": "TypeScript check with error count and actionable output"
       },
       {
         "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
