@@ -1,6 +1,6 @@
 ---
 name: auto-core
-version: 7.1.0
+version: 8.0.0
 description: 智能路由大脑 - 动态能力发现 + AI 推理编排，自主组合 commands/agents/skills/MCP/hooks 完成任务
 author: auto-cli
 priority: 100
@@ -8,16 +8,16 @@ builtin: true
 _role: design-doc
 ---
 
-# 智能路由大脑 (auto-core v7.1) — 设计文档
+# 智能路由大脑 (auto-core v8.0) — 设计文档
 
 > **本文档是 `/auto:auto` 命令的设计文档，供人类阅读和开发者理解架构。**
 >
 > Claude Code 实际执行时加载的是 `commands/auto.md`（用户通过 `/auto` 触发）。
-> `commands/auto.md` 是本设计文档的精简执行版本（v7.1 瘦身优化）。
+> `commands/auto.md` 是本设计文档的精简执行版本（v7.2 瘦身优化）。
 >
 > **如果需要修改执行行为，请同时更新 `commands/auto.md`。**
 
-## v7.1 优化说明
+## v7.2 优化说明
 
 `commands/auto.md` 从 34KB（733 行）瘦身至 ~8KB（~170 行），减少 ~75% Token 消耗，解决 30% 处中断问题。
 
@@ -194,28 +194,28 @@ MCP 列中标注 ⚠️ 表示需配置 API Key。
 
 ---
 
-## PHASE 2: REASON — quest-designer v3 统筹分析 + 产出 Quest 计划
+## PHASE 2: REASON — quest-designer v4 统筹分析 + 产出 Quest 计划
 
-**目标**：将 PHASE 1 收集的完整能力清单交给 quest-designer v3，由它自主分析并设计 Quest Map。
+**目标**：将 PHASE 1 收集的完整能力清单交给 quest-designer v4，由它自主分析并设计 Quest Map。
 
 **关键**：quest-designer 看到的是完整原始数据，不是主窗口预筛选后的结论。分析和设计由同一个 Agent 完成，避免信息损耗。
 
-**v3 核心升级**：
+**v4 核心升级**：
+- **完整代码输出**：CREATE 输出 package+import+完整类代码，MODIFY 输出锚点+插入代码+import列表，PHASE 3 只需复制执行
 - **合约驱动**：先定义跨 Quest 的接口契约（CONTRACT），确保类型一致性
-- **实现蓝图**：每个 Quest 包含方法签名/类骨架，消除执行歧义
+- **预判坑点**：基于代码分析预判每个 Quest 可能遇到的 3 个坑
 - **风险分层**：🔴高/🟡中/🟢低风险分类，高风险 Quest 配额外护栏
-- **代码片段锚定**：3-5 行实际代码作为复制模板，不只是文件引用
 - **反模式警告**：基于代码分析的"不要做 X"（如"不要用 @Builder，项目其他 DTO 没用"）
 - **回滚方案**：每个 Quest 带 git 回滚命令
 
 ```
-═══ 第 1 步：调用 quest-designer v3 ═══
+═══ 第 1 步：调用 quest-designer v4 ═══
 
-将 PHASE 1 收集的全部数据传给 quest-designer v3：
+将 PHASE 1 收集的全部数据传给 quest-designer v4：
 
   Agent({
     subagent_type: "quest-designer",
-    prompt: "你是 quest-designer v3。
+    prompt: "你是 quest-designer v4。
      以下是项目完整上下文和能力清单：
 
      【用户需求】[原始需求描述]
@@ -229,18 +229,18 @@ MCP 列中标注 ⚠️ 表示需配置 API Key。
        Hooks: [全部 Hook 配置]
      【现有代码文件】[src/ 下文件列表，用于代码风格锚点]
 
-     v3 关键要求：
-     - 第2步分层读取 3-8 个核心文件，提取代码片段锚点
-     - 第3步先定义合约(CONTRACT)再拆分 Quest
-     - 第4步每个 Quest 必须包含：实现蓝图(🧩) + 反模式警告 + 风险等级 + 回滚方案
-     - 第5步合约一致性校验 + 15项自验证 >= 10/15
-     - 第6步路径即时校验
+     v4 关键要求：
+     - 第2步必须 Read 5-12 个核心文件（分层读取），提取 COMPLETE 模式（含 import 和 package）
+     - 第3步必须为每个文件产出完整代码（CREATE 包含 package+import+类定义，MODIFY 包含锚点+插入代码+import列表）
+     - 第4步 Quest Map 的 📦 完整实现必须是可直接复制执行的代码，不是描述
+     - 第5步合约一致性校验 + 路径校验 + 代码完整性校验
+     - 第6步自验证 >= 10/15
      严格按 7 步工作流执行。输出标准 Quest Map 格式，等待用户确认。"
   })
 
 ═══ 第 2 步：quest-designer 内部分析维度 ═══
 
-quest-designer v3 自主审视能力清单和项目代码，分析维度：
+quest-designer v4 自主审视能力清单和项目代码，分析维度：
   - 哪些 Agent 的专长与问题匹配？（读 agent 的 description 判断）
   - 哪些 Skill 知识库能提供领域最佳实践？（如后端架构 → backend-patterns）
   - 哪些 Plugin 能加速某个子步骤？（读 plugin 的 description 判断）
@@ -251,25 +251,25 @@ quest-designer v3 自主审视能力清单和项目代码，分析维度：
 
 ═══ 第 3 步：产出 Quest 执行计划 ═══
 
-⚡ Quest 设计 v3 五大原则：
+⚡ Quest 设计 v4 五大原则：
 
-  原则 1 — 合约驱动（v3 新增）：先定义跨 Quest 的接口合约，所有类型在合约中锁定
+  原则 1 — 合约驱动（v4 新增）：先定义跨 Quest 的接口合约，所有类型在合约中锁定
   原则 2 — 零歧义目标：目标描述具体到字段名+类型+注解，不含抽象描述
-  原则 3 — 代码片段锚定（v3 强化）：每个风格参考包含 3-5 行实际代码可复制
-  原则 4 — 风险分层（v3 新增）：🔴高/🟡中/🟢低风险分类，高风险配备额外护栏
+  原则 3 — 代码片段锚定（v4 强化）：每个风格参考包含 3-5 行实际代码可复制
+  原则 4 — 风险分层（v4 新增）：🔴高/🟡中/🟢低风险分类，高风险配备额外护栏
   原则 5 — 可逆性：每个 Quest 包含 git 回滚命令
 
-统一产出原子化 Quest 清单，每条 10 个字段：
-  ① 🎯 目标（具体到代码动作级别）
-  ② 🛠️ 选定的能力（Agent/Skill/MCP/Plugin/直接编码）
-  ③ 💡 选择理由（为什么选 + 为什么不选其他）
-  ④ ⚠️ 风险等级（🔴高/🟡中/🟢低）
-  ⑤ 📁 代码风格参考（文件路径 + 3-5 行可复制代码片段）
-  ⑥ 🚫 边界限制（具体禁止的文件/模块/模式/技术）
-  ⑦ 📦 变更清单（[+]新增/[~]修改/[−]删除的具体文件）
-  ⑧ 🧩 实现蓝图（方法签名或类骨架 + 反模式警告）
+统一产出原子化 Quest 清单，v4 格式（与 quest-designer v4 一致）：
+  ① 🎯 目标（具体到文件和代码动作）
+  ② ⚠️ 风险等级（🔴高/🟡中/🟢低）
+  ③ 🚫 边界限制（具体禁止的文件/模块/模式/技术）
+  ④ 🔗 依赖（前置 Quest 编号）
+  ⑤ 🔗 合约（本 Quest 产出/消费的合约编号）
+  ⑥ 📦 完整实现（CREATE: package+import+完整类代码；MODIFY: 锚点+插入代码+import列表）
+  ⑦ ⚠️ 预判坑点（基于代码分析的 3 个可能出错点）
+  ⑧ 反模式警告（基于代码对比的"不要做 X"）
   ⑨ ✅ 验收标准（语义级验证命令 + 预期结果）
-  ⑩ 🔗 合约（本 Quest 产出/消费的合约） + 🔙 回滚方案
+  ⑩ 🔙 回滚方案（git 回滚命令）
 
   第三方 API 接入必须单独成为一个 Quest（胶水编程原则）
   TodoWrite 创建所有子任务
@@ -292,7 +292,7 @@ quest-designer v3 自主审视能力清单和项目代码，分析维度：
 ---
 
 # 《项目闯关大纲》
-[Quest Map 内容，含 v3 的 10 个字段]
+[Quest Map 内容，含 v4 的 10 个字段]
 
 ## 合约一致性校验结果
 ✅ 所有合约类型一致
@@ -337,13 +337,13 @@ FOR EACH quest IN plan:
   TodoWrite: 标记该 quest 为 in_progress
   输出："⏳ 正在执行 Quest [N]: [目标]"
 
-  ── 步骤 A2（v3 新增）：读取实现蓝图 ──
-  读取该 Quest 的 🧩 实现蓝图，提取：
-    - 方法签名 / 类骨架 → 作为实现的精确模板
+  ── 步骤 A2（v4 新增）：读取完整实现 ──
+  读取该 Quest 的 📦 完整实现，提取：
+    - 完整代码（package+import+类定义） → 直接复制到指定位置
     - 实现要点 → 按顺序执行
     - 反模式警告 → 硬性约束，不可违反
 
-  ── 步骤 A3（v3 新增）：风险评估 ──
+  ── 步骤 A3（v4 新增）：风险评估 ──
   读取该 Quest 的 ⚠️ 风险等级：
     🔴 高风险：Read 所有被影响的共享文件 → 理解影响范围 → git stash 备份 → 谨慎实现
     🟡 中风险：正常执行，留意蓝图中的备注
@@ -353,7 +353,7 @@ FOR EACH quest IN plan:
   根据 PHASE 2 为该 quest 选定的能力，执行对应操作：
 
   【直接编码】（最常见）：
-    Read 目标文件 → 按 🧩 实现蓝图中的方法签名/类骨架施工 → Edit/Write 应用变更
+    Read 目标文件 → 直接复制 📦 完整实现中的完整代码到指定位置 → Edit/Write 应用变更
     → 严格使用 📁 代码风格参考中的锚点代码片段模式
 
   【调用 Agent】（当 quest 需要专业角色时）：
@@ -361,9 +361,9 @@ FOR EACH quest IN plan:
       subagent_type: "general-purpose",
       prompt: "[基于该 agent 的 description 构造 prompt]：[quest 目标]
 
-      实现蓝图：[粘贴 🧩 实现蓝图内容]
-      反模式警告：[粘贴蓝图中的反模式]
-      代码风格锚点：[粘贴 📁 中的代码片段]"
+      完整实现：[粘贴 📦 完整实现内容]
+      预判坑点：[粘贴蓝图中的预判坑点]
+      反模式警告：[粘贴蓝图中的反模式]"
     })
 
   【调用 Skill】（当 quest 精确匹配某个 Skill 时）：
@@ -379,13 +379,13 @@ FOR EACH quest IN plan:
 
   ── 步骤 C：遵守边界限制 + 反模式 ──
   严格遵守该 quest 的 🚫 边界限制
-  严格遵守 🧩 实现蓝图中的反模式警告（"不要做 X" 是硬约束）
+  严格遵守 📦 完整实现中的反模式警告（"不要做 X" 是硬约束）
 
   ── 步骤 D：动态能力追加 ──
   IF 执行过程中发现计划外的需求：
     重新审视能力清单，追加新能力到当前 quest
 
-  ── 步骤 E：合约一致性验证（v3 新增）──
+  ── 步骤 E：合约一致性验证（v4 新增）──
   IF 该 Quest 产出了合约(CONTRACT)：
     检查实际代码中的类型/签名是否与 🔗 合约定义一致
     例：合约定义 createOrder(req: CreateOrderRequest): Result<Long>
@@ -445,16 +445,28 @@ IF 任一门禁失败：
 
 ---
 
-## PHASE 5: COMMIT — Git 提交
+## PHASE 5: COMMIT — 增量提交（PHASE 3 每关通过时实时执行）
+
+> **注意**：增量提交实际上在 PHASE 3 的每个 Quest 验证通过后立即执行（见 PHASE 3 步骤 F）。
+> 本节仅描述提交格式。PHASE 4 全量门禁通过后，如有额外修复，再做一次最终提交。
 
 ```
-Bash("git status --porcelain")
+每关通过后立即提交（PHASE 3 步骤 F 中 Quest 验证通过时执行）：
 
-IF 无变更 → 跳过
-ELSE：
-  Bash("git add [本轮修改的具体文件]")
-  Bash("git commit -m '<type>(<scope>): <description>'")
-  输出："📦 已提交: [message] ([N] 文件)"
+FOR EACH quest (验证通过后):
+  Bash("git status --porcelain")
+
+  IF 无变更 → 跳过
+  ELSE：
+    Bash("git add [该 Quest 修改的具体文件]")
+    Bash("git commit -m 'Quest [N] [目标摘要]'")
+    输出："📦 已提交: [message] ([N] 文件)"
+
+NEXT quest
+
+# PHASE 4 全量门禁通过后（如有修复）：
+Bash("git add [修复文件]")
+Bash("git commit -m 'fix: PHASE 4 门禁修复'")
 ```
 
 ---
