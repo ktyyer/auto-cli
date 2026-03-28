@@ -1,6 +1,6 @@
 {
   "name": "auto-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude Code 能力增强 CLI 工具 - 基于 everything-claude-code 和 ai-max 开发",
   "main": "src/index.js",
   "bin": {
@@ -10,9 +10,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "echo 'No linter configured'",
+    "lint": "eslint src/ bin/ tests/",
+    "lint:fix": "eslint src/ bin/ tests/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
     "sync": "cp commands/*.md .claude/commands/auto/ && echo 'Synced commands/ → .claude/commands/auto/'",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test",
+    "prepare": "husky"
   },
   "keywords": [
     "claude",
@@ -29,12 +33,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zhukunpenglinyutong/ai-max"
+    "url": "https://github.com/ktyyer/auto-cli"
   },
   "bugs": {
-    "url": "https://github.com/zhukunpenglinyutong/ai-max/issues"
+    "url": "https://github.com/ktyyer/auto-cli/issues"
   },
-  "homepage": "https://github.com/zhukunpenglinyutong/ai-max#readme",
+  "homepage": "https://github.com/ktyyer/auto-cli#readme",
   "files": [
     "bin",
     "src",
@@ -61,9 +65,29 @@
     "node": ">=18.0.0"
   },
   "type": "module",
+  "lint-staged": {
+    "src/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "bin/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "tests/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^1.6.0",
+    "eslint": "^9.39.4",
+    "globals": "^15.15.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
     "vitest": "^1.6.0"
   }
 }

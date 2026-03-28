@@ -5,11 +5,13 @@ import {
   promptConfirmation,
   promptUninstallConfirmation,
   promptMainMenu,
-  promptComponentSelection
+  promptComponentSelection,
+  promptMcpSelection
 } from './prompts.js';
 import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
+import { getAvailableMcpServers, installMcpServers } from './mcp-installer.js';
 
 /**
  * 交互模式 - 主菜单
@@ -74,6 +76,26 @@ export async function runInstall(options = {}) {
 
   console.log('');
   await install(selectedComponents, { force: options.force });
+
+  // MCP 自动配置（可选）
+  if (!options.skipMcp) {
+    try {
+      const { ready, needsConfig } = await getAvailableMcpServers();
+      if (ready.length > 0 || needsConfig.length > 0) {
+        console.log(chalk.cyan('检测到 MCP 服务器模板，是否配置？'));
+        const selectedServers = options.yes
+          ? ready.map((s) => s.name)
+          : await promptMcpSelection(ready, needsConfig);
+
+        if (selectedServers && selectedServers.length > 0) {
+          console.log('');
+          await installMcpServers(selectedServers);
+        }
+      }
+    } catch (error) {
+      logger.warn(`MCP 配置跳过: ${error.message}`);
+    }
+  }
 
   console.log('');
   console.log(chalk.cyan('后续步骤：'));

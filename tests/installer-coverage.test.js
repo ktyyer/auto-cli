@@ -88,7 +88,7 @@ describe('installer.js coverage boost', () => {
       // Backup file created
       const dir = path.join(testClaudeDir, 'plugins', 'builtin');
       const files = await fs.readdir(dir);
-      const backupFile = files.find(f => f.includes('.backup.'));
+      const backupFile = files.find((f) => f.includes('.backup.'));
       expect(backupFile).toBeDefined();
     });
 
@@ -214,8 +214,8 @@ describe('installer.js coverage boost', () => {
 
       // Only .md file installed, .txt ignored
       const installed = result.installedFiles;
-      expect(installed.some(f => f.endsWith('test.md'))).toBe(true);
-      expect(installed.some(f => f.endsWith('ignore.txt'))).toBe(false);
+      expect(installed.some((f) => f.endsWith('test.md'))).toBe(true);
+      expect(installed.some((f) => f.endsWith('ignore.txt'))).toBe(false);
     });
 
     it('should install templates component', async () => {

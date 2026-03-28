@@ -12,7 +12,9 @@ describe('logger.js', () => {
     });
 
     it('should be frozen', () => {
-      expect(() => { LOG_LEVELS.DEBUG = 99; }).toThrow();
+      expect(() => {
+        LOG_LEVELS.DEBUG = 99;
+      }).toThrow();
     });
   });
 

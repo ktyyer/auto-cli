@@ -37,6 +37,9 @@ coverage/
 dist/
 build/
 
+# ESLint cache
+.eslintcache
+
 # Temp files
 *.tmp
 *.temp

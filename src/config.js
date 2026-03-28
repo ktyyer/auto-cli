@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 export const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 // 文档 URL
-export const DOCS_URL = process.env.AUTO_CLI_DOCS_URL || 'https://github.com/zhukunpenglinyutong/ai-max';
+export const DOCS_URL = process.env.AUTO_CLI_DOCS_URL || 'https://github.com/ktyyer/auto-cli';
 
 // 日志级别
 export const LOG_LEVEL = process.env.AUTO_CLI_LOG_LEVEL || 'info';

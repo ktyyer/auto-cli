@@ -23,15 +23,14 @@ program
   .version(getPackageVersion(), '-v, --version', '显示版本号');
 
 // 默认命令 - 交互模式
-program
-  .action(async () => {
-    try {
-      await interactiveMode();
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
+program.action(async () => {
+  try {
+    await interactiveMode();
+  } catch (error) {
+    console.error(chalk.red('错误：'), error.message);
+    process.exit(1);
+  }
+});
 
 // 安装命令
 program
@@ -46,7 +45,12 @@ program
         yes: options.yes,
         force: options.force,
         quiet: false,
-        components: options.components ? options.components.split(',').map(s => s.trim()).filter(Boolean) : undefined
+        components: options.components
+          ? options.components
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : undefined
       });
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
@@ -129,9 +133,7 @@ function parseGates(input) {
   return result;
 }
 
-const loop = program
-  .command('loop')
-  .description('任务状态机执行器（初始化、推进、恢复）');
+const loop = program.command('loop').description('任务状态机执行器（初始化、推进、恢复）');
 
 loop
   .command('init')

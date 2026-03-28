@@ -25,7 +25,9 @@ class Logger {
       if (upperLevel in LOG_LEVELS) {
         this.level = LOG_LEVELS[upperLevel];
       } else {
-        throw new Error(`Invalid log level: ${level}. Valid levels: ${Object.keys(LOG_LEVELS).join(', ')}`);
+        throw new Error(
+          `Invalid log level: ${level}. Valid levels: ${Object.keys(LOG_LEVELS).join(', ')}`
+        );
       }
     } else if (typeof level === 'number') {
       if (level >= 0 && level <= 4) {

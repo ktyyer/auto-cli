@@ -56,12 +56,16 @@ export async function getInstalledVersion() {
  */
 export async function saveInstalledVersion(version, components, installedFiles = []) {
   const versionFile = getVersionFilePath();
-  await fs.writeJson(versionFile, {
-    version,
-    components,
-    installedFiles,
-    installedAt: new Date().toISOString()
-  }, { spaces: 2 });
+  await fs.writeJson(
+    versionFile,
+    {
+      version,
+      components,
+      installedFiles,
+      installedAt: new Date().toISOString()
+    },
+    { spaces: 2 }
+  );
 }
 
 /**
@@ -162,7 +166,7 @@ export function getSourceDir() {
  */
 export async function analyzeMcpServers(configPath) {
   try {
-    if (!await fs.pathExists(configPath)) {
+    if (!(await fs.pathExists(configPath))) {
       return { ready: [], needsConfig: [], total: 0 };
     }
 
@@ -213,20 +217,20 @@ export async function getMcpServerCategories(configPath) {
   };
 
   const categoryMap = {
-    'supabase': 'database',
+    supabase: 'database',
     'brave-search': 'search',
-    'context7': 'search',
-    'github': 'devtools',
-    'filesystem': 'devtools',
+    context7: 'search',
+    github: 'devtools',
+    filesystem: 'devtools',
     'ast-grep': 'devtools',
-    'playwright': 'devtools',
-    'memory': 'ai',
+    playwright: 'devtools',
+    memory: 'ai',
     'sequential-thinking': 'ai'
   };
 
   const allServers = [
-    ...ready.map(s => ({ ...s, status: 'ready' })),
-    ...needsConfig.map(s => ({ ...s, status: 'needs_config' }))
+    ...ready.map((s) => ({ ...s, status: 'ready' })),
+    ...needsConfig.map((s) => ({ ...s, status: 'needs_config' }))
   ];
 
   for (const server of allServers) {

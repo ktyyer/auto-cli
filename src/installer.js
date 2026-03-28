@@ -2,7 +2,14 @@ import path from 'path';
 import fs from 'fs-extra';
 import ora from 'ora';
 import chalk from 'chalk';
-import { getClaudeDir, getSourceDir, COMPONENTS, saveInstalledVersion, getPackageVersion, getInstalledVersion } from './utils.js';
+import {
+  getClaudeDir,
+  getSourceDir,
+  COMPONENTS,
+  saveInstalledVersion,
+  getPackageVersion,
+  getInstalledVersion
+} from './utils.js';
 
 /**
  * 安装选中的组件
@@ -81,7 +88,6 @@ export async function install(selectedComponents, options = {}) {
     }
 
     return { installedFiles, skippedFiles };
-
   } catch (error) {
     spinner.fail(chalk.red('安装失败'));
     throw error;
@@ -225,7 +231,6 @@ export async function uninstall(selectedComponents) {
     }
 
     return removedFiles;
-
   } catch (error) {
     spinner.fail(chalk.red('卸载失败'));
     throw error;
@@ -265,7 +270,7 @@ async function getSourceFilesList(sourcePath, recursive = false) {
  * 清理空的子目录
  */
 async function cleanupEmptySubDirs(dirPath) {
-  if (!await fs.pathExists(dirPath)) return;
+  if (!(await fs.pathExists(dirPath))) return;
 
   const items = await fs.readdir(dirPath);
   for (const item of items) {
@@ -294,7 +299,7 @@ async function cleanupEmptyDirs(claudeDir, selectedComponents) {
     const targetPath = path.join(claudeDir, component.target);
 
     // 对于 commands/auto，如果目录为空则删除
-    if (componentKey === 'commands' && await fs.pathExists(targetPath)) {
+    if (componentKey === 'commands' && (await fs.pathExists(targetPath))) {
       try {
         const items = await fs.readdir(targetPath);
         if (items.length === 0) {
@@ -339,7 +344,7 @@ async function countFiles(dirPath, recursive = false, depth = 0) {
     throw new Error(`目录层级超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环链接`);
   }
 
-  if (!await fs.pathExists(dirPath)) return 0;
+  if (!(await fs.pathExists(dirPath))) return 0;
 
   let count = 0;
   const items = await fs.readdir(dirPath);

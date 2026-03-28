@@ -8,7 +8,9 @@ vi.mock('inquirer', () => ({
   default: {
     prompt: mockPrompt,
     Separator: class Separator {
-      constructor() { this.type = 'separator'; }
+      constructor() {
+        this.type = 'separator';
+      }
     }
   }
 }));
@@ -32,7 +34,12 @@ vi.mock('../src/utils.js', async (importOriginal) => {
   };
 });
 
-import { showBanner, promptConfirmation, promptUninstallConfirmation, promptMainMenu } from '../src/prompts.js';
+import {
+  showBanner,
+  promptConfirmation,
+  promptUninstallConfirmation,
+  promptMainMenu
+} from '../src/prompts.js';
 
 describe('prompts.js', () => {
   beforeEach(() => {
@@ -112,7 +119,7 @@ describe('prompts.js', () => {
       mockPrompt.mockResolvedValue({ action: 'exit' });
       await promptMainMenu();
       const choices = mockPrompt.mock.calls[0][0][0].choices;
-      const values = choices.filter(c => c.value).map(c => c.value);
+      const values = choices.filter((c) => c.value).map((c) => c.value);
       expect(values).toContain('install');
       expect(values).toContain('update');
       expect(values).toContain('uninstall');
@@ -124,8 +131,8 @@ describe('prompts.js', () => {
       mockPrompt.mockResolvedValue({ action: 'install' });
       await promptMainMenu();
       const choices = mockPrompt.mock.calls[0][0][0].choices;
-      const updateChoice = choices.find(c => c.value === 'update');
-      const uninstallChoice = choices.find(c => c.value === 'uninstall');
+      const updateChoice = choices.find((c) => c.value === 'update');
+      const uninstallChoice = choices.find((c) => c.value === 'uninstall');
       expect(updateChoice.disabled).toBeTruthy();
       expect(uninstallChoice.disabled).toBeTruthy();
     });

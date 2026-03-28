@@ -52,17 +52,11 @@ describe('installer.js', () => {
 
     // commands: source='commands', target='commands/auto', pattern='*.md'
     await fs.ensureDir(path.join(testSourceDir, 'commands'));
-    await fs.writeFile(
-      path.join(testSourceDir, 'commands', 'auto.md'),
-      '# Auto Command v2'
-    );
+    await fs.writeFile(path.join(testSourceDir, 'commands', 'auto.md'), '# Auto Command v2');
 
     // agents: source='agents', target='agents', pattern='*.md'
     await fs.ensureDir(path.join(testSourceDir, 'agents'));
-    await fs.writeFile(
-      path.join(testSourceDir, 'agents', 'test-agent.md'),
-      '# Test Agent v2'
-    );
+    await fs.writeFile(path.join(testSourceDir, 'agents', 'test-agent.md'), '# Test Agent v2');
 
     // plugins: source='plugins', target='plugins', recursive=true
     await fs.ensureDir(path.join(testSourceDir, 'plugins', 'builtin'));
@@ -154,7 +148,7 @@ describe('installer.js', () => {
       const dir = path.dirname(targetFile);
       const baseName = path.basename(targetFile);
       const dirFiles = await fs.readdir(dir);
-      const backupFile = dirFiles.find(f => f.startsWith(baseName + '.backup.'));
+      const backupFile = dirFiles.find((f) => f.startsWith(baseName + '.backup.'));
       expect(backupFile).toBeDefined();
 
       const content = await fs.readFile(targetFile, 'utf-8');

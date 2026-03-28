@@ -24,10 +24,23 @@ const TRANSITIONS = Object.freeze({
   [LOOP_STATES.CONTEXT]: [LOOP_STATES.DECOMPOSE, LOOP_STATES.PERSIST],
   [LOOP_STATES.DECOMPOSE]: [LOOP_STATES.EXECUTE, LOOP_STATES.PERSIST],
   [LOOP_STATES.EXECUTE]: [LOOP_STATES.VERIFY, LOOP_STATES.PERSIST],
-  [LOOP_STATES.VERIFY]: [LOOP_STATES.RECOVER, LOOP_STATES.EXECUTE, LOOP_STATES.SUMMARIZE, LOOP_STATES.PERSIST],
+  [LOOP_STATES.VERIFY]: [
+    LOOP_STATES.RECOVER,
+    LOOP_STATES.EXECUTE,
+    LOOP_STATES.SUMMARIZE,
+    LOOP_STATES.PERSIST
+  ],
   [LOOP_STATES.RECOVER]: [LOOP_STATES.EXECUTE, LOOP_STATES.SUMMARIZE, LOOP_STATES.PERSIST],
   [LOOP_STATES.SUMMARIZE]: [LOOP_STATES.PERSIST],
-  [LOOP_STATES.PERSIST]: [LOOP_STATES.INTAKE, LOOP_STATES.CONTEXT, LOOP_STATES.DECOMPOSE, LOOP_STATES.EXECUTE, LOOP_STATES.VERIFY, LOOP_STATES.RECOVER, LOOP_STATES.SUMMARIZE]
+  [LOOP_STATES.PERSIST]: [
+    LOOP_STATES.INTAKE,
+    LOOP_STATES.CONTEXT,
+    LOOP_STATES.DECOMPOSE,
+    LOOP_STATES.EXECUTE,
+    LOOP_STATES.VERIFY,
+    LOOP_STATES.RECOVER,
+    LOOP_STATES.SUMMARIZE
+  ]
 });
 
 function nowIso() {
@@ -92,13 +105,7 @@ function normalizeSteps(steps) {
     .filter(Boolean);
 }
 
-export function createLoopState({
-  task,
-  steps = [],
-  runId,
-  gates,
-  now
-} = {}) {
+export function createLoopState({ task, steps = [], runId, gates, now } = {}) {
   if (!task || !String(task).trim()) {
     throw new Error('task 不能为空');
   }
@@ -170,12 +177,7 @@ function markRecoverRetry(state) {
 }
 
 export function advanceLoopState(state, options = {}) {
-  const {
-    verify = 'pass',
-    maxRetries = 3,
-    now,
-    gateResults
-  } = options;
+  const { verify = 'pass', maxRetries = 3, now, gateResults } = options;
 
   assertValidState(state);
 
@@ -276,7 +278,7 @@ export async function saveLoopState(state, filePath = DEFAULT_LOOP_STATE_FILE) {
 }
 
 export async function loadLoopState(filePath = DEFAULT_LOOP_STATE_FILE) {
-  if (!await fs.pathExists(filePath)) {
+  if (!(await fs.pathExists(filePath))) {
     throw new Error(`状态文件不存在: ${filePath}`);
   }
   const state = await fs.readJson(filePath);

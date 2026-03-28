@@ -47,7 +47,12 @@ vi.mock('../src/config.js', () => ({
 
 import { interactiveMode, runInstall, runUpdate, runUninstall, runDocs } from '../src/index.js';
 import { install, uninstall } from '../src/installer.js';
-import { showBanner, promptConfirmation, promptUninstallConfirmation, promptMainMenu } from '../src/prompts.js';
+import {
+  showBanner,
+  promptConfirmation,
+  promptUninstallConfirmation,
+  promptMainMenu
+} from '../src/prompts.js';
 import { getInstalledVersion, openBrowser } from '../src/utils.js';
 import { logger } from '../src/logger.js';
 
@@ -177,9 +182,7 @@ describe('index.js', () => {
     it('should warn when browser cannot be opened', async () => {
       openBrowser.mockResolvedValue(false);
       await runDocs();
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('浏览器')
-      );
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('浏览器'));
     });
 
     it('should not warn when browser opens successfully', async () => {

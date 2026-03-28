@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-28
+
+### Added
+
+- **quest-designer v4** -- 完整代码输出式闯关大纲设计师，产出可直接复制执行的施工图纸
+  - 精确锚点定位（文本锚点替代行号）
+  - 完整 import 列表 + package 声明
+  - 预判坑点（基于代码分析，非通用建议）
+  - 6 步工作流：需求解析 -> 深度代码分析 -> 合约定义 -> Quest Map -> 一致性校验 -> 自验证评分
+
+- **MCP 集成增强** -- 分类配置 + 检测工具
+  - 新增 `analyzeMcpServers()` 和 `countMcpServers()` 工具函数
+  - 9 个核心 MCP 服务器按类别分组（devtools/ai/search/database）
+  - 自动检测 ready/needsConfig 状态
+
+- **prompt-craft skill** -- 短小精悍的提示词模板库
+
+- **project-init skill** -- 项目初始化工具 + 费用追踪工具
+
+- **npm sync script** -- `npm run sync` 一键同步 commands/ 到 .claude/commands/auto/
+
+### Changed
+
+- **auto 命令精简 -64%** -- 命令定义大幅压缩，去除冗余描述
+- **self-star skill 优化** -- 合并多个子能力
+- **Skills 合并** -- 精简后的高效组合，减少维护成本
+- **MCP 配置精简** -- 去除冗余配置，保留核心 9 个服务器
+
+### Fixed
+
+- **installer 备份文件** -- 使用时间戳后缀防覆盖
+- **installer 递归保护** -- 新增 MAX_RECURSION_DEPTH = 20 防循环链接
+- **Logger 级别控制** -- 修复级别判断逻辑
+- **URL 硬编码消除** -- 移除未使用的 promptComponentSelection
+
+### Improved
+
+- **测试覆盖率** -- 新增 logger/config/prompts/index/installer 单元测试，覆盖率 59% -> 91%
+- **静态导入优化** -- 消除动态 import，统一使用 ES Modules
+
+---
+
+## [0.1.1] - 2026-03-25
+
+### Added
+
+- **auto-core v7** -- 动态能力发现 + Quest Map 方法论
+  - Grep 批量提取 frontmatter 健康检查
+  - 三段推理日志（透明化 AI 决策过程）
+  - 文件存在性校验
+
+- **auto-core 透明度增强** -- 五大原则落地
+  - 禁止因任务简单而跳过 PHASE（强制规则）
+  - 硬性约束重写 + Gate Check 断言
+
+- **quest-designer v2/v3** -- 深度代码分析 + 合约驱动
+  - v2: 依赖排序 + 自验证评分 + 防幻觉机制
+  - v3: 实现蓝图 + 风险分层 + 代码片段锚定
+
+- **融合 3 项新能力**
+  - Council Pattern -- 多 Agent 议会模式协作
+  - Auto-lint-fix -- 自动代码格式修复
+  - Repo Map 持久化 -- 仓库符号地图
+
+### Fixed
+
+- **auto.md 源文件同步** -- Gate Check 硬性约束，修复安装覆盖丢失问题
+- **PHASE 3 执行器** -- 对接 v3 Quest Map 的实现蓝图/风险分层/合约/回滚方案
+
+---
+
 ## [3.0.0] - 2026-03-03
 
 ### 🚀 Major Release - 智能进化系统

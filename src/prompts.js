@@ -10,8 +10,16 @@ export function showBanner() {
   console.log('');
   console.log(chalk.cyan.bold('  ╔═══════════════════════════════════════════╗'));
   console.log(chalk.cyan.bold('  ║                                           ║'));
-  console.log(chalk.cyan.bold('  ║') + chalk.white.bold(`           Auto CLI（v${version}）                 `) + chalk.cyan.bold('║'));
-  console.log(chalk.cyan.bold('  ║') + chalk.gray('     Claude Code 一键能力增强，开箱即用      ') + chalk.cyan.bold('║'));
+  console.log(
+    chalk.cyan.bold('  ║') +
+      chalk.white.bold(`           Auto CLI（v${version}）                 `) +
+      chalk.cyan.bold('║')
+  );
+  console.log(
+    chalk.cyan.bold('  ║') +
+      chalk.gray('     Claude Code 一键能力增强，开箱即用      ') +
+      chalk.cyan.bold('║')
+  );
   console.log(chalk.cyan.bold('  ║                                           ║'));
   console.log(chalk.cyan.bold('  ╚═══════════════════════════════════════════╝'));
   console.log('');
@@ -94,7 +102,11 @@ export async function promptMainMenu() {
   const choices = [
     { name: '安装 Auto CLI', value: 'install' },
     { name: '更新 Auto CLI', value: 'update', disabled: !installedVersion ? '（未安装）' : false },
-    { name: '卸载 Auto CLI', value: 'uninstall', disabled: !installedVersion ? '（未安装）' : false },
+    {
+      name: '卸载 Auto CLI',
+      value: 'uninstall',
+      disabled: !installedVersion ? '（未安装）' : false
+    },
     new inquirer.Separator(),
     { name: '查看文档', value: 'docs' },
     { name: '退出', value: 'exit' }
@@ -110,4 +122,44 @@ export async function promptMainMenu() {
   ]);
 
   return action;
+}
+
+/**
+ * 提示用户选择要安装的 MCP 服务器
+ * @param {Array} readyServers - 开箱即用的服务器列表
+ * @param {Array} needsConfigServers - 需要额外配置的服务器列表
+ * @returns {Promise<string[]|null>} 选中的服务器名称列表，或 null（跳过）
+ */
+export async function promptMcpSelection(readyServers, needsConfigServers) {
+  const choices = [
+    new inquirer.Separator(chalk.cyan('--- 开箱即用 ---')),
+    ...readyServers.map((s) => ({
+      name: `${s.name} ${chalk.gray(`(${s.description || s.type})`)}`,
+      value: s.name,
+      checked: true
+    })),
+    new inquirer.Separator(chalk.yellow('--- 需要额外配置（API Key 等）---')),
+    ...needsConfigServers.map((s) => ({
+      name: `${s.name} ${chalk.gray(`(${s.description || s.type})`)} ${chalk.yellow('[需配置]')}`,
+      value: s.name,
+      checked: false
+    }))
+  ];
+
+  if (readyServers.length === 0 && needsConfigServers.length === 0) {
+    console.log(chalk.yellow('没有可用的 MCP 服务器模板。'));
+    return null;
+  }
+
+  const { selectedServers } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedServers',
+      message: '选择要配置的 MCP 服务器（空格选择/取消，回车确认，直接回车跳过）：',
+      choices,
+      pageSize: 15
+    }
+  ]);
+
+  return selectedServers.length > 0 ? selectedServers : null;
 }
