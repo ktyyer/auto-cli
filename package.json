@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "echo 'No linter configured'",
+    "sync": "cp commands/*.md .claude/commands/auto/ && echo 'Synced commands/ → .claude/commands/auto/'",
     "prepublishOnly": "npm test"
   },
   "keywords": [
