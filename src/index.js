@@ -4,7 +4,8 @@ import {
   showBanner,
   promptConfirmation,
   promptUninstallConfirmation,
-  promptMainMenu
+  promptMainMenu,
+  promptComponentSelection
 } from './prompts.js';
 import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
@@ -45,11 +46,19 @@ export async function runInstall(options = {}) {
     showBanner();
   }
 
-  // 始终安装所有组件
-  const selectedComponents = Object.keys(COMPONENTS);
+  // 选择性安装：支持 --yes 时跳过选择直接全量安装
+  let selectedComponents;
+  if (options.yes || options.components) {
+    selectedComponents = options.components || Object.keys(COMPONENTS);
+  } else {
+    selectedComponents = await promptComponentSelection();
+    if (!selectedComponents) {
+      return;
+    }
+  }
 
   console.log('');
-  console.log(chalk.cyan('将要安装 Auto CLI 的所有组件：'));
+  console.log(chalk.cyan('将要安装以下组件：'));
   for (const key of selectedComponents) {
     console.log(chalk.gray(`  • ${COMPONENTS[key].name}`));
   }

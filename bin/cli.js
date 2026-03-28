@@ -39,12 +39,14 @@ program
   .description('安装 Auto CLI')
   .option('-y, --yes', '跳过确认提示')
   .option('-f, --force', '强制覆盖现有文件（不备份）')
+  .option('-c, --components <list>', '指定安装的组件，逗号分隔（如: agents,commands,skills）')
   .action(async (options) => {
     try {
       await runInstall({
         yes: options.yes,
         force: options.force,
-        quiet: false
+        quiet: false,
+        components: options.components ? options.components.split(',').map(s => s.trim()).filter(Boolean) : undefined
       });
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);

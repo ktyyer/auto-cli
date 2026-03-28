@@ -21,7 +21,8 @@ vi.mock('../src/prompts.js', () => ({
   showBanner: vi.fn(),
   promptConfirmation: vi.fn(),
   promptUninstallConfirmation: vi.fn(),
-  promptMainMenu: vi.fn()
+  promptMainMenu: vi.fn(),
+  promptComponentSelection: vi.fn().mockResolvedValue(['agents', 'commands', 'skills'])
 }));
 
 vi.mock('../src/utils.js', async (importOriginal) => {

@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { getClaudeDir, getInstalledVersion, getPackageVersion } from './utils.js';
+import { getClaudeDir, getInstalledVersion, getPackageVersion, COMPONENTS } from './utils.js';
 
 /**
  * 显示欢迎横幅
@@ -49,6 +49,40 @@ export async function promptUninstallConfirmation() {
   ]);
 
   return confirmed;
+}
+
+/**
+ * 提示选择要安装的组件
+ */
+export async function promptComponentSelection() {
+  const installedVersion = await getInstalledVersion();
+  const installedComponents = installedVersion?.components || [];
+
+  const choices = Object.entries(COMPONENTS).map(([key, component]) => {
+    const isInstalled = installedComponents.includes(key);
+    return {
+      name: `${component.name}${isInstalled ? chalk.green(' (已安装)') : ''}`,
+      value: key,
+      checked: true
+    };
+  });
+
+  const { selectedComponents } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedComponents',
+      message: '选择要安装的组件（空格选择/取消，回车确认）：',
+      choices,
+      pageSize: 10
+    }
+  ]);
+
+  if (selectedComponents.length === 0) {
+    console.log(chalk.yellow('未选择任何组件，操作已取消。'));
+    return null;
+  }
+
+  return selectedComponents;
 }
 
 /**

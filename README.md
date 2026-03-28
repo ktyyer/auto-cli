@@ -69,7 +69,7 @@ auto install
 
 ## 能力总览
 
-### 命令（15 个）
+### 命令（16 个）
 
 | 命令 | 用途 |
 |------|------|
@@ -79,6 +79,7 @@ auto install
 | `/auto:tdd` | 测试驱动开发 |
 | `/auto:code-review` | 代码质量审查 |
 | `/auto:build-fix` | 修复构建错误 |
+| `/auto:doctor` | 环境诊断 — 检查 Node.js、Claude Code 配置、MCP 连接性 |
 | `/auto:e2e` | 端到端测试 |
 | `/auto:test-coverage` | 测试覆盖率分析 |
 | `/auto:loop` | 状态机编排（中断恢复） |
@@ -119,7 +120,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（20 个）
+### Skills 知识库（23 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -142,6 +143,9 @@ auto install
 | tdd-workflow | TDD 工作流 |
 | security-review | 安全审查 |
 | prompt-craft | 短小精悍的提示词模板 |
+| error-patterns | 常见错误模式速查与修复方案 |
+| changelog-driven-development | 变更日志驱动开发方法论 |
+| prompt-templates | 场景化提示词模板库 |
 
 ### Plugins 插件（17 个）
 

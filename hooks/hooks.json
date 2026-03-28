@@ -41,6 +41,16 @@
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
+      },
+      {
+        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(js|ts|jsx|tsx|java|py|go|rs)$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Warn when writing large files (>500 lines)\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  line_count=$(wc -l < \"$file_path\" 2>/dev/null || echo 0)\n  if [ \"$line_count\" -gt 500 ]; then\n    echo \"[Hook] WARNING: $file_path already has $line_count lines\" >&2\n    echo \"[Hook] Consider splitting into smaller modules (recommended < 400 lines)\" >&2\n  fi\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "Warn when editing files that are already >500 lines - suggests splitting into smaller modules"
       }
     ],
     "PostToolUse": [
