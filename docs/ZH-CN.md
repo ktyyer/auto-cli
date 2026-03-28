@@ -93,10 +93,10 @@ node skills/repo-map/lib/extract-symbols.js
 
 ```bash
 # 分析项目成本
-node skills/cost-optimizer/lib/cost-tracker.js analyze src
+node skills/performance-tips/lib/cost-tracker.js analyze src
 
 # 预算规划
-node skills/cost-optimizer/lib/cost-tracker.js budget --monthly 50
+node skills/performance-tips/lib/cost-tracker.js budget --monthly 50
 ```
 
 ### OpusPlan 策略
@@ -232,8 +232,8 @@ cat plugins/builtin/tdd-templates.md | grep -A 100 "Spring Boot"
 ### Q4: 上下文窗口不够怎么办？
 
 ```bash
-# 使用上下文压缩
-/context-compression
+# 使用性能优化技能（含上下文压缩）
+/skills/performance-tips
 
 # 或者使用智能索引
 /auto:update-codemaps

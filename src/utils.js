@@ -214,25 +214,14 @@ export async function getMcpServerCategories(configPath) {
 
   const categoryMap = {
     'supabase': 'database',
-    'clickhouse': 'database',
-    'firecrawl': 'search',
     'brave-search': 'search',
-    'tavily': 'search',
     'context7': 'search',
-    'vercel': 'cloud',
-    'railway': 'cloud',
-    'cloudflare-docs': 'cloud',
-    'cloudflare-workers-builds': 'cloud',
-    'cloudflare-workers-bindings': 'cloud',
-    'cloudflare-observability': 'cloud',
     'github': 'devtools',
     'filesystem': 'devtools',
     'ast-grep': 'devtools',
     'playwright': 'devtools',
     'memory': 'ai',
-    'sequential-thinking': 'ai',
-    'magic': 'ai',
-    'composio': 'integration'
+    'sequential-thinking': 'ai'
   };
 
   const allServers = [

@@ -91,8 +91,8 @@ Glob("package.json")
 ### Claude Code 配置
 - ~/.claude 目录: PASS
 - Agents (11): PASS
-- Commands (15): PASS
-- Skills (19): PASS
+- Commands (16): PASS
+- Skills (18): PASS
 - Plugins (17): PASS
 
 ### MCP 服务器
