@@ -12,6 +12,7 @@ import { ENTITY_TYPE_LABELS } from '../src/graph/entity-types.js';
 import { DigitalBrain } from '../src/brain/digital-brain.js';
 import { SkillDiscovery } from '../src/skills/skill-discovery.js';
 import { RuleEngine } from '../src/governance/rule-engine.js';
+import { VCOAdapter } from '../src/runtime/vco-adapter.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -895,5 +896,211 @@ rules
       process.exit(1);
     }
   });
+
+// 工作流编排命令
+const workflow = program.command('workflow').description('VCO 工作流编排 - 执行、管理、验证工作流');
+
+workflow
+  .command('run <name>')
+  .description('运行工作流')
+  .option('-c, --context <json>', '上下文数据（JSON 格式）')
+  .option('-v, --verbose', '详细输出')
+  .action(async (name, options) => {
+    try {
+      const adapter = new VCOAdapter();
+      await adapter.loadWorkflows();
+
+      const context = options.context ? JSON.parse(options.context) : {};
+      const execution = await adapter.orchestrate(name, context, { verbose: options.verbose });
+
+      console.log('');
+      console.log(chalk.cyan.bold(`工作流执行结果：`));
+      console.log('');
+      console.log(`  ${chalk.bold('工作流 ID')}: ${execution.workflowId}`);
+      console.log(`  ${chalk.bold('执行 ID')}: ${execution.id}`);
+      console.log(
+        `  ${chalk.bold('状态')}: ${_getStatusColor(execution.status)(execution.status)}`
+      );
+      console.log(
+        `  ${chalk.bold('结果')}: ${_getResultColor(execution.result)(execution.result)}`
+      );
+      console.log(`  ${chalk.bold('开始时间')}: ${execution.startTime.toISOString()}`);
+      console.log(
+        `  ${chalk.bold('结束时间')}: ${execution.endTime ? execution.endTime.toISOString() : '进行中'}`
+      );
+      console.log(
+        `  ${chalk.bold('执行时长')}: ${execution.duration ? `${execution.duration}ms` : '-'}`
+      );
+      console.log('');
+
+      // 显示阶段状态
+      if (Object.keys(execution.stageStates).length > 0) {
+        console.log(chalk.cyan.bold('阶段执行状态：'));
+        console.log('');
+        for (const [stageId, stageState] of Object.entries(execution.stageStates)) {
+          const statusIcon = _getStageStatusIcon(stageState.status);
+          console.log(
+            `  ${statusIcon} ${chalk.bold(stageId)}: ${_getStatusColor(stageState.status)(stageState.status)}`
+          );
+          if (stageState.error) {
+            console.log(`      ${chalk.red('错误：')}${stageState.error}`);
+          }
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+workflow
+  .command('list')
+  .description('列出所有工作流')
+  .action(async () => {
+    try {
+      const adapter = new VCOAdapter();
+      await adapter.loadWorkflows();
+      const workflowList = adapter.listWorkflows();
+
+      if (workflowList.length === 0) {
+        console.log(chalk.yellow('没有可用工作流'));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`工作流列表 (${workflowList.length})：`));
+      console.log('');
+
+      for (const wf of workflowList) {
+        console.log(`  ${chalk.bold(wf.name)} (${chalk.cyan(wf.id)})`);
+        console.log(`    ${chalk.gray(wf.description)}`);
+        console.log(
+          `    模式: ${chalk.yellow(wf.mode)} | 阶段数: ${chalk.green(wf.stageCount)} | 版本: ${chalk.gray(wf.version)}`
+        );
+        if (wf.tags && wf.tags.length > 0) {
+          console.log(`    标签: ${wf.tags.map((tag) => chalk.cyan(`#${tag}`)).join(' ')}`);
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+workflow
+  .command('validate <file>')
+  .description('验证工作流配置文件')
+  .action(async (file) => {
+    try {
+      const fs = (await import('fs-extra')).default;
+      if (!(await fs.pathExists(file))) {
+        console.error(chalk.red('错误：'), `文件不存在: ${file}`);
+        process.exit(1);
+      }
+
+      const adapter = new VCOAdapter();
+      const workflow = await adapter._loadWorkflowsFromFile(file);
+      const workflowConfig = Array.isArray(workflow) ? workflow[0] : workflow;
+
+      const validation = adapter.validateWorkflow(workflowConfig);
+
+      console.log('');
+      console.log(chalk.cyan.bold('工作流验证结果：'));
+      console.log('');
+      console.log(
+        `  ${chalk.bold('状态')}: ${validation.valid ? chalk.green('✓ 有效') : chalk.red('✗ 无效')}`
+      );
+
+      if (validation.errors.length > 0) {
+        console.log('');
+        console.log('  ' + chalk.red.bold('错误：'));
+        validation.errors.forEach((error) => {
+          console.log(`    ${chalk.red('✗')} ${error}`);
+        });
+      }
+
+      if (validation.warnings.length > 0) {
+        console.log('');
+        console.log('  ' + chalk.yellow.bold('警告：'));
+        validation.warnings.forEach((warning) => {
+          console.log(`    ${chalk.yellow('⚠')} ${warning}`);
+        });
+      }
+
+      console.log('');
+
+      if (!validation.valid) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+workflow
+  .command('stats')
+  .description('显示工作流统计')
+  .action(async () => {
+    try {
+      const adapter = new VCOAdapter();
+      await adapter.loadWorkflows();
+      const stats = adapter.getStats();
+
+      console.log('');
+      console.log(chalk.cyan.bold('工作流统计：'));
+      console.log('');
+      console.log(`  ${chalk.bold('工作流总数')}: ${stats.totalWorkflows}`);
+      console.log(`  ${chalk.bold('执行总数')}: ${stats.totalExecutions}`);
+      console.log('');
+
+      console.log('  按编排模式分布：');
+      console.log(`    顺序执行: ${chalk.green(stats.modes.sequential)}`);
+      console.log(`    并行执行: ${chalk.green(stats.modes.parallel)}`);
+      console.log(`    管道模式: ${chalk.green(stats.modes.pipeline)}`);
+      console.log(`    自适应模式: ${chalk.green(stats.modes.adaptive)}`);
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 辅助函数
+function _getStatusColor(status) {
+  const colors = {
+    pending: chalk.gray,
+    running: chalk.blue,
+    completed: chalk.green,
+    failed: chalk.red,
+    aborted: chalk.yellow,
+    blocked: chalk.yellow
+  };
+  return colors[status] || chalk.white;
+}
+
+function _getResultColor(result) {
+  const colors = {
+    success: chalk.green,
+    partial: chalk.yellow,
+    failed: chalk.red,
+    aborted: chalk.gray
+  };
+  return colors[result] || chalk.white;
+}
+
+function _getStageStatusIcon(status) {
+  const icons = {
+    pending: '○',
+    running: '◐',
+    completed: '●',
+    failed: '✗',
+    skipped: '→',
+    blocked: '⊘'
+  };
+  return icons[status] || '?';
+}
 
 program.parse();

@@ -63,6 +63,15 @@
 | export | `RuleEngine` | src\governance\rule-engine.js |
 | export | `RULE_ACTIONS` | src\governance\rule-types.js |
 | export | `RULE_PRIORITIES` | src\governance\rule-types.js |
+| export | `VCOAdapter` | src\runtime\vco-adapter.js |
+| export | `CONDITION_OPS` | src\runtime\workflow-types.js |
+| export | `ORCHESTRATION_MODES` | src\runtime\workflow-types.js |
+| export | `ORCHESTRATION_MODE_NAMES` | src\runtime\workflow-types.js |
+| export | `STAGE_STATES` | src\runtime\workflow-types.js |
+| export | `STAGE_STATE_NAMES` | src\runtime\workflow-types.js |
+| export | `STAGE_TYPES` | src\runtime\workflow-types.js |
+| export | `WORKFLOW_RESULT` | src\runtime\workflow-types.js |
+| export | `WORKFLOW_RESULT_NAMES` | src\runtime\workflow-types.js |
 
 ---
 
