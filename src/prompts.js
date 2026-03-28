@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { COMPONENTS, getClaudeDir, getInstalledVersion, getPackageVersion } from './utils.js';
+import { getClaudeDir, getInstalledVersion, getPackageVersion } from './utils.js';
 
 /**
  * 显示欢迎横幅
