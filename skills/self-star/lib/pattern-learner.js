@@ -8,8 +8,8 @@
  * - 自动应用已学习的模式
  */
 
-const fs = 'fs';
-const path = 'path';
+import fs from 'fs';
+import path from 'path';
 
 // 置信度配置
 const CONFIDENCE_LEVELS = {

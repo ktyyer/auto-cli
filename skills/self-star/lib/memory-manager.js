@@ -8,7 +8,7 @@
  * - 提供统一的查询和更新接口
  */
 
-import { SelfStarSystem } from './self-star.js';
+import { SelfStarSystem } from './self-star-optimized.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -150,12 +150,19 @@ class MemoryManager {
     // 简化版：基于关键词搜索
     const relevantFiles = [];
 
+    const EXCLUDED_DIRS = new Set([
+      'node_modules', '.git', 'dist', 'build', '.next', '.nuxt',
+      'coverage', '.cache', '.auto', 'vendor', '__pycache__', '.gradle'
+    ]);
+
     // 搜索项目中的相关文件
     const searchInDir = (dir, query) => {
       if (!fs.existsSync(dir)) return;
 
       const files = fs.readdirSync(dir);
       files.forEach(file => {
+        if (EXCLUDED_DIRS.has(file)) return;
+
         const filePath = path.join(dir, file);
         const stat = fs.statSync(filePath);
 
@@ -303,35 +310,35 @@ class MemoryManager {
   /**
    * Self-Aware: 获取项目上下文
    */
-  getProjectContext() {
+  async getProjectContext() {
     return this.selfStar.aware();
   }
 
   /**
    * 学习模式
    */
-  learnPattern(type, name, description, examples = []) {
+  async learnPattern(type, name, description, examples = []) {
     return this.selfStar.learnPattern(type, name, description, examples);
   }
 
   /**
    * 获取已学习的模式
    */
-  getLearnedPatterns(minConfidence = 0.6) {
+  async getLearnedPatterns(minConfidence = 0.6) {
     return this.selfStar.patternLearner.getConfidentPatterns(minConfidence);
   }
 
   /**
    * Self-Improving: 记录反馈
    */
-  recordFeedback(type, data, success = true) {
+  async recordFeedback(type, data, success = true) {
     return this.selfStar.recordFeedback(type, data, success);
   }
 
   /**
    * 获取改进建议
    */
-  getImprovements() {
+  async getImprovements() {
     return this.selfStar.improve();
   }
 
@@ -340,7 +347,7 @@ class MemoryManager {
   /**
    * 智能查询 - 综合所有记忆系统
    */
-  query(query) {
+  async query(query) {
     const results = {
       query,
       timestamp: Date.now(),
@@ -352,7 +359,7 @@ class MemoryManager {
     };
 
     // 从已学习模式中查询
-    const patterns = this.getLearnedPatterns();
+    const patterns = await this.getLearnedPatterns();
     results.patterns = patterns.filter(p =>
       p.name.toLowerCase().includes(query.toLowerCase()) ||
       p.description.toLowerCase().includes(query.toLowerCase())
@@ -374,7 +381,7 @@ class MemoryManager {
     );
 
     // 获取改进建议
-    results.suggestions = this.getImprovements();
+    results.suggestions = await this.getImprovements();
 
     return results;
   }
@@ -384,11 +391,11 @@ class MemoryManager {
   /**
    * 生成完整的记忆报告
    */
-  generateReport() {
+  async generateReport() {
     const projectMemory = this.getProjectMemory();
     const smartContext = this.getSmartContextStatus();
-    const learnedPatterns = this.getLearnedPatterns();
-    const selfStarReport = this.selfStar.generateReport();
+    const learnedPatterns = await this.getLearnedPatterns();
+    const selfStarReport = await this.selfStar.generateReport();
 
     let report = '🧠 **记忆系统状态报告**\n\n';
 
@@ -427,7 +434,7 @@ class MemoryManager {
   /**
    * 生成统计信息
    */
-  getStats() {
+  async getStats() {
     const projectMemory = this.getProjectMemory();
     const smartContext = this.getSmartContextStatus();
     const patternStats = this.selfStar.patternLearner.getStats();

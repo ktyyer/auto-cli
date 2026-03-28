@@ -1,14 +1,14 @@
 ---
 name: auto-core
-version: 8.0.0
-description: 智能路由大脑 - 动态能力发现 + AI 推理编排，自主组合 commands/agents/skills/MCP/hooks 完成任务
+version: 8.1.0
+description: 智能路由大脑 - 动态能力发现 + AI 推理编排 + 快照缓存，自主组合 commands/agents/skills/MCP/hooks 完成任务
 author: auto-cli
 priority: 100
 builtin: true
 _role: design-doc
 ---
 
-# 智能路由大脑 (auto-core v8.0) — 设计文档
+# 智能路由大脑 (auto-core v8.1) — 设计文档
 
 > **本文档是 `/auto:auto` 命令的设计文档，供人类阅读和开发者理解架构。**
 >
@@ -25,6 +25,26 @@ _role: design-doc
 1. **移除参考内容**：使用示例、故障排查、最佳实践、内置能力列表等 → 保留在本设计文档
 2. **PHASE 1 扫描优化**：用 `Grep(pattern="^(name|description|tools|model):")` 批量提取 frontmatter，替代逐文件 `Read`（54+ 次 → 4-5 次）
 3. **PHASE 2 prompt 精简**：只传元数据（name + description），不传完整 auto.md 正文
+
+## v8.1 快照缓存优化
+
+同一天内重复调用 `/auto` 时，不变数据直接从缓存加载，跳过重复扫描。
+
+**两层缓存架构**:
+| 缓存层 | 文件 | 内容 | 失效条件 | TTL |
+|-------|------|------|---------|-----|
+| 层1 能力快照 | `.auto/cache/capability-snapshot.json` | 技术栈 + 能力清单 + MCP + Hooks | 能力文件数变化/ >24h | 24小时 |
+| 层2 模式卡 | `.auto/cache/pattern-cards.json` | 文件级代码模式（import/注解/返回值） | `git HEAD` 变化/工作区脏 | 7天 |
+
+> **TTL 差异说明**：能力快照 24h 是因为能力清单（commands/agents/plugins/skills）安装后通常不变；模式卡 7 天是因为代码风格模式（import 顺序、注解用法）在同一项目中极少变化，即使 git HEAD 变了，大部分文件的模式也不变。
+
+**预估节省**：
+| 场景 | PHASE 1 调用 | PHASE 2 文件读取 | Token 节省 |
+|------|-------------|----------------|-----------|
+| 首次调用（冷启动） | 20+ | 5-12 | 0% |
+| 同日第 2+ 次（缓存命中） | 3 | 0-3 | ~80% |
+| `git commit` 后（模式卡失效） | 3 | 5-12 | ~50% |
+| 非 `git` 项目 | 3（仅超时失效） | 5-12 | ~50% |
 
 ---
 
@@ -79,9 +99,38 @@ PHASE 2 的唯一合法操作是调用 `Agent({ subagent_type: "quest-designer",
 
 ---
 
-## PHASE 1: DISCOVER — 发现项目上下文 + 所有可用能力（健壮化）
+## PHASE 1: DISCOVER — 发现项目上下文 + 所有可用能力（健壮化 + 快照缓存）
 
 **目标**：了解项目环境，盘点所有可用的能力。**健壮原则**：目录不存在不崩溃，只输出警告。
+
+**缓存优化（v8.1）**：启动时先检查 `.auto/cache/capability-snapshot.json`，如未过期且能力文件数未变则直接加载，跳过完整扫描。
+
+```
+═══ 第 0 步（v8.1 新增）：快照检查 ═══
+
+  Bash("mkdir -p .auto/cache")
+  Read(".auto/cache/capability-snapshot.json")
+
+  IF 快照不存在或 JSON 解析失败:
+    执行第 1-3 步完整扫描
+
+  时间检查:
+    Bash("date +%s") → IF 快照超过 24 小时 → 执行完整扫描
+
+  能力文件数检查（替代 auto_version，更可靠）:
+    Bash("echo agents:$(ls ~/.claude/agents/*.md 2>/dev/null | wc -l) commands:$(ls ~/.claude/commands/auto/*.md 2>/dev/null | wc -l) plugins:$(ls ~/.claude/plugins/**/*.md 2>/dev/null | wc -l) skills:$(ls ~/.claude/skills/**/*.md 2>/dev/null | wc -l)")
+    → 对比快照中 file_counts 各字段
+    → 如任一计数不匹配 → 快照失效，执行完整扫描
+
+  IF 所有检查通过:
+    从快照加载全部能力数据
+    跳到第 4 步（输出健康报告）
+    节省 ~17 次工具调用
+
+  ELSE:
+    执行第 1-3 步完整扫描
+    扫描完成后 Write 快照到 .auto/cache/capability-snapshot.json
+```
 
 ```
 ═══ 第 1 步：读取项目上下文 ═══
@@ -194,11 +243,33 @@ MCP 列中标注 ⚠️ 表示需配置 API Key。
 
 ---
 
-## PHASE 2: REASON — quest-designer v4 统筹分析 + 产出 Quest 计划
+## PHASE 2: REASON — quest-designer v4 统筹分析 + 产出 Quest 计划（v8.1 缓存增强）
 
 **目标**：将 PHASE 1 收集的完整能力清单交给 quest-designer v4，由它自主分析并设计 Quest Map。
 
 **关键**：quest-designer 看到的是完整原始数据，不是主窗口预筛选后的结论。分析和设计由同一个 Agent 完成，避免信息损耗。
+
+**缓存优化（v8.1）**：启动时先检查 `.auto/cache/pattern-cards.json`，如 git HEAD 未变则将缓存模式卡传入 quest-designer，跳过已缓存文件的重复读取。
+
+```
+═══ 第 0 步（v8.1 新增）：模式卡检查 ═══
+
+  Bash("git rev-parse HEAD 2>/dev/null")
+  Read(".auto/cache/pattern-cards.json")
+
+  IF 模式卡存在 AND head_hash 匹配当前 HEAD:
+    将缓存模式卡附加到 quest-designer prompt 的【已缓存的文件模式卡】区域
+    quest-designer 跳过已缓存文件的读取（通常节省 5-10 次 Read）
+  ELSE:
+    quest-designer 按标准流程读取 5-12 个核心文件
+
+═══ 第 2 步之后（v8.1 新增）：更新模式卡缓存 ═══
+
+  从 quest-designer 输出中提取 <!--PATTERN_CARDS_START--> ... <!--PATTERN_CARDS_END-->
+  IF 已有缓存: 合并（保留旧 + 追加新）
+  IF 无缓存: 直接写入
+  Write(".auto/cache/pattern-cards.json", { head_hash, created_at, cards })
+```
 
 **v4 核心升级**：
 - **完整代码输出**：CREATE 输出 package+import+完整类代码，MODIFY 输出锚点+插入代码+import列表，PHASE 3 只需复制执行

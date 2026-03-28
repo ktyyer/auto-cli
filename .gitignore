@@ -42,3 +42,9 @@ build/
 *.temp
 .test-*
 .aimax/
+
+# Auto-cli runtime cache (per-project, not committed)
+.auto/
+
+# Planning documents (one-time, not for repo)
+PLAN.md

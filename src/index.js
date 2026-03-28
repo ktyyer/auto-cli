@@ -6,7 +6,7 @@ import {
   promptUninstallConfirmation,
   promptMainMenu
 } from './prompts.js';
-import { getInstalledVersion, COMPONENTS } from './utils.js';
+import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
 
@@ -133,22 +133,8 @@ export async function runDocs() {
   console.log(chalk.gray(`  ${url}`));
   console.log('');
 
-  // 跨平台打开浏览器
-  const { exec } = await import('child_process');
-  const platform = process.platform;
-  let command;
-
-  if (platform === 'darwin') {
-    command = `open "${url}"`;
-  } else if (platform === 'win32') {
-    command = `start "" "${url}"`;
-  } else {
-    command = `xdg-open "${url}"`;
+  const success = await openBrowser(url);
+  if (!success) {
+    logger.warn('无法自动打开浏览器，请手动访问上述链接。');
   }
-
-  exec(command, (error) => {
-    if (error) {
-      logger.warn('无法自动打开浏览器，请手动访问上述链接。');
-    }
-  });
 }

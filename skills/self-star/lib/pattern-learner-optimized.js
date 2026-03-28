@@ -25,6 +25,16 @@ const CONFIDENCE_LEVELS = {
   MASTERED: 0.95     // 10+次：完全掌握
 };
 
+// 模式类型
+const PATTERN_TYPES = {
+  ARCHITECTURE: 'architecture',
+  CODING_STYLE: 'coding_style',
+  NAMING: 'naming',
+  ERROR_HANDLING: 'error_handling',
+  TESTING: 'testing',
+  FRAMEWORK: 'framework'
+};
+
 // 性能配置
 const PERFORMANCE_CONFIG = {
   // LRU 缓存大小
@@ -444,7 +454,7 @@ class PatternLearner {
         return p && p.confidence >= CONFIDENCE_LEVELS.LEARNING;
       }).length,
       candidates: this.patterns.filter(p => p.confidence < CONFIDENCE_LEVELS.LEARNING).length,
-      cacheHitRate: this.cache.size > 0 ? 'N/A' : '0%',
+      cacheHitRate: this.cache.size > 0 ? `${this.cache.size} entries` : '0%',
       indexSize: this.index.byName.size,
       lastSaveTime: this.lastSaveTime
     };

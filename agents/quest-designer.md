@@ -50,6 +50,22 @@ model: opus
 
 ---
 
+### 第 1.5 步：缓存模式卡加载（v4.1 优化）
+
+**如果 prompt 中包含【已缓存的文件模式卡】，优先使用缓存，跳过已缓存文件的读取。**
+
+```
+IF prompt 中包含【已缓存的文件模式卡】:
+  记录缓存中已有的文件名和模式
+  后续第 2 步中，这些文件无需重新读取
+  输出: "📋 利用缓存模式卡，跳过 [N] 个文件的重复读取"
+
+ELSE:
+  按标准流程执行第 2 步（读取 5-12 个核心文件）
+```
+
+---
+
 ### 第 2 步：深度代码分析（质量决定性步骤）
 
 **这一步消耗 60% 的总 Token。读的文件越多、越精准，Quest Map 质量越高。**
@@ -62,7 +78,16 @@ model: opus
 
   → 产出：候选文件列表（去重，通常 8-25 个）
 
-═══ 2.2 分层读取核心文件（5-12 个）═══
+═══ 2.2 分层读取核心文件（缓存感知）═══
+
+  IF 缓存模式卡中有该文件的模式:
+    直接使用缓存数据（package/import/注解/方法模式），跳过 Read
+    仅当需要确认最新代码时才 Read 该文件
+
+  IF 缓存模式卡中无该文件:
+    Read 该文件，提取完整模式（包含 import 和 package）
+
+  通常需要读取的文件数（缓存命中时 0-3 个，无缓存时 5-12 个）：
 
   v4 关键：每个文件必须提取 COMPLETE 模式（包含 import 和 package）。
 
@@ -483,6 +508,35 @@ v4 质量项：
 6. **风险汇总**（🔴 高风险 Quest 列表 + 建议执行顺序）
 
 然后等待用户确认。支持迭代修改。
+
+### 第 7.5 步：输出模式卡（供缓存，v4.1 新增）
+
+**在 Quest Map 输出之后，输出所有已分析文件的代码模式摘要，供主窗口写入缓存。**
+
+**重要**：仅输出 `cards` 对象。`head_hash` 和 `created_at` 由主窗口添加，你不要输出。
+
+```
+<!--PATTERN_CARDS_START-->
+{
+  "cards": {
+    "OrderController.java": {
+      "package": "com.example.system.controller",
+      "import_style": "javax.* → org.* → com.example.* → lombok.*",
+      "class_annotations": "@RestController → @RequestMapping(\"/system/order\") → @Tag(name=\"订单管理\")",
+      "method_pattern": "@Operation(summary=\"xxx\") → @GetMapping(\"/list\") → Result<PageInfo<XxxDTO>>",
+      "return_pattern": "Result<PageInfo<XxxDTO>>",
+      "key_imports": ["com.example.common.core.domain.Result", "com.example.system.domain.dto.OrderDTO"]
+    }
+  }
+}
+<!--PATTERN_CARDS_END-->
+```
+
+规则：
+- 所有第 2 步实际读取过的文件（非缓存来源的），必须输出模式卡
+- 缓存中已有但未重新读取的文件，不需要重复输出
+- 主窗口会用 **upsert by key** 方式合并：同一文件路径的新卡覆盖旧卡
+- 如果没有读取任何新文件（全部缓存命中），**跳过本步骤**，不输出标记
 
 ---
 

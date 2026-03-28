@@ -300,6 +300,9 @@ class SelfStarSystem {
       }
     ];
 
+    // 重置全局正则的 lastIndex，防止多次调用匹配失败
+    errorPatterns.forEach(pattern => { pattern.regex.lastIndex = 0; });
+
     errorPatterns.forEach(pattern => {
       let match;
       while ((match = pattern.regex.exec(buildOutput)) !== null) {
