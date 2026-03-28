@@ -147,6 +147,14 @@ export const COMPONENTS = {
     source: 'mcp-configs',
     target: 'mcp-configs',
     pattern: '*.json'
+  },
+  knowledge: {
+    name: 'Knowledge Steward（知识管家）',
+    description: '一键保存灵感、踩坑经验、架构决策，自动分类 + Git 提交',
+    source: 'skills/knowledge-steward',
+    target: 'skills/knowledge-steward',
+    pattern: '**/*',
+    recursive: true
   }
 };
 
