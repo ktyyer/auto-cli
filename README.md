@@ -9,7 +9,7 @@
 Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
 
 1. **扫描项目** — 检测语言、框架、已有规范
-2. **发现能力** — 盘点所有可用的 commands、agents、skills、MCP、hooks
+2. **发现能力** — 盘点所有可用的 commands、agents、skills、plugins、hooks
 3. **智能推理** — quest-designer v4 深度分析代码，产出**完整可编译代码蓝图**
 4. **Quest 拆解** — 将任务拆为原子化微步骤，每步含完整代码 + 预判坑点 + 验收标准
 5. **逐步执行** — PHASE 3 直接复制蓝图代码，编译验证，增量提交
@@ -105,7 +105,21 @@ auto install
 | quest-designer | PRD → 闯关大纲 |
 | multi-agent-orchestrator | Agent Teams 并行编排 |
 
-### Skill 知识库（5 个）
+### Rules 编码规范（9 个）
+
+| 规范 | 领域 |
+|------|------|
+| agents | Agent 编排模式 |
+| coding-style | TypeScript/JavaScript 编码风格 |
+| git-workflow | Git 提交和 PR 工作流 |
+| hooks | Hook 系统配置 |
+| java-coding-style | Java/Spring Boot 规范 |
+| patterns | 常用设计模式 |
+| performance | 性能优化策略 |
+| security | 安全检查清单 |
+| testing | 测试要求（80%+ 覆盖率） |
+
+### Skills 知识库（19 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -114,18 +128,31 @@ auto install
 | clickhouse-io | ClickHouse 查询优化 |
 | coding-standards | 编码规范 |
 | project-guidelines-example | 项目规范模板 |
+| council-pattern | 议会模式多 Agent 协作 |
+| agentic-loop | Agentic 循环系统 |
+| context-compression | 上下文压缩 |
+| continuous-learning | 持续学习系统 |
+| conversational-state-machine | 对话状态机 |
+| cost-optimizer | Token 成本优化 |
+| git-worktree | Git Worktree 并行开发 |
+| project-memory | 项目记忆系统 |
+| repo-map | 仓库符号地图 |
+| self-star | Self-* 自我进化 |
+| smart-context | 智能上下文索引 |
+| tdd-workflow | TDD 工作流 |
+| security-review | 安全审查 |
 
-### 插件（18 个）
+### Plugins 插件（17 个）
 
-包含 8 大能力插件（TDD、前端设计、代码清理、HTML 工具、浏览器自动化、代码审查、演进闭环、状态机）+ 4 框架插件（Spring/React/Django/Gin）+ 6 基础设施插件。
+**内置插件（13 个）：**
+auto-core、superpowers、tdd-templates、frontend-design、code-simplifier、diff-first、git-auto-commit、playground、pr-review-toolkit、chrome-automation、architect-editor、focus-chain、smart-guardrails
 
-### MCP 外部服务（20 个）
+**框架插件（4 个）：**
+Spring (Java)、React (JavaScript)、Django (Python)、Gin (Go)
 
-GitHub、Supabase、Vercel、Railway、Cloudflare、ClickHouse、Playwright、Composio、Brave Search、Tavily、Context7 等。
+### Hooks 自动化（1 个配置）
 
-### Hooks 自动化（7 事件 13 条规则）
-
-PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、TaskCompleted、Stop。
+预定义配置：PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、TaskCompleted、Stop 等 7 类钩子事件
 
 ---
 
@@ -145,7 +172,7 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 用户输入 /auto
     ↓
 ┌──────────────────────────────────┐
-│  auto-core v8.0（智能路由大脑）    │
+│  auto-core（智能路由大脑）         │
 │                                  │
 │  PHASE 1: DISCOVER（健壮扫描）     │
 │    Grep 批量提取 frontmatter        │
@@ -161,7 +188,7 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 │    动态追加能力                   │
 │                                  │
 │  PHASE 4: VERIFY（全量门禁）      │
-│  PHASE 5: COMMIT（Git 提交）     │
+│  PHASE 5: COMMIT（Git 提交）      │
 │  PHASE 6: LEARN（经验沉淀）      │
 └──────────────────────────────────┘
 ```
@@ -171,8 +198,8 @@ PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、Ta
 **PHASE 1 健康检查：**
 ```
 📊 能力健康检查:
-  🟢 commands: 15 个  🟢 agents: 11 个  🟢 plugins: 13 个
-  🟢 skills: 17 个  🟡 mcp: 6 个(⚠️需配置)  🟢 hooks: 7 个
+  🟢 commands: 15 个  🟢 agents: 11 个  🟢 plugins: 17 个
+  🟢 skills: 19 个  🟢 rules: 9 个  🟢 hooks: 1 个配置
 ```
 
 **PHASE 2 推理日志：**
