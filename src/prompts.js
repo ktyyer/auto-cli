@@ -20,34 +20,6 @@ export function showBanner() {
 }
 
 /**
- * 提示选择组件
- */
-export async function promptComponentSelection() {
-  const choices = Object.entries(COMPONENTS).map(([key, value]) => ({
-    name: `${value.name} - ${chalk.gray(value.description)}`,
-    value: key,
-    checked: true
-  }));
-
-  const { components } = await inquirer.prompt([
-    {
-      type: 'checkbox',
-      name: 'components',
-      message: '选择要安装的组件：',
-      choices,
-      validate: (answer) => {
-        if (answer.length === 0) {
-          return '请至少选择一个组件。';
-        }
-        return true;
-      }
-    }
-  ]);
-
-  return components;
-}
-
-/**
  * 提示确认
  */
 export async function promptConfirmation(message = '确认继续安装？') {

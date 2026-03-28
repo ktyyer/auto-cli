@@ -4,7 +4,8 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'path';
 import { interactiveMode, runInstall, runUpdate, runUninstall } from '../src/index.js';
-import { getPackageVersion, COMPONENTS } from '../src/utils.js';
+import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
+import { DOCS_URL } from '../src/config.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -98,30 +99,16 @@ program
   .command('docs')
   .description('打开使用文档')
   .action(async () => {
-    const url = 'https://github.com/zhukunpenglinyutong/ai-max';
+    const url = DOCS_URL;
     console.log('');
     console.log(chalk.cyan('正在打开文档...'));
     console.log(chalk.gray(`  ${url}`));
     console.log('');
 
-    // 跨平台打开浏览器
-    const { exec } = await import('child_process');
-    const platform = process.platform;
-    let command;
-
-    if (platform === 'darwin') {
-      command = `open "${url}"`;
-    } else if (platform === 'win32') {
-      command = `start "" "${url}"`;
-    } else {
-      command = `xdg-open "${url}"`;
+    const success = await openBrowser(url);
+    if (!success) {
+      console.log(chalk.yellow('无法自动打开浏览器，请手动访问上述链接。'));
     }
-
-    exec(command, (error) => {
-      if (error) {
-        console.log(chalk.yellow('无法自动打开浏览器，请手动访问上述链接。'));
-      }
-    });
   });
 
 function resolveStateFile(filePath) {
