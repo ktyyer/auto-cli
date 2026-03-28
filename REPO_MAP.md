@@ -60,6 +60,9 @@
 | export | `uninstall` | src\installer.js |
 | export | `SkillDiscovery` | src\skills\skill-discovery.js |
 | export | `SKILL_DOMAINS` | src\skills\skill-types.js |
+| export | `RuleEngine` | src\governance\rule-engine.js |
+| export | `RULE_ACTIONS` | src\governance\rule-types.js |
+| export | `RULE_PRIORITIES` | src\governance\rule-types.js |
 
 ---
 

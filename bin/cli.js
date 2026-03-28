@@ -11,6 +11,7 @@ import { KnowledgeGraph } from '../src/graph/knowledge-graph.js';
 import { ENTITY_TYPE_LABELS } from '../src/graph/entity-types.js';
 import { DigitalBrain } from '../src/brain/digital-brain.js';
 import { SkillDiscovery } from '../src/skills/skill-discovery.js';
+import { RuleEngine } from '../src/governance/rule-engine.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -686,6 +687,208 @@ skills
         }
       }
 
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 治理规则命令
+const rules = program.command('rules').description('治理规则引擎 - 管理、验证、执行规则');
+
+rules
+  .command('list')
+  .description('列出所有规则')
+  .action(async () => {
+    try {
+      const engine = new RuleEngine();
+      await engine.loadRules();
+      const ruleList = engine.listRules();
+
+      if (ruleList.length === 0) {
+        console.log(chalk.yellow('没有可用规则'));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`治理规则 (${ruleList.length})：`));
+      console.log('');
+
+      // 按优先级分组
+      const byPriority = {
+        critical: ruleList.filter((r) => r.priority >= 100),
+        high: ruleList.filter((r) => r.priority >= 90 && r.priority < 100),
+        medium: ruleList.filter((r) => r.priority >= 70 && r.priority < 90),
+        low: ruleList.filter((r) => r.priority >= 50 && r.priority < 70),
+        info: ruleList.filter((r) => r.priority < 50)
+      };
+
+      for (const [priority, rules] of Object.entries(byPriority)) {
+        if (rules.length === 0) continue;
+
+        const priorityLabel = {
+          critical: '🔴 关键',
+          high: '🟠 高',
+          medium: '🟡 中',
+          low: '🟢 低',
+          info: '🔵 信息'
+        }[priority];
+
+        console.log(`  ${priorityLabel} (${rules.length})`);
+        for (const rule of rules) {
+          const critical = rule.critical ? chalk.red(' [CRITICAL]') : '';
+          console.log(`    ${chalk.bold(rule.name)}${critical}`);
+          console.log(`      ${chalk.gray(rule.description)}`);
+          console.log(
+            `      动作: ${chalk.cyan(rule.action)} | 作用域: ${chalk.yellow(rule.scope || 'always')}`
+          );
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+rules
+  .command('validate <action>')
+  .description('验证操作是否符合规则')
+  .option('-f, --files <files>', '相关文件，逗号分隔')
+  .option('-s, --scope <scope>', '作用域')
+  .option('-m, --message <message>', '操作描述')
+  .action(async (action, options) => {
+    try {
+      const engine = new RuleEngine();
+      await engine.loadRules();
+
+      const context = {
+        files: options.files ? options.files.split(',') : [],
+        scope: options.scope,
+        message: options.message || ''
+      };
+
+      const result = await engine.validate(action, context);
+
+      if (result.passed) {
+        console.log(chalk.green('✓ 规则验证通过'));
+        if (result.warnings && result.warnings.length > 0) {
+          console.log('');
+          console.log(chalk.yellow('警告：'));
+          for (const warning of result.warnings) {
+            console.log(`  ⚠️  ${warning.message}`);
+          }
+        }
+      } else {
+        console.log(chalk.red('✗ 规则验证失败'));
+        console.log(chalk.red(`  原因: ${result.message}`));
+        console.log(chalk.red(`  规则: ${result.rule}`));
+        if (result.action === 'block') {
+          console.log('');
+          console.log(chalk.red('操作已阻止'));
+          process.exit(1);
+        }
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+rules
+  .command('add <name>')
+  .description('添加自定义规则')
+  .requiredOption('-t, --trigger <keywords>', '触发关键词，逗号分隔')
+  .requiredOption('-a, --action <action>', '动作类型 (block|warn|retry|skip|require)')
+  .option('-d, --description <desc>', '规则描述')
+  .option('-p, --priority <number>', '优先级 (1-100)', '50')
+  .option('-s, --scope <scope>', '作用域 (always|pre-commit|edit|on-demand)')
+  .action(async (name, options) => {
+    try {
+      const engine = new RuleEngine();
+      await engine.loadRules();
+
+      const rule = {
+        name,
+        description: options.description || `自定义规则: ${name}`,
+        trigger: options.trigger.split(',').map((t) => t.trim()),
+        action: options.action,
+        priority: parseInt(options.priority, 10),
+        scope: options.scope || 'always',
+        critical: options.priority >= 90
+      };
+
+      const success = await engine.addRule(rule);
+
+      if (success) {
+        console.log(chalk.green(`✓ 规则已添加: ${name}`));
+      } else {
+        console.log(chalk.yellow(`添加规则失败`));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+rules
+  .command('remove <name>')
+  .description('删除规则')
+  .action(async (name) => {
+    try {
+      const engine = new RuleEngine();
+      await engine.loadRules();
+
+      const success = await engine.removeRule(name);
+
+      if (success) {
+        console.log(chalk.green(`✓ 规则已删除: ${name}`));
+      } else {
+        console.log(chalk.yellow(`规则不存在或无法删除: ${name}`));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+rules
+  .command('stats')
+  .description('显示规则统计')
+  .action(async () => {
+    try {
+      const engine = new RuleEngine();
+      await engine.loadRules();
+      const stats = engine.getStats();
+
+      console.log('');
+      console.log(chalk.cyan.bold('治理规则统计：'));
+      console.log('');
+      console.log(`  ${chalk.bold('规则总数')}: ${stats.total}`);
+      console.log(`  ${chalk.bold('关键规则')}: ${chalk.red(stats.criticalCount)}`);
+      console.log('');
+
+      console.log('  按动作分布：');
+      for (const [action, count] of Object.entries(stats.byAction)) {
+        console.log(`    ${chalk.bold(action)}: ${chalk.green(count)}`);
+      }
+
+      console.log('');
+      console.log('  按作用域分布：');
+      for (const [scope, count] of Object.entries(stats.byScope)) {
+        console.log(`    ${chalk.bold(scope)}: ${chalk.green(count)}`);
+      }
+
+      console.log('');
+      console.log('  按优先级分布：');
+      console.log(`    🔴 关键: ${stats.byPriority.critical}`);
+      console.log(`    🟠 高: ${stats.byPriority.high}`);
+      console.log(`    🟡 中: ${stats.byPriority.medium}`);
+      console.log(`    🟢 低: ${stats.byPriority.low}`);
+      console.log(`    🔵 信息: ${stats.byPriority.info}`);
       console.log('');
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
