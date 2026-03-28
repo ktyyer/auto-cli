@@ -9,6 +9,7 @@ import { DOCS_URL } from '../src/config.js';
 import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
 import { KnowledgeGraph } from '../src/graph/knowledge-graph.js';
 import { ENTITY_TYPE_LABELS } from '../src/graph/entity-types.js';
+import { DigitalBrain } from '../src/brain/digital-brain.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -397,6 +398,123 @@ query
       for (const [type, count] of Object.entries(stats.entitiesByType)) {
         console.log(`  ${chalk.bold(type.padEnd(12))} ${chalk.green(count.toString())}`);
       }
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 数字大脑命令
+const brain = program.command('brain').description('个人知识库 - 管理身份、人脉、创意');
+
+brain
+  .command('add')
+  .description('添加知识条目')
+  .requiredOption('-t, --type <type>', '类型')
+  .requiredOption('-c, --content <content>', '内容')
+  .option('--tags <tags>', '标签，逗号分隔')
+  .action(async (options) => {
+    try {
+      const brainInstance = new DigitalBrain();
+      const tags = options.tags ? options.tags.split(',').map((s) => s.trim()) : [];
+
+      let result;
+      switch (options.type) {
+        case 'identity':
+          result = await brainInstance.addIdentity(options.content, {
+            skills: tags
+          });
+          break;
+        case 'contact':
+          result = await brainInstance.addContact(options.content, {
+            tags
+          });
+          break;
+        case 'idea':
+          result = await brainInstance.addIdea(options.content, {
+            tags
+          });
+          break;
+        case 'review':
+          result = await brainInstance.addReview(options.content, {});
+          break;
+        default:
+          console.error(chalk.red(`未知类型: ${options.type}`));
+          console.log(chalk.gray('支持的类型: identity, contact, idea, review'));
+          process.exit(1);
+      }
+
+      console.log(chalk.green('✓ 已添加'));
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+brain
+  .command('search')
+  .description('搜索知识')
+  .requiredOption('-t, --type <type>', '类型')
+  .requiredOption('-q, --query <keyword>', '搜索关键词')
+  .action(async (options) => {
+    try {
+      const brainInstance = new DigitalBrain();
+
+      let results;
+      switch (options.type) {
+        case 'contact':
+          results = await brainInstance.searchContacts(options.query);
+          break;
+        case 'idea':
+          results = await brainInstance.searchIdeas(options.query);
+          break;
+        default:
+          console.error(chalk.red(`未知类型: ${options.type}`));
+          console.log(chalk.gray('支持的类型: contact, idea'));
+          process.exit(1);
+      }
+
+      if (results.length === 0) {
+        console.log(chalk.yellow(`未找到与 "${options.query}" 相关的${options.type}`));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`找到 ${results.length} 个结果：`));
+      console.log('');
+      for (const item of results) {
+        console.log(`  ${chalk.bold(item.title || item.name)}`);
+        if (item.description) {
+          console.log(`    ${chalk.gray(item.description)}`);
+        }
+        if (item.tags && item.tags.length > 0) {
+          console.log(`    ${chalk.cyan(`标签: ${item.tags.join(', ')}`)}`);
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+brain
+  .command('stats')
+  .description('显示统计信息')
+  .action(async () => {
+    try {
+      const brainInstance = new DigitalBrain();
+      const stats = await brainInstance.getStats();
+
+      console.log('');
+      console.log(chalk.cyan.bold('个人知识库统计：'));
+      console.log('');
+      console.log(`  ${chalk.bold('身份定位')}: ${stats.identities}`);
+      console.log(`  ${chalk.bold('人脉网络')}: ${stats.network}`);
+      console.log(`  ${chalk.bold('创意灵感')}: ${stats.ideas}`);
+      console.log(`  ${chalk.bold('复盘记录')}: ${stats.reviews}`);
+      console.log(`  ${chalk.bold('总计')}: ${stats.total}`);
       console.log('');
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
