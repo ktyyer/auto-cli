@@ -20,10 +20,25 @@ class Logger {
   }
 
   setLevel(level) {
-    this.level = level;
+    if (typeof level === 'string') {
+      const upperLevel = level.toUpperCase();
+      if (upperLevel in LOG_LEVELS) {
+        this.level = LOG_LEVELS[upperLevel];
+      } else {
+        throw new Error(`Invalid log level: ${level}. Valid levels: ${Object.keys(LOG_LEVELS).join(', ')}`);
+      }
+    } else if (typeof level === 'number') {
+      if (level >= 0 && level <= 4) {
+        this.level = level;
+      } else {
+        throw new Error(`Invalid log level number: ${level}. Valid range: 0-4`);
+      }
+    } else {
+      throw new TypeError(`Log level must be string or number, got: ${typeof level}`);
+    }
   }
 
-  _formatMessage(level, message, meta) {
+  _formatMessage(message, meta) {
     const parts = [];
 
     if (this.timestamp) {
@@ -46,41 +61,50 @@ class Logger {
 
   debug(message, meta) {
     if (this.level <= LOG_LEVELS.DEBUG) {
-      console.log(chalk.gray('DEBUG:'), this._formatMessage('DEBUG', message, meta));
+      console.log(chalk.gray('DEBUG:'), this._formatMessage(message, meta));
     }
   }
 
   info(message, meta) {
     if (this.level <= LOG_LEVELS.INFO) {
-      console.log(chalk.blue('INFO:'), this._formatMessage('INFO', message, meta));
+      console.log(chalk.blue('INFO:'), this._formatMessage(message, meta));
     }
   }
 
   warn(message, meta) {
     if (this.level <= LOG_LEVELS.WARN) {
-      console.warn(chalk.yellow('WARN:'), this._formatMessage('WARN', message, meta));
+      console.warn(chalk.yellow('WARN:'), this._formatMessage(message, meta));
     }
   }
 
   error(message, meta) {
     if (this.level <= LOG_LEVELS.ERROR) {
-      console.error(chalk.red('ERROR:'), this._formatMessage('ERROR', message, meta));
+      console.error(chalk.red('ERROR:'), this._formatMessage(message, meta));
     }
   }
 
   success(message, meta) {
     if (this.level <= LOG_LEVELS.INFO) {
-      console.log(chalk.green('SUCCESS:'), this._formatMessage('SUCCESS', message, meta));
+      console.log(chalk.green('SUCCESS:'), this._formatMessage(message, meta));
     }
   }
 
-  // 保留原有方法以兼容现有代码
-  log(message) {
-    console.log(message);
+  /**
+   * 输出日志（尊重级别控制）
+   */
+  log(message, meta) {
+    if (this.level <= LOG_LEVELS.INFO) {
+      console.log(this._formatMessage(message, meta));
+    }
   }
 
+  /**
+   * 输出原始信息（无前缀，但尊重级别控制）
+   */
   infoRaw(message) {
-    console.log(message);
+    if (this.level <= LOG_LEVELS.INFO) {
+      console.log(message);
+    }
   }
 }
 

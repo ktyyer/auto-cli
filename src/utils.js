@@ -1,6 +1,7 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs-extra';
+import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
 
 /**
@@ -158,3 +159,25 @@ export function getSourceDir() {
  * 默认端口号
  */
 export const DEFAULT_PORT = 8099;
+
+/**
+ * 跨平台打开浏览器
+ */
+export async function openBrowser(url) {
+  const platform = process.platform;
+  let command;
+
+  if (platform === 'darwin') {
+    command = `open "${url}"`;
+  } else if (platform === 'win32') {
+    command = `start "" "${url}"`;
+  } else {
+    command = `xdg-open "${url}"`;
+  }
+
+  return new Promise((resolve) => {
+    exec(command, (error) => {
+      resolve(!error);
+    });
+  });
+}
