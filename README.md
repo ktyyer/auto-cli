@@ -154,6 +154,29 @@ Spring (Java)、React (JavaScript)、Django (Python)、Gin (Go)
 
 预定义配置：PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、TaskCompleted、Stop 等 7 类钩子事件
 
+### MCP 服务器集成（19 个模板）
+
+MCP (Model Context Protocol) 为 Claude Code 提供外部工具和服务集成能力。Auto CLI 内置 19 个常用 MCP 服务器配置模板。
+
+**按分类选用**（`mcp-configs/` 目录）：
+
+| 分类 | 文件 | 服务器数 | 典型用途 |
+|------|------|---------|---------|
+| 数据库 | `database.json` | 2 | Supabase、ClickHouse |
+| 搜索 | `search.json` | 4 | Brave Search、Tavily、Context7、Firecrawl |
+| 云服务 | `cloud.json` | 6 | Vercel、Railway、Cloudflare 系列 |
+| 开发工具 | `devtools.json` | 4 | GitHub、Playwright、AST Grep、Filesystem |
+| AI 增强 | `ai.json` | 3 | Memory、Sequential Thinking、Magic UI |
+| 第三方集成 | `integration.json` | 1 | Composio (250+ SaaS) |
+
+**使用方式**：
+1. 安装 Auto CLI 后，配置文件位于 `~/.claude/mcp-configs/`
+2. 选择需要的分类 JSON，将服务器配置复制到 `~/.claude.json` 的 `mcpServers` 字段
+3. 替换 `YOUR_*_HERE` 占位符为实际 API Key
+4. 重启 Claude Code 生效
+
+**状态检测**：`/auto:status` 命令会自动扫描 MCP 配置，报告就绪/需配置的服务器数量。
+
 ---
 
 ## 按规模自动选择执行模式
@@ -200,6 +223,7 @@ Spring (Java)、React (JavaScript)、Django (Python)、Gin (Go)
 📊 能力健康检查:
   🟢 commands: 15 个  🟢 agents: 11 个  🟢 plugins: 17 个
   🟢 skills: 19 个  🟢 rules: 9 个  🟢 hooks: 1 个配置
+  🟡 MCP: 19 个模板（5 个即用 / 14 个需 API Key）
 ```
 
 **PHASE 2 推理日志：**

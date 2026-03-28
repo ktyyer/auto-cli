@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": { "FIRECRAWL_API_KEY": "YOUR_FIRECRAWL_KEY_HERE" },
+      "description": "Firecrawl 网页抓取和爬虫"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE" },
+      "description": "Brave Search - 隐私友好的网络搜索引擎"
+    },
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": { "TAVILY_API_KEY": "YOUR_TAVILY_API_KEY_HERE" },
+      "description": "Tavily AI Search - 专为 AI Agent 设计的搜索引擎"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@context7/mcp-server"],
+      "description": "Context7 实时文档查询 - 获取最新库/框架文档"
+    }
+  },
+  "_meta": {
+    "category": "search",
+    "label": "搜索",
+    "description": "网络搜索和文档查询相关 MCP 服务器"
+  }
+}

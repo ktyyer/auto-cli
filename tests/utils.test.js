@@ -11,7 +11,10 @@ import {
   saveInstalledVersion,
   getPackageVersion,
   COMPONENTS,
-  DEFAULT_PORT
+  DEFAULT_PORT,
+  analyzeMcpServers,
+  getMcpServerCategories,
+  countMcpServers
 } from '../src/utils.js';
 
 describe('utils.js', () => {
@@ -241,6 +244,158 @@ describe('utils.js', () => {
         }),
         { spaces: 2 }
       );
+    });
+  });
+
+  describe('analyzeMcpServers', () => {
+    const testMcpFile = path.join(os.tmpdir(), '.auto-test-mcp-' + Date.now() + '.json');
+
+    afterEach(async () => {
+      await fs.remove(testMcpFile);
+    });
+
+    it('should return empty arrays when file does not exist', async () => {
+      const result = await analyzeMcpServers('/nonexistent/path.json');
+
+      expect(result.ready).toEqual([]);
+      expect(result.needsConfig).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('should classify servers with YOUR_ placeholder as needsConfig', async () => {
+      const config = {
+        mcpServers: {
+          github: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-github'],
+            env: { GITHUB_PERSONAL_ACCESS_TOKEN: 'YOUR_GITHUB_PAT_HERE' },
+            description: 'GitHub operations'
+          },
+          memory: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-memory'],
+            description: 'Persistent memory'
+          }
+        }
+      };
+      await fs.writeJson(testMcpFile, config);
+
+      const result = await analyzeMcpServers(testMcpFile);
+
+      expect(result.total).toBe(2);
+      expect(result.ready).toHaveLength(1);
+      expect(result.ready[0].name).toBe('memory');
+      expect(result.needsConfig).toHaveLength(1);
+      expect(result.needsConfig[0].name).toBe('github');
+    });
+
+    it('should detect type field when present', async () => {
+      const config = {
+        mcpServers: {
+          vercel: {
+            type: 'http',
+            url: 'https://mcp.vercel.com',
+            description: 'Vercel deployments'
+          }
+        }
+      };
+      await fs.writeJson(testMcpFile, config);
+
+      const result = await analyzeMcpServers(testMcpFile);
+
+      expect(result.ready[0].type).toBe('http');
+      expect(result.ready[0].command).toBe('');
+    });
+
+    it('should return empty on invalid JSON', async () => {
+      await fs.writeFile(testMcpFile, 'not json');
+
+      const result = await analyzeMcpServers(testMcpFile);
+
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe('getMcpServerCategories', () => {
+    const testMcpFile = path.join(os.tmpdir(), '.auto-test-mcp-cat-' + Date.now() + '.json');
+
+    afterEach(async () => {
+      await fs.remove(testMcpFile);
+    });
+
+    it('should categorize servers into correct groups', async () => {
+      const config = {
+        mcpServers: {
+          supabase: {
+            command: 'npx',
+            args: ['-y', '@supabase/mcp-server-supabase@latest'],
+            description: 'Supabase'
+          },
+          'brave-search': {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-brave-search'],
+            env: { BRAVE_API_KEY: 'YOUR_BRAVE_API_KEY_HERE' },
+            description: 'Search'
+          },
+          memory: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-memory'],
+            description: 'Memory'
+          }
+        }
+      };
+      await fs.writeJson(testMcpFile, config);
+
+      const { categories, summary } = await getMcpServerCategories(testMcpFile);
+
+      expect(summary.total).toBe(3);
+      expect(summary.ready).toBe(2);
+      expect(summary.needsConfig).toBe(1);
+      expect(categories.database.total).toBe(1);
+      expect(categories.search.total).toBe(1);
+      expect(categories.ai.total).toBe(1);
+    });
+
+    it('should return zero counts when file does not exist', async () => {
+      const { summary } = await getMcpServerCategories('/nonexistent.json');
+
+      expect(summary.total).toBe(0);
+    });
+  });
+
+  describe('countMcpServers', () => {
+    const testMcpFile = path.join(os.tmpdir(), '.auto-test-mcp-count-' + Date.now() + '.json');
+
+    afterEach(async () => {
+      await fs.remove(testMcpFile);
+    });
+
+    it('should return correct counts', async () => {
+      const config = {
+        mcpServers: {
+          memory: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+          github: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-github'],
+            env: { GITHUB_PERSONAL_ACCESS_TOKEN: 'YOUR_GITHUB_PAT_HERE' }
+          }
+        }
+      };
+      await fs.writeJson(testMcpFile, config);
+
+      const result = await countMcpServers(testMcpFile);
+
+      expect(result.mcp_servers).toBe(2);
+      expect(result.mcp_ready).toBe(1);
+      expect(result.mcp_needs_config).toBe(1);
+    });
+
+    it('should return zeros when file missing', async () => {
+      const result = await countMcpServers('/nonexistent.json');
+
+      expect(result.mcp_servers).toBe(0);
+      expect(result.mcp_ready).toBe(0);
+      expect(result.mcp_needs_config).toBe(0);
     });
   });
 });

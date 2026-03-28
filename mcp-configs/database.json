@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=YOUR_PROJECT_REF"],
+      "description": "Supabase 数据库操作 - 表查询、存储过程、实时订阅"
+    },
+    "clickhouse": {
+      "type": "http",
+      "url": "https://mcp.clickhouse.cloud/mcp",
+      "description": "ClickHouse 分析查询 - 列式数据库 OLAP 分析"
+    }
+  },
+  "_meta": {
+    "category": "database",
+    "label": "数据库",
+    "description": "数据库连接和查询相关 MCP 服务器"
+  }
+}
