@@ -7,6 +7,8 @@ import { interactiveMode, runInstall, runUpdate, runUninstall } from '../src/ind
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
 import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
+import { KnowledgeGraph } from '../src/graph/knowledge-graph.js';
+import { ENTITY_TYPE_LABELS } from '../src/graph/entity-types.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -308,6 +310,94 @@ save
           console.log('');
         }
       }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 知识图谱命令
+const query = program.command('query').description('查询跨项目知识图谱');
+
+query
+  .command('extract')
+  .description('从当前项目提取知识图谱')
+  .option('-n, --name <name>', '项目名称')
+  .action(async (options) => {
+    try {
+      const graph = new KnowledgeGraph();
+      await graph.extractFromProject(options.name);
+
+      console.log(chalk.green('知识图谱提取完成！'));
+
+      const stats = await graph.getStats();
+      console.log(chalk.gray(`  实体总数: ${stats.totalEntities}`));
+      console.log(chalk.gray(`  关系总数: ${stats.totalRelations}`));
+      console.log(chalk.gray(`  项目总数: ${stats.totalProjects}`));
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+query
+  .command('search')
+  .description('搜索知识图谱')
+  .requiredOption('-q, --query <keyword>', '搜索关键词')
+  .option('-t, --type <type>', '过滤实体类型')
+  .option('-l, --limit <number>', '返回结果数量', '10')
+  .action(async (options) => {
+    try {
+      const graph = new KnowledgeGraph();
+      const limit = parseInt(options.limit, 10);
+      const results = await graph.query(options.query, { type: options.type, limit });
+
+      if (results.length === 0) {
+        console.log(chalk.yellow(`未找到与 "${options.query}" 相关的实体`));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`找到 ${results.length} 个相关实体：`));
+      console.log('');
+
+      for (const { entity, score } of results) {
+        const typeLabel = ENTITY_TYPE_LABELS[entity.type] || entity.type;
+        console.log(`  ${chalk.bold(entity.name)} (${chalk.gray(typeLabel)})`);
+        console.log(
+          `    ${chalk.gray(`出现次数: ${entity.occurrences} | 相关项目: ${entity.projects.length}`)}`
+        );
+        if (entity.projects.length > 0) {
+          console.log(`    ${chalk.cyan(`项目: ${entity.projects.join(', ')}`)}`);
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+query
+  .command('stats')
+  .description('显示图谱统计信息')
+  .action(async () => {
+    try {
+      const graph = new KnowledgeGraph();
+      const stats = await graph.getStats();
+
+      console.log('');
+      console.log(chalk.cyan.bold('知识图谱统计：'));
+      console.log('');
+      console.log(`  ${chalk.bold('实体总数')}: ${stats.totalEntities}`);
+      console.log(`  ${chalk.bold('关系总数')}: ${stats.totalRelations}`);
+      console.log(`  ${chalk.bold('项目总数')}: ${stats.totalProjects}`);
+      console.log('');
+      console.log(chalk.cyan('按类型分布：'));
+      for (const [type, count] of Object.entries(stats.entitiesByType)) {
+        console.log(`  ${chalk.bold(type.padEnd(12))} ${chalk.green(count.toString())}`);
+      }
+      console.log('');
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);
