@@ -144,8 +144,8 @@ describe('utils.js', () => {
       });
     });
 
-    it('should have exactly 9 components', () => {
-      expect(Object.keys(COMPONENTS)).toHaveLength(9);
+    it('should have exactly 10 components', () => {
+      expect(Object.keys(COMPONENTS)).toHaveLength(10);
     });
   });
 
