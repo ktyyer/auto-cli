@@ -6,6 +6,7 @@ import path from 'path';
 import { interactiveMode, runInstall, runUpdate, runUninstall } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
+import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -206,6 +207,107 @@ loop
       console.log(formatLoopState(state));
       console.log('');
       console.log(chalk.cyan(`建议下一步：${state.next_action}`));
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 知识保存命令
+const save = program.command('save').description('保存知识条目（灵感、踩坑经验、架构决策等）');
+
+save
+  .command('insight')
+  .description('保存一条知识条目')
+  .requiredOption('-c, --content <text>', '要保存的内容')
+  .option('-t, --category <type>', '指定分类（prompt, trap, pattern, decision）')
+  .option('--tags <tags>', '标签，逗号分隔（如: react,performance）')
+  .option('--no-git', '跳过 git 自动提交')
+  .action(async (options) => {
+    try {
+      const steward = new KnowledgeSteward();
+      const tags = options.tags
+        ? options.tags
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined;
+
+      const result = await steward.save({
+        content: options.content,
+        category: options.category,
+        tags,
+        gitCommit: options.git
+      });
+
+      if (result.success) {
+        console.log(chalk.green('知识已保存！'));
+        console.log(chalk.gray(`  分类: ${result.categoryName}`));
+        console.log(chalk.gray(`  文件: ${result.filePath}`));
+        if (result.gitHash) {
+          console.log(chalk.gray(`  提交: ${result.gitHash}`));
+        }
+      } else {
+        console.log(chalk.yellow(`保存失败: ${result.error}`));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+save
+  .command('list')
+  .description('列出所有知识条目统计')
+  .action(async () => {
+    try {
+      const steward = new KnowledgeSteward();
+      const stats = await steward.list();
+
+      console.log('');
+      console.log(chalk.cyan.bold('知识库统计：'));
+      console.log('');
+      for (const stat of stats) {
+        const count = stat.count > 0 ? chalk.green(`${stat.count} 条`) : chalk.gray('空');
+        console.log(
+          `  ${chalk.bold(stat.category.padEnd(10))} ${count} ${chalk.gray(`- ${stat.description}`)}`
+        );
+      }
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+save
+  .command('search')
+  .description('搜索知识条目')
+  .requiredOption('-q, --query <keyword>', '搜索关键词')
+  .action(async (options) => {
+    try {
+      const steward = new KnowledgeSteward();
+      const results = await steward.search(options.query);
+
+      if (results.length === 0) {
+        console.log(chalk.yellow(`未找到与 "${options.query}" 相关的知识条目`));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`搜索 "${options.query}" 的结果：`));
+      console.log('');
+      for (const result of results) {
+        console.log(chalk.bold(`  [${result.category}]`));
+        for (const match of result.matches) {
+          const lines = match.split('\n').slice(0, 5);
+          for (const line of lines) {
+            console.log(chalk.gray(`    ${line}`));
+          }
+          console.log('');
+        }
+      }
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);
