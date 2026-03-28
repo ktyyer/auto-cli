@@ -84,7 +84,7 @@ describe('installer.js', () => {
     it('should have correct structure for each component', async () => {
       const status = await checkStatus();
 
-      for (const [key, value] of Object.entries(status)) {
+      for (const [, value] of Object.entries(status)) {
         expect(value).toHaveProperty('installed');
         expect(value).toHaveProperty('path');
         expect(value).toHaveProperty('fileCount');

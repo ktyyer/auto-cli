@@ -94,7 +94,7 @@ program
     console.log('');
     console.log(chalk.cyan.bold('可用组件：'));
     console.log('');
-    for (const [key, value] of Object.entries(COMPONENTS)) {
+    for (const [, value] of Object.entries(COMPONENTS)) {
       console.log(`  ${chalk.green(value.name.padEnd(16))} ${value.description}`);
     }
     console.log('');

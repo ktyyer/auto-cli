@@ -171,7 +171,7 @@ export async function uninstall(selectedComponents) {
             await fs.remove(filePath);
             removedFiles.push(filePath);
           }
-        } catch (err) {
+        } catch {
           failedFiles.push(filePath);
         }
       }
