@@ -150,13 +150,17 @@ describe('installer.js', () => {
 
       expect(result.installedFiles).toEqual([]);
 
-      const backupExists = await fs.pathExists(`${targetFile}.backup`);
-      expect(backupExists).toBe(true);
+      // 备份文件名格式：{filename}.backup.{timestamp}
+      const dir = path.dirname(targetFile);
+      const baseName = path.basename(targetFile);
+      const dirFiles = await fs.readdir(dir);
+      const backupFile = dirFiles.find(f => f.startsWith(baseName + '.backup.'));
+      expect(backupFile).toBeDefined();
 
       const content = await fs.readFile(targetFile, 'utf-8');
       expect(content).toBe('# Old Content');
 
-      const backupContent = await fs.readFile(`${targetFile}.backup`, 'utf-8');
+      const backupContent = await fs.readFile(path.join(dir, backupFile), 'utf-8');
       expect(backupContent).toBe('# Old Content');
     });
 

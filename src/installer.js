@@ -54,7 +54,7 @@ export async function install(selectedComponents, options = {}) {
           const exists = await fs.pathExists(destFile);
           if (exists && !force) {
             if (backup) {
-              await fs.copy(destFile, `${destFile}.backup`);
+              await backupFile(destFile);
             }
             skippedFiles.push(destFile);
           } else {
@@ -89,9 +89,23 @@ export async function install(selectedComponents, options = {}) {
 }
 
 /**
+ * 备份文件（使用时间戳后缀，避免反复覆盖）
+ */
+async function backupFile(filePath) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  await fs.copy(filePath, `${filePath}.backup.${timestamp}`);
+}
+
+const MAX_RECURSION_DEPTH = 20;
+
+/**
  * 递归复制文件
  */
-async function copyRecursive(src, dest, options = {}) {
+async function copyRecursive(src, dest, options = {}, depth = 0) {
+  if (depth > MAX_RECURSION_DEPTH) {
+    throw new Error(`目录层级超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环链接`);
+  }
+
   const { backup = true, force = false } = options;
   const installed = [];
   const skipped = [];
@@ -105,14 +119,14 @@ async function copyRecursive(src, dest, options = {}) {
 
     if (stats.isDirectory()) {
       await fs.ensureDir(destPath);
-      const subResult = await copyRecursive(srcPath, destPath, options);
+      const subResult = await copyRecursive(srcPath, destPath, options, depth + 1);
       installed.push(...subResult.installed);
       skipped.push(...subResult.skipped);
     } else {
       const exists = await fs.pathExists(destPath);
       if (exists && !force) {
         if (backup) {
-          await fs.copy(destPath, `${destPath}.backup`);
+          await backupFile(destPath);
         }
         skipped.push(destPath);
       } else {
@@ -224,7 +238,11 @@ export async function uninstall(selectedComponents) {
 async function getSourceFilesList(sourcePath, recursive = false) {
   const files = [];
 
-  async function traverse(currentPath, relativePath = '') {
+  async function traverse(currentPath, relativePath = '', depth = 0) {
+    if (depth > MAX_RECURSION_DEPTH) {
+      throw new Error(`目录层级超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环链接`);
+    }
+
     const items = await fs.readdir(currentPath);
     for (const item of items) {
       const itemPath = path.join(currentPath, item);
@@ -232,7 +250,7 @@ async function getSourceFilesList(sourcePath, recursive = false) {
       const stats = await fs.stat(itemPath);
 
       if (stats.isDirectory() && recursive) {
-        await traverse(itemPath, itemRelative);
+        await traverse(itemPath, itemRelative, depth + 1);
       } else if (stats.isFile()) {
         files.push(itemRelative);
       }
@@ -316,7 +334,11 @@ export async function checkStatus() {
 /**
  * 统计目录内文件数量
  */
-async function countFiles(dirPath, recursive = false) {
+async function countFiles(dirPath, recursive = false, depth = 0) {
+  if (depth > MAX_RECURSION_DEPTH) {
+    throw new Error(`目录层级超过 ${MAX_RECURSION_DEPTH} 层，可能存在循环链接`);
+  }
+
   if (!await fs.pathExists(dirPath)) return 0;
 
   let count = 0;
@@ -332,7 +354,7 @@ async function countFiles(dirPath, recursive = false) {
     }
 
     if (stats.isDirectory() && recursive) {
-      count += await countFiles(itemPath, true);
+      count += await countFiles(itemPath, true, depth + 1);
     }
   }
 
