@@ -508,6 +508,268 @@ class ControllerTest {
 }
 ```
 
+### Spring Boot CRUD 完整示例
+
+```java
+// ===== 第 1 步：测试先写 =====
+
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+@DisplayName("UserController 集成测试 - CRUD")
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private Long testUserId;
+
+    @Test
+    @DisplayName("POST /users - 创建用户成功")
+    void createUser_ShouldReturnCreated() throws Exception {
+        // Given
+        String requestBody = """
+            {
+                "username": "testuser",
+                "email": "test@example.com",
+                "age": 25
+            }
+            """;
+
+        // When & Then
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.data.username").value("testuser"))
+            .andExpect(jsonPath("$.data.email").value("test@example.com"))
+            .andExpect(jsonPath("$.data.id").exists())
+            .andDo(result -> {
+                // 保存 ID 供后续测试使用
+                String response = result.getResponse().getContentAsString();
+                testUserId = objectMapper.readTree(response).path("data").path("id").asLong();
+            });
+    }
+
+    @Test
+    @DisplayName("POST /users - 验证失败（用户名太短）")
+    void createUser_WithShortUsername_ShouldReturnBadRequest() throws Exception {
+        // Given
+        String requestBody = """
+            {
+                "username": "ab",
+                "email": "test@example.com",
+                "age": 25
+            }
+            """;
+
+        // When & Then
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("用户名长度2-50"));
+    }
+
+    @Test
+    @DisplayName("POST /users - 验证失败（邮箱格式错误）")
+    void createUser_WithInvalidEmail_ShouldReturnBadRequest() throws Exception {
+        // Given
+        String requestBody = """
+            {
+                "username": "testuser",
+                "email": "invalid-email",
+                "age": 25
+            }
+            """;
+
+        // When & Then
+        mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("邮箱格式不正确"));
+    }
+
+    @Test
+    @DisplayName("GET /users/{id} - 查询用户成功")
+    void getUserById_ShouldReturnUser() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/users/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.data.id").value(1))
+            .andExpect(jsonPath("$.data.username").exists());
+    }
+
+    @Test
+    @DisplayName("GET /users/{id} - 用户不存在")
+    void getUserById_WithNonExistentId_ShouldReturnNotFound() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/users/999999"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(404))
+            .andExpect(jsonPath("$.message").value("用户不存在"));
+    }
+
+    @Test
+    @DisplayName("PUT /users/{id} - 更新用户成功")
+    void updateUser_ShouldReturnUpdated() throws Exception {
+        // Given
+        String requestBody = """
+            {
+                "username": "updateduser",
+                "email": "updated@example.com",
+                "age": 30
+            }
+            """;
+
+        // When & Then
+        mockMvc.perform(put("/users/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.username").value("updateduser"))
+            .andExpect(jsonPath("$.data.email").value("updated@example.com"))
+            .andExpect(jsonPath("$.data.age").value(30));
+    }
+
+    @Test
+    @DisplayName("DELETE /users/{id} - 删除用户成功")
+    void deleteUser_ShouldReturnNoContent() throws Exception {
+        // When & Then
+        mockMvc.perform(delete("/users/1"))
+            .andExpect(status().isNoContent());
+
+        // 验证删除后查询返回 404
+        mockMvc.perform(get("/users/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(404));
+    }
+
+    @Test
+    @DisplayName("GET /users - 分页查询用户列表")
+    void listUsers_ShouldReturnPageResult() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/users")
+                .param("pageNum", "1")
+                .param("pageSize", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.data.list").isArray())
+            .andExpect(jsonPath("$.data.total").exists())
+            .andExpect(jsonPath("$.data.pageNum").value(1))
+            .andExpect(jsonPath("$.data.pageSize").value(10));
+    }
+}
+
+// ===== 第 2 步：实现代码（让测试通过）=====
+
+@RestController
+@RequestMapping("/users")
+@Tag(name = "用户管理", description = "用户的增删改查接口")
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    @PostMapping
+    @Operation(summary = "创建用户")
+    public Result<UserDTO> create(@RequestBody @Valid CreateUserRequest req) {
+        UserDTO user = userService.create(req);
+        return Result.success(user);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "根据ID查询用户")
+    public Result<UserDTO> getById(@PathVariable Long id) {
+        UserDTO user = userService.findById(id);
+        if (user == null) {
+            throw new ServiceException(404, "用户不存在");
+        }
+        return Result.success(user);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新用户")
+    public Result<UserDTO> update(
+        @PathVariable Long id,
+        @RequestBody @Valid UpdateUserRequest req
+    ) {
+        UserDTO user = userService.update(id, req);
+        return Result.success(user);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除用户")
+    public Result<Void> delete(@PathVariable Long id) {
+        userService.delete(id);
+        return Result.success();
+    }
+
+    @GetMapping
+    @Operation(summary = "分页查询用户")
+    public Result<PageInfo<UserDTO>> list(
+        @RequestParam(defaultValue = "1") Integer pageNum,
+        @RequestParam(defaultValue = "10") Integer pageSize
+    ) {
+        PageInfo<UserDTO> page = userService.pageList(pageNum, pageSize);
+        return Result.success(page);
+    }
+}
+
+// ===== 第 3 步：DTO =====
+
+@Data
+public class CreateUserRequest {
+    @NotBlank(message = "用户名不能为空")
+    @Length(min = 2, max = 50, message = "用户名长度2-50")
+    private String username;
+
+    @NotBlank(message = "邮箱不能为空")
+    @Email(message = "邮箱格式不正确")
+    private String email;
+
+    @NotNull(message = "年龄不能为空")
+    @Min(value = 0, message = "年龄不能小于0")
+    @Max(value = 150, message = "年龄不能大于150")
+    private Integer age;
+}
+
+@Data
+public class UserDTO {
+    private Long id;
+    private String username;
+    private String email;
+    private Integer age;
+    private String statusName;
+
+    public static UserDTO from(SysUser user) {
+        UserDTO dto = new UserDTO();
+        BeanUtils.copyProperties(user, dto);
+        dto.setStatusName(user.getStatus() == 1 ? "正常" : "禁用");
+        return dto;
+    }
+}
+```
+
 ---
 
 ## Go

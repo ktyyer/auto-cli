@@ -153,6 +153,126 @@ describe('logger.js', () => {
         expect(spy).not.toHaveBeenCalled();
       });
     });
+
+    describe('warn method (level-aware)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should output when level <= WARN', () => {
+        const instance = new Logger({ level: LOG_LEVELS.WARN });
+        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        instance.warn('warning message');
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should suppress output when level > WARN', () => {
+        const instance = new Logger({ level: LOG_LEVELS.ERROR });
+        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        instance.warn('warning message');
+
+        expect(spy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('error method (level-aware)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should output when level <= ERROR', () => {
+        const instance = new Logger({ level: LOG_LEVELS.ERROR });
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        instance.error('error message');
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should suppress output when level > ERROR', () => {
+        const instance = new Logger({ level: LOG_LEVELS.SILENT });
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        instance.error('error message');
+
+        expect(spy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('success method (level-aware)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should output when level <= INFO', () => {
+        const instance = new Logger({ level: LOG_LEVELS.INFO });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.success('success message');
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should suppress output when level > INFO', () => {
+        const instance = new Logger({ level: LOG_LEVELS.WARN });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.success('success message');
+
+        expect(spy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('info method (level-aware)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should output when level <= INFO', () => {
+        const instance = new Logger({ level: LOG_LEVELS.INFO });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.info('info message');
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should suppress output when level > INFO', () => {
+        const instance = new Logger({ level: LOG_LEVELS.WARN });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.info('info message');
+
+        expect(spy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('debug method (level-aware)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should output when level <= DEBUG', () => {
+        const instance = new Logger({ level: LOG_LEVELS.DEBUG });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.debug('debug message');
+
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should suppress output when level > DEBUG', () => {
+        const instance = new Logger({ level: LOG_LEVELS.INFO });
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        instance.debug('debug message');
+
+        expect(spy).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('default logger instance', () => {

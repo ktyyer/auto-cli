@@ -61,7 +61,23 @@ ctags -R --fields=+l --languages=Java,JavaScript,TypeScript,Python --output-form
 cat .repo-tags.json | jq '.[] | select(.kind == "class") | {name: .name, file: .path}'
 ```
 
-### 方法 3: AI 辅助生成（当以上工具不可用时）
+### 方法 3: 使用内置脚本（推荐，无需外部依赖）
+
+auto-cli 提供了内置的符号提取脚本：
+
+```bash
+# 使用 auto-cli 内置脚本
+node ~/.claude/skills/repo-map/lib/extract-symbols.js src java
+
+# 或在 auto-cli 项目目录中
+node skills/repo-map/lib/extract-symbols.js src typescript
+```
+
+**支持的语言**: `java`, `javascript`, `typescript`, `python`, `go`
+
+**输出**: 自动生成 `REPO_MAP.md` 文件
+
+### 方法 4: AI 辅助生成（当以上工具不可用时）
 
 ```bash
 # 快速结构扫描（适合中小型项目）
