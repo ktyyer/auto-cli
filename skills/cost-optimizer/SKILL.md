@@ -179,6 +179,51 @@ Settings → Usage → Workspace Spend Limit
 
 ---
 
+## 可执行工具
+
+### Token 成本追踪器
+
+auto-cli 提供了内置的 token 成本分析脚本：
+
+```bash
+# 分析目录
+node skills/cost-optimizer/lib/cost-tracker.js analyze src
+
+# 估算成本
+node skills/cost-optimizer/lib/cost-tracker.js estimate --input 10000 --output 5000
+
+# 预算规划
+node skills/cost-optimizer/lib/cost-tracker.js budget --monthly 50
+```
+
+**输出示例**：
+```
+📊 Token 成本分析报告
+
+模型: CLAUDE_SONNET
+文件数: 45
+
+## Token 统计
+  输入:  124,500 tokens
+  输出:  37,350 tokens
+  总计:  161,850 tokens
+
+## 成本估算 (单次加载)
+  🟡 中等成本: $0.0874
+
+## 最昂贵的文件 (Top 10)
+  🟠 $0.0234  (8500 tokens)  src/main/java/com/eco/service/OrderService.java
+  🟡 $0.0156  (5600 tokens)  src/components/UserList.vue
+  ...
+
+## 💡 优化建议
+  🔴 发现 3 个大文件 (>5000 tokens)
+     → 建议拆分为更小的模块，减少上下文加载成本
+     💰 可节省 60-70% token
+```
+
+---
+
 ## 开源借鉴
 
 - **Claude Code 官方 `/cost` 命令** — 实时成本监控
