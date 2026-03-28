@@ -119,7 +119,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（19 个）
+### Skills 知识库（20 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -141,6 +141,7 @@ auto install
 | smart-context | 智能上下文索引 |
 | tdd-workflow | TDD 工作流 |
 | security-review | 安全审查 |
+| prompt-craft | 短小精悍的提示词模板 |
 
 ### Plugins 插件（17 个）
 
