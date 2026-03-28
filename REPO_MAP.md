@@ -58,6 +58,8 @@
 | function | `stepKey` | src\loop-state-machine.js |
 | export | `transitionLoopState` | src\loop-state-machine.js |
 | export | `uninstall` | src\installer.js |
+| export | `SkillDiscovery` | src\skills\skill-discovery.js |
+| export | `SKILL_DOMAINS` | src\skills\skill-types.js |
 
 ---
 

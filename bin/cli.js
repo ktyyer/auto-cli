@@ -10,6 +10,7 @@ import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
 import { KnowledgeGraph } from '../src/graph/knowledge-graph.js';
 import { ENTITY_TYPE_LABELS } from '../src/graph/entity-types.js';
 import { DigitalBrain } from '../src/brain/digital-brain.js';
+import { SkillDiscovery } from '../src/skills/skill-discovery.js';
 import {
   DEFAULT_LOOP_STATE_FILE,
   createLoopState,
@@ -362,7 +363,7 @@ query
       console.log(chalk.cyan.bold(`找到 ${results.length} 个相关实体：`));
       console.log('');
 
-      for (const { entity, score } of results) {
+      for (const { entity } of results) {
         const typeLabel = ENTITY_TYPE_LABELS[entity.type] || entity.type;
         console.log(`  ${chalk.bold(entity.name)} (${chalk.gray(typeLabel)})`);
         console.log(
@@ -419,25 +420,24 @@ brain
       const brainInstance = new DigitalBrain();
       const tags = options.tags ? options.tags.split(',').map((s) => s.trim()) : [];
 
-      let result;
       switch (options.type) {
         case 'identity':
-          result = await brainInstance.addIdentity(options.content, {
+          await brainInstance.addIdentity(options.content, {
             skills: tags
           });
           break;
         case 'contact':
-          result = await brainInstance.addContact(options.content, {
+          await brainInstance.addContact(options.content, {
             tags
           });
           break;
         case 'idea':
-          result = await brainInstance.addIdea(options.content, {
+          await brainInstance.addIdea(options.content, {
             tags
           });
           break;
         case 'review':
-          result = await brainInstance.addReview(options.content, {});
+          await brainInstance.addReview(options.content, {});
           break;
         default:
           console.error(chalk.red(`未知类型: ${options.type}`));
@@ -515,6 +515,177 @@ brain
       console.log(`  ${chalk.bold('创意灵感')}: ${stats.ideas}`);
       console.log(`  ${chalk.bold('复盘记录')}: ${stats.reviews}`);
       console.log(`  ${chalk.bold('总计')}: ${stats.total}`);
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 技能管理命令
+const skills = program.command('skills').description('技能管理 - 同步、搜索、安装社区技能');
+
+skills
+  .command('sync')
+  .description('同步 Vibe-Skills 技能目录')
+  .option('-f, --force', '强制重新克隆')
+  .option('-v, --verbose', '详细输出')
+  .action(async (options) => {
+    try {
+      const discovery = new SkillDiscovery();
+      const result = await discovery.syncFromVibeSkills({
+        force: options.force,
+        verbose: options.verbose
+      });
+
+      if (result.success) {
+        console.log(chalk.green(`✓ 同步完成，共 ${result.count} 个技能`));
+      } else {
+        console.log(chalk.yellow(`同步失败: ${result.error}`));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+skills
+  .command('list')
+  .description('列出所有可用技能')
+  .option('-d, --domain <domain>', '过滤领域')
+  .option('-r, --min-rating <rating>', '最低评分', '0')
+  .action(async (options) => {
+    try {
+      const discovery = new SkillDiscovery();
+      const skills_list = await discovery.listSkills({
+        domain: options.domain,
+        minRating: parseFloat(options.minRating)
+      });
+
+      if (skills_list.length === 0) {
+        console.log(chalk.yellow('没有可用技能，请先运行 skills sync'));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`可用技能 (${skills_list.length})：`));
+      console.log('');
+
+      // 按领域分组
+      const byDomain = {};
+      for (const skill of skills_list) {
+        if (!byDomain[skill.domain]) {
+          byDomain[skill.domain] = [];
+        }
+        byDomain[skill.domain].push(skill);
+      }
+
+      for (const [domain, domainSkills] of Object.entries(byDomain)) {
+        console.log(chalk.bold(`  ${domain} (${domainSkills.length})`));
+        for (const skill of domainSkills.slice(0, 5)) {
+          const rating = skill.rating > 0 ? chalk.yellow(`⭐ ${skill.rating.toFixed(1)}`) : '';
+          console.log(`    ${chalk.green(skill.name.padEnd(25))} ${rating}`);
+          if (skill.description) {
+            console.log(`      ${chalk.gray(skill.description.slice(0, 60))}`);
+          }
+        }
+        if (domainSkills.length > 5) {
+          console.log(`    ${chalk.gray(`... 还有 ${domainSkills.length - 5} 个`)}`);
+        }
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+skills
+  .command('search <query>')
+  .description('搜索技能')
+  .option('-d, --domain <domain>', '过滤领域')
+  .option('-r, --min-rating <rating>', '最低评分', '0')
+  .action(async (query, options) => {
+    try {
+      const discovery = new SkillDiscovery();
+      const results = await discovery.searchSkills(query, {
+        domain: options.domain,
+        minRating: parseFloat(options.minRating)
+      });
+
+      if (results.length === 0) {
+        console.log(chalk.yellow(`未找到与 "${query}" 相关的技能`));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold(`搜索 "${query}" 的结果 (${results.length})：`));
+      console.log('');
+
+      for (const skill of results) {
+        const rating = skill.rating > 0 ? chalk.yellow(`⭐ ${skill.rating.toFixed(1)}`) : '';
+        console.log(`  ${chalk.bold(skill.name)} ${rating}`);
+        if (skill.description) {
+          console.log(`    ${chalk.gray(skill.description)}`);
+        }
+        if (skill.tags && skill.tags.length > 0) {
+          console.log(`    ${chalk.cyan(`标签: ${skill.tags.join(', ')}`)}`);
+        }
+        console.log(`    ${chalk.gray(`来源: ${skill.source} | 领域: ${skill.domain}`)}`);
+        console.log('');
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+skills
+  .command('install <name>')
+  .description('安装技能到当前项目')
+  .action(async (name) => {
+    try {
+      const discovery = new SkillDiscovery();
+      const result = await discovery.installSkill(name, process.cwd());
+
+      if (result.success) {
+        console.log(chalk.green(`✓ 技能已安装: ${name}`));
+        console.log(chalk.gray(`  路径: .claude/skills/${name}`));
+      } else {
+        console.log(chalk.yellow(`安装失败: ${result.error}`));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+skills
+  .command('stats')
+  .description('显示技能统计信息')
+  .action(async () => {
+    try {
+      const discovery = new SkillDiscovery();
+      const stats = await discovery.getStats();
+
+      console.log('');
+      console.log(chalk.cyan.bold('技能目录统计：'));
+      console.log('');
+      console.log(`  ${chalk.bold('技能总数')}: ${stats.total}`);
+      console.log(`  ${chalk.bold('最后同步')}: ${stats.lastSync || '未同步'}`);
+
+      if (Object.keys(stats.byDomain).length > 0) {
+        console.log('');
+        console.log('  按领域分布：');
+        for (const [domain, count] of Object.entries(stats.byDomain)) {
+          if (count > 0) {
+            console.log(`    ${chalk.bold(domain)}: ${chalk.green(count)}`);
+          }
+        }
+      }
+
       console.log('');
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
