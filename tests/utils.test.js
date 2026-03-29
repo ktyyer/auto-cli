@@ -296,16 +296,10 @@ describe('utils.js', () => {
     it('should categorize servers into correct groups', async () => {
       const config = {
         mcpServers: {
-          supabase: {
+          context7: {
             command: 'npx',
-            args: ['-y', '@supabase/mcp-server-supabase@latest'],
-            description: 'Supabase'
-          },
-          'brave-search': {
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-brave-search'],
-            env: { BRAVE_API_KEY: 'YOUR_BRAVE_API_KEY_HERE' },
-            description: 'Search'
+            args: ['-y', '@context7/mcp-server'],
+            description: 'Live documentation lookup'
           },
           memory: {
             command: 'npx',
@@ -318,10 +312,9 @@ describe('utils.js', () => {
 
       const { categories, summary } = await getMcpServerCategories(testMcpFile);
 
-      expect(summary.total).toBe(3);
+      expect(summary.total).toBe(2);
       expect(summary.ready).toBe(2);
-      expect(summary.needsConfig).toBe(1);
-      expect(categories.database.total).toBe(1);
+      expect(summary.needsConfig).toBe(0);
       expect(categories.search.total).toBe(1);
       expect(categories.ai.total).toBe(1);
     });
