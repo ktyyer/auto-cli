@@ -101,8 +101,32 @@ TodoWrite([
   { content: "能力: [N] cmd, [N] agent, [N] plugin, [N] skill, [N] MCP, [N] hook", status: "completed" }
 ])
 
+### 1.5 Router 推荐（可选）
+
+```bash
+import { CanonicalRouter } from 'src/router/canonical-router.js';
+import { AgentRegistry } from 'src/router/agent-registry.js';
+
+const registry = new AgentRegistry();
+const router = new CanonicalRouter(registry);
+await router.initialize();
+
+const routeResult = await router.route(userIntent, {
+  files: affectedFiles,
+  scope: 'on-demand'
+});
+```
+
+输出：
+```
+💡 Router 推荐：
+  ✅ 主 Agent：<name>
+     匹配原因：<matchReason>
+  🔄 回退链：<fallback1>, <fallback2>, ...
+```
+
 🔒 GATE: PHASE 1 → 2
-  ✓ 报告已输出 + 能力清单已收集
+  ✓ 报告已输出 + 能力清单已收集 + Router 推荐（可选）
   → 调用 Agent({ subagent_type: "quest-designer" })
   ⛔ 禁止: 编辑代码、跳到 PHASE 3
 ```
@@ -139,6 +163,9 @@ MCP: [服务名 + 状态(READY/⚠️需配置)]
 Hooks: [类型数量 + 摘要]
 【现有代码文件】[src/ 路径列表]
 
+[IF 有 Router 推荐]：
+【Router 推荐】主 Agent：<name> | 回退链：<fallbacks> | 匹配原因：<reason>
+
 [IF 模式卡命中: 缓存数据，跳过已缓存文件]
 [IF 未命中: 按标准流程读取 5-12 个核心文件]
 
@@ -149,6 +176,8 @@ v4 要求：
 - 第5步合约一致性校验 + 路径校验 + 代码完整性校验
 - 第6步自验证 >= 10/15
 - 第7.5步输出模式卡数据供缓存更新
+
+说明：Router 推荐仅作为参考，最终决策由 quest-designer 自主判断。
 输出 Quest Map，等待用户确认。"
 })
 ```

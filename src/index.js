@@ -252,3 +252,72 @@ export async function runSkillsInstall(skillName, options = {}) {
     process.exit(1);
   }
 }
+
+/**
+ * 智能路由 - 使用 Canonical Router 推荐合适的 Agent
+ */
+export async function runRoute(userIntent, options = {}) {
+  const { CanonicalRouter } = await import('./router/canonical-router.js');
+  const { AgentRegistry } = await import('./router/agent-registry.js');
+
+  // 初始化 Router
+  const registry = new AgentRegistry();
+  const router = new CanonicalRouter(registry);
+  await router.initialize();
+
+  // 执行路由
+  const result = await router.route(userIntent, {
+    scope: 'on-demand'
+  });
+
+  // 输出结果
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log('');
+  console.log(chalk.cyan.bold('🧠 路由分析'));
+  console.log(chalk.gray('━'.repeat(50)));
+  console.log('');
+
+  console.log(chalk.white.bold('📝 用户意图：'));
+  console.log(`  ${chalk.gray(userIntent)}`);
+  console.log('');
+
+  console.log(chalk.white.bold('🎯 推荐结果：'));
+  if (result.isDefault) {
+    console.log(
+      `  ${chalk.yellow('⚠️  无精确匹配，使用默认路由：')} ${chalk.white.bold(result.agent.displayName)}`
+    );
+  } else {
+    console.log(
+      `  ${chalk.green('✅ 主 Agent：')} ${chalk.white.bold(result.agent.displayName)} ${chalk.gray(
+        `(${result.agent.name})`
+      )}`
+    );
+    console.log(`  ${chalk.gray(`   优先级：${result.agent.priority}`)}`);
+    console.log(`  ${chalk.gray(`   匹配原因：${result.matchReason}`)}`);
+  }
+
+  if (result.fallbackChain && result.fallbackChain.length > 0) {
+    console.log('');
+    console.log(chalk.white.bold('🔄 回退链（主 Agent 失败时）：'));
+    result.fallbackChain.forEach((fallback, index) => {
+      console.log(`  ${chalk.gray(`${index + 1}. ${fallback.displayName} (${fallback.name})`)}`);
+    });
+  }
+
+  // Debug 模式：显示详细的路由决策过程
+  if (options.debug) {
+    console.log('');
+    console.log(chalk.white.bold('🔍 调试信息：'));
+    const diagnose = await router.diagnose();
+    console.log(`  ${chalk.gray(`Agent 总数：${diagnose.agentCount}`)}`);
+    console.log(`  ${chalk.gray(`初始化状态：${diagnose.initialized}`)}`);
+  }
+
+  console.log('');
+  console.log(chalk.gray('━'.repeat(50)));
+  console.log('');
+}

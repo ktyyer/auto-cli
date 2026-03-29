@@ -10,7 +10,8 @@ import {
   runUninstall,
   runSkillsList,
   runSkillsSearch,
-  runSkillsInstall
+  runSkillsInstall,
+  runRoute
 } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
@@ -358,6 +359,21 @@ save
           console.log('');
         }
       }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// 路由命令
+program
+  .command('route <intent>')
+  .description('使用 Canonical Router 智能路由到最合适的 Agent')
+  .option('-d, --debug', '显示详细的路由决策过程')
+  .option('-j, --json', '以 JSON 格式输出')
+  .action(async (intent, options) => {
+    try {
+      await runRoute(intent, options);
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);
