@@ -1,7 +1,7 @@
 {
   "name": "auto-cli",
-  "version": "0.12.1",
-  "description": "Claude Code 能力增强 CLI 工具 - 基于 everything-claude-code 和 ai-max 开发",
+  "version": "0.13.0",
+  "description": "Auto CLI - Claude Code 超级开发辅助工具（精简版）",
   "main": "src/index.js",
   "bin": {
     "auto": "./bin/cli.js"
@@ -47,9 +47,8 @@
     "commands",
     "skills",
     "hooks",
-    "scripts",
-    "mcp-configs",
-    "examples"
+    "plugins",
+    "mcp-configs"
   ],
   "dependencies": {
     "chalk": "^5.3.0",

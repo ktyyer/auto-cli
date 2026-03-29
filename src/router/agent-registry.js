@@ -187,20 +187,6 @@ const BUILT_IN_AGENTS = [
     source: 'built-in',
     version: '4.0.0',
     tags: ['core', 'planning']
-  },
-  {
-    name: 'multi-agent-orchestrator',
-    displayName: '多 Agent 并行编排',
-    description: '协调多个 Agent 并行或顺序执行复杂任务',
-    capabilities: ['orchestration', 'parallel', 'coordination', 'multi-agent'],
-    triggerKeywords: ['orchestrate', '编排', 'parallel', '并行', 'multi', 'coordinate', '协调'],
-    priority: 60,
-    complexity: COMPLEXITY_LEVELS.HIGH,
-    fallbackAgents: ['planner'],
-    state: AGENT_STATES.ACTIVE,
-    source: 'built-in',
-    version: '1.0.0',
-    tags: ['core', 'orchestration']
   }
 ];
 

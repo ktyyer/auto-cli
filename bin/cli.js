@@ -2,7 +2,6 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import path from 'path';
 import {
   interactiveMode,
   runInstall,
@@ -16,14 +15,6 @@ import {
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
 import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
-import {
-  DEFAULT_LOOP_STATE_FILE,
-  createLoopState,
-  loadLoopState,
-  saveLoopState,
-  advanceLoopState,
-  formatLoopState
-} from '../src/loop-state-machine.js';
 
 const program = new Command();
 
@@ -163,101 +154,6 @@ skills
   .action(async (skillName, options) => {
     try {
       await runSkillsInstall(skillName, options);
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-function resolveStateFile(filePath) {
-  if (!filePath) return DEFAULT_LOOP_STATE_FILE;
-  return path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
-}
-
-function parseGates(input) {
-  if (!input) return {};
-  const result = {};
-  const pairs = String(input).split(',');
-  for (const pair of pairs) {
-    const [key, value] = pair.split('=').map((s) => s.trim());
-    if (key && value) result[key] = value;
-  }
-  return result;
-}
-
-const loop = program.command('loop').description('任务状态机执行器（初始化、推进、恢复）');
-
-loop
-  .command('init')
-  .description('初始化状态机检查点')
-  .requiredOption('-t, --task <task>', '任务描述')
-  .option('-s, --steps <steps>', '步骤列表，使用逗号分隔')
-  .option('-f, --file <path>', '状态文件路径')
-  .action(async (options) => {
-    try {
-      const state = createLoopState({
-        task: options.task,
-        steps: options.steps
-      });
-      const target = resolveStateFile(options.file);
-      await saveLoopState(state, target);
-      console.log(chalk.green(`状态机已初始化: ${target}`));
-      console.log(formatLoopState(state));
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-loop
-  .command('status')
-  .description('查看当前状态机快照')
-  .option('-f, --file <path>', '状态文件路径')
-  .action(async (options) => {
-    try {
-      const state = await loadLoopState(resolveStateFile(options.file));
-      console.log(formatLoopState(state));
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-loop
-  .command('next')
-  .description('推进到下一个状态')
-  .option('-f, --file <path>', '状态文件路径')
-  .option('--verify <result>', 'VERIFY 状态下的结果（pass|fail）', 'pass')
-  .option('--max-retries <n>', '恢复状态最大重试次数', '3')
-  .option('--gates <k=v,...>', '门禁结果，例如 build=pass,tests=fail')
-  .action(async (options) => {
-    try {
-      const filePath = resolveStateFile(options.file);
-      const state = await loadLoopState(filePath);
-      const next = advanceLoopState(state, {
-        verify: options.verify === 'fail' ? 'fail' : 'pass',
-        maxRetries: Number(options.maxRetries) || 3,
-        gateResults: parseGates(options.gates)
-      });
-      await saveLoopState(next, filePath);
-      console.log(chalk.green('状态已推进'));
-      console.log(formatLoopState(next));
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-loop
-  .command('resume')
-  .description('读取状态并显示下一步动作')
-  .option('-f, --file <path>', '状态文件路径')
-  .action(async (options) => {
-    try {
-      const state = await loadLoopState(resolveStateFile(options.file));
-      console.log(formatLoopState(state));
-      console.log('');
-      console.log(chalk.cyan(`建议下一步：${state.next_action}`));
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);

@@ -23,16 +23,16 @@ description: 显示帮助和使用示例
 | 命令 | 用途 | 示例 |
 |------|------|------|
 | `/auto` | 智能超级命令（唯一入口） | `/auto 实现功能` |
-| `/auto:plan` | 只规划不编码 | `/auto:plan 重构系统` |
-| `/auto:quest` | 只出闯关大纲 | `/auto:quest 实现电商系统` |
-| `/auto:tdd` | 只 TDD 开发 | `/auto:tdd 用户登录` |
-| `/auto:code-review` | 只审查代码 | `/auto:code-review` |
+| `/auto:tdd` | 测试驱动开发 | `/auto:tdd 用户登录` |
+| `/auto:code-review` | 代码质量审查 | `/auto:code-review` |
 | `/auto:build-fix` | 修复构建错误 | `/auto:build-fix` |
-| `/auto:loop` | 状态机编排 + 持续迭代 | `/auto:loop 重构系统` |
+| `/auto:route` | 智能路由推荐 | `/auto:route 重构系统` |
 | `/auto:e2e` | E2E 测试 | `/auto:e2e 登录流程` |
+| `/auto:refactor-clean` | 死代码清理 | `/auto:refactor-clean` |
 | `/auto:doctor` | 环境诊断 | `/auto:doctor` |
 | `/auto:save` | 保存知识条目 | `/auto:save 记录踩坑` |
 | `/auto:status` | 项目状态查看 | `/auto:status` |
+| `/auto:test-coverage` | 测试覆盖率分析 | `/auto:test-coverage` |
 | `/auto:update-codemaps` | 更新代码地图+文档 | `/auto:update-codemaps` |
 | `/auto:help` | 显示此帮助 | `/auto:help` |
 
