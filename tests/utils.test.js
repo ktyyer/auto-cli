@@ -11,7 +11,9 @@ import {
   saveInstalledVersion,
   getPackageVersion,
   COMPONENTS,
-  DEFAULT_PORT
+  DEFAULT_PORT,
+  compressContext,
+  CONTEXT_COMPRESSION
 } from '../src/utils.js';
 
 describe('utils.js', () => {
@@ -202,6 +204,107 @@ describe('utils.js', () => {
         }),
         { spaces: 2 }
       );
+    });
+  });
+
+  describe('compressContext', () => {
+    it('should not compress when below threshold', () => {
+      const messages = Array.from({ length: 10 }, (_, i) => ({
+        role: 'user',
+        content: `Message ${i}`
+      }));
+
+      const result = compressContext(messages);
+
+      expect(result.compressed).toBe(false);
+      expect(result.keptCount).toBe(10);
+      expect(result.removedCount).toBe(0);
+      expect(result.summary).toBe('');
+    });
+
+    it('should compress when above threshold', () => {
+      const messages = Array.from({ length: 40 }, (_, i) => ({
+        role: i % 2 === 0 ? 'user' : 'assistant',
+        content: `Message ${i}: regular content here`
+      }));
+
+      const result = compressContext(messages, { threshold: 30, maxEntries: 10 });
+
+      expect(result.compressed).toBe(true);
+      expect(result.keptCount).toBeLessThanOrEqual(10);
+      expect(result.removedCount).toBeGreaterThan(0);
+      expect(result.summary).toContain('上下文压缩');
+    });
+
+    it('should prioritize messages with key indicators', () => {
+      const messages = [
+        { role: 'user', content: 'Regular message 1' },
+        {
+          role: 'user',
+          content: 'IMPORTANT: This is a key decision about architecture'
+        },
+        { role: 'assistant', content: 'Regular response' },
+        ...Array.from({ length: 35 }, (_, i) => ({
+          role: 'user',
+          content: `Filler message ${i}`
+        }))
+      ];
+
+      const result = compressContext(messages, { threshold: 30, maxEntries: 10 });
+
+      expect(result.compressed).toBe(true);
+      // 关键信息应被保留
+      const keptContents = (result.keptMessages || []).map((m) => m.content);
+      expect(keptContents.some((c) => c.includes('IMPORTANT'))).toBe(true);
+    });
+
+    it('should keep recent messages', () => {
+      const messages = Array.from({ length: 40 }, (_, i) => ({
+        role: 'user',
+        content: `Message ${i}`
+      }));
+
+      const result = compressContext(messages, { threshold: 30, maxEntries: 10 });
+
+      expect(result.compressed).toBe(true);
+      const keptContents = (result.keptMessages || []).map((m) => m.content);
+      // 最后 10 条应该被保留
+      expect(keptContents.some((c) => c.includes('Message 39'))).toBe(true);
+    });
+
+    it('should handle empty messages', () => {
+      const result = compressContext([]);
+
+      expect(result.compressed).toBe(false);
+      expect(result.keptCount).toBe(0);
+      expect(result.removedCount).toBe(0);
+    });
+
+    it('should handle null/undefined input', () => {
+      const result = compressContext(null);
+
+      expect(result.compressed).toBe(false);
+      expect(result.keptCount).toBe(0);
+    });
+
+    it('should deduplicate messages', () => {
+      const duplicateContent = 'Duplicate message content here';
+      const messages = Array.from({ length: 35 }, () => ({
+        role: 'user',
+        content: duplicateContent
+      }));
+
+      const result = compressContext(messages, { threshold: 30, maxEntries: 10 });
+
+      expect(result.compressed).toBe(true);
+      // 去重后应该只有 1 条
+      expect(result.keptCount).toBe(1);
+    });
+
+    it('should use default threshold from config', () => {
+      expect(CONTEXT_COMPRESSION.MESSAGE_THRESHOLD).toBe(30);
+      expect(CONTEXT_COMPRESSION.MAX_COMPRESSED_ENTRIES).toBe(10);
+      expect(CONTEXT_COMPRESSION.KEY_INDICATORS.length).toBeGreaterThan(0);
     });
   });
 });
