@@ -24,8 +24,8 @@ describe('AgentRegistry', () => {
     it('should load built-in agents', async () => {
       const count = await registry.initialize();
 
-      expect(count).toBeGreaterThanOrEqual(10);
-      expect(registry.getAgent('planner')).toBeDefined();
+      expect(count).toBeGreaterThanOrEqual(9);
+      expect(registry.getAgent('quest-designer')).toBeDefined();
       expect(registry.getAgent('architect')).toBeDefined();
       expect(registry.getAgent('tdd-guide')).toBeDefined();
     });
@@ -39,7 +39,7 @@ describe('AgentRegistry', () => {
     it('should list all agents sorted by priority', () => {
       const agents = registry.listAgents();
 
-      expect(agents.length).toBeGreaterThanOrEqual(10);
+      expect(agents.length).toBeGreaterThanOrEqual(9);
       for (let i = 1; i < agents.length; i++) {
         expect(agents[i - 1].priority).toBeGreaterThanOrEqual(agents[i].priority);
       }
@@ -48,7 +48,7 @@ describe('AgentRegistry', () => {
     it('should filter by state', () => {
       const active = registry.listAgents({ state: AGENT_STATES.ACTIVE });
 
-      expect(active.length).toBeGreaterThanOrEqual(10);
+      expect(active.length).toBeGreaterThanOrEqual(9);
       expect(active.every((a) => a.state === AGENT_STATES.ACTIVE)).toBe(true);
     });
 
@@ -73,11 +73,11 @@ describe('AgentRegistry', () => {
     });
 
     it('should return agent by name', () => {
-      const planner = registry.getAgent('planner');
+      const questDesigner = registry.getAgent('quest-designer');
 
-      expect(planner).toBeDefined();
-      expect(planner.name).toBe('planner');
-      expect(planner.displayName).toBe('复杂功能规划专家');
+      expect(questDesigner).toBeDefined();
+      expect(questDesigner.name).toBe('quest-designer');
+      expect(questDesigner.displayName).toBe('闯关大纲设计师 v4');
     });
 
     it('should return null for unknown agent', () => {
@@ -113,16 +113,16 @@ describe('AgentRegistry', () => {
 
     it('should override existing agent with warning', () => {
       const result = registry.registerAgent({
-        name: 'planner',
-        displayName: 'Override Planner',
-        capabilities: ['planning'],
-        triggerKeywords: ['plan'],
+        name: 'quest-designer',
+        displayName: 'Override Quest Designer',
+        capabilities: ['quest', 'planning'],
+        triggerKeywords: ['quest', 'plan'],
         priority: 100,
         state: AGENT_STATES.ACTIVE
       });
 
       expect(result).toBe(true);
-      expect(registry.getAgent('planner').priority).toBe(100);
+      expect(registry.getAgent('quest-designer').priority).toBe(100);
     });
   });
 
@@ -146,7 +146,7 @@ describe('AgentRegistry', () => {
     });
 
     it('should not unregister built-in agent', () => {
-      expect(registry.unregisterAgent('planner')).toBe(false);
+      expect(registry.unregisterAgent('quest-designer')).toBe(false);
     });
 
     it('should handle unknown agent', () => {
@@ -209,11 +209,11 @@ describe('AgentRegistry', () => {
       await registry.initialize();
       const stats = registry.getStats();
 
-      expect(stats.total).toBeGreaterThanOrEqual(10);
-      expect(stats.active).toBeGreaterThanOrEqual(10);
+      expect(stats.total).toBeGreaterThanOrEqual(9);
+      expect(stats.active).toBeGreaterThanOrEqual(9);
       expect(stats.byComplexity).toBeDefined();
       expect(stats.bySource).toBeDefined();
-      expect(stats.bySource['built-in']).toBeGreaterThanOrEqual(10);
+      expect(stats.bySource['built-in']).toBeGreaterThanOrEqual(9);
     });
   });
 });
@@ -305,9 +305,9 @@ describe('CanonicalRouter', () => {
       const info = await router.diagnose();
 
       expect(info.initialized).toBe(true);
-      expect(info.agentCount).toBeGreaterThanOrEqual(10);
+      expect(info.agentCount).toBeGreaterThanOrEqual(9);
       expect(info.agents).toBeDefined();
-      expect(info.agents.length).toBeGreaterThanOrEqual(10);
+      expect(info.agents.length).toBeGreaterThanOrEqual(9);
     });
   });
 
