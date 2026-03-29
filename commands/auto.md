@@ -48,6 +48,32 @@ Read(".auto/cache/capability-snapshot.json")
 如不存在/过期/失效 → 执行 1.1-1.3 完整扫描。
 （缓存验证逻辑详见 auto-core.md v8.1）
 
+### 1.0a 上下文压缩检查（长对话场景）
+
+```javascript
+import { compressContext, CONTEXT_COMPRESSION } from 'src/utils.js';
+
+// 获取当前对话消息列表（Claude Code 内部可访问）
+const messages = getConversationMessages(); // Claude Code 内置能力
+
+if (messages && messages.length >= CONTEXT_COMPRESSION.MESSAGE_THRESHOLD) {
+  const result = compressContext(messages, {
+    threshold: CONTEXT_COMPRESSION.MESSAGE_THRESHOLD,
+    maxEntries: CONTEXT_COMPRESSION.MAX_COMPRESSED_ENTRIES
+  });
+
+  if (result.compressed) {
+    // 输出压缩摘要，让用户了解上下文已被压缩
+    console.log(result.summary);
+    // 输出提示信息
+    console.log(`[上下文压缩] 对话过长（${messages.length} 条），已压缩至 ${result.keptCount} 条关键消息。`);
+    console.log('[上下文压缩] 压缩策略：保留含关键词的消息 + 最近的消息。');
+  }
+}
+```
+
+> 设计原则：静默压缩，不打断工作流。仅在日志中记录，不阻塞 PHASE 流程。
+
 ### 1.1 技术栈 + 项目上下文（并行）
 
 ```
@@ -113,7 +139,8 @@ Write(".auto/cache/capability-snapshot.json", {
 TodoWrite([
   { content: "任务: [需求摘要]", status: "completed" },
   { content: "技术栈: [tech]", status: "completed" },
-  { content: "能力: [N] cmd, [N] agent, [N] plugin, [N] skill, [N] MCP, [N] hook", status: "completed" }
+  { content: "能力: [N] cmd, [N] agent, [N] plugin, [N] skill (索引模式, 节省 X% Token), [N] MCP, [N] hook", status: "completed" },
+  { content: "上下文压缩: [已压缩/未触发] (对话 N 条, 阈值 30)", status: "completed" }
 ])
 
 ### 1.5 Router 推荐（可选）
@@ -255,3 +282,5 @@ v4 要求：
 7. **动态追加** — 执行中发现新能力随时追加
 8. **可回溯** — 每步 Git Commit，失败可回滚
 9. **知识沉淀** — 经验持续积累，越用越强
+10. **索引模式** — Skill 按需加载，PHASE 1 Token 消耗减少 30-50%
+11. **上下文压缩** — 长对话自动压缩保留关键信息，不丢失决策上下文
