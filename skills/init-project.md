@@ -247,3 +247,49 @@ tests/
 | 只写"代码要写好"这种废话 | 写具体规则："变量用 camelCase"、"函数不超过 50 行" |
 | 一次写完再也不更新 | CLAUDE.md 是活文档，项目演进时同步更新 |
 | 把密钥写进 CLAUDE.md | CLAUDE.md 会被提交到 Git，密钥只能放 .env |
+
+---
+
+## 会话恢复模板
+
+当 Claude Code 会话中断或需要跨会话继续任务时，使用以下模板：
+
+```markdown
+# 会话恢复
+
+## 任务描述
+[一句话描述你在做什么]
+
+## 已完成的步骤
+1. [x] PHASE 1 DISCOVER 完成
+2. [x] PHASE 2 Quest Map 已生成
+3. [ ] PHASE 3 执行中（Quest 3/7）
+
+## 关键决策记录
+- 选择了 A 方案而非 B，因为 [原因]
+- 修改了 [文件]，影响 [范围]
+
+## 下一步
+- 从 Quest 3 开始继续执行
+- 注意 [预判坑点]
+```
+
+### 上下文管理要点
+
+- 对话超过 30 条消息时，AI 容易"失忆"，建议开新会话并用上方模板恢复
+- 每个 Agent 只接收需要的上下文（不要把整个项目传给子 Agent）
+- 验收标准要具体可执行（"编译通过" > "写好点"）
+
+### 知识沉淀
+
+```bash
+# 保存经验到知识库
+auto save insight -c "发现 N+1 查询问题：循环中调用 selectList 应该先批量查出"
+auto save insight -c "选择了 Event Sourcing 而非 CRUD" -t decision
+
+# 搜索知识
+auto save search -q "N+1"
+
+# 列出统计
+auto save list
+```

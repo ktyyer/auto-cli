@@ -44,6 +44,8 @@ tags: [workflow, plan-mode, orchestration, root-cause, debugging, patterns, agen
 | Fix | 最小化 | 读取 3-5 文件 | 优先 build-error-resolver |
 | Review | 缓存优先 | 读取 3-6 文件 | 优先 code-reviewer |
 
+> 注：本 Skill 的工作流选择逻辑已由 `src/router/canonical-router.js` 的 COMPLEXITY_INDICATORS 实现，此处保留作为设计参考和人类可读文档。
+
 ---
 
 ## 二、Multi-Agent 编排模式（4 种）
@@ -316,6 +318,8 @@ git diff HEAD -- "*.env*" "*credentials*" "*secret*"
 | 未提交变更检查 | TaskCompleted Hook | [已实现] |
 | 测试覆盖率检查 | 需新增 Hook | [待实现] |
 | N+1 查询检测 | 需集成 ast-grep | [待实现] |
+
+> 注：标注为 [已实现] 的 Hook 检查项已配置在 `hooks/hooks.json` 中，此处保留作为审查方法论参考。
 
 ---
 
