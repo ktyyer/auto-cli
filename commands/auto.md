@@ -267,7 +267,7 @@ v4 要求：
 
 ## PHASE 6: LEARN — 知识沉淀
 
-更新记忆。如改了核心架构 → `/auto:update-codemaps`。
+更新记忆。如改了核心架构 → 建议用户重新运行 `/auto` 并在需求中包含"更新 REPO_MAP.md"。
 
 ---
 

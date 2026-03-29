@@ -118,12 +118,12 @@ export const COMPONENTS = {
     pattern: '*.json'
   },
   knowledge: {
-    name: 'Knowledge Steward（知识管家）',
-    description: '一键保存灵感、踩坑经验、架构决策，自动分类 + Git 提交',
-    source: 'skills/knowledge-steward',
-    target: 'skills/knowledge-steward',
-    pattern: '**/*',
-    recursive: true
+    name: 'Unified Memory（统一记忆）',
+    description: '上下文管理 + 会话恢复 + 知识沉淀三合一',
+    source: 'skills',
+    target: 'skills',
+    pattern: 'unified-memory-system.md',
+    recursive: false
   },
   router: {
     name: 'Router（权威路由器）',
