@@ -43,7 +43,7 @@
     "usage": "Copy the servers you need to your ~/.claude.json mcpServers section",
     "env_vars": "Replace YOUR_*_HERE placeholders with actual values",
     "context_warning": "Keep under 10 MCPs enabled to preserve context window",
-    "removed_servers": "brave-search, supabase moved to docs/mcp-extra.md for on-demand retrieval",
+    "removed_servers": "brave-search, supabase removed (not core dev-assistant MCPs)",
     "auto_core_note": "auto-core PHASE 1 scans this file to discover available MCP capabilities."
   }
 }
