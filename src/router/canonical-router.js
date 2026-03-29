@@ -21,8 +21,8 @@ import { AgentRegistry } from './agent-registry.js';
  * 默认 Agent（无匹配时的兜底）
  */
 const DEFAULT_AGENT = {
-  name: 'planner',
-  reason: '无精确匹配，回退到通用规划 Agent'
+  name: 'quest-designer',
+  reason: '无精确匹配，回退到闯关设计 Agent'
 };
 
 /**
@@ -326,7 +326,7 @@ export class CanonicalRouter {
     const defaultAgent = this.registry.getAgent(DEFAULT_AGENT.name);
 
     if (!defaultAgent) {
-      // 终极回退：返回 planner 的信息（即使 registry 为空）
+      // 终极回退：返回 quest-designer 的信息（即使 registry 为空）
       return {
         agent: {
           name: DEFAULT_AGENT.name,
