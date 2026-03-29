@@ -15,6 +15,8 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { logger } from '../logger.js';
+import { ContextDeduplicator } from './context-deduplicator.js';
+import { ContextBudgetManager } from './context-budget.js';
 
 /**
  * 上下文预设模板
@@ -36,7 +38,8 @@ export const CONTEXT_PRESETS = Object.freeze({
       { type: 'session-knowledge', required: false },
       { type: 'pattern-cards', required: false },
       { type: 'insights', required: false },
-      { type: 'dependencies', required: true }
+      { type: 'dependencies', required: true },
+      { type: 'skills', required: false }
     ],
     maxTokenEstimate: 4000
   },
@@ -54,7 +57,8 @@ export const CONTEXT_PRESETS = Object.freeze({
       { type: 'repo-map', required: false },
       { type: 'session-knowledge', required: true },
       { type: 'pattern-cards', required: true },
-      { type: 'dependencies', required: true }
+      { type: 'dependencies', required: true },
+      { type: 'skills', required: true }
     ],
     maxTokenEstimate: 2500
   },
@@ -70,7 +74,8 @@ export const CONTEXT_PRESETS = Object.freeze({
     collectStrategies: [
       { type: 'session-knowledge', required: true },
       { type: 'insights', required: true },
-      { type: 'claude-md', required: false }
+      { type: 'claude-md', required: false },
+      { type: 'skills', required: false }
     ],
     maxTokenEstimate: 1500
   },
@@ -87,7 +92,8 @@ export const CONTEXT_PRESETS = Object.freeze({
       { type: 'claude-md', required: true },
       { type: 'pattern-cards', required: true },
       { type: 'insights', required: true },
-      { type: 'repo-map', required: false }
+      { type: 'repo-map', required: false },
+      { type: 'skills', required: false }
     ],
     maxTokenEstimate: 2000
   }
@@ -146,6 +152,9 @@ export class ContextInjector {
   constructor(projectDir) {
     this.projectDir = projectDir || process.cwd();
     this.cache = new Map();
+    this.deduplicator = new ContextDeduplicator();
+    this.budgetManager = null; // 在 collect 时根据 preset 初始化
+    this.skillCatalog = null; // 懒加载
   }
 
   /**
@@ -167,7 +176,7 @@ export class ContextInjector {
 
     for (const strategy of preset.collectStrategies) {
       try {
-        const content = await this._collectByStrategy(strategy.type);
+        const content = await this._collectByStrategy(strategy.type, taskDescription);
         if (content) {
           sections.push({
             type: strategy.type,
@@ -197,25 +206,55 @@ export class ContextInjector {
       }
     }
 
-    const totalTokens = this._estimateTokens(sections);
+    // 1. 去重
+    const dedupResult = this.deduplicator.dedup(sections);
+    logger.debug(
+      `去重: ${dedupResult.originalCount} -> ${dedupResult.dedupedCount} 段落, 节省 ${dedupResult.savedTokens} tokens`
+    );
+
+    // 2. 预算管理
+    this.budgetManager = new ContextBudgetManager(ContextBudgetManager.fromPreset(preset));
+    const budgetResult = this.budgetManager.allocate(dedupResult.sections);
+
+    if (budgetResult.trimmed.length > 0) {
+      logger.debug(
+        `预算裁剪: ${budgetResult.trimmed.length} 段落被裁剪 (${budgetResult.totalTokens}/${budgetResult.budgetTokens} tokens)`
+      );
+    }
+
+    const totalTokens = budgetResult.totalTokens;
 
     return {
       preset: preset.id,
       presetName: preset.name,
-      sections,
+      sections: budgetResult.sections,
       totalTokens,
       collectedAt: new Date().toISOString(),
-      projectDir: this.projectDir
+      projectDir: this.projectDir,
+      optimization: {
+        dedup: {
+          originalCount: dedupResult.originalCount,
+          dedupedCount: dedupResult.dedupedCount,
+          savedTokens: dedupResult.savedTokens,
+          report: dedupResult.report
+        },
+        budget: {
+          budgetTokens: budgetResult.budgetTokens,
+          utilization: budgetResult.utilization,
+          trimmed: budgetResult.trimmed
+        }
+      }
     };
   }
 
   /**
    * 按策略收集上下文
    * @param {string} type - 策略类型
+   * @param {string} [taskDescription] - 任务描述
    * @returns {Promise<string|null>} 收集的内容
    * @private
    */
-  async _collectByStrategy(type) {
+  async _collectByStrategy(type, taskDescription = '') {
     // 检查缓存
     if (this.cache.has(type)) {
       return this.cache.get(type);
@@ -270,6 +309,10 @@ export class ContextInjector {
             content = null;
           }
         }
+        break;
+      }
+      case 'skills': {
+        content = await this._collectSkills(taskDescription);
         break;
       }
       default:
@@ -373,6 +416,51 @@ export class ContextInjector {
   }
 
   /**
+   * 按需加载与任务相关的技能上下文
+   * @param {string} taskDescription - 任务描述
+   * @returns {Promise<string|null>} 相关技能的摘要
+   * @private
+   */
+  async _collectSkills(taskDescription) {
+    if (!taskDescription || typeof taskDescription !== 'string') {
+      return null;
+    }
+
+    try {
+      // 懒加载 SkillCatalog（避免在构造函数中产生 I/O）
+      if (!this.skillCatalog) {
+        const { SkillCatalog } = await import('../skills/skill-catalog.js');
+        this.skillCatalog = new SkillCatalog();
+        await this.skillCatalog.scan();
+      }
+
+      // 搜索相关技能
+      const results = this.skillCatalog.search(taskDescription);
+
+      if (results.length === 0) {
+        return null;
+      }
+
+      // 只返回 Top 3 相关技能的摘要
+      const topSkills = results.slice(0, 3);
+      const summaries = topSkills.map((skill) => {
+        const parts = [`${skill.displayName} (${skill.name})`];
+        parts.push(`  域: ${skill.domain}`);
+        if (skill.tags.length > 0) {
+          parts.push(`  标签: ${skill.tags.join(', ')}`);
+        }
+        parts.push(`  ${skill.description}`);
+        return parts.join('\n');
+      });
+
+      return `相关技能 (${topSkills.length}/${results.length}):\n${summaries.join('\n\n')}`;
+    } catch (error) {
+      logger.debug(`技能上下文收集跳过: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * 估算 Token 数量（粗略：4 字符 = 1 Token）
    * @param {Array} sections - 上下文段落
    * @returns {number} 估算的 Token 数量
@@ -403,6 +491,7 @@ export class ContextInjector {
    */
   clearCache() {
     this.cache.clear();
+    this.skillCatalog = null;
   }
 }
 
@@ -414,6 +503,14 @@ export class ContextInjector {
  * @property {number} totalTokens - 估算的总 Token 数量
  * @property {string} collectedAt - 收集时间
  * @property {string} projectDir - 项目目录
+ * @property {Object} [optimization] - 优化信息
+ * @property {Object} [optimization.dedup] - 去重统计
+ * @property {number} [optimization.dedup.originalCount] - 原始段落数
+ * @property {number} [optimization.dedup.dedupedCount] - 去重后段落数
+ * @property {number} [optimization.dedup.savedTokens] - 节省的 Token 数
+ * @property {Object} [optimization.budget] - 预算统计
+ * @property {number} [optimization.budget.budgetTokens] - 预算 Token 数
+ * @property {number} [optimization.budget.utilization] - 预算利用率
  */
 
 export default ContextInjector;

@@ -11,6 +11,8 @@ import {
   CONTEXT_PRESETS,
   recommendPreset
 } from '../src/context/context-injector.js';
+import { ContextDeduplicator } from '../src/context/context-deduplicator.js';
+import { ContextBudgetManager } from '../src/context/context-budget.js';
 
 describe('CONTEXT_PRESETS', () => {
   it('应该定义 4 个预设模板', () => {
@@ -224,6 +226,62 @@ describe('ContextInjector', () => {
 
       injector.clearCache();
       expect(injector.cache.size).toBe(0);
+      expect(injector.skillCatalog).toBeNull();
+    });
+  });
+
+  describe('去重集成', () => {
+    it('应该在 collect 结果中返回 optimization 信息', async () => {
+      const result = await injector.collect('实现功能');
+
+      expect(result.optimization).toBeDefined();
+      expect(result.optimization.dedup).toBeDefined();
+      expect(result.optimization.budget).toBeDefined();
+      expect(result.optimization.dedup.originalCount).toBeGreaterThanOrEqual(
+        result.optimization.dedup.dedupedCount
+      );
+    });
+
+    it('去重后段落数应小于等于原始段落数', async () => {
+      const result = await injector.collect('探索项目架构');
+
+      expect(result.optimization.dedup.dedupedCount).toBeLessThanOrEqual(
+        result.optimization.dedup.originalCount
+      );
+    });
+  });
+
+  describe('预算管理集成', () => {
+    it('应该返回预算利用率', async () => {
+      const result = await injector.collect('修复错误');
+
+      expect(result.optimization.budget.utilization).toBeGreaterThanOrEqual(0);
+      expect(result.optimization.budget.utilization).toBeLessThanOrEqual(1);
+    });
+
+    it('总 Token 数不应超过预算', async () => {
+      const result = await injector.collect('实现功能');
+
+      // IMPLEMENT 预算为 2500 tokens
+      expect(result.totalTokens).toBeLessThanOrEqual(2500 + 50); // 允许 50 tokens 误差
+    });
+  });
+
+  describe('按需加载 (skills)', () => {
+    it('collect 结果应包含 skills 策略（如果技能目录存在）', async () => {
+      // skills 策略在 IMPLEMENT 模式下是 required=true
+      const result = await injector.collect('实现功能');
+
+      // 由于测试环境可能没有 skills 目录，只要不报错即可
+      expect(result).toBeDefined();
+      expect(result.sections).toBeDefined();
+    });
+
+    it('应该懒加载 SkillCatalog（不阻塞构造）', () => {
+      const freshInjector = new ContextInjector(tempDir);
+
+      // 构造后 skillCatalog 应该为 null（未加载）
+      expect(freshInjector.skillCatalog).toBeNull();
     });
   });
 });
