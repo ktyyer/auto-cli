@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.22.0.tgz
+npm install -g auto-cli-0.23.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -64,13 +64,20 @@ auto install
 
 # 创建 Hook
 /auto:create-hook
+
+# 技能生成 -- 从 Git 历史提取编码模式
+/skill-create
+/skill-create --commits 100
+
+# 会话学习 -- 保存当前会话的有价值经验
+/learn
 ```
 
 ---
 
 ## 能力总览
 
-### 命令（5 个）
+### 命令（7 个）
 
 | 命令 | 用途 |
 |------|------|
@@ -79,6 +86,8 @@ auto install
 | `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
 | `/auto:status` | 查看项目状态和能力 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
+| `/skill-create` | Git 历史 → 技能生成 -- 分析项目历史自动提取编码模式 |
+| `/learn` | 会话模式提取 -- 从当前会话保存可复用经验 |
 
 ### Agent（9 个）
 
@@ -246,7 +255,15 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.22.0（当前）
+### v0.23.0（当前）
+
+**新增能力引入**：
+- 新增 `/skill-create` 命令 -- 从 Git 历史自动提取编码模式并生成 Skill 文件
+- 新增 `/learn` 命令 -- 从当前会话提取可复用经验并保存为 Skill
+- 引入 everything-claude-code 实战验证的知识沉淀能力
+- 与 quest-designer v4 完美配合，增强 Quest Map 上下文感知
+
+### v0.22.0
 
 **精简优化与文档修正**：
 - 删除冗余 Skills：reflection（与 self-review + workflow-patterns 重叠）、git-worktree、chrome-devtools-mcp（快速参考级，不属于核心 Skill）
