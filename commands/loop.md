@@ -146,9 +146,21 @@ auto loop resume
 
 ---
 
+## 与 /auto:evolve 的关系
+
+`/auto:evolve` 的核心功能（评估驱动闭环、基线-实验-门禁-回滚）已整合到 `/auto:loop` 的 VERIFY 和 RECOVER 阶段：
+
+- **基线** → 在 EXECUTE 前自动采集当前指标
+- **门禁矩阵** → VERIFY 阶段执行 build/test/lint/security
+- **失败恢复** → RECOVER 阶段最多 3 轮重试
+- **经验沉淀** → SUMMARIZE 阶段输出总结
+
+使用 `/auto:loop` 替代 `/auto:evolve`。
+
+---
+
 ## 与其他命令协作
 
 - `/auto:plan`：先得到高层分解
 - `/auto:loop`：执行状态机编排
 - `/auto:tdd`：在 EXECUTE 阶段保证回归安全
-- `/auto:evolve`：在 VERIFY/SUMMARIZE 阶段评估收敛

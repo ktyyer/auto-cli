@@ -45,12 +45,9 @@
     "agents",
     "rules",
     "commands",
-    "plugins",
-    "lib",
     "skills",
     "hooks",
     "scripts",
-    "templates",
     "mcp-configs",
     "examples"
   ],

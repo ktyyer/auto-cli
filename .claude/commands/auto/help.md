@@ -28,9 +28,12 @@ description: 显示帮助和使用示例
 | `/auto:tdd` | 只 TDD 开发 | `/auto:tdd 用户登录` |
 | `/auto:code-review` | 只审查代码 | `/auto:code-review` |
 | `/auto:build-fix` | 修复构建错误 | `/auto:build-fix` |
-| `/auto:loop` | 状态机编排（可中断恢复） | `/auto:loop 重构系统` |
-| `/auto:evolve` | 持续迭代优化 | `/auto:evolve 优化性能` |
+| `/auto:loop` | 状态机编排 + 持续迭代 | `/auto:loop 重构系统` |
 | `/auto:e2e` | E2E 测试 | `/auto:e2e 登录流程` |
+| `/auto:doctor` | 环境诊断 | `/auto:doctor` |
+| `/auto:save` | 保存知识条目 | `/auto:save 记录踩坑` |
+| `/auto:status` | 项目状态查看 | `/auto:status` |
+| `/auto:update-codemaps` | 更新代码地图+文档 | `/auto:update-codemaps` |
 | `/auto:help` | 显示此帮助 | `/auto:help` |
 
 ## 常见任务

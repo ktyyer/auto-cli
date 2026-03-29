@@ -91,3 +91,13 @@ docs/codemaps/
 - 如果存在 → 直接加载，跳过大部分项目扫描（节省 30-50% token）
 - 如果不存在 → 正常执行完整扫描
 - 建议在项目初始化后运行一次 `/auto:update-codemaps`
+
+## 与 /auto:update-docs 的关系
+
+`/auto:update-docs` 的功能已整合到本命令。除代码地图外，本命令同时处理：
+
+1. **脚本参考表** — 从 package.json 的 scripts 部分生成
+2. **环境变量文档** — 从 .env.example 提取
+3. **过时文档检测** — 查找超过 90 天未修改的文档
+
+使用 `/auto:update-codemaps` 替代 `/auto:update-docs`。

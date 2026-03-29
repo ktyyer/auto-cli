@@ -10,7 +10,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { execSync } from 'child_process';
 import { logger } from '../logger.js';
-import { classifyContent, getCategoryByName, CATEGORIES } from './categories.js';
+import { classifyContent, CATEGORIES } from './categories.js';
 
 /**
  * @typedef {Object} SaveOptions

@@ -1098,11 +1098,660 @@ export class AgentGovernance {
 
 ---
 
-**文档版本**: 2.0
+---
+
+## 附录 A: Vibe-Skills 与 auto-cli v0.5.0 详细对比
+
+> **更新时间**: 2026-03-29
+> **分析目标**: 识别具体整合机会
+
+### A.1 能力对比矩阵
+
+| 维度 | auto-cli v0.5.0 | Vibe-Skills | 差距分析 |
+|------|----------------|-------------|----------|
+| **知识管理** | ✅ 三层体系 | ❌ 无明确知识管理 | auto-cli **领先** |
+| &nbsp;&nbsp;├─ 项目知识 | ✅ Knowledge Steward (4类) | ❌ | |
+| &nbsp;&nbsp;├─ 跨项目图谱 | ✅ Knowledge Graph (6种实体) | ❌ | |
+| &nbsp;&nbsp;└─ 个人知识 | ✅ Digital Brain (4类) | ❌ | |
+| **技能库** | ❌ 无技能系统 | ✅ 340+ 即用 Skills | Vibe **领先** |
+| **治理规则** | ⚠️ 项目级 (CLAUDE.md) | ✅ 129 条策略契约 | Vibe **领先** |
+| **MCP 支持** | ✅ 支持 (20+ MCP) | ✅ 支持 (19+ MCP) | **持平** |
+| **Git 集成** | ✅ 自动提交 | ❌ 未明确 | auto-cli **领先** |
+| **Agent 编排** | ⚠️ 基础并行 | ✅ 4种编排模式 | Vibe **领先** |
+| **路由系统** | ❌ 用户手动选择 | ✅ Canonical Router | Vibe **领先** |
+| **质量门禁** | ❌ 无 | ✅ 完整门禁系统 | Vibe **领先** |
+| **指标治理** | ❌ 无 | ✅ 持续收集和优化 | Vibe **领先** |
+
+### A.2 功能详细对比
+
+#### 知识管理 (auto-cli 领先)
+
+| 功能 | auto-cli 实现 | Vibe-Skills 状态 |
+|------|--------------|-----------------|
+| 项目知识自动分类 | ✅ 4类 (prompt/trap/pattern/decision) | ❌ |
+| 跨项目实体提取 | ✅ 6种实体类型 | ❌ |
+| 关系推理图谱 | ✅ 自动提取关系 | ❌ |
+| 个人知识库 | ✅ Identity/Network/Ideas/Reviews | ❌ |
+| Git 自动提交 | ✅ 知识保存即提交 | ❌ |
+| 知识检索 | ✅ 多维度搜索 | ❌ |
+
+**结论**: auto-cli 的知识管理体系是 **独特竞争优势**，应保留并加强。
+
+#### 技能系统 (Vibe-Skills 领先)
+
+| 功能 | auto-cli | Vibe-Skills |
+|------|----------|-------------|
+| 技能数量 | ❌ 无技能库 | ✅ 340+ |
+| 技能发现 | ❌ 无 | ✅ 搜索和过滤 |
+| 技能安装 | ❌ 无 | ✅ 一键安装 |
+| 技能更新 | ❌ 无 | ✅ 自动同步 |
+| 技能评分 | ❌ 无 | ✅ 用户评分 |
+| 技能分类 | ❌ 无 | ✅ 9大领域 |
+
+**结论**: Vibe-Skills 的技能系统是 **核心壁垒**，auto-cli 应引入。
+
+#### 治理规则 (Vibe-Skills 领先)
+
+| 功能 | auto-cli | Vibe-Skills |
+|------|----------|-------------|
+| 规则数量 | ⚠️ 项目级 CLAUDE.md | ✅ 129 条 |
+| 规则触发 | ❌ 无自动触发 | ✅ 关键词触发 |
+| 规则优先级 | ❌ 无 | ✅ 显式优先级 |
+| 回退策略 | ❌ 无 | ✅ 完整回退链 |
+| 规则验证 | ❌ 无 | ✅ 自动验证 |
+
+**结论**: Vibe-Skills 的治理规则是 **系统稳定性的关键**，应借鉴。
+
+### A.3 互补性分析
+
+```
+┌─────────────────────────────────────────────────────┐
+│          Vibe-Skills + auto-cli 整合价值           │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Vibe-Skills (能力执行层)                           │
+│  ├── 340+ 技能库 ←→ auto-cli 缺失                  │
+│  ├── 129 条治理规则 ←→ auto-cli 需要加强           │
+│  ├── Canonical Router ←→ auto-cli 需要引入         │
+│  └── 质量门禁系统 ←→ auto-cli 需要引入            │
+│                     ↓                               │
+│              【整合机会】                            │
+│                     ↓                               │
+│  auto-cli (知识沉淀层)                              │
+│  ├── 三层知识管理体系 ←→ Vibe-Skills 缺失          │
+│  ├── 跨项目知识图谱 ←→ Vibe-Skills 缺失            │
+│  ├── Git 自动提交 ←→ Vibe-Skills 可以引入          │
+│  └── 个人知识库 ←→ Vibe-Skills 可以引入            │
+│                                                     │
+│  整合后: "知识驱动 + 技能丰富 + 治理完善"           │
+└─────────────────────────────────────────────────────┘
+```
+
+**核心发现**:
+1. **极强互补性**: Vibe 侧重"执行"，auto-cli 侧重"沉淀"
+2. **无直接竞争**: 两者的核心能力不重叠
+3. **整合价值**: 可形成"知识→技能→执行→沉淀"闭环
+
+---
+
+## 附录 B: 整合路线图 (v0.6.0-v0.12.0)
+
+### B.1 v0.6.0 - 技能目录系统 (优先级: 🔴 高)
+
+**目标**: 让用户无需编写技能，直接使用 340+ 社区技能
+
+**核心价值**: ⭐⭐⭐⭐⭐
+- 用户立即获得 340+ 即用技能
+- 降低学习曲线
+- 技能自动更新
+
+**实现方案**:
+
+```javascript
+// src/skills/skill-discovery.js
+
+export class SkillDiscovery {
+  /**
+   * 从 Vibe-Skills 同步技能目录
+   */
+  async syncFromVibeSkills() {
+    const repoUrl = 'https://github.com/foryourhealth111-pixel/Vibe-Skills';
+    const localPath = path.join(os.homedir(), '.auto', 'vibe-skills');
+
+    // 1. 克隆/拉取仓库
+    await this._cloneOrPull(repoUrl, localPath);
+
+    // 2. 解析技能目录
+    const skillsDir = path.join(localPath, 'bundled', 'skills');
+    const skills = await this._parseSkills(skillsDir);
+
+    // 3. 索引到本地
+    await this._indexSkills(skills);
+
+    return skills;
+  }
+
+  /**
+   * 搜索技能
+   */
+  async searchSkills(query) {
+    const index = await this._loadIndex();
+    const lowerQuery = query.toLowerCase();
+
+    return index.filter(skill =>
+      skill.name.toLowerCase().includes(lowerQuery) ||
+      skill.description.toLowerCase().includes(lowerQuery) ||
+      skill.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+    ).sort((a, b) => b.rating - a.rating);
+  }
+
+  /**
+   * 安装技能到项目
+   */
+  async installSkill(skillName, projectDir) {
+    const skill = await this._findSkill(skillName);
+    const targetDir = path.join(projectDir, '.claude', 'skills');
+
+    await fs.ensureDir(targetDir);
+    await fs.copy(skill.path, path.join(targetDir, skillName));
+
+    logger.success(`技能已安装: ${skillName}`);
+  }
+}
+```
+
+**CLI 集成**:
+
+```javascript
+// bin/cli.js 添加子命令
+
+program
+  .command('skills')
+  .description('技能管理')
+  .addCommand(program.createCommand('list')
+    .description('列出所有可用技能')
+    .action(async () => {
+      const discovery = new SkillDiscovery();
+      const skills = await discovery.listSkills();
+      console.table(skills);
+    }))
+  .addCommand(program.createCommand('search <query>')
+    .description('搜索技能')
+    .action(async (query) => {
+      const discovery = new SkillDiscovery();
+      const results = await discovery.searchSkills(query);
+      console.table(results);
+    }))
+  .addCommand(program.createCommand('install <name>')
+    .description('安装技能')
+    .action(async (name) => {
+      const discovery = new SkillDiscovery();
+      await discovery.installSkill(name, process.cwd());
+    }))
+  .addCommand(program.createCommand('sync')
+    .description('同步 Vibe-Skills 目录')
+    .action(async () => {
+      const discovery = new SkillDiscovery();
+      await discovery.syncFromVibeSkills();
+      logger.success('技能目录已同步');
+    }));
+```
+
+**验收标准**:
+- ✅ 用户可以搜索 340+ 技能
+- ✅ 一键安装技能到项目
+- ✅ 技能自动更新 (每周同步)
+
+**开发时间**: 1-2 周
+
+---
+
+### B.2 v0.7.0 - 治理规则引擎 (优先级: 🟡 中)
+
+**目标**: 引入 129 条治理规则，确保执行稳定和安全
+
+**核心价值**: ⭐⭐⭐⭐
+- 防止危险操作
+- 自动执行最佳实践
+- 跨项目规则一致性
+
+**实现方案**: 参见本文档"可借鉴模式 > 3. 优先级规则系统"
+
+**验收标准**:
+- ✅ 防止强制推送到主分支
+- ✅ 安全相关自动触发 security-reviewer
+- ✅ 测试相关自动触发 tdd-guide
+- ✅ 规则可配置和扩展
+
+**开发时间**: 2-3 周
+
+---
+
+### B.3 v0.8.0 - VCO 运行时适配 (优先级: 🔴 高)
+
+**目标**: 实现技能编排和渐进式上下文展开
+
+**核心价值**: ⭐⭐⭐⭐⭐
+- 复杂任务自动化编排
+- Token 成本降低 30%+
+- 工作流可复用
+
+**实现方案**:
+
+```javascript
+// src/runtime/vco-adapter.js
+
+export class VCOAdapter {
+  /**
+   * 编排技能执行流程
+   */
+  async orchestrate(workflow) {
+    // 1. 解析工作流定义
+    const stages = this._parseWorkflow(workflow);
+
+    // 2. 按依赖关系排序
+    const sorted = this._topologicalSort(stages);
+
+    // 3. 渐进式加载上下文
+    const context = {};
+    for (const stage of sorted) {
+      const stageContext = await this._loadContext(stage, context);
+      const result = await this._executeStage(stage, stageContext);
+      Object.assign(context, result);
+    }
+
+    return context;
+  }
+
+  /**
+   * 渐进式上下文展开
+   */
+  async _loadContext(stage, previousContext) {
+    // 只加载当前阶段需要的上下文
+    const required = stage.requires || [];
+    const filtered = {};
+
+    for (const key of required) {
+      if (previousContext[key]) {
+        filtered[key] = previousContext[key];
+      }
+    }
+
+    return filtered;
+  }
+}
+```
+
+**工作流示例 (YAML)**:
+
+```yaml
+# .auto/workflows/tdd-implementation.yaml
+
+name: 测试驱动开发实现
+description: 使用 TDD 方法实现新功能
+
+stages:
+  - name: test-design
+    skill: tdd-guide
+    input:
+      feature: "${feature}"
+    requires: [feature]
+    output: [test-plan]
+
+  - name: implementation
+    skill: general-purpose
+    input:
+      testPlan: "${test-plan}"
+    requires: [test-plan]
+    output: [implementation]
+
+  - name: review
+    skill: code-reviewer
+    input:
+      changes: "${implementation}"
+    requires: [implementation]
+    output: [review-result]
+
+  - name: security-check
+    skill: security-reviewer
+    condition:
+      files_include: ["src/auth/**/*.ts"]
+    requires: [implementation]
+```
+
+**CLI 集成**:
+
+```bash
+# 执行工作流
+auto workflow run tdd-implementation --feature "用户登录"
+```
+
+**验收标准**:
+- ✅ 支持并行、顺序、管道、自适应四种编排模式
+- ✅ 渐进式上下文加载，节省 30%+ token
+- ✅ 工作流可复用和分享
+- ✅ 条件执行和依赖解析
+
+**开发时间**: 3-4 周
+
+---
+
+### B.4 v0.9.0 - 生态融合与上游同步 (优先级: 🟢 低)
+
+**目标**: 持续吸收 Vibe-Skills 和其他上游项目的改进
+
+**核心价值**: ⭐⭐⭐
+- 持续吸收社区最佳实践
+- 避免重复造轮子
+- 保持技术栈先进性
+
+**实现方案**:
+
+```javascript
+// src/ecosystem/upstream-sync.js
+
+export class UpstreamSync {
+  async checkUpdates() {
+    const upstreams = await this._loadConfig();
+    const updates = [];
+
+    for (const upstream of upstreams) {
+      const latest = await this._getLatestVersion(upstream.url);
+      const current = await this._getCurrentVersion(upstream.url);
+
+      if (latest !== current) {
+        updates.push({
+          name: upstream.name,
+          url: upstream.url,
+          current,
+          latest,
+          changes: await this._getChangelog(upstream.url, current, latest)
+        });
+      }
+    }
+
+    return updates;
+  }
+
+  async absorbImprovements(upstream) {
+    // 1. 对比版本差异
+    const diff = await this._compareVersions(upstream);
+
+    // 2. 提取有价值改动
+    const improvements = await this._extractImprovements(diff);
+
+    // 3. 智能合并
+    await this._mergeImprovements(improvements);
+
+    // 4. 生成报告
+    return this._generateReport(improvements);
+  }
+}
+```
+
+**配置文件**:
+
+```yaml
+# .auto/upstreams.yaml
+
+upstreams:
+  - name: vibe-skills
+    url: https://github.com/foryourhealth111-pixel/Vibe-Skills
+    sync:
+      - source: bundled/skills/
+        target: .claude/skills/community/
+      - source: rules/
+        target: .claude/rules/
+    auto_merge: false  # 需要人工确认
+
+  - name: skills-hub
+    url: https://github.com/vibe-any/skills-hub
+    sync:
+      - source: skills/
+        target: .claude/skills/hub/
+```
+
+**验收标准**:
+- ✅ 自动检测上游更新
+- ✅ 智能吸收有价值改进
+- ✅ 生成详细的变更报告
+- ✅ 支持手动/自动合并
+
+**开发时间**: 2-3 周
+
+---
+
+### B.5 v0.10.0+ - 创新整合方案
+
+#### 方案 1: 知识→技能自动转化
+
+**思路**: 将 auto-cli 沉淀的知识自动转化为可复用技能
+
+```javascript
+// src/knowledge/skill-generator.js
+
+export class SkillGenerator {
+  /**
+   * 从知识图谱生成技能
+   */
+  async generateFromKnowledge(entityName) {
+    // 1. 从 KnowledgeGraph 查询实体相关内容
+    const graph = new KnowledgeGraph();
+    const entity = await graph.getEntity(entityName);
+
+    // 2. 从 KnowledgeSteward 提取最佳实践
+    const steward = new KnowledgeSteward();
+    const practices = await steward.search(entityName);
+
+    // 3. 从 DigitalBrain 提取个人经验
+    const brain = new DigitalBrain();
+    const ideas = await brain.searchIdeas(entityName);
+
+    // 4. 生成 SKILL.md
+    const skill = this._generateSkillFile(entity, practices, ideas);
+
+    // 5. 发布到技能库
+    await this._publishSkill(skill);
+
+    return skill;
+  }
+}
+```
+
+**价值**:
+- 知识沉淀自动转化为可执行能力
+- 个人经验变为团队技能
+- 形成"积累→转化→复用"闭环
+
+---
+
+#### 方案 2: 技能效果追踪与优化
+
+**思路**: 追踪技能使用效果，持续优化
+
+```javascript
+// src/telemetry/skill-analytics.js
+
+export class SkillAnalytics {
+  async trackUsage(skillName, result) {
+    const metrics = {
+      timestamp: Date.now(),
+      success: result.success,
+      duration: result.duration,
+      userRating: result.rating,
+      tokenUsage: result.tokens
+    };
+
+    await this._saveMetrics(skillName, metrics);
+  }
+
+  async suggestOptimizations(skillName) {
+    const metrics = await this._loadMetrics(skillName);
+
+    return {
+      lowSuccessRate: metrics.successRate < 0.7,
+      highTokenUsage: metrics.avgTokens > 10000,
+      slowExecution: metrics.avgDuration > 30000,
+      alternatives: await this._findAlternatives(skillName)
+    };
+  }
+}
+```
+
+**价值**:
+- 数据驱动的技能优化
+- 发现高价值技能
+- 淘汰低效技能
+
+---
+
+#### 方案 3: 知识图谱驱动的技能推荐
+
+**思路**: 基于知识图谱推荐相关技能
+
+```javascript
+// src/recommendation/skill-recommender.js
+
+export class SkillRecommender {
+  async recommend(context) {
+    // 1. 分析当前项目技术栈
+    const graph = new KnowledgeGraph();
+    const techStack = await graph.getTechStack();
+
+    // 2. 匹配相关技能
+    const skills = await this._findSkillsForTech(techStack);
+
+    // 3. 按相关性和评分排序
+    return skills.sort((a, b) => {
+      const scoreA = this._calculateScore(a, techStack);
+      const scoreB = this._calculateScore(b, techStack);
+      return scoreB - scoreA;
+    });
+  }
+}
+```
+
+**价值**:
+- 智能发现需要的能力
+- 减少技能搜索成本
+- 提升技能使用率
+
+---
+
+### B.6 ROI 评估
+
+| 版本 | 开发时间 | 核心价值 | 复杂度 | 优先级 | 预期收益 |
+|------|---------|---------|-------|--------|---------|
+| v0.6.0 | 1-2 周 | ⭐⭐⭐⭐⭐ | 中 | 🔴 高 | 用户立即获得 340+ 技能 |
+| v0.7.0 | 2-3 周 | ⭐⭐⭐⭐ | 高 | 🟡 中 | 执行稳定性提升 50%+ |
+| v0.8.0 | 3-4 周 | ⭐⭐⭐⭐⭐ | 高 | 🔴 高 | Token 成本降低 30%+ |
+| v0.9.0 | 2-3 周 | ⭐⭐⭐ | 中 | 🟢 低 | 持续吸收最佳实践 |
+| v0.10.0+ | 待定 | ⭐⭐⭐⭐⭐ | 高 | 🟡 中 | 知识自动转化技能 |
+
+---
+
+## 附录 C: 不采纳的方案
+
+### C.1 全量集成 Vibe-Skills
+
+**不采纳理由**:
+1. ❌ 代码库过于庞大 (340+ 技能，数千文件)
+2. ❌ 维护成本过高 (需要持续跟进上游更新)
+3. ❌ 包含大量非软件工程领域技能 (生信、科研等)
+4. ❌ 与 auto-cli 定位冲突 (auto-cli 专注开发工作流)
+
+**替代方案**: 选择性吸收核心能力 (路由、编排、门禁)
+
+### C.2 放弃 auto-cli 知识系统
+
+**不采纳理由**:
+1. ❌ 三层知识体系是独特竞争优势
+2. ❌ Vibe-Skills 无同类功能
+3. ❌ 放弃会失去差异化价值
+
+**替代方案**: 加强知识与技能的联动 (v0.10.0+ 知识→技能转化)
+
+### C.3 追求完全兼容 Vibe-Skills
+
+**不采纳理由**:
+1. ❌ 两者定位不同，强行兼容会导致架构混乱
+2. ❌ Vibe-Skills 侧重通用 AI，auto-cli 侧重软件开发
+3. ❌ 兼容层会增加复杂度但收益有限
+
+**替代方案**: 互为补充，各展所长
+
+---
+
+## 附录 D: 成功案例参考
+
+### D.1 skills-hub 生态
+
+**项目**: https://github.com/vibe-any/skills-hub
+**规模**: 84+ 技能，持续更新
+**特点**:
+- 社区贡献的技能集合
+- 自动化测试和质量检查
+- 评分和推荐系统
+
+**启示**: 可以建立 auto-cli 专属技能库，复用相同模式
+
+### D.2 find-skills 工具
+
+**项目**: Claude Code 生态最流行的技能搜索工具
+**安装量**: 251.5K
+**特点**:
+- 极速搜索 20 万+ Skills
+- 智能匹配和推荐
+- 一键安装
+
+**启示**: v0.6.0 技能目录系统可以参考其 UX 设计
+
+### D.3 GitNexus 项目
+
+**项目**: 斯坦福教程推荐的工具
+**特点**:
+- 建立项目知识图谱
+- 降低 AI Coding 故障率
+- 自动生成开发日志
+
+**启示**: 与 auto-cli 的 Knowledge Graph 理念一致
+
+---
+
+## 总结与行动建议
+
+### 核心结论
+
+1. **整合价值**: ⭐⭐⭐⭐⭐ (5/5) - 极强互补性
+2. **优先级**: v0.6.0 (技能目录) > v0.8.0 (VCO 适配) > v0.7.0 (治理规则)
+3. **差异化优势**: 三层知识体系必须保留并加强
+4. **整合策略**: 选择性吸收，非全量集成
+
+### 立即行动
+
+- [ ] 用户确认整合路线图
+- [ ] 启动 v0.6.0 技能目录系统开发
+- [ ] 建立 Vibe-Skills 定期同步机制
+
+### 中期目标 (3-6 个月)
+
+- [ ] v0.6.0: 技能目录系统上线
+- [ ] v0.7.0: 治理规则引擎上线
+- [ ] v0.8.0: VCO 运行时适配完成
+
+### 长期愿景 (6-12 个月)
+
+- [ ] v0.9.0: 生态融合机制
+- [ ] v0.10.0+: 知识→技能自动转化
+- [ ] 成为 "知识驱动 + 技能丰富 + 治理完善" 的下一代 AI 编程助手
+
+---
+
+**文档版本**: 3.0
 **创建日期**: 2026-03-28
-**最后更新**: 2026-03-28
-**下次审查**: v0.3.0 规划时（Canonical Router 实现）
+**最后更新**: 2026-03-29
+**下次审查**: v0.6.0 规划时（技能目录系统实现）
 **相关文档**:
+- [MEMORY-SYSTEM-ANALYSIS.md](./MEMORY-SYSTEM-ANALYSIS.md) - 记忆系统分析
 - [QUEST_MAP.md](./QUEST_MAP.md) - 当前 Quest Map
 - [ROADMAP.md](./ROADMAP.md) - 项目路线图
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - 贡献指南

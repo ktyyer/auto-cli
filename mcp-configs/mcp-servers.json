@@ -1,12 +1,14 @@
 {
   "mcpServers": {
-    "github": {
+    "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT_HERE"
-      },
-      "description": "GitHub operations - PRs, issues, repos"
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/projects"],
+      "description": "Filesystem operations (set your path)"
+    },
+    "ast-grep": {
+      "command": "npx",
+      "args": ["-y", "ast-grep-mcp"],
+      "description": "AST semantic code search for Repo Map generation"
     },
     "memory": {
       "command": "npx",
@@ -18,45 +20,30 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "description": "Chain-of-thought reasoning"
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
-      "description": "Browser automation - page interaction, snapshots, form filling"
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/your/projects"],
-      "description": "Filesystem operations (set your path)"
-    },
-    "brave-search": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-      "env": {
-        "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY_HERE"
-      },
-      "description": "Brave Search - web search for docs and technical resources"
-    },
     "context7": {
       "command": "npx",
       "args": ["-y", "@context7/mcp-server"],
       "description": "Live documentation lookup"
     },
-    "supabase": {
+    "playwright": {
       "command": "npx",
-      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref=YOUR_PROJECT_REF"],
-      "description": "Supabase database operations"
+      "args": ["-y", "@playwright/mcp@latest"],
+      "description": "Browser automation - page interaction, snapshots, form filling"
     },
-    "ast-grep": {
+    "github": {
       "command": "npx",
-      "args": ["-y", "ast-grep-mcp"],
-      "description": "AST semantic code search for Repo Map generation"
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT_HERE"
+      },
+      "description": "GitHub operations - PRs, issues, repos"
     }
   },
   "_comments": {
     "usage": "Copy the servers you need to your ~/.claude.json mcpServers section",
     "env_vars": "Replace YOUR_*_HERE placeholders with actual values",
     "context_warning": "Keep under 10 MCPs enabled to preserve context window",
-    "auto_core_note": "auto-core PHASE 1 scans this file to discover available MCP capabilities.",
-    "removed_in_v0.2": "firecrawl, vercel, railway, cloudflare-*, clickhouse, magic, tavily, composio moved to docs/mcp-extra.md for on-demand retrieval"
+    "removed_servers": "brave-search, supabase moved to docs/mcp-extra.md for on-demand retrieval",
+    "auto_core_note": "auto-core PHASE 1 scans this file to discover available MCP capabilities."
   }
 }
