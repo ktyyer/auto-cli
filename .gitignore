@@ -26,10 +26,13 @@ personal/
 private/
 .ace-tool/
 
+# Local Claude Code config (user-specific, not committed)
+.claude/
+
 # Local generated knowledge cache
 .claude/knowledge/
 
-# Test coverage
+# Test coverage reports
 coverage/
 .nyc_output/
 
