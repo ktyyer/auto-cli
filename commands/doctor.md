@@ -35,12 +35,12 @@ Bash("ls ~/.claude/agents/*.md 2>/dev/null | wc -l")
   -> < 5 -> WARN: "Agent 文件不完整，建议重新 auto install"
 
 Bash("ls ~/.claude/commands/auto/*.md 2>/dev/null | wc -l")
-  -> >= 4 -> PASS
-  -> < 4 -> WARN: "Command 文件不完整，建议重新 auto install"
+  -> >= 5 -> PASS
+  -> < 5 -> WARN: "Command 文件不完整，建议重新 auto install"
 
 Bash("ls ~/.claude/skills/*.md 2>/dev/null | wc -l")
-  -> >= 5 -> PASS
-  -> < 5 -> WARN: "Skill 文件不完整，建议重新 auto install"
+  -> >= 4 -> PASS
+  -> < 4 -> WARN: "Skill 文件不完整，建议重新 auto install"
 
 Bash("test -f ~/.claude/hooks/hooks.json && echo EXISTS || echo MISSING")
   -> EXISTS -> PASS
@@ -81,8 +81,8 @@ Glob("package.json")
 ### Claude Code 配置
 - ~/.claude 目录: PASS
 - Agents (9): PASS
-- Commands (5): PASS
-- Skills (5): PASS
+- Commands (6): PASS
+- Skills (4): PASS
 - Hooks: PASS
 
 ### 项目配置

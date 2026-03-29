@@ -84,7 +84,7 @@ Agent({ subagent_type: "tdd-guide", prompt: "这个项目有 200 个文件...为
 | 策略 | 要点 | 对应组件 |
 |------|------|---------|
 | 6. 子代理隔离 | 复杂任务拆给专用 Agent | `workflow-patterns.md` 编排模式 |
-| 7. 审查后提交 | 写完代码先自检 | `self-review.md` 10 维度清单 |
+| 7. 审查后提交 | 写完代码先自检 | `workflow-patterns.md` 10 维度审查清单 |
 | 8. 知识沉淀 | 踩坑经验一句话保存 | `auto save insight -c "..."` |
 | 9. 渐进式开发 | 一次只做一个功能，逐步验证 | quest-designer PHASE 3 逐关执行 |
 

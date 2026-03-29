@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-03-29
+
+### Changed
+
+- **Commands 精简**：7 -> 6（合并 `skill-create` 到 `learn`）
+  - `/auto:learn` 现在支持双模式：会话级提取 + Git 历史分析
+  - 减少维护负担，统一知识提取入口
+- **Skills 精简**：5 -> 4（合并 `self-review` 到 `workflow-patterns`）
+  - `workflow-patterns` 现在包含 10 维度代码审查清单
+  - 更全面的工作流和代码质量指导
+- **Rules 精简**：8 -> 7（合并 `patterns` 到 `performance`）
+  - `performance.md` 现在包含常用设计模式
+  - 更名为"性能与设计模式"，内容更全面
+
+### Removed
+
+- commands/skill-create.md（功能已合并到 learn.md）
+- skills/self-review.md（审查清单已合并到 workflow-patterns.md）
+- rules/patterns.md（设计模式已合并到 performance.md）
+
+### Improved
+
+- `commands/learn.md` 增强为双模式提取工具
+  - 模式 1：从当前会话提取编码模式
+  - 模式 2：从 Git 历史分析项目规范
+- `skills/workflow-patterns.md` 新增 10 维度代码审查清单
+  - 功能正确性、错误处理、安全性、性能、代码风格
+  - 测试覆盖、接口兼容性、可维护性、文档、Git 规范
+- `rules/performance.md` 新增常用设计模式
+  - API 响应格式、仓储模式、自定义 Hook 模式
+
+### Technical Details
+
+- 无破坏性变更（仅合并和删除冗余文件）
+- 测试全部通过（247 个）
+- 项目复杂度降低约 15-20%
+- 核心功能完整保留
+
 ## [0.24.0] - 2026-03-29
 
 ### Changed
