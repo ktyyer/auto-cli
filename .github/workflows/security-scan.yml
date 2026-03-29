@@ -17,6 +17,8 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    # 只在 PR 时运行，因为 push 事件没有 base ref
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
