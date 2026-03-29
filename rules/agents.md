@@ -6,7 +6,7 @@
 
 | Agent | 用途 | 使用场景 |
 |-------|---------|-------------|
-| planner | 实现规划 | 复杂功能、重构 |
+| quest-designer | 闯关大纲设计 v4 | 复杂功能、重构、完整代码蓝图 |
 | architect | 系统设计 | 架构决策 |
 | tdd-guide | 测试驱动开发 | 新功能、Bug 修复 |
 | code-reviewer | 代码审查 | 编写代码后 |
@@ -19,7 +19,7 @@
 ## 立即使用 Agent
 
 无需用户提示即可使用：
-1. 复杂功能请求 - 使用 **planner** agent
+1. 复杂功能请求 - 使用 **quest-designer** agent
 2. 刚编写/修改的代码 - 使用 **code-reviewer** agent
 3. Bug 修复或新功能 - 使用 **tdd-guide** agent
 4. 架构决策 - 使用 **architect** agent

@@ -23,7 +23,7 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 
 # 示例 3：架构设计需求
 /auto:route 重构微服务架构
-# → 推荐 architect（优先级 85，回退链：planner）
+# → 推荐 quest-designer（优先级 90，回退链：architect）
 
 # 示例 4：构建错误
 /auto:route TypeScript 编译失败
@@ -155,8 +155,8 @@ Agent({
 
 | 错误 | 处理 |
 |------|------|
-| 空意图 | 返回默认 Router（planner） |
-| 无匹配 Agent | 返回默认 Router（planner） |
+| 空意图 | 返回默认 Router（quest-designer） |
+| 无匹配 Agent | 返回默认 Router（quest-designer） |
 | Registry 未初始化 | 自动初始化后再路由 |
 | Router 初始化失败 | 降级到手动选择 Agent |
 
