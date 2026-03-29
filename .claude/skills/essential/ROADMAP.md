@@ -1,7 +1,7 @@
 # Auto CLI 发展路线图
 
-> 最后更新: 2026-03-29
-> 版本: v0.15.0
+> 最后更新: 2026-03-30
+> 版本: v0.20.0
 
 ---
 
@@ -35,6 +35,11 @@
 - ✅ 预判坑点 + 合约驱动
 - ✅ 自验证 >= 10/15
 
+### Reflection + Plan Mode Workflows (v0.20.0)
+- ✅ 新增 reflection Skill（2026 年 5 大 Agent 设计模式之一）
+- ✅ 新增 plan-mode-workflows Skill（4 种工作流自动检测）
+- ✅ 更新 README 和 ROADMAP 反映最新能力
+
 ### TDD Guard
 - ✅ 多语言支持（JS/TS/Java/Python/Go/Rust）
 - ✅ 智能测试文件路径推断
@@ -54,20 +59,21 @@
 ### Phase 1（1-2 天）- 快速胜利
 **优先级**: 🔥 立即可引入
 
-- [ ] **上下文管理最佳实践 Skill**
-  - 文件: `skills/context-management.md`
-  - 内容: Vibe Coding 9 大策略
-  - 价值: 填补项目空白，直接提升用户体验
+- [x] **上下文管理最佳实践 Skill**（已在 unified-memory-system.md 中覆盖，无需单独创建）
 
-- [ ] **Agent 循环模式文档**
-  - 更新: `rules/agents.md`
-  - 内容: 感知 → 思考 → 行动 → 验证
-  - 价值: 强化理论基础
+- [x] **Agent 循环模式文档**（已在 rules/agents.md 第 53-119 行完整覆盖）
 
-- [ ] **README 最佳实践章节**
-  - 更新: `README.md`
-  - 内容: 上下文管理、Plan Mode、子代理
-  - 价值: 降低用户学习曲线
+- [x] **README 最佳实践章节**（已在 README.md v0.20.0 中完成）
+
+- [x] **Reflection 反思能力 Skill**
+  - 文件: `skills/reflection.md`
+  - 内容: 即时/交叉/累积三种反思模式 + 检查清单
+  - 价值: 补齐 2026 年 5 大 Agent 设计模式
+
+- [x] **Plan Mode 4 种工作流模式 Skill**
+  - 文件: `skills/plan-mode-workflows.md`
+  - 内容: Explore/Implement/Fix/Review 自动检测 + 上下文策略
+  - 价值: 减少 50% 上下文浪费
 
 ---
 
@@ -75,7 +81,7 @@
 **优先级**: 🔶 中期规划
 
 - [ ] **Plan Mode 4 种工作流模式**
-  - 修改: `plugins/builtin/auto-core.md` PHASE 1
+  - 修改: `commands/auto.md` PHASE 1
   - 功能: 探索/实现/修复/审查模式自动检测
   - 价值: 增强智能化，减少上下文浪费
 
@@ -148,8 +154,8 @@
 ## 技术债务
 
 ### 需要重构
-- [ ] `src/index.js` - 功能过于集中（2000+ 行）
-- [ ] `plugins/builtin/auto-core.md` - 需要模块化拆分
+- [ ] `REPO_MAP.md` - 需要自动化生成脚本，当前手动维护易过时
+- [ ] `commands/auto.md` - PHASE 流程描述过长，可考虑模块化拆分
 - [ ] 测试覆盖率 - 部分模块 < 80%
 
 ### 需要优化
@@ -161,21 +167,23 @@
 
 ## 版本规划
 
-### v0.16.0（计划 2026-04 中旬）
-**主题**: 最佳实践整合
-- 上下文管理 Skill
-- Plan Mode 4 种工作流
-- Agent 循环文档
+### v0.20.0（当前）
+**主题**: 社区最佳实践整合
+- 新增 reflection Skill（反思能力）
+- 新增 plan-mode-workflows Skill（4 种工作流模式）
+- 确认上下文管理和 Agent 循环已在既有文件中完整覆盖
 
-### v0.17.0（计划 2026-05 上旬）
-**主题**: 系统升级
-- TodoLists 系统
-- 任务可视化
+### v0.19.0
+**主题**: 精简优化
+- 删除 3 个冗余 Skills（agentic-workflow-patterns, coding-standards, model-selection-guide）
+- 精简 2 个 Skills 为快速参考（chrome-devtools-mcp, git-worktree）
+- 修正 REPO_MAP.md 幻影引用
+- 文档与代码一致性校验
 
-### v0.18.0（计划 2026-06 上旬）
+### v0.21.0（计划下一步）
 **主题**: 安全增强
-- 安全分类器
-- Hook 集成
+- 安全分类器（轻量版 Auto Mode）
+- Hook 集成增强
 
 ---
 

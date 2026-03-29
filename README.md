@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.18.0.tgz
+npm install -g auto-cli-0.20.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -94,7 +94,7 @@ auto install
 | doc-updater | 文档更新 |
 | refactor-cleaner | 死代码清理 |
 
-### Rules 编码规范（8 个）
+### Rules 编码规范（9 个）
 
 | 规范 | 领域 |
 |------|------|
@@ -106,25 +106,25 @@ auto install
 | performance | 性能优化策略 |
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
+| java-coding-style | Java / Spring Boot 编码规范 |
 
-### Skills 知识库（14 个）
+### Skills 知识库（13 个）
 
 | Skill | 领域 |
 |-------|------|
 | backend-patterns | 后端架构最佳实践 |
 | frontend-patterns | 前端组件模式 |
-| coding-standards | 编码规范 |
 | error-patterns | 常见错误模式速查与修复方案 |
 | unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
 | subagent-driven-development | 子代理驱动开发（Multi-Agent 编排工作流） |
 | root-cause-tracing | 根因追踪（结构化调试方法论） |
-| agentic-workflow-patterns | Agentic 工作流模式（6 种经典编排模式参考） |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
 | prompt-templates | 高效 Prompt 模板库（15 个社区验证模板） |
 | self-review | 自我审查清单（10 维度结构化自检） |
-| model-selection-guide | 模型选择指南（Haiku/Sonnet/Opus 场景决策树 + 成本优化策略） |
-| git-worktree | Git Worktree 并行工作流（多工作区 + 多 Agent 同时开发） |
-| chrome-devtools-mcp | Chrome DevTools MCP 使用指南（AI 直接调试浏览器前端应用） |
+| git-worktree | Git Worktree 并行工作流（快速参考） |
+| chrome-devtools-mcp | Chrome DevTools MCP 使用指南（快速参考） |
+| reflection | 反思能力 -- 2026 年 5 大 Agent 设计模式之一（即时/交叉/累积反思） |
+| plan-mode-workflows | Plan Mode 4 种工作流模式（探索/实现/修复/审查） |
 
 ### Hooks 自动化（7 类钩子）
 
@@ -252,7 +252,13 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.18.0 (当前)
+### v0.20.0
+
+新增 2 个 Skill（社区最佳实践整合）：
+- reflection：反思能力（2026 年 5 大 Agent 设计模式之一）
+- plan-mode-workflows：Plan Mode 4 种工作流模式
+
+### v0.18.0
 
 **精简优化 -- 文档与代码一致性**：
 - 移除虚构的 15 个 Plugins 描述（从未实现）
