@@ -21,20 +21,6 @@ const AGENT_REGISTRY_FILE = 'agent-registry.json';
  */
 const BUILT_IN_AGENTS = [
   {
-    name: 'planner',
-    displayName: '复杂功能规划专家',
-    description: '分析需求、识别依赖、分解任务、评估风险',
-    capabilities: ['planning', 'risk-assessment', 'task-decomposition', 'dependency-analysis'],
-    triggerKeywords: ['plan', '规划', '计划', '实现', 'implement', '需求', 'feature', '功能'],
-    priority: 80,
-    complexity: COMPLEXITY_LEVELS.MEDIUM,
-    fallbackAgents: ['architect'],
-    state: AGENT_STATES.ACTIVE,
-    source: 'built-in',
-    version: '1.0.0',
-    tags: ['core', 'planning']
-  },
-  {
     name: 'architect',
     displayName: '系统设计和架构决策',
     description: '架构决策、技术选型、系统边界划分',
@@ -51,7 +37,7 @@ const BUILT_IN_AGENTS = [
     ],
     priority: 85,
     complexity: COMPLEXITY_LEVELS.HIGH,
-    fallbackAgents: ['planner'],
+    fallbackAgents: ['quest-designer'],
     state: AGENT_STATES.ACTIVE,
     source: 'built-in',
     version: '1.0.0',
