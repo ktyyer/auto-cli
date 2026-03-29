@@ -36,11 +36,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Skills 数量**：6 -> 7（新增 `reflection`）
+- **Skills 数量修正**：7 -> 10（v0.21.0 的 "精简至 6" 描述不准确，实际文件从未被删除）
 - **Commands 数量**：5 -> 6（新增 `auto analyze`）
 - **输入验证增强**：TodoManager.add() 和 initialize() 现在验证 `content` 和 `taskName` 参数
 
+### Removed
+
+- skills/reflection.md（再次移除：与 self-review + workflow-patterns 重叠）
+- skills/git-worktree.md（快速参考级，不属于核心 Skill）
+- skills/chrome-devtools-mcp.md（快速参考级，MCP 配置一次性操作）
+
 ### Fixed
 
+- 修正 README 命令数量（6 -> 5，移除不存在的 /auto:analyze）
+- 修正 README Skills 列表与实际文件一致（10 -> 7）
+- 修正源码中对不存在命令的引用（/auto:tdd, /auto:code-review, /auto:plan）
+- 修正 CHANGELOG 历史版本中的不准确描述
+- 修正 doctor.md 中 Skills 检查阈值（>= 8 -> >= 7）
 - 修复 CLI 中 `analyze` 命令的未使用变量（`key` → `,`）
 - 修复代码审查中指出的输入验证缺失问题
 
@@ -48,34 +60,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Skills 精简优化**：13 个 -> 6 个（-54%）
+- **Skills 精简优化**：13 个 -> 10 个（移除/合并 8 个，新增 workflow-patterns）
   - 移除 agentic-workflow-patterns.md（与 subagent-driven-development 重叠）
   - 移除 coding-standards.md（功能被 rules/ 目录覆盖）
   - 移除 model-selection-guide.md（内容已过时）
-  - 移除 reflection.md（功能被 self-review/code-reviewer/quest-designer 覆盖）
   - 移除 prompt-templates.md（功能被 auto 命令/init-project 覆盖）
   - 合并 plan-mode-workflows + subagent-driven-development + root-cause-tracing -> workflow-patterns.md
   - 精简 unified-memory-system.md（去除重复策略详解）
 
 - **README 修正**：
-  - 更新 Skills 数量统计（13 -> 6）
+  - 更新 Skills 数量统计（13 -> 10）
   - 移除不属于本项目的 java-coding-style Rule 描述
   - 更新 Rules 数量（9 -> 8）
 
 ### Removed
 
-- skills/agentic-workflow-patterns.md
-- skills/coding-standards.md
-- skills/model-selection-guide.md
-- skills/reflection.md
-- skills/prompt-templates.md
-- skills/plan-mode-workflows.md
-- skills/subagent-driven-development.md
-- skills/root-cause-tracing.md
+- skills/agentic-workflow-patterns.md（合并入 workflow-patterns.md）
+- skills/coding-standards.md（功能被 rules/ 目录覆盖）
+- skills/model-selection-guide.md（内容已过时）
+- skills/prompt-templates.md（功能被 auto 命令/init-project 覆盖）
+- skills/plan-mode-workflows.md（合并入 workflow-patterns.md）
+- skills/subagent-driven-development.md（合并入 workflow-patterns.md）
+- skills/root-cause-tracing.md（合并入 workflow-patterns.md）
 
 ### Added
 
-- skills/workflow-patterns.md（三合一合并）
+- skills/workflow-patterns.md（三合一合并：Plan Mode + Multi-Agent + 根因追踪）
 
 ## [0.10.0] - 2026-03-29
 

@@ -97,7 +97,7 @@ export const COMPONENTS = {
   },
   commands: {
     name: 'auto 斜杠指令',
-    description: '斜杠命令（/auto:plan, /auto:tdd, /auto:code-review 等）',
+    description: '斜杠命令（/auto, /auto:route, /auto:doctor 等）',
     source: 'commands',
     target: 'commands/auto',
     pattern: '*.md'

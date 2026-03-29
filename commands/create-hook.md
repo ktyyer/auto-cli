@@ -213,8 +213,8 @@ echo "$input"
 
 ## 与其他功能的集成
 
-- 使用 `/auto:tdd` 配合 TDD Guard Hook
-- 使用 `/auto:code-review` 配合质量检查 Hook
+- 使用 `/auto` 配合 quest-designer 实现 TDD 工作流
+- 使用 `/auto` 配合 code-reviewer Agent 进行代码审查
 - 使用 `/auto:status` 查看已安装的 Hooks
 
 ## 现有 Hooks 参考

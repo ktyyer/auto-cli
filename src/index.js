@@ -78,7 +78,7 @@ export async function runInstall(options = {}) {
   console.log('');
   console.log(chalk.cyan('后续步骤：'));
   console.log(chalk.gray('  1. 重启 Claude Code 以加载新配置'));
-  console.log(chalk.gray('  2. 使用 /auto:tdd, /auto:code-review, /auto:route 等命令'));
+  console.log(chalk.gray('  2. 使用 /auto, /auto:route, /auto:doctor 等命令'));
   console.log('');
 }
 

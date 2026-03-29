@@ -26,7 +26,7 @@ tags: [memory, context, session, knowledge, workflow]
 /auto 给我写一个用户登录接口
 
 # 正确做法
-/auto:plan 分析当前项目的认证架构，规划用户登录功能的实现方案
+/auto 分析当前项目的认证架构，规划用户登录功能的实现方案
 ```
 
 ### 策略 2：把 CLAUDE.md 打造成"活规则书"

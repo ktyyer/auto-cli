@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.20.0.tgz
+npm install -g auto-cli-0.22.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -70,7 +70,7 @@ auto install
 
 ## 能力总览
 
-### 命令（6 个）
+### 命令（5 个）
 
 | 命令 | 用途 |
 |------|------|
@@ -79,7 +79,6 @@ auto install
 | `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
 | `/auto:status` | 查看项目状态和能力 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
-| `/auto:analyze` | 能力分析 -- 分析项目能力画像，识别强项和缺口 |
 
 ### Agent（9 个）
 
@@ -112,13 +111,12 @@ auto install
 
 | Skill | 领域 |
 |-------|------|
-| backend-patterns | 后端架构最佳实践 |
-| frontend-patterns | 前端组件模式 |
-| error-patterns | 常见错误模式速查与修复方案 |
 | workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪） |
 | unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
+| backend-patterns | 后端架构最佳实践 |
+| frontend-patterns | 前端组件模式和性能优化 |
+| error-patterns | 常见错误模式速查与修复方案 |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
-| reflection | 自我反思模式 -- Andrew Ng 第一模式，4 步反思流程 |
 | self-review | 自我审查清单（10 维度结构化自检） |
 
 ### Hooks 自动化（7 类钩子）
@@ -248,14 +246,21 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
+### v0.22.0（当前）
+
+**精简优化与文档修正**：
+- 删除冗余 Skills：reflection（与 self-review + workflow-patterns 重叠）、git-worktree、chrome-devtools-mcp（快速参考级，不属于核心 Skill）
+- Skills 从 10 个精简至 7 个
+- 修正 README 能力统计与实际代码一致
+- 修正源码中对不存在命令的引用（/auto:tdd, /auto:code-review, /auto:plan）
+- 修正 CHANGELOG 历史记录
+- 引入 TodoLists 系统、能力分析器（CapabilityAnalyzer）
+
 ### v0.21.0
 
 **聚焦核心功能 -- Skills 精简优化**：
-- 移除 7 个冗余/重叠 Skills：agentic-workflow-patterns, coding-standards, model-selection-guide, reflection, prompt-templates, plan-mode-workflows, subagent-driven-development, root-cause-tracing
-- 新增 1 个合并 Skill：workflow-patterns（Plan Mode + Multi-Agent + 根因追踪三合一）
-- Skills 从 13 个精简至 6 个（-54%）
-- 总知识库大小从约 120KB 降至约 65KB（-46%）
-- 保留 git-worktree 和 chrome-devtools-mcp 作为独立快速参考
+- Skills 从 13 个精简至 10 个（移除/合并 8 个，新增 workflow-patterns）
+- 新增 workflow-patterns（Plan Mode + Multi-Agent + 根因追踪三合一）
 
 ### v0.20.0
 
