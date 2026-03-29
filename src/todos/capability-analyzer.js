@@ -44,7 +44,20 @@ export const CAPABILITY_DOMAINS = Object.freeze({
   },
   FRONTEND: { name: '前端', keywords: ['react', 'vue', 'component', 'css', 'browser', 'frontend'] },
   BACKEND: { name: '后端', keywords: ['api', 'database', 'server', 'backend', 'rest', 'sql'] },
-  DEBUGGING: { name: '调试', keywords: ['debug', 'error', 'fix', 'trace', 'root-cause', 'bisect'] }
+  DEBUGGING: { name: '调试', keywords: ['debug', 'error', 'fix', 'trace', 'root-cause', 'bisect'] },
+  RUNTIME: {
+    name: '运行时',
+    keywords: [
+      'hook',
+      'agent',
+      'executor',
+      'prompt',
+      'assembler',
+      'runtime',
+      'execution',
+      'scheduler'
+    ]
+  }
 });
 
 /**
@@ -75,8 +88,9 @@ export class CapabilityAnalyzer {
     const agentKeywords = await this._extractAgentKeywords();
     const skillKeywords = await this._extractSkillKeywords();
     const ruleKeywords = await this._extractRuleKeywords();
+    const runtimeKeywords = await this._extractRuntimeKeywords();
 
-    const allKeywords = [...agentKeywords, ...skillKeywords, ...ruleKeywords];
+    const allKeywords = [...agentKeywords, ...skillKeywords, ...ruleKeywords, ...runtimeKeywords];
     const lowerKeywords = allKeywords.map((k) => k.toLowerCase());
 
     // 各领域评分
@@ -271,6 +285,44 @@ export class CapabilityAnalyzer {
       }
     } catch (error) {
       this.logger.warn(`扫描 ${dirName} 目录失败: ${error.message}`);
+    }
+
+    return keywords;
+  }
+
+  /**
+   * 从源代码中提取运行时关键词
+   * @returns {Promise<string[]>}
+   * @private
+   */
+  async _extractRuntimeKeywords() {
+    const keywords = [];
+    const srcDir = path.join(this.projectDir, 'src');
+
+    if (!(await fs.pathExists(srcDir))) {
+      return keywords;
+    }
+
+    // 检查运行时相关文件
+    const runtimeFiles = [
+      'runtime.js',
+      'hooks/hook-types.js',
+      'hooks/hook-runner.js',
+      'agents/agent-types.js',
+      'agents/agent-executor.js',
+      'prompts/prompt-assembler.js'
+    ];
+
+    for (const file of runtimeFiles) {
+      const filePath = path.join(srcDir, file);
+      if (await fs.pathExists(filePath)) {
+        keywords.push(
+          ...file
+            .replace('.js', '')
+            .split('/')
+            .flatMap((part) => part.split(/[-_]+/).filter(Boolean))
+        );
+      }
     }
 
     return keywords;

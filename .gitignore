@@ -49,6 +49,9 @@ build/
 .test-*
 .aimax/
 
+# npm publish artifacts
+*.tgz
+
 # Auto-cli runtime cache (per-project, not committed)
 .auto/
 
