@@ -192,17 +192,12 @@ export async function getMcpServerCategories(configPath) {
   const { ready, needsConfig, total } = await analyzeMcpServers(configPath);
 
   const categories = {
-    database: { ready: 0, total: 0, servers: [] },
     search: { ready: 0, total: 0, servers: [] },
-    cloud: { ready: 0, total: 0, servers: [] },
     devtools: { ready: 0, total: 0, servers: [] },
-    ai: { ready: 0, total: 0, servers: [] },
-    integration: { ready: 0, total: 0, servers: [] }
+    ai: { ready: 0, total: 0, servers: [] }
   };
 
   const categoryMap = {
-    supabase: 'database',
-    'brave-search': 'search',
     context7: 'search',
     github: 'devtools',
     filesystem: 'devtools',
