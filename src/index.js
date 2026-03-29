@@ -12,6 +12,8 @@ import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
 import { getAvailableMcpServers, installMcpServers } from './mcp-installer.js';
+import { SkillCatalog } from './skills/skill-catalog.js';
+import { SkillInstaller } from './skills/skill-installer.js';
 
 /**
  * 交互模式 - 主菜单
@@ -167,5 +169,86 @@ export async function runDocs() {
   const success = await openBrowser(url);
   if (!success) {
     logger.warn('无法自动打开浏览器，请手动访问上述链接。');
+  }
+}
+
+/**
+ * 列出所有可用技能
+ */
+export async function runSkillsList(options = {}) {
+  const catalog = new SkillCatalog();
+  const count = await catalog.scan();
+
+  if (count === 0) {
+    console.log(chalk.yellow('未找到任何技能。'));
+    return;
+  }
+
+  const skills = catalog.list();
+
+  if (options.json) {
+    console.log(JSON.stringify(skills, null, 2));
+    return;
+  }
+
+  console.log('');
+  console.log(chalk.cyan(`可用技能 (${skills.length}):`));
+  console.log('');
+
+  for (const skill of skills) {
+    console.log(chalk.white.bold(`  ${skill.displayName}`));
+    console.log(chalk.gray(`    ${skill.description}`));
+    if (skill.tags.length > 0) {
+      console.log(chalk.gray(`    标签: ${skill.tags.join(', ')}`));
+    }
+    console.log('');
+  }
+}
+
+/**
+ * 搜索技能
+ */
+export async function runSkillsSearch(query, options = {}) {
+  const catalog = new SkillCatalog();
+  await catalog.scan();
+
+  const results = catalog.search(query);
+
+  if (results.length === 0) {
+    console.log(chalk.yellow(`未找到匹配"${query}"的技能。`));
+    return;
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+
+  console.log('');
+  console.log(chalk.cyan(`搜索结果 (${results.length}):`));
+  console.log('');
+
+  for (const skill of results) {
+    console.log(chalk.white.bold(`  ${skill.displayName}`));
+    console.log(chalk.gray(`    ${skill.description}`));
+    if (skill.rating > 0) {
+      console.log(
+        chalk.gray(`    评分: ${'★'.repeat(skill.rating)}${'☆'.repeat(5 - skill.rating)}`)
+      );
+    }
+    console.log('');
+  }
+}
+
+/**
+ * 安装技能
+ */
+export async function runSkillsInstall(skillName, options = {}) {
+  const installer = new SkillInstaller();
+
+  const success = await installer.install(skillName, options);
+
+  if (!success) {
+    process.exit(1);
   }
 }

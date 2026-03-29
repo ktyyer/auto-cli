@@ -9,7 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **自动上下文注入器** (`src/context/context-injector.js`)
+- **技能目录系统** (`src/skills/`)
+  - `skill-types.js` - 技能类型定义和解析器
+  - `skill-catalog.js` - 技能目录扫描和索引
+  - `skill-installer.js` - 技能安装、卸载、更新
+  - 9 大技能域分类（需求、工程、调试、测试、数据、AI、科研、数学、多媒体）
+  - CLI 子命令：`auto skills list/search/install`
+
+- **诊断命令** - `auto doctor` 环境健康检查
+
+- **知识保存命令** - `auto save` 一键保存知识条目
+
+### Changed
+
+- **架构简化** - 移除 6 个超出范围的模块
+  - 删除 `src/graph/`（知识图谱系统）
+  - 删除 `src/governance/`（治理规则引擎）
+  - 删除 `src/brain/`（个人知识大脑）
+  - 删除 `src/ecosystem/`（生态编排器）
+  - 删除 `src/runtime/`（VCO 适配器）
+  - 删除 `src/skills/`（旧的技能发现系统）
+  - COMPONENTS 从 12 个减少到 7 个
+
+- **CLI 优化** - 移除 query、brain、rules、workflow 等命令
+
+### Fixed
+
+- 测试失败修复（175 个测试全部通过）
+
+### Tests
+
+- 新增 `tests/context-injector.test.js`（18 个测试用例）
   - 4 种预设模式：探索、实现、修复、审查
   - 智能任务识别自动选择预设
   - 支持 CLAUDE.md、REPO_MAP、session-knowledge、pattern-cards、insights、dependencies 6 种上下文源

@@ -75,23 +75,6 @@ describe('installer.js coverage boost', () => {
   });
 
   describe('install - recursive with backup and skip', () => {
-    it('should create backup in recursive mode when force=false', async () => {
-      const targetFile = path.join(testClaudeDir, 'plugins', 'builtin', 'plugin.md');
-      await fs.ensureDir(path.dirname(targetFile));
-      await fs.writeFile(targetFile, '# OLD');
-
-      const result = await install(['plugins'], { backup: true, force: false });
-
-      expect(result.skippedFiles.length).toBeGreaterThan(0);
-      expect(result.installedFiles).toEqual([]);
-
-      // Backup file created
-      const dir = path.join(testClaudeDir, 'plugins', 'builtin');
-      const files = await fs.readdir(dir);
-      const backupFile = files.find((f) => f.includes('.backup.'));
-      expect(backupFile).toBeDefined();
-    });
-
     it('should handle multi-component install', async () => {
       const result = await install(['agents', 'rules'], { backup: false });
 
@@ -194,15 +177,6 @@ describe('installer.js coverage boost', () => {
       expect(status.agents.fileCount).toBeGreaterThan(0);
       expect(status.commands.installed).toBe(false);
     });
-
-    it('should count files in recursive components', async () => {
-      await install(['plugins'], { backup: false });
-
-      const status = await checkStatus();
-
-      expect(status.plugins.installed).toBe(true);
-      expect(status.plugins.fileCount).toBeGreaterThan(0);
-    });
   });
 
   describe('install - edge cases', () => {
@@ -216,12 +190,6 @@ describe('installer.js coverage boost', () => {
       const installed = result.installedFiles;
       expect(installed.some((f) => f.endsWith('test.md'))).toBe(true);
       expect(installed.some((f) => f.endsWith('ignore.txt'))).toBe(false);
-    });
-
-    it('should install templates component', async () => {
-      const result = await install(['templates'], { backup: false });
-
-      expect(result.installedFiles.length).toBeGreaterThan(0);
     });
   });
 

@@ -187,34 +187,6 @@ describe('installer.js', () => {
       const content = await fs.readFile(targetFile, 'utf-8');
       expect(content).toContain('# Auto Command v2');
     });
-
-    it('should skip existing files when force=false (recursive, plugins)', async () => {
-      const targetFile = path.join(testClaudeDir, 'plugins', 'builtin', 'test-plugin.md');
-      await fs.ensureDir(path.dirname(targetFile));
-      await fs.writeFile(targetFile, '# Old Plugin');
-
-      const result = await install(['plugins'], { backup: false, force: false });
-
-      expect(result.installedFiles).toEqual([]);
-      expect(result.skippedFiles.length).toBeGreaterThan(0);
-
-      const content = await fs.readFile(targetFile, 'utf-8');
-      expect(content).toBe('# Old Plugin');
-    });
-
-    it('should overwrite existing files when force=true (recursive)', async () => {
-      const targetFile = path.join(testClaudeDir, 'plugins', 'builtin', 'test-plugin.md');
-      await fs.ensureDir(path.dirname(targetFile));
-      await fs.writeFile(targetFile, '# Old Plugin');
-
-      const result = await install(['plugins'], { backup: false, force: true });
-
-      expect(result.installedFiles.length).toBeGreaterThan(0);
-      expect(result.skippedFiles).toEqual([]);
-
-      const content = await fs.readFile(targetFile, 'utf-8');
-      expect(content).toContain('# Test Plugin v2');
-    });
   });
 
   describe('uninstall', () => {

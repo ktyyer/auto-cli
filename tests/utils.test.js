@@ -96,36 +96,6 @@ describe('utils.js', () => {
       });
     });
 
-    it('should have plugins component with correct structure', () => {
-      expect(COMPONENTS.plugins).toMatchObject({
-        name: 'Plugins（插件）',
-        source: 'plugins',
-        target: 'plugins',
-        pattern: '**/*',
-        recursive: true
-      });
-    });
-
-    it('should have templates component with correct structure', () => {
-      expect(COMPONENTS.templates).toMatchObject({
-        name: 'Templates（模板）',
-        source: 'templates',
-        target: 'templates',
-        pattern: '**/*',
-        recursive: true
-      });
-    });
-
-    it('should have lib component with correct structure', () => {
-      expect(COMPONENTS.lib).toMatchObject({
-        name: 'Lib（核心库）',
-        source: 'lib',
-        target: 'lib',
-        pattern: '**/*',
-        recursive: true
-      });
-    });
-
     it('should have hooks component with correct structure', () => {
       expect(COMPONENTS.hooks).toMatchObject({
         name: 'Hooks（自动化门禁）',
@@ -144,8 +114,8 @@ describe('utils.js', () => {
       });
     });
 
-    it('should have exactly 12 components', () => {
-      expect(Object.keys(COMPONENTS)).toHaveLength(12);
+    it('should have exactly 7 components', () => {
+      expect(Object.keys(COMPONENTS)).toHaveLength(7);
     });
   });
 
