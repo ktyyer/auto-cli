@@ -33,7 +33,7 @@
         "description": "Pause before git push to review changes"
       },
       {
-        "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|AGENTS\\\\.md|CONTRIBUTING\\\\.md\")",
+        "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|AGENTS\\\\.md|CONTRIBUTING\\\\.md\") && !(tool_input.file_path matches \"[\\\\\\\\/]skills[\\\\\\\\/].*\\\\.md$\")",
         "hooks": [
           {
             "type": "command",
@@ -103,6 +103,16 @@
           }
         ],
         "description": "Warn about console.log statements after edits"
+      },
+      {
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(js|ts|jsx|tsx|java|py|go|rs)$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Frequent commit reminder - suggest committing after 5+ edits\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -z \"$file_path\" ] || [ ! -d \".git\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count uncommitted changes\nuncommitted=$(git diff --name-only 2>/dev/null | wc -l)\nunstaged=$(git diff --cached --name-only 2>/dev/null | wc -l)\ntotal=$((uncommitted + unstaged))\n\nif [ \"$total\" -ge 5 ]; then\n  echo \"[Hook] REMINDER: You have $total uncommitted file changes\" >&2\n  echo '[Hook] Consider committing your progress:' >&2\n  echo '[Hook]   git add -p && git commit -m \"feat: description\"' >&2\n  echo '[Hook] Frequent commits reduce risk and make rollback easier' >&2\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "Remind to commit when 5+ files have uncommitted changes - encourages frequent incremental commits"
       }
     ],
     "PostCompaction": [

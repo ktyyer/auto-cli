@@ -107,7 +107,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（11 个）
+### Skills 知识库（14 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -122,6 +122,9 @@ auto install
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
 | prompt-templates | 高效 Prompt 模板库（15 个社区验证模板） |
 | self-review | 自我审查清单（10 维度结构化自检） |
+| model-selection-guide | 模型选择指南（Haiku/Sonnet/Opus 场景决策树 + 成本优化策略） |
+| git-worktree | Git Worktree 并行工作流（多工作区 + 多 Agent 同时开发） |
+| chrome-devtools-mcp | Chrome DevTools MCP 使用指南（AI 直接调试浏览器前端应用） |
 
 ### Hooks 自动化（7 类钩子）
 
