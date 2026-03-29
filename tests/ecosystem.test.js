@@ -242,6 +242,26 @@ describe('EcosystemOrchestrator', () => {
     });
   });
 
+  describe('ContextInjector integration', () => {
+    it('应该注册 Context 模块', async () => {
+      await orchestrator.initialize();
+
+      const registry = orchestrator.getRegistry();
+      expect(registry.isRegistered('context')).toBe(true);
+    });
+
+    it('Context 模块应有 collect 能力', async () => {
+      await orchestrator.initialize();
+
+      const registry = orchestrator.getRegistry();
+      const descriptor = registry.getModuleDescriptor('context');
+
+      expect(descriptor).toBeDefined();
+      expect(descriptor.capabilities).toContain('collect');
+      expect(descriptor.version).toBe('0.10.0');
+    });
+  });
+
   describe('getRegistry', () => {
     it('应该返回注册表实例', () => {
       const registry = orchestrator.getRegistry();

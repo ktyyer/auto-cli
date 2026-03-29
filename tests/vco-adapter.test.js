@@ -74,6 +74,27 @@ describe('VCOAdapter', () => {
       expect(workflow.stages.length).toBe(3);
     });
 
+    it('应该包含探索-规划-编码工作流', async () => {
+      await adapter.loadWorkflows();
+
+      const workflow = adapter.workflows.find((w) => w.id === 'explore-plan-code-workflow');
+      expect(workflow).toBeDefined();
+      expect(workflow.name).toBe('探索-规划-编码工作流');
+      expect(workflow.mode).toBe(ORCHESTRATION_MODES.SEQUENTIAL);
+      expect(workflow.stages.length).toBe(3);
+      expect(workflow.tags).toContain('linux-do');
+    });
+
+    it('应该包含上下文感知工作流', async () => {
+      await adapter.loadWorkflows();
+
+      const workflow = adapter.workflows.find((w) => w.id === 'context-aware-workflow');
+      expect(workflow).toBeDefined();
+      expect(workflow.name).toBe('上下文感知工作流');
+      expect(workflow.stages.length).toBe(3);
+      expect(workflow.tags).toContain('context-injection');
+    });
+
     it('应该从 JSON 文件加载自定义工作流', async () => {
       const customWorkflow = {
         id: 'custom-test',

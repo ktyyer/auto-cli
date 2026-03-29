@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-03-29
+
+### Added
+
+- **自动上下文注入器** (`src/context/context-injector.js`)
+  - 4 种预设模式：探索、实现、修复、审查
+  - 智能任务识别自动选择预设
+  - 支持 CLAUDE.md、REPO_MAP、session-knowledge、pattern-cards、insights、dependencies 6 种上下文源
+  - 内置 Token 估算和缓存机制
+  - 基于 linux.do 社区 "自动上下文注入" 最佳实践
+
+- **最佳实践工作流预设**
+  - 探索-规划-编码工作流 (`explore-plan-code-workflow`)
+  - 上下文感知工作流 (`context-aware-workflow`)
+  - 基于 linux.do 社区讨论的最佳实践
+
+- **生态系统扩展**
+  - 新增 Context 模块注册到生态编排器
+  - MODULE_IDS 新增 CONTEXT 常量
+
+### Tests
+
+- 新增 `tests/context-injector.test.js`（18 个测试用例）
+- VCO 适配器测试新增 2 个工作流验证
+- 生态系统测试新增 Context 模块集成验证
+
+---
+
 ## [0.2.0] - 2026-03-28
 
 ### Added

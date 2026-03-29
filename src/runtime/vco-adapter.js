@@ -102,6 +102,72 @@ export class VCOAdapter {
   _getDefaultWorkflows() {
     return [
       {
+        id: 'explore-plan-code-workflow',
+        name: '探索-规划-编码工作流',
+        description: 'linux.do 最佳实践：先探索再规划最后编码，减少返工',
+        mode: ORCHESTRATION_MODES.SEQUENTIAL,
+        stages: [
+          {
+            id: 'explore',
+            name: '探索阶段',
+            type: STAGE_TYPES.TASK,
+            description: '全面探索项目结构和依赖关系',
+            config: { action: 'explore', preset: 'explore' }
+          },
+          {
+            id: 'plan',
+            name: '规划阶段',
+            type: STAGE_TYPES.TASK,
+            description: '基于探索结果制定详细计划',
+            config: { action: 'plan' },
+            dependsOn: ['explore']
+          },
+          {
+            id: 'code',
+            name: '编码阶段',
+            type: STAGE_TYPES.TASK,
+            description: '按计划逐步实现功能',
+            config: { action: 'implement' },
+            dependsOn: ['plan']
+          }
+        ],
+        version: '1.0.0',
+        tags: ['linux-do', 'best-practice', 'explore-first']
+      },
+      {
+        id: 'context-aware-workflow',
+        name: '上下文感知工作流',
+        description: 'linux.do 最佳实践：自动注入项目上下文，提升 AI 编码效率',
+        mode: ORCHESTRATION_MODES.SEQUENTIAL,
+        stages: [
+          {
+            id: 'inject-context',
+            name: '注入上下文',
+            type: STAGE_TYPES.TASK,
+            description: '自动收集并注入项目上下文（CLAUDE.md、知识图谱等）',
+            config: { action: 'inject-context' }
+          },
+          {
+            id: 'reason',
+            name: '推理决策',
+            type: STAGE_TYPES.TASK,
+            description: '基于上下文推理最优实现路径',
+            config: { action: 'reason' },
+            dependsOn: ['inject-context']
+          },
+          {
+            id: 'execute',
+            name: '执行实现',
+            type: STAGE_TYPES.TASK,
+            description: '按推理结果执行代码变更',
+            config: { action: 'execute' },
+            dependsOn: ['reason']
+          }
+        ],
+        version: '1.0.0',
+        tags: ['linux-do', 'context-injection', 'auto-context']
+      },
+      {
         id: 'tdd-workflow',
         name: 'TDD 工作流',
         description: '测试驱动开发工作流：测试先行 -> 实现 -> 重构',

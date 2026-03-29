@@ -45,6 +45,7 @@ export const MODULE_IDS = Object.freeze({
   KNOWLEDGE: 'knowledge', // 个人知识库 (v0.5.0)
   GRAPH: 'graph', // 知识图谱 (v0.5.0)
   BRAIN: 'brain', // 数字大脑 (v0.5.0)
+  CONTEXT: 'context', // 上下文注入器 (v0.10.0)
   ECOSYSTEM: 'ecosystem' // 生态系统本身
 });
 

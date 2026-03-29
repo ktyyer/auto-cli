@@ -20,6 +20,7 @@ import { SkillDiscovery } from '../skills/skill-discovery.js';
 import { KnowledgeSteward } from '../knowledge/knowledge-steward.js';
 import { KnowledgeGraph } from '../graph/knowledge-graph.js';
 import { DigitalBrain } from '../brain/digital-brain.js';
+import { ContextInjector } from '../context/context-injector.js';
 
 /**
  * 生态编排器类
@@ -145,6 +146,18 @@ export class EcosystemOrchestrator {
       description: '数字大脑',
       instance: new DigitalBrain(this.projectDir),
       capabilities: ['addIdentity', 'addContact', 'addIdea', 'addReview'],
+      dependencies: {},
+      config: {}
+    });
+
+    // 注册 Context 模块 (v0.10.0)
+    await this.registry.register({
+      id: MODULE_IDS.CONTEXT,
+      name: 'Context Injector',
+      version: '0.10.0',
+      description: '自动上下文注入 - linux.do 最佳实践',
+      instance: new ContextInjector(this.projectDir),
+      capabilities: ['collect', 'listPresets', 'recommendPreset'],
       dependencies: {},
       config: {}
     });
