@@ -117,13 +117,6 @@ export const COMPONENTS = {
     target: 'hooks',
     pattern: '*.json'
   },
-  mcpConfigs: {
-    name: 'MCP Configs（外部服务配置）',
-    description: 'MCP 服务器模板配置（playwright, context7 等）',
-    source: 'mcp-configs',
-    target: 'mcp-configs',
-    pattern: '*.json'
-  },
   knowledge: {
     name: 'Knowledge Steward（知识管家）',
     description: '一键保存灵感、踩坑经验、架构决策，自动分类 + Git 提交',
@@ -149,101 +142,6 @@ export function getSourceDir() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   return path.dirname(__dirname);
-}
-
-/**
- * 分析 MCP 服务器配置，返回每个服务器的状态
- * @param {string} configPath - mcp-servers.json 文件路径
- * @returns {Promise<{ready: Array, needsConfig: Array, total: number}>}
- */
-export async function analyzeMcpServers(configPath) {
-  try {
-    if (!(await fs.pathExists(configPath))) {
-      return { ready: [], needsConfig: [], total: 0 };
-    }
-
-    const content = await fs.readFile(configPath, 'utf-8');
-    const config = JSON.parse(content);
-    const servers = config.mcpServers || {};
-
-    const ready = [];
-    const needsConfig = [];
-
-    for (const [name, serverConfig] of Object.entries(servers)) {
-      const hasPlaceholder = JSON.stringify(serverConfig).includes('YOUR_');
-      const serverInfo = {
-        name,
-        description: serverConfig.description || '',
-        type: serverConfig.type || 'stdio',
-        command: serverConfig.command || ''
-      };
-
-      if (hasPlaceholder) {
-        needsConfig.push(serverInfo);
-      } else {
-        ready.push(serverInfo);
-      }
-    }
-
-    return { ready, needsConfig, total: ready.length + needsConfig.length };
-  } catch {
-    return { ready: [], needsConfig: [], total: 0 };
-  }
-}
-
-/**
- * 获取 MCP 服务器按分类的统计
- * @param {string} configPath - mcp-servers.json 文件路径
- * @returns {Promise<Object>} 分类统计
- */
-export async function getMcpServerCategories(configPath) {
-  const { ready, needsConfig, total } = await analyzeMcpServers(configPath);
-
-  const categories = {
-    search: { ready: 0, total: 0, servers: [] },
-    devtools: { ready: 0, total: 0, servers: [] },
-    ai: { ready: 0, total: 0, servers: [] }
-  };
-
-  const categoryMap = {
-    context7: 'search',
-    github: 'devtools',
-    filesystem: 'devtools',
-    'ast-grep': 'devtools',
-    playwright: 'devtools',
-    memory: 'ai',
-    'sequential-thinking': 'ai'
-  };
-
-  const allServers = [
-    ...ready.map((s) => ({ ...s, status: 'ready' })),
-    ...needsConfig.map((s) => ({ ...s, status: 'needs_config' }))
-  ];
-
-  for (const server of allServers) {
-    const cat = categoryMap[server.name] || 'devtools';
-    categories[cat].total += 1;
-    categories[cat].servers.push(server);
-    if (server.status === 'ready') {
-      categories[cat].ready += 1;
-    }
-  }
-
-  return { categories, summary: { ready: ready.length, needsConfig: needsConfig.length, total } };
-}
-
-/**
- * 快速统计 MCP 服务器数量
- * @param {string} configPath - mcp-servers.json 文件路径
- * @returns {Promise<{mcp_servers: number, mcp_ready: number, mcp_needs_config: number}>}
- */
-export async function countMcpServers(configPath) {
-  const { ready, needsConfig, total } = await analyzeMcpServers(configPath);
-  return {
-    mcp_servers: total,
-    mcp_ready: ready.length,
-    mcp_needs_config: needsConfig.length
-  };
 }
 
 /**

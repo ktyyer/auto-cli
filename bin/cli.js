@@ -2,16 +2,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import {
-  interactiveMode,
-  runInstall,
-  runUpdate,
-  runUninstall,
-  runSkillsList,
-  runSkillsSearch,
-  runSkillsInstall,
-  runRoute
-} from '../src/index.js';
+import { interactiveMode, runInstall, runUpdate, runUninstall, runRoute } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
 import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
@@ -115,48 +106,6 @@ program
     const success = await openBrowser(url);
     if (!success) {
       console.log(chalk.yellow('无法自动打开浏览器，请手动访问上述链接。'));
-    }
-  });
-
-// 技能命令组
-const skills = program.command('skills').description('技能管理系统');
-
-skills
-  .command('list')
-  .description('列出所有可用技能')
-  .option('--json', '以 JSON 格式输出')
-  .action(async (options) => {
-    try {
-      await runSkillsList(options);
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-skills
-  .command('search <query>')
-  .description('搜索技能')
-  .option('--json', '以 JSON 格式输出')
-  .action(async (query, options) => {
-    try {
-      await runSkillsSearch(query, options);
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
-    }
-  });
-
-skills
-  .command('install <skillName>')
-  .description('安装技能到项目')
-  .option('-f, --force', '强制覆盖已安装的技能')
-  .action(async (skillName, options) => {
-    try {
-      await runSkillsInstall(skillName, options);
-    } catch (error) {
-      console.error(chalk.red('错误：'), error.message);
-      process.exit(1);
     }
   });
 

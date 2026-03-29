@@ -46,9 +46,7 @@
     "rules",
     "commands",
     "skills",
-    "hooks",
-    "plugins",
-    "mcp-configs"
+    "hooks"
   ],
   "dependencies": {
     "chalk": "^5.3.0",
