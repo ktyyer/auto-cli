@@ -119,7 +119,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（5 个）
+### Skills 知识库（8 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -128,6 +128,9 @@ auto install
 | coding-standards | 编码规范 |
 | error-patterns | 常见错误模式速查与修复方案 |
 | **unified-memory-system** | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
+| **subagent-driven-development** | 子代理驱动开发（Multi-Agent 编排工作流） |
+| **root-cause-tracing** | 根因追踪（结构化调试方法论） |
+| **agentic-workflow-patterns** | Agentic 工作流模式（6 种经典编排模式参考） |
 
 ### Plugins 插件（15 个）
 
@@ -386,6 +389,25 @@ Auto CLI 的 ContextInjector 会根据 PHASE 1 的分析结果自动选择模式
 ---
 
 ## 版本历史
+
+### v0.16.0 (2026-03-29)
+
+**新增 3 个 Skill（能力融合集成）**：
+
+- **subagent-driven-development** -- 子代理驱动开发工作流标准化（4 种编排模式 + 选择决策树）
+- **root-cause-tracing** -- 结构化根因追踪方法论（五步法 + 5 种常见根因模式）
+- **agentic-workflow-patterns** -- 6 种经典 Agentic 工作流模式参考
+
+**灵感来源**：
+- [ThibautMelen/agentic-workflow-patterns](https://github.com/anthropics/anthropic-cookbook) - Agentic Workflow Patterns
+- 开源社区 Multi-Agent 编排最佳实践
+
+**能力统计变化**：
+| 能力类型 | 变化前 | 变化后 |
+|---------|-------|-------|
+| Skills | 5 | 8 |
+
+---
 
 ### v0.12.0 (2026-03-29)
 
