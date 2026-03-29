@@ -462,7 +462,7 @@ function processData(data: Array<{ value: number }>) {
 **不使用场景：**
 - 代码需要重构（使用 refactor-cleaner）
 - 需要架构更改（使用 architect）
-- 需要新功能（使用 planner）
+- 需要新功能（使用 quest-designer）
 - 测试失败（使用 tdd-guide）
 - 发现安全问题（使用 security-reviewer）
 

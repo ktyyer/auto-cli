@@ -168,7 +168,7 @@ const BUILT_IN_AGENTS = [
     triggerKeywords: ['quest', '闯关', '大纲', '蓝图', 'blueprint', 'quest-map'],
     priority: 82,
     complexity: COMPLEXITY_LEVELS.HIGH,
-    fallbackAgents: ['planner'],
+    fallbackAgents: ['architect'],
     state: AGENT_STATES.ACTIVE,
     source: 'built-in',
     version: '4.0.0',
