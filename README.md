@@ -119,7 +119,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（8 个）
+### Skills 知识库（11 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -131,6 +131,9 @@ auto install
 | **subagent-driven-development** | 子代理驱动开发（Multi-Agent 编排工作流） |
 | **root-cause-tracing** | 根因追踪（结构化调试方法论） |
 | **agentic-workflow-patterns** | Agentic 工作流模式（6 种经典编排模式参考） |
+| **init-project** | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
+| **prompt-templates** | 高效 Prompt 模板库（15 个社区验证模板） |
+| **self-review** | 自我审查清单（10 维度结构化自检） |
 
 ### Plugins 插件（15 个）
 
@@ -389,6 +392,26 @@ Auto CLI 的 ContextInjector 会根据 PHASE 1 的分析结果自动选择模式
 ---
 
 ## 版本历史
+
+### v0.17.0 (2026-03-29)
+
+**新增 3 个 Skill（社区最佳实践融合）**：
+
+- **init-project** -- CLAUDE.md 智能初始化（结构化模板 + 7 板块 + 生成流程）
+- **prompt-templates** -- 高效 Prompt 模板库（15 个社区验证模板 + 优化技巧）
+- **self-review** -- 自我审查清单（10 维度结构化自检 + 精简版 5 维度）
+
+**灵感来源**：
+- linux.do 社区 Vibe Coding 高赞帖
+- awesome-claude-code Best Prompts / Code Review Checklist
+- Anthropic 官方 Self-Correction 模式
+
+**能力统计变化**：
+| 能力类型 | 变化前 | 变化后 |
+|---------|-------|-------|
+| Skills | 8 | 11 |
+
+---
 
 ### v0.16.0 (2026-03-29)
 
