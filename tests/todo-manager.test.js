@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
@@ -37,7 +37,7 @@ describe('TodoManager', () => {
     });
 
     it('should load existing active snapshot', async () => {
-      const first = await manager.initialize('First Task');
+      await manager.initialize('First Task');
       await manager.add({ content: 'Existing item' });
 
       const secondManager = new TodoManager(tempDir);
