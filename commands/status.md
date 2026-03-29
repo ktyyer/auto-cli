@@ -1,17 +1,10 @@
 ---
-description: 查看项目状态和 Self-* 系统学习情况
+description: 查看项目状态和能力安装情况
 ---
 
-# /auto:status — 状态查看
+# /auto:status -- 状态查看
 
-> **查看项目当前状态、能力和建议**
-
-## 🆕 v5.0 增强
-
-集成 Self-* 系统和记忆系统，显示：
-- 🧠 Project Memory：持久化的项目知识
-- ✨ Architect/Editor：双模型调用统计
-- 🛡️ Guardrails：当前护栏安全级别
+> **查看项目当前状态、已安装能力和建议**
 
 ---
 
@@ -19,28 +12,29 @@ description: 查看项目状态和 Self-* 系统学习情况
 
 ### 项目概览
 - 项目名称和路径
-- 语言和框架
-- 文件统计与 REPO_MAP 状态
+- 语言和框架（从 package.json / pom.xml / go.mod 推断）
+- 文件统计
 
-### 🧠 记忆系统状态
-- **Project Memory**：会话记录、架构决策、风格偏好
-- **Smart Context**：索引状态、预估 Search 效率
-- **Self-Aware**：已学习的团队编码模式列表（带置信度）
+### 已安装能力
+- **Agents**：已安装的 Agent 数量和列表
+- **Commands**：已安装的命令数量
+- **Skills**：已安装的 Skill 数量和索引状态
+- **Rules**：已安装的规范数量
+- **Hooks**：已安装的 Hook 配置
+- **Knowledge**：知识库条目统计（.auto/insights/）
 
-### 🤖 核心能力状态
-- **Architect/Editor**：双模型流转次数、Diff 节省 Token 比例
-- **Git Auto-Commit**：开启状态、自动提交次数
-- **Smart Guardrails**：当前配置级别（自动/确认）
-- **Self-Fixing**：自动修复成功率
+### 项目健康度
+- CLAUDE.md 是否存在
+- REPO_MAP.md 是否存在
+- 依赖是否安装
+- Git 仓库状态
 
-### 💡 建议操作
-- 待优化项与技术债务
-- 改进建议（如：生成最新的地图、处理遗留 TODO）
+### 建议操作
+- 缺失的配置文件（建议运行 /auto:doctor）
+- 待优化的项
 
-## 示例
+## 使用示例
 
 ```bash
 /auto:status
 ```
-
-*(输出会以紧凑的 Markdown 面板形式在终端展示)*

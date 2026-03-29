@@ -124,14 +124,6 @@ export const COMPONENTS = {
     target: 'skills',
     pattern: 'unified-memory-system.md',
     recursive: false
-  },
-  router: {
-    name: 'Router（权威路由器）',
-    description: 'Canonical Router - 中心化 Agent 路由和智能调度',
-    source: 'src/router',
-    target: 'src/router',
-    pattern: '**/*',
-    recursive: false
   }
 };
 
