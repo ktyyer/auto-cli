@@ -72,6 +72,14 @@
 | export | `STAGE_TYPES` | src\runtime\workflow-types.js |
 | export | `WORKFLOW_RESULT` | src\runtime\workflow-types.js |
 | export | `WORKFLOW_RESULT_NAMES` | src\runtime\workflow-types.js |
+| export | `EcosystemOrchestrator` | src\ecosystem\ecosystem-orchestrator.js |
+| export | `ModuleRegistry` | src\ecosystem\module-registry.js |
+| export | `DEPENDENCY_TYPES` | src\ecosystem\module-types.js |
+| export | `DATA_FLOW_TYPES` | src\ecosystem\module-types.js |
+| export | `ECOSYSTEM_EVENTS` | src\ecosystem\module-types.js |
+| export | `MODULE_IDS` | src\ecosystem\module-types.js |
+| export | `MODULE_STATES` | src\ecosystem\module-types.js |
+| export | `MODULE_STATE_NAMES` | src\ecosystem\module-types.js |
 
 ---
 
