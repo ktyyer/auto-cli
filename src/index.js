@@ -12,6 +12,7 @@ import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
 import { getAvailableMcpServers, installMcpServers } from './mcp-installer.js';
+import { EcosystemOrchestrator } from './ecosystem/ecosystem-orchestrator.js';
 
 /**
  * 交互模式 - 主菜单
@@ -168,4 +169,56 @@ export async function runDocs() {
   if (!success) {
     logger.warn('无法自动打开浏览器，请手动访问上述链接。');
   }
+}
+
+/**
+ * 导出 EcosystemOrchestrator
+ */
+export { EcosystemOrchestrator };
+
+/**
+ * 运行生态系统命令
+ */
+export async function runEcosystem(options = {}) {
+  if (!options.quiet) {
+    console.log('');
+    console.log(chalk.cyan.bold('生态系统管理'));
+    console.log('');
+  }
+
+  const orchestrator = new EcosystemOrchestrator();
+
+  // 初始化生态系统
+  console.log(chalk.cyan('正在初始化生态系统...'));
+  const initialized = await orchestrator.initialize();
+
+  if (!initialized) {
+    console.log(chalk.red('生态系统初始化失败'));
+    return;
+  }
+
+  console.log(chalk.green('✓ 生态系统初始化成功'));
+
+  // 获取健康状态
+  const health = await orchestrator.getEcosystemHealth();
+  console.log('');
+  console.log(chalk.cyan('生态系统健康状态：'));
+  console.log(chalk.gray(`  总体状态: ${health.status}`));
+  console.log(chalk.gray(`  模块总数: ${health.totalModules}`));
+  console.log(chalk.gray(`  就绪模块: ${health.readyModules}`));
+  console.log(chalk.gray(`  错误模块: ${health.errorModules}`));
+
+  if (options.verbose) {
+    console.log('');
+    console.log(chalk.cyan('模块详情：'));
+    const modules = orchestrator.getRegistry().listModules();
+    for (const module of modules) {
+      const statusIcon = module.state === 'ready' ? '●' : '○';
+      console.log(`  ${statusIcon} ${chalk.bold(module.name)} (${chalk.gray(module.id)})`);
+      console.log(`      状态: ${chalk.gray(module.state)}`);
+      console.log(`      能力: ${module.capabilities.join(', ')}`);
+    }
+  }
+
+  console.log('');
 }
