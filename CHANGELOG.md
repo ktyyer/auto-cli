@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-03-29
+
+### Changed
+
+- **Skills 精简优化**：13 个 -> 6 个（-54%）
+  - 移除 agentic-workflow-patterns.md（与 subagent-driven-development 重叠）
+  - 移除 coding-standards.md（功能被 rules/ 目录覆盖）
+  - 移除 model-selection-guide.md（内容已过时）
+  - 移除 reflection.md（功能被 self-review/code-reviewer/quest-designer 覆盖）
+  - 移除 prompt-templates.md（功能被 auto 命令/init-project 覆盖）
+  - 合并 plan-mode-workflows + subagent-driven-development + root-cause-tracing -> workflow-patterns.md
+  - 精简 unified-memory-system.md（去除重复策略详解）
+
+- **README 修正**：
+  - 更新 Skills 数量统计（13 -> 6）
+  - 移除不属于本项目的 java-coding-style Rule 描述
+  - 更新 Rules 数量（9 -> 8）
+
+### Removed
+
+- skills/agentic-workflow-patterns.md
+- skills/coding-standards.md
+- skills/model-selection-guide.md
+- skills/reflection.md
+- skills/prompt-templates.md
+- skills/plan-mode-workflows.md
+- skills/subagent-driven-development.md
+- skills/root-cause-tracing.md
+
+### Added
+
+- skills/workflow-patterns.md（三合一合并）
+
 ## [0.10.0] - 2026-03-29
 
 ### Added

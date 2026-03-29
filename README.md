@@ -94,7 +94,7 @@ auto install
 | doc-updater | 文档更新 |
 | refactor-cleaner | 死代码清理 |
 
-### Rules 编码规范（9 个）
+### Rules 编码规范（8 个）
 
 | 规范 | 领域 |
 |------|------|
@@ -106,25 +106,18 @@ auto install
 | performance | 性能优化策略 |
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
-| java-coding-style | Java / Spring Boot 编码规范 |
 
-### Skills 知识库（13 个）
+### Skills 知识库（6 个）
 
 | Skill | 领域 |
 |-------|------|
 | backend-patterns | 后端架构最佳实践 |
 | frontend-patterns | 前端组件模式 |
 | error-patterns | 常见错误模式速查与修复方案 |
+| workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪） |
 | unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
-| subagent-driven-development | 子代理驱动开发（Multi-Agent 编排工作流） |
-| root-cause-tracing | 根因追踪（结构化调试方法论） |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
-| prompt-templates | 高效 Prompt 模板库（15 个社区验证模板） |
 | self-review | 自我审查清单（10 维度结构化自检） |
-| git-worktree | Git Worktree 并行工作流（快速参考） |
-| chrome-devtools-mcp | Chrome DevTools MCP 使用指南（快速参考） |
-| reflection | 反思能力 -- 2026 年 5 大 Agent 设计模式之一（即时/交叉/累积反思） |
-| plan-mode-workflows | Plan Mode 4 种工作流模式（探索/实现/修复/审查） |
 
 ### Hooks 自动化（7 类钩子）
 
@@ -251,6 +244,15 @@ auto save search -q "关键词"  # 搜索知识条目
 ---
 
 ## 版本历史
+
+### v0.21.0
+
+**聚焦核心功能 -- Skills 精简优化**：
+- 移除 7 个冗余/重叠 Skills：agentic-workflow-patterns, coding-standards, model-selection-guide, reflection, prompt-templates, plan-mode-workflows, subagent-driven-development, root-cause-tracing
+- 新增 1 个合并 Skill：workflow-patterns（Plan Mode + Multi-Agent + 根因追踪三合一）
+- Skills 从 13 个精简至 6 个（-54%）
+- 总知识库大小从约 120KB 降至约 65KB（-46%）
+- 保留 git-worktree 和 chrome-devtools-mcp 作为独立快速参考
 
 ### v0.20.0
 
