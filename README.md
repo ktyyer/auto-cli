@@ -64,20 +64,13 @@ auto install
 
 # 创建 Hook
 /auto:create-hook
-
-# 技能生成 -- 从 Git 历史提取编码模式
-/skill-create
-/skill-create --commits 100
-
-# 会话学习 -- 保存当前会话的有价值经验
-/learn
 ```
 
 ---
 
 ## 能力总览
 
-### 命令（7 个）
+### 命令（5 个核心）
 
 | 命令 | 用途 |
 |------|------|
@@ -86,8 +79,6 @@ auto install
 | `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
 | `/auto:status` | 查看项目状态和能力 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
-| `/skill-create` | Git 历史 → 技能生成 -- 分析项目历史自动提取编码模式 |
-| `/learn` | 会话模式提取 -- 从当前会话保存可复用经验 |
 
 ### Agent（9 个）
 
@@ -116,14 +107,12 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（7 个）
+### Skills 知识库（5 个）
 
 | Skill | 领域 |
 |-------|------|
 | workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪） |
 | unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
-| backend-patterns | 后端架构最佳实践 |
-| frontend-patterns | 前端组件模式和性能优化 |
 | error-patterns | 常见错误模式速查与修复方案 |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
 | self-review | 自我审查清单（10 维度结构化自检） |
@@ -255,18 +244,23 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.23.0（当前）
+### v0.24.0（当前）
+
+**定位精简优化**：
+- 聚焦"智能超级命令"核心定位
+- Skills 精简：7 -> 5（移除 backend-patterns, frontend-patterns）
+- COMPONENTS 清理：6 -> 5（移除冗余 knowledge 定义）
+- 核心命令：5 个（auto, route, doctor, status, create-hook）
+- 项目定位更清晰，维护成本更低
+
+### v0.23.0
 
 **新增能力引入**：
-- 新增 `/skill-create` 命令 -- 从 Git 历史自动提取编码模式并生成 Skill 文件
-- 新增 `/learn` 命令 -- 从当前会话提取可复用经验并保存为 Skill
-- 引入 everything-claude-code 实战验证的知识沉淀能力
-- 与 quest-designer v4 完美配合，增强 Quest Map 上下文感知
+- 新增 `/skill-create` 和 `/learn` 命令（v0.24.0 已移除，回归核心定位）
 
 ### v0.22.0
 
 **精简优化与文档修正**：
-- 删除冗余 Skills：reflection（与 self-review + workflow-patterns 重叠）、git-worktree、chrome-devtools-mcp（快速参考级，不属于核心 Skill）
 - Skills 从 10 个精简至 7 个
 - 修正 README 能力统计与实际代码一致
 - 修正源码中对不存在命令的引用（/auto:tdd, /auto:code-review, /auto:plan）
@@ -278,6 +272,7 @@ auto save search -q "关键词"  # 搜索知识条目
 **聚焦核心功能 -- Skills 精简优化**：
 - Skills 从 13 个精简至 10 个（移除/合并 8 个，新增 workflow-patterns）
 - 新增 workflow-patterns（Plan Mode + Multi-Agent + 根因追踪三合一）
+- 注：v0.24.0 进一步精简至 5 个核心 Skills
 
 ### v0.20.0
 

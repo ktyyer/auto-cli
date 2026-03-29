@@ -1,6 +1,6 @@
 {
   "name": "auto-cli",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Auto CLI - Claude Code 超级开发辅助工具",
   "main": "src/index.js",
   "bin": {

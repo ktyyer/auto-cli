@@ -116,14 +116,6 @@ export const COMPONENTS = {
     source: 'hooks',
     target: 'hooks',
     pattern: '*.json'
-  },
-  knowledge: {
-    name: 'Unified Memory（统一记忆）',
-    description: '上下文管理 + 会话恢复 + 知识沉淀三合一',
-    source: 'skills',
-    target: 'skills',
-    pattern: 'unified-memory-system.md',
-    recursive: false
   }
 };
 

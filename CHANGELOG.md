@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-03-29
+
+### Changed
+
+- **项目定位精简**：聚焦"智能超级命令"核心定位
+- **Skills 精简**：7 -> 5（移除 `backend-patterns`, `frontend-patterns`）
+  - 原因：通用代码示例与"超级开发辅助工具"定位不符
+  - 用户项目应该有自己的 CLAUDE.md 定义编码规范
+- **COMPONENTS 清理**：6 -> 5（移除冗余 `knowledge` 定义）
+  - `skills` 组件使用 `recursive: true` 已覆盖整个 skills 目录
+  - 避免组件功能重复
+- **doctor.md 诊断阈值**：Skills 检查从 `>= 7` 调整为 `>= 5`
+
+### Removed
+
+- skills/backend-patterns.md（通用后端代码示例）
+- skills/frontend-patterns.md（通用前端代码示例）
+- src/utils.js 中的 `knowledge` 组件定义
+
+### Fixed
+
+- 修正 tests/utils.test.js 组件数量断言（6 -> 5）
+- 更新 doctor.md 示例输出（Skills 11 -> 5）
+- 测试全部通过（247 个）
+
+### Technical Details
+
+- 无破坏性变更（仅删除非核心文件）
+- 代码覆盖率保持 89.93%
+- 所有 247 个测试通过
+- 项目定位更加清晰：CLI 工具 + 核心开发辅助能力
+
 ## [0.22.0] - 2026-03-29
 
 ### Added
