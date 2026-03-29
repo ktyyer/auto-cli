@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.23.0.tgz
+npm install -g auto-cli-0.24.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -70,7 +70,7 @@ auto install
 
 ## 能力总览
 
-### 命令（5 个核心）
+### 命令（7 个）
 
 | 命令 | 用途 |
 |------|------|
@@ -79,6 +79,8 @@ auto install
 | `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
 | `/auto:status` | 查看项目状态和能力 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
+| `/auto:skill-create` | 从 Git 历史自动提取编码模式并生成 Skill 文件 |
+| `/auto:learn` | 从当前会话提取可复用经验并保存为 Skill |
 
 ### Agent（9 个）
 
@@ -250,13 +252,13 @@ auto save search -q "关键词"  # 搜索知识条目
 - 聚焦"智能超级命令"核心定位
 - Skills 精简：7 -> 5（移除 backend-patterns, frontend-patterns）
 - COMPONENTS 清理：6 -> 5（移除冗余 knowledge 定义）
-- 核心命令：5 个（auto, route, doctor, status, create-hook）
+- 核心命令：7 个（auto, route, doctor, status, create-hook, skill-create, learn）
 - 项目定位更清晰，维护成本更低
 
 ### v0.23.0
 
 **新增能力引入**：
-- 新增 `/skill-create` 和 `/learn` 命令（v0.24.0 已移除，回归核心定位）
+- 新增 `/skill-create` 和 `/learn` 命令
 
 ### v0.22.0
 

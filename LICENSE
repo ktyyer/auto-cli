@@ -19,3 +19,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+This project is based on or incorporates code from the following open-source projects:
+
+1. everything-claude-code
+   Copyright (c) 2025 affaan-m
+   https://github.com/affaan-m/everything-claude-code
+   Licensed under the MIT License.
+
+2. ai-max
+   Copyright (c) 2026 zhukunpenglinyutong
+   https://github.com/zhukunpenglinyutong/ai-max
+   Licensed under the MIT License.
