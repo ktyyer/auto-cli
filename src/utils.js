@@ -131,6 +131,14 @@ export const COMPONENTS = {
     target: 'skills/knowledge-steward',
     pattern: '**/*',
     recursive: true
+  },
+  router: {
+    name: 'Router（权威路由器）',
+    description: 'Canonical Router - 中心化 Agent 路由和智能调度',
+    source: 'src/router',
+    target: 'src/router',
+    pattern: '**/*',
+    recursive: false
   }
 };
 
