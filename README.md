@@ -70,7 +70,7 @@ auto install
 
 ## 能力总览
 
-### 命令（5 个）
+### 命令（6 个）
 
 | 命令 | 用途 |
 |------|------|
@@ -79,6 +79,7 @@ auto install
 | `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
 | `/auto:status` | 查看项目状态和能力 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
+| `/auto:analyze` | 能力分析 -- 分析项目能力画像，识别强项和缺口 |
 
 ### Agent（9 个）
 
@@ -107,7 +108,7 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（6 个）
+### Skills 知识库（7 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -117,6 +118,7 @@ auto install
 | workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪） |
 | unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
+| reflection | 自我反思模式 -- Andrew Ng 第一模式，4 步反思流程 |
 | self-review | 自我审查清单（10 维度结构化自检） |
 
 ### Hooks 自动化（7 类钩子）
@@ -202,6 +204,7 @@ auto install      # 安装组件（-y 跳过确认，-f 强制覆盖）
 auto update       # 更新已安装组件
 auto uninstall    # 卸载组件
 auto route <意图> # 智能路由（-d 调试，-j JSON 输出）
+auto analyze      # 能力分析（-j JSON 输出）
 auto list         # 列出可用组件
 auto docs         # 打开文档
 auto save insight -c "内容"  # 保存知识条目

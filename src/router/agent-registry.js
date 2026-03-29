@@ -13,7 +13,6 @@ import { logger } from '../logger.js';
 import { COMPLEXITY_LEVELS, AGENT_STATES } from './agent-types.js';
 
 const AGENTS_DIR_NAME = 'agents';
-const AGENT_REGISTRY_FILE = 'agent-registry.json';
 
 /**
  * 内置 Agent 清单定义

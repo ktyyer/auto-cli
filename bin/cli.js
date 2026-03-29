@@ -210,6 +210,74 @@ save
     }
   });
 
+// 能力分析命令
+program
+  .command('analyze')
+  .description('分析当前项目的能力画像（Agent + Skill + Rule 覆盖度）')
+  .option('-j, --json', '以 JSON 格式输出')
+  .action(async (options) => {
+    try {
+      const { CapabilityAnalyzer } = await import('../src/todos/capability-analyzer.js');
+
+      const analyzer = new CapabilityAnalyzer(process.cwd());
+      const profile = await analyzer.analyze();
+
+      if (options.json) {
+        console.log(JSON.stringify(profile, null, 2));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold('  项目能力画像'));
+      console.log(chalk.gray('  ' + '-'.repeat(50)));
+      console.log('');
+
+      // 领域评分
+      for (const [, data] of Object.entries(profile.domains)) {
+        const bar =
+          '#'.repeat(Math.round(data.score / 10)) + '-'.repeat(10 - Math.round(data.score / 10));
+        const statusIcon =
+          data.score >= 60
+            ? chalk.green('STRONG')
+            : data.score >= 30
+              ? chalk.yellow('MODERATE')
+              : chalk.red('WEAK');
+        console.log(`  ${data.name.padEnd(8)} [${chalk.gray(bar)}] ${data.score}%  ${statusIcon}`);
+      }
+
+      if (profile.strengths.length > 0) {
+        console.log('');
+        console.log(chalk.green('  强项:'));
+        for (const s of profile.strengths) {
+          console.log(chalk.green(`    + ${s}`));
+        }
+      }
+
+      if (profile.gaps.length > 0) {
+        console.log('');
+        console.log(chalk.yellow('  缺口:'));
+        for (const g of profile.gaps) {
+          console.log(chalk.yellow(`    - ${g}`));
+        }
+      }
+
+      if (profile.suggestions.length > 0) {
+        console.log('');
+        console.log(chalk.cyan('  建议:'));
+        for (const s of profile.suggestions) {
+          console.log(chalk.gray(`    > ${s}`));
+        }
+      }
+
+      console.log('');
+      console.log(chalk.gray('  ' + '-'.repeat(50)));
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
 // 路由命令
 program
   .command('route <intent>')

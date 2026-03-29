@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-03-29
+
+### Added
+
+- **TodoLists 系统**：依赖感知任务管理（Claude Code 官方核心能力）
+  - `src/todos/todo-types.js` - TodoItem 和 TodoListSnapshot 类型定义
+  - `src/todos/todo-manager.js` - TodoManager 类（依赖感知排序 + 拓扑排序 + 跨会话持久化）
+  - `tests/todo-manager.test.js` - 23 个测试，覆盖率 98.38%
+  - 支持依赖阻塞、优先级排序、进度统计、Markdown 报告、归档功能
+
+- **Reflection Skill**：自我反思模式（Andrew Ng "AI Agent Design Patterns" 第一模式）
+  - `skills/reflection.md` - 4 步反思流程（回顾 → 质疑 → 评估 → 纠偏）
+  - 与 `self-review.md` 互补：self-review 是提交前清单，Reflection 是执行中纠偏
+  - 可嵌入 Quest 执行，提供量化评分表和反思模板
+
+- **能力分析器**：项目能力画像分析
+  - `src/todos/capability-analyzer.js` - CapabilityAnalyzer 类（10 个能力领域评估）
+  - `tests/capability-analyzer.test.js` - 9 个测试，全面覆盖
+  - 自动识别项目强项和缺口，生成改进建议
+  - CLI 命令：`auto analyze`（支持 `-j` JSON 输出）
+
+- **CLI 命令扩展**：
+  - `auto analyze` - 分析当前项目的能力画像（Agent + Skill + Rule 覆盖度）
+
+- **测试覆盖**：
+  - 新增 32 个测试（215 -> 247，+14.9%）
+  - TodoManager 覆盖率 98.38%，CapabilityAnalyzer 全面覆盖
+
+### Changed
+
+- **Skills 数量**：6 -> 7（新增 `reflection`）
+- **Commands 数量**：5 -> 6（新增 `auto analyze`）
+- **输入验证增强**：TodoManager.add() 和 initialize() 现在验证 `content` 和 `taskName` 参数
+
+### Fixed
+
+- 修复 CLI 中 `analyze` 命令的未使用变量（`key` → `,`）
+- 修复代码审查中指出的输入验证缺失问题
+
 ## [0.21.0] - 2026-03-29
 
 ### Changed
