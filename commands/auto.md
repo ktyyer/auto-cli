@@ -63,11 +63,26 @@ Glob("CLAUDE.md") → Read（如存在）
 Glob("$HOME/.claude/commands/auto/*.md")
 Glob("$HOME/.claude/agents/*.md")
 Glob("$HOME/.claude/plugins/**/*.md")
-Glob("$HOME/.claude/skills/**/*.md")
 
-→ 对每个目录 Grep 批量提取：
+→ 对以上目录 Grep 批量提取：
   Grep(pattern="^(name|description|tools|model):", output_mode="content")
   → 仅提取元数据行，不读正文
+
+→ Skills 目录使用 SkillIndexer 索引模式（替代 Glob 全量扫描）：
+
+```javascript
+import { SkillIndexer } from 'src/skills/skill-indexer.js';
+import path from 'node:path';
+import os from 'os';
+
+const skillsDir = path.join(os.homedir(), '.claude', 'skills');
+const indexer = new SkillIndexer(skillsDir);
+const skillIndex = await indexer.buildIndex();
+const skillSummary = await indexer.getIndexSummary();
+```
+
+输出 skillSummary（含 Skill 名称、描述、标签，以及节省百分比）。
+按需加载：仅在 PHASE 2+ 匹配到关键词时，才调用 `indexer.loadContent(relativePath)` 读取完整内容。
 ```
 
 ### 1.3 配置文件 + 项目代码
