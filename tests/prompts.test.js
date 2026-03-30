@@ -20,7 +20,8 @@ vi.mock('chalk', () => ({
     cyan: Object.assign((s) => s, { bold: (s) => s }),
     white: Object.assign((s) => s, { bold: (s) => s }),
     gray: (s) => s,
-    yellow: (s) => s
+    yellow: (s) => s,
+    green: (s) => s
   }
 }));
 
@@ -105,6 +106,33 @@ describe('prompts.js', () => {
       await promptUninstallConfirmation();
       const callArgs = mockPrompt.mock.calls[0][0];
       expect(callArgs[0].default).toBe(false);
+    });
+  });
+
+  describe('promptComponentSelection', () => {
+    it('should return selected components', async () => {
+      mockPrompt.mockResolvedValue({ selectedComponents: ['agents', 'commands'] });
+      const { promptComponentSelection } = await import('../src/prompts.js');
+      const result = await promptComponentSelection();
+      expect(result).toEqual(['agents', 'commands']);
+    });
+
+    it('should return null when no components selected', async () => {
+      mockPrompt.mockResolvedValue({ selectedComponents: [] });
+      const { promptComponentSelection } = await import('../src/prompts.js');
+      const result = await promptComponentSelection();
+      expect(result).toBeNull();
+    });
+
+    it('should mark installed components in choices', async () => {
+      const { getInstalledVersion } = await import('../src/utils.js');
+      getInstalledVersion.mockResolvedValue({ components: ['agents'] });
+      mockPrompt.mockResolvedValue({ selectedComponents: ['agents'] });
+      const { promptComponentSelection } = await import('../src/prompts.js');
+      await promptComponentSelection();
+      const choices = mockPrompt.mock.calls[0][0][0].choices;
+      const agentChoice = choices.find((c) => c.value === 'agents');
+      expect(agentChoice.name).toContain('已安装');
     });
   });
 

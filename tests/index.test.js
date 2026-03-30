@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('chalk', () => ({
   default: {
-    cyan: (s) => s,
+    cyan: Object.assign((s) => s, { bold: (s) => s }),
+    white: Object.assign((s) => s, { bold: (s) => s }),
+    green: Object.assign((s) => s, { bold: (s) => s }),
     gray: (s) => s,
     yellow: (s) => s,
     red: (s) => s,
-    green: (s) => s,
-    white: (s) => s,
     bold: (s) => s
   }
 }));
@@ -45,7 +45,14 @@ vi.mock('../src/config.js', () => ({
   DOCS_URL: 'https://example.com/docs'
 }));
 
-import { interactiveMode, runInstall, runUpdate, runUninstall, runDocs } from '../src/index.js';
+import {
+  interactiveMode,
+  runInstall,
+  runUpdate,
+  runUninstall,
+  runDocs,
+  runRoute
+} from '../src/index.js';
 import { install, uninstall } from '../src/installer.js';
 import {
   showBanner,
@@ -189,6 +196,62 @@ describe('index.js', () => {
       openBrowser.mockResolvedValue(true);
       await runDocs();
       expect(logger.warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runRoute', () => {
+    const mockRoute = vi.fn();
+    const mockInitialize = vi.fn();
+    const mockDiagnose = vi.fn().mockResolvedValue({ agentCount: 5, initialized: true });
+
+    beforeEach(() => {
+      vi.doMock('../src/router/canonical-router.js', () => ({
+        CanonicalRouter: class {
+          constructor() {}
+          initialize = mockInitialize.mockResolvedValue(undefined);
+          route = mockRoute;
+          diagnose = mockDiagnose;
+        }
+      }));
+      vi.doMock('../src/router/agent-registry.js', () => ({
+        AgentRegistry: class {}
+      }));
+    });
+
+    it('should output JSON when json option is set', async () => {
+      mockRoute.mockResolvedValue({
+        agent: { displayName: 'Planner' },
+        isDefault: false,
+        matchReason: 'test',
+        fallbackChain: []
+      });
+      await runRoute('implement feature', { json: true });
+      const output = console.log.mock.calls.flat().join(' ');
+      expect(output).toContain('agent');
+    });
+
+    it('should output formatted result for default route', async () => {
+      mockRoute.mockResolvedValue({
+        agent: { displayName: 'Default', name: 'default', priority: 1 },
+        isDefault: true,
+        matchReason: '',
+        fallbackChain: []
+      });
+      await runRoute('something', {});
+      const output = console.log.mock.calls.flat().join(' ');
+      expect(output).toBeTruthy();
+    });
+
+    it('should show fallback chain when present', async () => {
+      mockRoute.mockResolvedValue({
+        agent: { displayName: 'Planner', name: 'planner', priority: 1 },
+        isDefault: false,
+        matchReason: 'matched',
+        fallbackChain: [{ displayName: 'Architect', name: 'architect' }]
+      });
+      await runRoute('design system', {});
+      const output = console.log.mock.calls.flat().join(' ');
+      expect(output).toBeTruthy();
     });
   });
 });
