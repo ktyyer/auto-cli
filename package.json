@@ -16,7 +16,7 @@
     "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
     "sync": "cp commands/*.md .claude/commands/auto/ && echo 'Synced commands/ → .claude/commands/auto/'",
     "prepublishOnly": "npm test",
-    "prepare": "husky"
+    "prepare": "npx husky"
   },
   "keywords": [
     "claude",
