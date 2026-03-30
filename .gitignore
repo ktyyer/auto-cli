@@ -46,6 +46,8 @@ build/
 # Temp files
 *.tmp
 *.temp
+*.backup
+*.backup.*
 .test-*
 .aimax/
 
