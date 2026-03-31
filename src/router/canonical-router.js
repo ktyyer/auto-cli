@@ -14,6 +14,8 @@
  * 4. 执行 + 回退处理
  */
 import { logger } from '../logger.js';
+import { BackupManager } from '../executor/backup-manager.js';
+import { AcceptanceRunner } from '../executor/acceptance-runner.js';
 import { COMPLEXITY_LEVELS, AGENT_STATES } from './agent-types.js';
 import { AgentRegistry } from './agent-registry.js';
 
@@ -105,6 +107,8 @@ export class CanonicalRouter {
     this.registry = registry || new AgentRegistry();
     this.logger = logger;
     this._initialized = false;
+    this.backupManager = new BackupManager();
+    this.acceptanceRunner = new AcceptanceRunner();
   }
 
   /**
@@ -375,6 +379,98 @@ export class CanonicalRouter {
         triggerCount: a.triggerKeywords.length
       }))
     };
+  }
+
+  /**
+   * 备份当前工作区（用于高风险操作前）
+   * @param {string} [description] - 备份描述
+   * @returns {Promise<import('../executor/backup-manager.js').BackupResult>}
+   */
+  async backupWorktree(description = 'router-backup') {
+    return this.backupManager.backup(description);
+  }
+
+  /**
+   * 恢复工作区（用于操作失败后）
+   * @param {string} backupBranch - 备份分支名
+   * @returns {Promise<import('../executor/backup-manager.js').RestoreResult>}
+   */
+  async restoreWorktree(backupBranch) {
+    return this.backupManager.restore(backupBranch);
+  }
+
+  /**
+   * 清理工作区（比 git checkout -- . 更彻底）
+   * @returns {Promise<import('../executor/backup-manager.js').CleanupResult>}
+   */
+  async cleanupWorktree() {
+    return this.backupManager.cleanupWorktree();
+  }
+
+  /**
+   * 执行回滚策略（用于 PHASE 4 失败时）
+   * 顺序：修复(1) → 替代方案(2) → cleanupWorktree 回滚(3)
+   * @param {string} backupBranch - 备份分支名
+   * @param {number} [attempt=1] - 当前尝试次数
+   * @returns {Promise<{action: string, success: boolean, error?: string}>}
+   */
+  async rollbackWithCleanup(backupBranch, attempt = 1) {
+    // 尝试清理工作区恢复
+    const cleanupResult = await this.cleanupWorktree();
+
+    if (cleanupResult.success) {
+      this.logger.info(`回滚成功: 清理了 ${cleanupResult.removedCount} 个文件`);
+      return { action: 'cleanup', success: true };
+    }
+
+    // 清理失败，尝试从备份分支恢复
+    const restoreResult = await this.restoreWorktree(backupBranch);
+
+    if (restoreResult.success) {
+      this.logger.info('回滚成功: 从备份分支恢复');
+      return { action: 'restore', success: true };
+    }
+
+    this.logger.error(`回滚失败: ${restoreResult.error}`);
+    return { action: 'failed', success: false, error: restoreResult.error };
+  }
+
+  /**
+   * 执行 Quest 验收
+   * @param {string} questMapContent - Quest Map 内容
+   * @param {string} questId - Quest ID
+   * @returns {Promise<import('../executor/acceptance-runner.js').AcceptanceResult[]>}
+   */
+  async runQuestAcceptance(questMapContent, questId) {
+    const results = await this.acceptanceRunner.runForQuest(questMapContent, questId);
+
+    // 生成报告
+    const report = this.acceptanceRunner.generateReport(results);
+    this.logger.info(`Quest ${questId} 验收报告:\n${report}`);
+
+    return results;
+  }
+
+  /**
+   * 执行 PHASE 4 门禁验收
+   * @param {string} questMapContent - Quest Map 内容
+   * @param {string[]} questIds - 要验收的 Quest ID 列表
+   * @returns {Promise<{allPassed: boolean, results: Map<string, import('../executor/acceptance-runner.js').AcceptanceResult[]>}>}
+   */
+  async runGateAcceptance(questMapContent, questIds) {
+    const allResults = new Map();
+    let allPassed = true;
+
+    for (const questId of questIds) {
+      const results = await this.runQuestAcceptance(questMapContent, questId);
+      allResults.set(questId, results);
+
+      if (this.acceptanceRunner.hasFailures(results)) {
+        allPassed = false;
+      }
+    }
+
+    return { allPassed, results: allResults };
   }
 }
 

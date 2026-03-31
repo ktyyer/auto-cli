@@ -179,7 +179,28 @@ const routeResult = await router.route(userIntent, {
 
 > v4 核心：完整代码输出 + 精确锚点插入 + 预判坑点 + 合约驱动
 
-### 2.0 模式卡检查
+### 2.0 知识搜索（基于历史经验）
+
+```javascript
+// 在分析前先搜索相关历史知识
+import { KnowledgeSteward } from 'src/knowledge/knowledge-steward.js';
+
+const steward = new KnowledgeSteward();
+await steward.ensureStructure();
+const relatedKnowledge = await steward.search(userIntent);
+
+if (relatedKnowledge && relatedKnowledge.length > 0) {
+  console.log('📚 发现相关历史知识:');
+  for (const item of relatedKnowledge) {
+    console.log(`  [${item.category}] ${item.matches.length} 条相关记录`);
+    // 可选择性展示匹配内容
+  }
+}
+```
+
+将搜索结果作为额外上下文传递给 quest-designer，帮助其基于已有经验分析。
+
+### 2.1 模式卡检查
 
 ```bash
 Read(".auto/cache/pattern-cards.json")
@@ -209,6 +230,7 @@ Hooks: [类型数量 + 摘要]
 【Router 推荐】主 Agent：<name> | 回退链：<fallbacks> | 匹配原因：<reason>
 
 [IF 模式卡命中: 缓存数据，跳过已缓存文件]
+[IF 有历史知识]: 将 relatedKnowledge 附加到 prompt 上下文
 [IF 未命中: 按标准流程读取 5-12 个核心文件]
 
 v4 要求：

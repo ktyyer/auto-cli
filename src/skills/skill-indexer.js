@@ -15,6 +15,8 @@
 
 import path from 'node:path';
 import fs from 'fs-extra';
+import { createHash } from 'node:crypto';
+import { execSync } from 'child_process';
 import { logger } from '../logger.js';
 
 /**
@@ -37,6 +39,24 @@ import { logger } from '../logger.js';
  * @property {number} fullContentSize - 全量内容大小（字节，估算）
  * @property {number} savingsPercent - 节省百分比
  * @property {SkillIndexEntry[]} entries - 索引条目列表
+ * @property {string} head_hash - 当前 git head hash
+ * @property {FileHashCache} file_hashes - 文件 hash 缓存
+ */
+
+/**
+ * 文件 Hash 缓存条目
+ * @typedef {Object} FileHashEntry
+ * @property {string} relativePath - 相对路径
+ * @property {string} hash - 文件内容 hash
+ * @property {number} mtime - 文件修改时间
+ */
+
+/**
+ * 文件 Hash 缓存
+ * @typedef {Object} FileHashCache
+ * @property {string} head_hash - 缓存生成时的 head commit hash
+ * @property {number} created_at - 缓存创建时间戳
+ * @property {FileHashEntry[]} files - 文件 hash 列表
  */
 
 /**
@@ -71,10 +91,17 @@ export class SkillIndexer {
   async buildIndex(options = {}) {
     const useCache = options.useCache ?? true;
 
-    // 检查缓存
+    // 检查缓存 + 文件变更检测
     if (useCache && this._cache && Date.now() - this._cacheTimestamp < this._cacheTTL) {
-      this.logger.debug('Skill 索引使用缓存');
-      return this._cache;
+      // 检查文件是否有变更
+      const currentHashes = await this._computeFileHashes();
+      const cachedHashes = this._cache.file_hashes?.files || [];
+
+      if (this._hashesEqual(currentHashes, cachedHashes)) {
+        this.logger.debug('Skill 索引使用缓存（文件无变更）');
+        return this._cache;
+      }
+      this.logger.debug('Skill 索引缓存失效（检测到文件变更）');
     }
 
     if (!(await fs.pathExists(this.skillsDir))) {
@@ -132,12 +159,32 @@ export class SkillIndexer {
         ? Math.max(0, Math.round(((fullContentSize - indexSize) / fullContentSize) * 100))
         : 0;
 
+    // 获取当前 git head hash
+    let headHash = '';
+    try {
+      headHash = execSync('git rev-parse HEAD', {
+        encoding: 'utf-8',
+        stdio: 'pipe'
+      }).trim();
+    } catch {
+      // 不在 git 仓库中，使用空字符串
+    }
+
+    // 计算当前文件 hashes
+    const fileHashes = await this._computeFileHashes();
+
     const result = {
       totalSkills: entries.length,
       indexSize,
       fullContentSize,
       savingsPercent,
-      entries
+      entries,
+      head_hash: headHash,
+      file_hashes: {
+        head_hash: headHash,
+        created_at: Date.now(),
+        files: fileHashes
+      }
     };
 
     // 更新缓存
@@ -274,6 +321,85 @@ export class SkillIndexer {
       this.logger.warn(`提取 Skill 元数据失败 ${filePath}: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * 计算所有 Skill 文件的 hash
+   * @returns {Promise<FileHashEntry[]>}
+   * @private
+   */
+  async _computeFileHashes() {
+    const hashes = [];
+
+    if (!(await fs.pathExists(this.skillsDir))) {
+      return hashes;
+    }
+
+    const computeFileHash = async (filePath, relativePath) => {
+      try {
+        const stat = await fs.stat(filePath);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const hash = createHash('sha256').update(content).digest('hex');
+
+        return {
+          relativePath,
+          hash,
+          mtime: stat.mtimeMs
+        };
+      } catch {
+        return null;
+      }
+    };
+
+    // 扫描顶层文件
+    const topLevelFiles = await fs.readdir(this.skillsDir);
+    for (const file of topLevelFiles) {
+      const filePath = path.join(this.skillsDir, file);
+      const stat = await fs.stat(filePath);
+
+      if (stat.isFile() && SKILL_FILE_PATTERNS.some((p) => file.endsWith(p))) {
+        const entry = await computeFileHash(filePath, file);
+        if (entry) hashes.push(entry);
+      }
+    }
+
+    // 扫描子目录
+    for (const dir of topLevelFiles) {
+      const dirPath = path.join(this.skillsDir, dir);
+      const stat = await fs.stat(dirPath);
+
+      if (stat.isDirectory()) {
+        const skillFile = path.join(dirPath, SKILL_DIR_INDICATOR);
+        if (await fs.pathExists(skillFile)) {
+          const entry = await computeFileHash(skillFile, `${dir}/SKILL.md`);
+          if (entry) hashes.push(entry);
+        }
+      }
+    }
+
+    return hashes;
+  }
+
+  /**
+   * 比较两组 hash 是否有差异
+   * @param {FileHashEntry[]} current
+   * @param {FileHashEntry[]} cached
+   * @returns {boolean}
+   * @private
+   */
+  _hashesEqual(current, cached) {
+    if (current.length !== cached.length) {
+      return false;
+    }
+
+    const cachedMap = new Map(cached.map((e) => [e.relativePath, e.hash]));
+    for (const entry of current) {
+      if (cachedMap.get(entry.relativePath) !== entry.hash) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
