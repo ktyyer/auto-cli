@@ -11,7 +11,6 @@ import {
   saveInstalledVersion,
   getPackageVersion,
   COMPONENTS,
-  DEFAULT_PORT,
   compressContext,
   CONTEXT_COMPRESSION
 } from '../src/utils.js';
@@ -106,12 +105,6 @@ describe('utils.js', () => {
 
     it('should have exactly 5 components', () => {
       expect(Object.keys(COMPONENTS)).toHaveLength(5);
-    });
-  });
-
-  describe('DEFAULT_PORT', () => {
-    it('should be 8099', () => {
-      expect(DEFAULT_PORT).toBe(8099);
     });
   });
 

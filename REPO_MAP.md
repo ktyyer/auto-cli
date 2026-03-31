@@ -1,6 +1,6 @@
 # 仓库符号地图 (REPO_MAP.md)
 
-> 自动生成于 2026-03-30
+> 自动生成于 2026-03-31
 > 语言: javascript
 
 ## 符号概览
@@ -12,7 +12,6 @@
 | export | `COMPONENTS` | src/utils.js |
 | export | `CONTEXT_COMPRESSION` | src/utils.js |
 | export | `DEFAULT_MAX_RETRIES` | src/config.js |
-| export | `DEFAULT_PORT` | src/utils.js |
 | export | `DEFAULT_TIMEOUT` | src/config.js |
 | export | `DOCS_URL` | src/config.js |
 | export | `getAutoDir` | src/utils.js |

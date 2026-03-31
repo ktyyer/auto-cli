@@ -170,12 +170,6 @@ export function getSourceDir() {
 }
 
 /**
- * 默认端口号
- * @type {number}
- */
-export const DEFAULT_PORT = 8099;
-
-/**
  * 上下文压缩策略配置
  * @readonly
  * @type {{MESSAGE_THRESHOLD: number, MAX_COMPRESSED_ENTRIES: number, KEY_INDICATORS: string[]}}

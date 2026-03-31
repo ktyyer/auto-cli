@@ -177,4 +177,141 @@ Content in sub directory.
       expect(result.totalSkills).toBe(3);
     });
   });
+
+  describe('_computeFileHashes', () => {
+    it('should compute hashes for all skill files', async () => {
+      const hashes = await indexer._computeFileHashes();
+
+      expect(hashes.length).toBe(3); // test-skill, no-frontmatter, sub-skill/SKILL.md
+      for (const entry of hashes) {
+        expect(entry.relativePath).toBeDefined();
+        expect(entry.hash).toBeDefined();
+        expect(entry.mtime).toBeGreaterThan(0);
+      }
+    });
+
+    it('should produce consistent hashes', async () => {
+      const hashes1 = await indexer._computeFileHashes();
+      const hashes2 = await indexer._computeFileHashes();
+
+      // Same file content = same hash
+      for (const h1 of hashes1) {
+        const h2 = hashes2.find((e) => e.relativePath === h1.relativePath);
+        expect(h2).toBeDefined();
+        expect(h2.hash).toBe(h1.hash);
+      }
+    });
+
+    it('should detect file content change', async () => {
+      const originalHashes = await indexer._computeFileHashes();
+
+      // Modify a file
+      await fs.writeFile(
+        path.join(tempDir, 'test-skill.md'),
+        '---\nname: test-skill\n---\n# Modified Content\n',
+        'utf-8'
+      );
+
+      const newHashes = await indexer._computeFileHashes();
+
+      const originalTestHash = originalHashes.find((h) => h.relativePath === 'test-skill.md');
+      const newTestHash = newHashes.find((h) => h.relativePath === 'test-skill.md');
+
+      expect(originalTestHash.hash).not.toBe(newTestHash.hash);
+    });
+
+    it('should detect file count change', async () => {
+      const originalHashes = await indexer._computeFileHashes();
+      expect(originalHashes.length).toBe(3);
+
+      // Add a new file
+      await fs.writeFile(
+        path.join(tempDir, 'new-skill.md'),
+        '---\nname: new\n---\n# New\n',
+        'utf-8'
+      );
+
+      const newHashes = await indexer._computeFileHashes();
+      expect(newHashes.length).toBe(4);
+    });
+
+    it('should return empty for non-existent directory', async () => {
+      const badIndexer = new SkillIndexer('/nonexistent/path');
+      const hashes = await badIndexer._computeFileHashes();
+      expect(hashes).toEqual([]);
+    });
+  });
+
+  describe('_hashesEqual', () => {
+    it('should return true for identical hashes', () => {
+      const hashes = [
+        { relativePath: 'a.md', hash: 'abc123' },
+        { relativePath: 'b.md', hash: 'def456' }
+      ];
+
+      expect(indexer._hashesEqual(hashes, hashes)).toBe(true);
+    });
+
+    it('should return false for different count', () => {
+      const a = [{ relativePath: 'a.md', hash: 'abc' }];
+      const b = [
+        { relativePath: 'a.md', hash: 'abc' },
+        { relativePath: 'b.md', hash: 'def' }
+      ];
+
+      expect(indexer._hashesEqual(a, b)).toBe(false);
+    });
+
+    it('should return false for different hash values', () => {
+      const a = [{ relativePath: 'a.md', hash: 'abc' }];
+      const b = [{ relativePath: 'a.md', hash: 'xyz' }];
+
+      expect(indexer._hashesEqual(a, b)).toBe(false);
+    });
+
+    it('should return false for missing file', () => {
+      const a = [{ relativePath: 'a.md', hash: 'abc' }];
+      const b = [{ relativePath: 'b.md', hash: 'abc' }];
+
+      expect(indexer._hashesEqual(a, b)).toBe(false);
+    });
+
+    it('should return true for empty arrays', () => {
+      expect(indexer._hashesEqual([], [])).toBe(true);
+    });
+  });
+
+  describe('cache invalidation on file change', () => {
+    it('should invalidate cache when file content changes', async () => {
+      // First build
+      const first = await indexer.buildIndex({ useCache: false });
+      expect(first.file_hashes).toBeDefined();
+      expect(first.file_hashes.files.length).toBe(3);
+
+      // Build again - should use cache
+      const cached = await indexer.buildIndex();
+      expect(cached).toBe(first); // Same reference = cache hit
+
+      // Modify a file
+      await fs.writeFile(
+        path.join(tempDir, 'test-skill.md'),
+        '---\nname: changed\n---\n# Changed\n',
+        'utf-8'
+      );
+
+      // Build again - cache should be invalidated
+      const rebuilt = await indexer.buildIndex();
+      expect(rebuilt).not.toBe(first); // Different reference = cache miss
+      expect(rebuilt.entries.find((e) => e.name === 'changed')).toBeDefined();
+    });
+
+    it('should include file_hashes in index result', async () => {
+      const result = await indexer.buildIndex({ useCache: false });
+
+      expect(result.file_hashes).toBeDefined();
+      expect(result.file_hashes.head_hash).toBeDefined();
+      expect(result.file_hashes.created_at).toBeGreaterThan(0);
+      expect(result.file_hashes.files.length).toBe(3);
+    });
+  });
 });
