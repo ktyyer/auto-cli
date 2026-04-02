@@ -261,9 +261,10 @@ describe('AgentRegistry', () => {
       expect(registry.getAgent('post-init-agent')).toBeDefined();
     });
 
-    it('should reject agent without name', () => {
-      const result = registry.lazyRegister({ description: 'no name' });
-      expect(result).toBe(false);
+    it('should reject agent without required fields', () => {
+      expect(registry.lazyRegister({ description: 'no name' })).toBe(false);
+      expect(registry.lazyRegister({ name: 'x' })).toBe(false);
+      expect(registry.lazyRegister({ name: 'x', triggerKeywords: ['x'] })).toBe(false);
     });
   });
 

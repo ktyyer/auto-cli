@@ -192,6 +192,11 @@ export class AgentRegistry {
    * @returns {Promise<number>} 注册的 Agent 数量
    */
   async initialize() {
+    if (this._initialized) {
+      this.logger.warn('Agent 注册表已初始化，跳过重复调用');
+      return this.agents.size;
+    }
+
     // 加载内置 Agent
     for (const manifest of BUILT_IN_AGENTS) {
       this.agents.set(manifest.name, { ...manifest });
@@ -366,8 +371,8 @@ export class AgentRegistry {
    * @returns {boolean}
    */
   lazyRegister(manifest) {
-    if (!manifest.name) {
-      this.logger.error('延迟注册需要 name 字段');
+    if (!manifest.name || !manifest.triggerKeywords || !manifest.capabilities) {
+      this.logger.error('延迟注册需要 name, triggerKeywords, capabilities 字段');
       return false;
     }
 
@@ -395,6 +400,7 @@ export class AgentRegistry {
    * @returns {{ lead: Object|null, members: Object[], fallbacks: Object[] }}
    */
   resolveTeam({ keywords, complexity, maxSize = 3 }) {
+    const clampedSize = Math.max(1, Math.min(maxSize, 10));
     const candidates = this.findCandidates(keywords);
 
     if (candidates.length === 0) {
@@ -404,11 +410,11 @@ export class AgentRegistry {
     // 主 Agent = 评分最高
     const lead = candidates[0].agent;
 
-    // 辅助成员：从剩余候选中选择能力不重叠的
+    // 辅助成员：贪心选择能力互补的候选
     const leadCaps = new Set(lead.capabilities);
     const members = [];
 
-    for (let i = 1; i < candidates.length && members.length < maxSize - 1; i++) {
+    for (let i = 1; i < candidates.length && members.length < clampedSize - 1; i++) {
       const candidate = candidates[i].agent;
 
       // 复杂度过滤
@@ -435,10 +441,17 @@ export class AgentRegistry {
    * @private
    */
   _flushLazyQueue() {
-    for (const manifest of this._lazyQueue) {
-      this.registerAgent(manifest);
+    while (this._lazyQueue.length > 0) {
+      const batch = this._lazyQueue;
+      this._lazyQueue = [];
+      for (const manifest of batch) {
+        try {
+          this.registerAgent(manifest);
+        } catch (error) {
+          this.logger.error(`延迟注册失败 ${manifest.name}: ${error.message}`);
+        }
+      }
     }
-    this._lazyQueue = [];
   }
 
   /**

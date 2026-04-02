@@ -1,7 +1,7 @@
 /**
  * FSM 状态定义与转移规则
  *
- * 借鉴 Claude Code 泄露源码的有限状态机架构，
+ * 借鉴 Claude Code 的有限状态机架构，
  * 替代硬编码的 PHASE 1-6 线性流程，支持：
  * - 断点恢复：序列化当前状态到磁盘
  * - 重试：失败状态可回退到上一步
@@ -43,43 +43,44 @@ export const FLOW_EVENTS = Object.freeze({
 /**
  * 状态转移表
  * key: 当前状态, value: { event: 目标状态 }
+ * null 表示动态目标（由引擎在运行时决定，如 RESUME → 回到暂停前状态）
  * @readonly
  */
 export const TRANSITIONS = Object.freeze({
-  [FLOW_STATES.IDLE]: {
+  [FLOW_STATES.IDLE]: Object.freeze({
     [FLOW_EVENTS.START]: FLOW_STATES.ANALYZING
-  },
-  [FLOW_STATES.ANALYZING]: {
+  }),
+  [FLOW_STATES.ANALYZING]: Object.freeze({
     [FLOW_EVENTS.ANALYSIS_DONE]: FLOW_STATES.PLANNING,
     [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
-  },
-  [FLOW_STATES.PLANNING]: {
+  }),
+  [FLOW_STATES.PLANNING]: Object.freeze({
     [FLOW_EVENTS.PLAN_DONE]: FLOW_STATES.EXECUTING,
     [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
-  },
-  [FLOW_STATES.EXECUTING]: {
+  }),
+  [FLOW_STATES.EXECUTING]: Object.freeze({
     [FLOW_EVENTS.EXECUTE_DONE]: FLOW_STATES.REVIEWING,
     [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
-  },
-  [FLOW_STATES.REVIEWING]: {
+  }),
+  [FLOW_STATES.REVIEWING]: Object.freeze({
     [FLOW_EVENTS.REVIEW_DONE]: FLOW_STATES.COMPLETED,
     [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
-  },
-  [FLOW_STATES.FAILED]: {
-    [FLOW_EVENTS.RETRY]: FLOW_STATES.IDLE,
+  }),
+  [FLOW_STATES.FAILED]: Object.freeze({
+    [FLOW_EVENTS.RETRY]: null, // 动态: 回到 _previousState
     [FLOW_EVENTS.RESET]: FLOW_STATES.IDLE
-  },
-  [FLOW_STATES.PAUSED]: {
-    [FLOW_EVENTS.RESUME]: null,
+  }),
+  [FLOW_STATES.PAUSED]: Object.freeze({
+    [FLOW_EVENTS.RESUME]: null, // 动态: 回到暂停前状态
     [FLOW_EVENTS.RESET]: FLOW_STATES.IDLE
-  },
-  [FLOW_STATES.COMPLETED]: {
+  }),
+  [FLOW_STATES.COMPLETED]: Object.freeze({
     [FLOW_EVENTS.RESET]: FLOW_STATES.IDLE
-  }
+  })
 });
 
 /**
@@ -90,8 +91,8 @@ export const PHASE_TO_STATE = Object.freeze({
   1: FLOW_STATES.ANALYZING,
   2: FLOW_STATES.PLANNING,
   3: FLOW_STATES.EXECUTING,
-  4: FLOW_STATES.REVIEWING,
-  5: FLOW_STATES.REVIEWING,
+  4: FLOW_STATES.REVIEWING, // VERIFY
+  5: FLOW_STATES.REVIEWING, // COMMIT（复用 REVIEWING，因为提交也是审查的一部分）
   6: FLOW_STATES.COMPLETED
 });
 

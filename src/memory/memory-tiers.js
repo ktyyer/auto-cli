@@ -1,7 +1,7 @@
 /**
  * 三层记忆系统 - 层级定义与条目结构
  *
- * 借鉴 Claude Code 泄露源码的三层记忆架构：
+ * 借鉴 Claude Code 的三层记忆架构：
  * - Session: 内存 Map，当前会话有效，最快访问
  * - Project: 项目级持久化（.auto/memory/），跨会话保留
  * - Global: 全局持久化（~/.auto/memory/），跨项目共享

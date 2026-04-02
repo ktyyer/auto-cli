@@ -310,7 +310,11 @@ export class MemoryManager {
         return await fs.readJson(filePath);
       }
     } catch (err) {
-      logger.warn(`记忆存储加载失败: ${err.message}`);
+      if (err instanceof SyntaxError) {
+        logger.error(`记忆存储文件损坏: ${filePath}, error: ${err.message}`);
+      } else {
+        logger.warn(`记忆存储加载失败: ${err.message}`);
+      }
     }
     return {};
   }

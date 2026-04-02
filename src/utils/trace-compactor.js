@@ -33,7 +33,12 @@ export const FILTERED_PATTERNS = Object.freeze([
 export const PROJECT_PATTERNS = Object.freeze(['src/', 'tests/', 'bin/']);
 
 /**
- * 已知指纹缓存（去重用）
+ * 指纹缓存容量上限
+ */
+const MAX_FINGERPRINTS = 1000;
+
+/**
+ * 已知指纹缓存（去重用，FIFO 淘汰）
  * @type {Map<string, number>}
  */
 const _fingerprints = new Map();
@@ -119,6 +124,10 @@ export function compactTrace(input, options = {}) {
   const isDuplicate = dedupe && _fingerprints.has(fingerprint);
 
   if (!isDuplicate) {
+    if (_fingerprints.size >= MAX_FINGERPRINTS) {
+      const oldest = _fingerprints.keys().next().value;
+      _fingerprints.delete(oldest);
+    }
     _fingerprints.set(fingerprint, Date.now());
   }
 

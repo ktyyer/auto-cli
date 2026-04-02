@@ -102,11 +102,11 @@ export const KEYWORD_TIERS = Object.freeze({
  */
 export function routeByAgent(agent) {
   if (!agent || !agent.complexity) {
-    return {
+    return Object.freeze({
       model: MODEL_IDS[MODEL_TIERS.STANDARD],
       tier: MODEL_TIERS.STANDARD,
       reason: 'Agent 无 complexity 字段，使用默认 STANDARD'
-    };
+    });
   }
 
   const tier = COMPLEXITY_TO_TIER[agent.complexity] || MODEL_TIERS.STANDARD;

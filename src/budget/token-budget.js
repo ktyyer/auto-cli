@@ -153,13 +153,13 @@ export function getPhaseStatus(budget, phase) {
   else if (ratio >= ALERT_THRESHOLDS.CRITICAL) status = BUDGET_STATUS.CRITICAL;
   else if (ratio >= ALERT_THRESHOLDS.WARNING) status = BUDGET_STATUS.WARNING;
 
-  return {
+  return Object.freeze({
     allocated: allocation.allocated,
     consumed: allocation.consumed,
     remaining,
     ratio,
     status
-  };
+  });
 }
 
 /**
