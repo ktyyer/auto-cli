@@ -183,6 +183,8 @@ export class AgentRegistry {
     this.projectDir = projectDir || process.cwd();
     this.agents = new Map();
     this.logger = logger;
+    this._lazyQueue = []; // 延迟注册队列
+    this._initialized = false;
   }
 
   /**
@@ -198,6 +200,10 @@ export class AgentRegistry {
     // 加载自定义 Agent（从项目 .claude/agents/ 目录）
     await this._loadCustomAgents();
 
+    // 处理延迟注册队列
+    this._flushLazyQueue();
+
+    this._initialized = true;
     this.logger.info(`Agent 注册表初始化完成：${this.agents.size} 个 Agent`);
     return this.agents.size;
   }
@@ -352,6 +358,87 @@ export class AgentRegistry {
       byComplexity,
       bySource
     };
+  }
+
+  /**
+   * 渐进式注册：延迟注册 Agent（初始化前入队，初始化后立即注册）
+   * @param {import('./agent-types.js').AgentManifest} manifest
+   * @returns {boolean}
+   */
+  lazyRegister(manifest) {
+    if (!manifest.name) {
+      this.logger.error('延迟注册需要 name 字段');
+      return false;
+    }
+
+    if (this._initialized) {
+      return this.registerAgent(manifest);
+    }
+
+    this._lazyQueue.push(manifest);
+    this.logger.debug(`Agent 延迟注册入队: ${manifest.name}`);
+    return true;
+  }
+
+  /**
+   * 组建 Agent 团队（Coordinator-Worker 简化版）
+   *
+   * 根据任务关键词和复杂度，自动选择一组互补的 Agent：
+   * - 主 Agent：评分最高的候选
+   * - 辅助 Agent：能力互补的候选（去重）
+   * - 回退链：主 Agent 的 fallback
+   *
+   * @param {Object} params
+   * @param {string[]} params.keywords - 任务关键词
+   * @param {string} [params.complexity] - 任务复杂度
+   * @param {number} [params.maxSize=3] - 团队最大人数
+   * @returns {{ lead: Object|null, members: Object[], fallbacks: Object[] }}
+   */
+  resolveTeam({ keywords, complexity, maxSize = 3 }) {
+    const candidates = this.findCandidates(keywords);
+
+    if (candidates.length === 0) {
+      return { lead: null, members: [], fallbacks: [] };
+    }
+
+    // 主 Agent = 评分最高
+    const lead = candidates[0].agent;
+
+    // 辅助成员：从剩余候选中选择能力不重叠的
+    const leadCaps = new Set(lead.capabilities);
+    const members = [];
+
+    for (let i = 1; i < candidates.length && members.length < maxSize - 1; i++) {
+      const candidate = candidates[i].agent;
+
+      // 复杂度过滤
+      if (complexity && candidate.complexity !== complexity) {
+        continue;
+      }
+
+      // 检查能力互补性（至少有一个不重叠的能力）
+      const hasUniqueCap = candidate.capabilities.some((cap) => !leadCaps.has(cap));
+      if (hasUniqueCap) {
+        members.push(candidate);
+        candidate.capabilities.forEach((cap) => leadCaps.add(cap));
+      }
+    }
+
+    // 回退链
+    const fallbacks = this.getFallbackChain(lead.name);
+
+    return { lead, members, fallbacks };
+  }
+
+  /**
+   * 处理延迟注册队列
+   * @private
+   */
+  _flushLazyQueue() {
+    for (const manifest of this._lazyQueue) {
+      this.registerAgent(manifest);
+    }
+    this._lazyQueue = [];
   }
 
   /**

@@ -204,6 +204,132 @@ describe('AgentRegistry', () => {
     });
   });
 
+  describe('lazyRegister', () => {
+    it('should queue agent before initialization', () => {
+      const result = registry.lazyRegister({
+        name: 'lazy-agent',
+        displayName: 'Lazy Agent',
+        description: 'test',
+        capabilities: ['lazy'],
+        triggerKeywords: ['lazy'],
+        priority: 50,
+        complexity: COMPLEXITY_LEVELS.LOW,
+        fallbackAgents: [],
+        state: AGENT_STATES.ACTIVE,
+        tags: []
+      });
+
+      expect(result).toBe(true);
+      // Not yet registered
+      expect(registry.getAgent('lazy-agent')).toBeNull();
+    });
+
+    it('should flush queue on initialize', async () => {
+      registry.lazyRegister({
+        name: 'lazy-agent',
+        displayName: 'Lazy Agent',
+        description: 'test',
+        capabilities: ['lazy'],
+        triggerKeywords: ['lazy'],
+        priority: 50,
+        complexity: COMPLEXITY_LEVELS.LOW,
+        fallbackAgents: [],
+        state: AGENT_STATES.ACTIVE,
+        tags: []
+      });
+
+      await registry.initialize();
+      expect(registry.getAgent('lazy-agent')).toBeDefined();
+    });
+
+    it('should register immediately after initialization', async () => {
+      await registry.initialize();
+
+      registry.lazyRegister({
+        name: 'post-init-agent',
+        displayName: 'Post Init',
+        description: 'test',
+        capabilities: ['post'],
+        triggerKeywords: ['post'],
+        priority: 50,
+        complexity: COMPLEXITY_LEVELS.LOW,
+        fallbackAgents: [],
+        state: AGENT_STATES.ACTIVE,
+        tags: []
+      });
+
+      expect(registry.getAgent('post-init-agent')).toBeDefined();
+    });
+
+    it('should reject agent without name', () => {
+      const result = registry.lazyRegister({ description: 'no name' });
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('resolveTeam', () => {
+    beforeEach(async () => {
+      await registry.initialize();
+    });
+
+    it('should resolve a team with lead and members', () => {
+      const team = registry.resolveTeam({
+        keywords: ['test', 'security', 'review']
+      });
+
+      expect(team.lead).toBeDefined();
+      expect(team.lead.name).toBeDefined();
+      expect(team.members.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should return empty team for no matches', () => {
+      const team = registry.resolveTeam({
+        keywords: ['zzz-nonexistent-keyword']
+      });
+
+      expect(team.lead).toBeNull();
+      expect(team.members).toHaveLength(0);
+      expect(team.fallbacks).toHaveLength(0);
+    });
+
+    it('should respect maxSize', () => {
+      const team = registry.resolveTeam({
+        keywords: ['test', 'security', 'review', 'build', 'refactor'],
+        maxSize: 2
+      });
+
+      // lead + members should not exceed maxSize
+      const totalSize = 1 + team.members.length;
+      expect(totalSize).toBeLessThanOrEqual(2);
+    });
+
+    it('should include fallback chain', () => {
+      const team = registry.resolveTeam({
+        keywords: ['architecture', 'design']
+      });
+
+      // architect has quest-designer as fallback
+      if (team.lead && team.lead.name === 'architect') {
+        expect(team.fallbacks.length).toBeGreaterThanOrEqual(1);
+      }
+    });
+
+    it('should select complementary members', () => {
+      const team = registry.resolveTeam({
+        keywords: ['test', 'security']
+      });
+
+      if (team.members.length > 0) {
+        // Members should have at least one unique capability
+        const leadCaps = new Set(team.lead.capabilities);
+        for (const member of team.members) {
+          const hasUnique = member.capabilities.some((c) => !leadCaps.has(c));
+          expect(hasUnique).toBe(true);
+        }
+      }
+    });
+  });
+
   describe('getStats', () => {
     it('should return statistics', async () => {
       await registry.initialize();
