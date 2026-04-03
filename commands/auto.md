@@ -187,18 +187,42 @@ import { KnowledgeSteward } from 'src/knowledge/knowledge-steward.js';
 
 const steward = new KnowledgeSteward();
 await steward.ensureStructure();
-const relatedKnowledge = await steward.search(userIntent);
 
-if (relatedKnowledge && relatedKnowledge.length > 0) {
+// 搜索时限制：每个分类最多 3 条，总计最多 10 条
+const MAX_TOTAL = 10;
+const MAX_PER_CATEGORY = 3;
+
+const relatedKnowledge = await steward.search(userIntent, {
+  limit: MAX_PER_CATEGORY,
+  maxAgeDays: 180  // 只查近 6 个月
+});
+
+// 总数截断
+let totalItems = 0;
+const trimmedKnowledge = [];
+for (const item of relatedKnowledge) {
+  const remaining = MAX_TOTAL - totalItems;
+  if (remaining <= 0) break;
+  trimmedKnowledge.push({
+    ...item,
+    matches: item.matches.slice(0, remaining)
+  });
+  totalItems += item.matches.length;
+}
+
+if (trimmedKnowledge.length > 0) {
   console.log('📚 发现相关历史知识:');
-  for (const item of relatedKnowledge) {
+  for (const item of trimmedKnowledge) {
     console.log(`  [${item.category}] ${item.matches.length} 条相关记录`);
-    // 可选择性展示匹配内容
+    // 展示匹配内容供 quest-designer 参考（每条最多 200 字符）
+    for (const match of item.matches.slice(0, MAX_PER_CATEGORY)) {
+      console.log(`    ${match.slice(0, 200)}...`);
+    }
   }
 }
 ```
 
-将搜索结果作为额外上下文传递给 quest-designer，帮助其基于已有经验分析。
+将搜索结果附加到 quest-designer prompt 的【历史知识】段落中（见 2.1 节）。
 
 ### 2.1 模式卡检查
 
@@ -226,11 +250,16 @@ MCP: [服务名 + 状态(READY/⚠️需配置)]
 Hooks: [类型数量 + 摘要]
 【现有代码文件】[src/ 路径列表]
 
+【历史知识】（来自 auto-cli 执行经验）
+${trimmedKnowledge && trimmedKnowledge.length > 0 ? trimmedKnowledge.map(item =>
+  `## [${item.category}] ${item.matches.length} 条记录\n` +
+  item.matches.slice(0, 3).map(m => m.slice(0, 200)).join('\n---\n')
+).join('\n\n') : '（无历史知识）'}
+
 [IF 有 Router 推荐]：
 【Router 推荐】主 Agent：<name> | 回退链：<fallbacks> | 匹配原因：<reason>
 
 [IF 模式卡命中: 缓存数据，跳过已缓存文件]
-[IF 有历史知识]: 将 relatedKnowledge 附加到 prompt 上下文
 [IF 未命中: 按标准流程读取 5-12 个核心文件]
 
 v4 要求：
@@ -289,7 +318,134 @@ v4 要求：
 
 ## PHASE 6: LEARN — 知识沉淀
 
-更新记忆。如改了核心架构 → 建议用户重新运行 `/auto` 并在需求中包含"更新 REPO_MAP.md"。
+> 自动从本次执行中提取经验，调用 KnowledgeSteward 保存到知识库
+
+### 6.1 收集执行摘要
+
+```javascript
+// 从 TodoWrite 获取执行结果
+const todos = getCurrentTodos(); // Claude Code 内置
+const completedQuests = todos.filter(t => t.status === 'completed');
+const failedQuests = todos.filter(t => t.status === 'failed');
+
+const executionSummary = {
+  totalQuests: completedQuests.length + failedQuests.length,
+  completedQuests: completedQuests.map(t => t.content),
+  failedQuests: failedQuests.map(t => t.content),
+  timestamp: new Date().toISOString(),
+  taskIntent: userIntent // 原始需求
+};
+```
+
+### 6.2 保存经验到知识库
+
+```javascript
+import { KnowledgeSteward } from 'src/knowledge/knowledge-steward.js';
+
+const steward = new KnowledgeSteward();
+await steward.ensureStructure();
+
+// 6.2.1 保存踩坑记录（issues encountered）
+if (executionSummary.failedQuests.length > 0) {
+  const trapContent = `## ${executionSummary.taskIntent}
+
+**时间**: ${executionSummary.timestamp}
+**失败关卡**: ${executionSummary.failedQuests.length}
+
+**失败详情:**
+${executionSummary.failedQuests.map(q => `- ${q}`).join('\n')}
+
+**教训:**
+> 待补充：分析失败原因，提取可复用的排查思路
+`;
+
+  await steward.save({
+    content: trapContent,
+    category: 'trap',
+    tags: ['auto-execution', 'failed-quest']
+  });
+}
+
+// 6.2.2 保存成功模式（successful patterns discovered）
+if (executionSummary.completedQuests.length > 0) {
+  const patternContent = `## ${executionSummary.taskIntent}
+
+**时间**: ${executionSummary.timestamp}
+**完成关卡**: ${executionSummary.completedQuests.length}
+
+**成功实现:**
+${executionSummary.completedQuests.map(q => `- ${q}`).join('\n')}
+
+**关键模式:**
+> 待补充：提取本次成功实现中的可复用模式
+`;
+
+  await steward.save({
+    content: patternContent,
+    category: 'pattern',
+    tags: ['auto-execution', 'successful-pattern']
+  });
+}
+
+// 6.2.3 保存决策记录（architectural decisions）
+// 如果 Quest Map 涉及核心架构变更，记录决策
+const architectureChanges = executionSummary.completedQuests.filter(q =>
+  q.content.includes('架构') ||
+  q.content.includes('重构') ||
+  q.content.includes('核心')
+);
+
+if (architectureChanges.length > 0) {
+  const decisionContent = `## ${executionSummary.taskIntent}
+
+**时间**: ${executionSummary.timestamp}
+**架构变更**: ${architectureChanges.length} 处
+
+**变更内容:**
+${architectureChanges.map(q => `- ${q}`).join('\n')}
+
+**决策理由:**
+> 待补充：记录为何做此架构决策
+`;
+
+  await steward.save({
+    content: decisionContent,
+    category: 'decision',
+    tags: ['auto-execution', 'architecture']
+  });
+
+  // 提示用户更新 REPO_MAP
+  console.log('⚠️ 检测到核心架构变更，建议运行 /auto:update-codemaps 更新代码地图');
+}
+```
+
+### 6.3 更新项目记忆（可选）
+
+```javascript
+// 更新 memory/MEMORY.md 中的项目经验
+import { readFile, writeFile } from 'fs/promises';
+
+const memoryPath = path.join(getClaudeDir(), 'projects', projectDir.replace(/[/\\:]/g, '-').replace(/^-/, ''), 'memory', 'MEMORY.md');
+try {
+  const existing = await readFile(memoryPath, 'utf-8');
+  const newEntry = `\n- [${executionSummary.timestamp}] ${executionSummary.taskIntent}: ${executionSummary.completedQuests.length} 关完成`;
+  await writeFile(memoryPath, existing + newEntry, 'utf-8');
+} catch {
+  // 记忆文件不存在，跳过
+}
+```
+
+### 6.4 输出总结
+
+```
+📚 知识沉淀完成:
+   - 踩坑记录: ${executionSummary.failedQuests.length > 0 ? '已保存' : '无'}
+   - 成功模式: ${executionSummary.completedQuests.length > 0 ? '已保存' : '无'}
+   - 架构决策: ${architectureChanges?.length > 0 ? '已保存' : '无'}
+   - 项目记忆: 已更新
+
+💡 下次遇到类似任务，AI 会自动检索这些经验。
+```
 
 ---
 

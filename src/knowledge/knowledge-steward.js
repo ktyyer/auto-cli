@@ -139,12 +139,17 @@ class KnowledgeSteward {
   /**
    * 搜索知识条目
    * @param {string} query - 搜索关键词
-   * @returns {Promise<Array<{category: string, matches: string[]}>>}
+   * @param {Object} [options] - 选项
+   * @param {number} [options.limit=20] - 每个分类最多返回条目数
+   * @param {number} [options.maxAgeDays=180] - 只返回近 N 天的条目（0=不限）
+   * @returns {Promise<Array<{category: string, file: string, matches: string[]}>>}
    */
-  async search(query) {
+  async search(query, options = {}) {
+    const { limit = 20, maxAgeDays = 180 } = options;
     await this.ensureStructure();
     const lowerQuery = query.toLowerCase();
     const results = [];
+    const cutoffTime = maxAgeDays > 0 ? Date.now() - maxAgeDays * 24 * 60 * 60 * 1000 : 0;
 
     for (const cat of CATEGORIES) {
       const filePath = path.join(this.insightsDir, cat.file);
@@ -152,15 +157,26 @@ class KnowledgeSteward {
 
       // 按条目分割（以 ### 分隔）
       const entries = content.split(/^### /m).filter(Boolean);
-      const matches = entries
+      let matches = entries
         .filter((entry) => entry.toLowerCase().includes(lowerQuery))
         .map((entry) => '### ' + entry.trim());
 
+      // 时间过滤：移除过期条目
+      if (cutoffTime > 0) {
+        matches = matches.filter((match) => {
+          const dateMatch = match.match(/\*\*日期\*\*: (\d{4}-\d{2}-\d{2})/);
+          if (!dateMatch) return true; // 无日期的保留
+          const entryDate = new Date(dateMatch[1]).getTime();
+          return entryDate >= cutoffTime;
+        });
+      }
+
+      // 数量限制
       if (matches.length > 0) {
         results.push({
           category: cat.name,
           file: cat.file,
-          matches
+          matches: matches.slice(0, limit)
         });
       }
     }
@@ -196,12 +212,15 @@ class KnowledgeSteward {
 
     const tagStr = tags && tags.length > 0 ? `\n**标签**: ${tags.join(', ')}` : '';
 
+    // 防止 content 中的 ### 子标题与条目分隔符冲突，降级为 ####
+    const safeContent = content.replace(/^### /gm, '#### ');
+
     return [
       `### ${title}`,
       '',
       `**日期**: ${dateStr} ${timeStr}${tagStr}`,
       '',
-      content,
+      safeContent,
       '',
       '---',
       ''

@@ -268,5 +268,34 @@ describe('KnowledgeSteward', () => {
 
       expect(results.length).toBeGreaterThan(0);
     });
+
+    it('should respect limit option', async () => {
+      for (let i = 0; i < 5; i++) {
+        await steward.save({
+          content: `React hook 使用模式 ${i}`,
+          gitCommit: false
+        });
+      }
+
+      const results = await steward.search('react', { limit: 2 });
+      // limit 是每分类上限
+      for (const item of results) {
+        expect(item.matches.length).toBeLessThanOrEqual(2);
+      }
+    });
+
+    it('should not filter when maxAgeDays is 0', async () => {
+      const normalResults = await steward.search('react');
+      const allResults = await steward.search('react', { maxAgeDays: 0 });
+      expect(allResults.length).toBeGreaterThanOrEqual(normalResults.length);
+    });
+
+    it('should include file field in search results', async () => {
+      const results = await steward.search('react');
+      for (const item of results) {
+        expect(item).toHaveProperty('file');
+        expect(item.file).toMatch(/\.md$/);
+      }
+    });
   });
 });
