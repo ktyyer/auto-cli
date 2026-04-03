@@ -160,6 +160,37 @@ const BUILT_IN_AGENTS = [
     tags: ['core', 'documentation']
   },
   {
+    name: 'verification',
+    displayName: '对抗性验证',
+    description: '红蓝对抗验证，主动寻找代码漏洞、边界缺陷和并发风险',
+    capabilities: [
+      'verification',
+      'adversarial-testing',
+      'boundary-testing',
+      'concurrency',
+      'idempotency'
+    ],
+    triggerKeywords: [
+      'verify',
+      '验证',
+      'adversarial',
+      '对抗',
+      'break',
+      '破坏',
+      'attack',
+      '攻击',
+      'edge-case',
+      '边界'
+    ],
+    priority: 72,
+    complexity: COMPLEXITY_LEVELS.MEDIUM,
+    fallbackAgents: ['code-reviewer'],
+    state: AGENT_STATES.ACTIVE,
+    source: 'built-in',
+    version: '1.0.0',
+    tags: ['core', 'verification']
+  },
+  {
     name: 'quest-designer',
     displayName: '闯关大纲设计师 v4',
     description: '完整代码输出的闯关式开发规划',

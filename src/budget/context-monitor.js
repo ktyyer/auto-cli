@@ -12,6 +12,7 @@
  */
 
 import { logger } from '../logger.js';
+import { StrategyRegistry } from './compression-strategies.js';
 
 /**
  * 默认上下文窗口上限（token）
@@ -175,6 +176,7 @@ export function applyCompaction(snapshot, reducedTokens) {
 export class ContextMonitor {
   constructor(options = {}) {
     this._snapshot = createContextSnapshot(options);
+    this._strategyRegistry = options.strategyRegistry || new StrategyRegistry();
   }
 
   record(chars, label = '') {
@@ -209,6 +211,46 @@ export class ContextMonitor {
 
   getSnapshot() {
     return this._snapshot;
+  }
+
+  /**
+   * 执行压缩策略链
+   * @param {Object} [config] - 策略配置
+   * @returns {Object} 压缩结果
+   */
+  compress(config = {}) {
+    const result = this._strategyRegistry.executeChain(this._snapshot, config);
+    if (result.snapshot) {
+      this._snapshot = result.snapshot;
+    }
+    return result;
+  }
+
+  /**
+   * 获取策略注册表
+   * @returns {StrategyRegistry}
+   */
+  getStrategyRegistry() {
+    return this._strategyRegistry;
+  }
+
+  /**
+   * 注册自定义压缩策略
+   * @param {number} level
+   * @param {Object} strategy
+   * @returns {boolean}
+   */
+  registerCompressionStrategy(level, strategy) {
+    return this._strategyRegistry.register(level, strategy);
+  }
+
+  /**
+   * 移除压缩策略
+   * @param {number} level
+   * @returns {boolean}
+   */
+  unregisterCompressionStrategy(level) {
+    return this._strategyRegistry.unregister(level);
   }
 }
 

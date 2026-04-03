@@ -106,7 +106,7 @@ describe('FlowEngine', () => {
       expect(engine.retryCount).toBe(1);
     });
 
-    it('should enforce max retries', () => {
+    it('should enforce max retries (via circuit breaker or retry count)', () => {
       engine.transition(FLOW_EVENTS.START);
 
       for (let i = 0; i < 3; i++) {
@@ -114,11 +114,11 @@ describe('FlowEngine', () => {
         engine.transition(FLOW_EVENTS.RETRY);
       }
 
-      // 4th retry should fail
+      // 4th retry should fail (circuit breaker OPEN or retry count exceeded)
       engine.transition(FLOW_EVENTS.FAIL);
       const result = engine.transition(FLOW_EVENTS.RETRY);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('重试次数超限');
+      expect(result.error).toMatch(/断路器|重试次数超限/);
     });
   });
 
@@ -250,6 +250,86 @@ describe('FlowEngine', () => {
       expect(summary.isResumable).toBe(false);
       expect(summary.retryCount).toBe(0);
       expect(summary.historyLength).toBe(1);
+    });
+  });
+
+  describe('circuit breaker integration', () => {
+    let circuitEngine;
+
+    beforeEach(() => {
+      circuitEngine = new FlowEngine('circuit-test');
+    });
+
+    it('should have circuit breaker in summary', () => {
+      const summary = circuitEngine.getSummary();
+      expect(summary.circuitBreaker).toBeDefined();
+      expect(summary.circuitBreaker.state).toBe('closed');
+      expect(summary.circuitBreaker.isOperational).toBe(true);
+    });
+
+    it('should expose getCircuitSummary method', () => {
+      const circuit = circuitEngine.getCircuitSummary();
+      expect(circuit.state).toBe('closed');
+      expect(circuit.failureCount).toBe(0);
+    });
+
+    it('should record failures in circuit breaker on FAIL event', () => {
+      circuitEngine.transition(FLOW_EVENTS.START);
+      circuitEngine.transition(FLOW_EVENTS.FAIL);
+
+      const circuit = circuitEngine.getCircuitSummary();
+      expect(circuit.failureCount).toBe(1);
+    });
+
+    it('should reset circuit breaker on RESET event', () => {
+      circuitEngine.transition(FLOW_EVENTS.START);
+      circuitEngine.transition(FLOW_EVENTS.FAIL);
+
+      circuitEngine.transition(FLOW_EVENTS.RESET);
+
+      const circuit = circuitEngine.getCircuitSummary();
+      expect(circuit.failureCount).toBe(0);
+      expect(circuit.state).toBe('closed');
+    });
+
+    it('should preserve circuit state in snapshot', () => {
+      circuitEngine.transition(FLOW_EVENTS.START);
+      circuitEngine.transition(FLOW_EVENTS.FAIL);
+
+      const snapshot = circuitEngine.toSnapshot();
+      expect(snapshot._circuitState).toBeDefined();
+      expect(snapshot._circuitState.failureCount).toBe(1);
+
+      const restored = FlowEngine.fromSnapshot(snapshot);
+      const circuit = restored.getCircuitSummary();
+      expect(circuit.failureCount).toBe(1);
+    });
+
+    it('should handle old snapshots without circuit state', () => {
+      const oldSnapshot = {
+        id: 'old',
+        state: FLOW_STATES.IDLE,
+        context: {},
+        history: [],
+        retryCount: 0,
+        maxRetries: 3,
+        _previousState: null,
+        _createdAt: Date.now(),
+        _updatedAt: Date.now()
+      };
+
+      const restored = FlowEngine.fromSnapshot(oldSnapshot);
+      expect(restored.getCircuitSummary().state).toBe('closed');
+    });
+
+    it('should allow manual circuit reset', () => {
+      circuitEngine.transition(FLOW_EVENTS.START);
+      circuitEngine.transition(FLOW_EVENTS.FAIL);
+
+      circuitEngine.resetCircuitBreaker();
+      const circuit = circuitEngine.getCircuitSummary();
+      expect(circuit.failureCount).toBe(0);
+      expect(circuit.state).toBe('closed');
     });
   });
 });

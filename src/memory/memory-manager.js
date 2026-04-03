@@ -11,6 +11,7 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { logger } from '../logger.js';
+import { autoDream as runAutoDream } from './auto-dream.js';
 import {
   MEMORY_TIERS,
   TIER_PRIORITY,
@@ -194,9 +195,13 @@ export class MemoryManager {
 
   /**
    * 清理过期条目
+   * @param {Object} [options]
+   * @param {boolean} [options.runDream=false] - 是否运行 AutoDream
+   * @param {Object} [options.dreamOptions] - AutoDream 配置
+   * @param {Object} [options.knowledgeSteward] - KnowledgeSteward 实例，传递给 AutoDream 持久化洞察
    * @returns {Promise<number>} 清理的条目数
    */
-  async cleanup() {
+  async cleanup(options = {}) {
     let cleaned = 0;
 
     // Session 层
@@ -215,6 +220,23 @@ export class MemoryManager {
 
     if (cleaned > 0) {
       logger.info(`记忆清理: 移除 ${cleaned} 个过期条目`);
+    }
+
+    // 可选: AutoDream
+    if (options.runDream) {
+      try {
+        const dreamOpts = {
+          ...options.dreamOptions,
+          knowledgeSteward:
+            options.knowledgeSteward || options.dreamOptions?.knowledgeSteward || null
+        };
+        const dreamResult = await runAutoDream(this, dreamOpts);
+        if (dreamResult.executed) {
+          logger.info(`AutoDream 完成: ${dreamResult.stats.prunedCount} 个条目已清理`);
+        }
+      } catch (error) {
+        logger.warn(`AutoDream 执行失败: ${error.message}`);
+      }
     }
 
     return cleaned;

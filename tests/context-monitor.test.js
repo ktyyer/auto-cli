@@ -13,6 +13,7 @@ import {
   applyCompaction,
   ContextMonitor
 } from '../src/budget/context-monitor.js';
+import { StrategyRegistry } from '../src/budget/compression-strategies.js';
 
 describe('estimateTokens', () => {
   it('should estimate ~4 chars per token', () => {
@@ -183,5 +184,54 @@ describe('ContextMonitor', () => {
     const snap = monitor.getSnapshot();
     expect(snap.contextLimit).toBe(100000);
     expect(Object.isFrozen(snap)).toBe(true);
+  });
+
+  it('should have compress method', () => {
+    const monitor = new ContextMonitor({ contextLimit: 100000 });
+    expect(typeof monitor.compress).toBe('function');
+  });
+
+  it('should return strategy registry', () => {
+    const monitor = new ContextMonitor({ contextLimit: 100000 });
+    const registry = monitor.getStrategyRegistry();
+    expect(registry).toBeDefined();
+    expect(typeof registry.getAllStrategies).toBe('function');
+  });
+
+  it('should register custom compression strategy', () => {
+    const monitor = new ContextMonitor({ contextLimit: 100000 });
+    const result = monitor.registerCompressionStrategy(99, {
+      name: 'TEST_STRATEGY',
+      shouldApply: () => ({ shouldApply: true, reason: 'test' }),
+      execute: (snap) => snap
+    });
+    expect(result).toBe(true);
+  });
+
+  it('should execute compress and return result', () => {
+    const monitor = new ContextMonitor({ contextLimit: 100000 });
+    monitor.record(12000, 'Bash: npm test');
+    monitor.record(3000, 'Read: old file');
+
+    const result = monitor.compress();
+    expect(result).toBeDefined();
+    expect(typeof result.applied).toBe('boolean');
+    expect(typeof result.reducedTokens).toBe('number');
+  });
+
+  it('should accept custom strategyRegistry via constructor', () => {
+    const customRegistry = new StrategyRegistry();
+    const monitor = new ContextMonitor({
+      contextLimit: 100000,
+      strategyRegistry: customRegistry
+    });
+    expect(monitor.getStrategyRegistry()).toBe(customRegistry);
+  });
+
+  it('should keep compact method working', () => {
+    const monitor = new ContextMonitor({ contextLimit: 100000 });
+    monitor.record(200000); // 50k tokens
+    monitor.compact(30000);
+    expect(monitor.getSummary().tokens).toBe(20000);
   });
 });
