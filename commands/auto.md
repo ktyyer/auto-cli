@@ -66,10 +66,10 @@ cat .auto/cache/capability-snapshot.json 2>/dev/null
 使用 CLI 工具执行路由：
 
 ```bash
-auto route "<用户意图>" --json
+auto route "<用户意图>" --json 2>/dev/null
 ```
 
-如果 auto CLI 未安装，则使用内置 Agent 列表手动匹配：
+如果上述命令失败（返回非零退出码或 command not found），则使用内置 Agent 列表手动匹配：
 - 安全相关 -> security-reviewer
 - 测试相关 -> tdd-guide
 - 构建错误 -> build-error-resolver
@@ -211,7 +211,7 @@ v4 要求：
 
 ### 6.2 手动沉淀（PHASE 6 执行时）
 
-使用 CLI 工具保存知识：
+使用 CLI 工具保存知识（如果 `auto` 命令可用）。如果命令不可用，跳过手动沉淀，仅在总结中注明"CLI 未安装，知识未持久化"：
 
 ```bash
 # 保存踩坑记录

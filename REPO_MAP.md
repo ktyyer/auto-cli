@@ -1,6 +1,6 @@
 # 仓库符号地图 (REPO_MAP.md)
 
-> 自动生成于 2026-03-31
+> 自动生成于 2026-04-04
 > 语言: javascript
 
 ## 符号概览
@@ -45,8 +45,6 @@
 | export | `CATEGORIES` | src/knowledge/categories.js |
 | export | `classifyContent` | src/knowledge/categories.js |
 | export | `getCategoryByName` | src/knowledge/categories.js |
-| class | `SkillIndexer` | src/skills/skill-indexer.js |
-
 ---
 
 ## 使用说明
