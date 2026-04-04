@@ -176,3 +176,211 @@ export function clearFingerprints() {
 export function getFingerprintCount() {
   return _fingerprints.size;
 }
+
+// ============================================================
+// 9-Section Structured Compact Template
+// ============================================================
+
+/**
+ * 压缩模板的 9 个节段定义
+ * @readonly
+ */
+export const COMPACT_SECTIONS = Object.freeze({
+  USER_MESSAGE: 'user_message',
+  ANALYSIS_SCRATCHPAD: 'analysis_scratchpad',
+  PLAN_SUMMARY: 'plan_summary',
+  CODE_CHANGES: 'code_changes',
+  EXECUTION_STATUS: 'execution_status',
+  REVIEW_FEEDBACK: 'review_feedback',
+  MEMORY_SNAPSHOT: 'memory_snapshot',
+  PENDING_ACTIONS: 'pending_actions',
+  CONTEXT_META: 'context_meta'
+});
+
+/**
+ * 节段描述（用于模板生成时的注释头）
+ * @readonly
+ */
+export const SECTION_DESCRIPTIONS = Object.freeze({
+  [COMPACT_SECTIONS.USER_MESSAGE]: 'Verbatim user message (preserved exactly)',
+  [COMPACT_SECTIONS.ANALYSIS_SCRATCHPAD]: 'Working analysis notes and reasoning',
+  [COMPACT_SECTIONS.PLAN_SUMMARY]: 'Condensed plan with accepted/rejected items',
+  [COMPACT_SECTIONS.CODE_CHANGES]: 'Files modified with diff summaries',
+  [COMPACT_SECTIONS.EXECUTION_STATUS]: 'Current execution state and progress',
+  [COMPACT_SECTIONS.REVIEW_FEEDBACK]: 'Review results and issues found',
+  [COMPACT_SECTIONS.MEMORY_SNAPSHOT]: 'Key memory entries (index tier only)',
+  [COMPACT_SECTIONS.PENDING_ACTIONS]: 'Remaining tasks and blocked items',
+  [COMPACT_SECTIONS.CONTEXT_META]: 'Token budget, compression history, mode'
+});
+
+/**
+ * 创建空压缩模板
+ * @returns {Object} 冻结的空模板对象
+ */
+export function createCompactTemplate() {
+  const sections = {};
+  for (const key of Object.values(COMPACT_SECTIONS)) {
+    sections[key] = '';
+  }
+  return Object.freeze(sections);
+}
+
+/**
+ * 节段填充器 -- 将原始上下文数据映射到 9 个节段
+ * @param {Object} params
+ * @param {string} [params.userMessage=''] - 用户原始消息（verbatim 保留）
+ * @param {string} [params.analysisScratchpad=''] - 分析草稿板
+ * @param {string} [params.planSummary=''] - 计划摘要
+ * @param {Object[]} [params.codeChanges=[]] - 代码变更列表
+ * @param {Object} [params.executionStatus={}] - 执行状态
+ * @param {string[]} [params.reviewFeedback=[]] - 审查反馈
+ * @param {Object[]} [params.memorySnapshot=[]] - 记忆快照条目
+ * @param {string[]} [params.pendingActions=[]] - 待处理事项
+ * @param {Object} [params.contextMeta={}] - 上下文元信息
+ * @returns {Object} 冻结的填充后模板
+ */
+export function fillCompactTemplate(params = {}) {
+  const codeChangesStr = (params.codeChanges || [])
+    .map((c) => {
+      const status = c.status ?? 'unknown';
+      const summary = c.summary ?? c.path ?? 'no summary';
+      return `- [${status}] ${summary}`;
+    })
+    .join('\n');
+
+  const memoryStr = (params.memorySnapshot || [])
+    .map((m) => {
+      const key = m.key ?? 'unknown';
+      const value = typeof m.value === 'string' ? m.value : JSON.stringify(m.value);
+      const truncated = value.length > 150 ? value.slice(0, 147) + '...' : value;
+      return `- ${key}: ${truncated.replace(/\n/g, ' ')}`;
+    })
+    .join('\n');
+
+  const reviewStr = (params.reviewFeedback || [])
+    .map((r) =>
+      typeof r === 'string' ? `- ${r}` : `- [${r.severity ?? 'info'}] ${r.message ?? r}`
+    )
+    .join('\n');
+
+  const pendingStr = (params.pendingActions || [])
+    .map((a) =>
+      typeof a === 'string' ? `- ${a}` : `- [${a.priority ?? 'normal'}] ${a.description ?? a}`
+    )
+    .join('\n');
+
+  const execStatusStr = params.executionStatus
+    ? Object.entries(params.executionStatus)
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join('\n')
+    : '';
+
+  const contextMetaStr = params.contextMeta
+    ? Object.entries(params.contextMeta)
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join('\n')
+    : '';
+
+  const sections = {
+    [COMPACT_SECTIONS.USER_MESSAGE]: params.userMessage ?? '',
+    [COMPACT_SECTIONS.ANALYSIS_SCRATCHPAD]: params.analysisScratchpad ?? '',
+    [COMPACT_SECTIONS.PLAN_SUMMARY]: params.planSummary ?? '',
+    [COMPACT_SECTIONS.CODE_CHANGES]: codeChangesStr,
+    [COMPACT_SECTIONS.EXECUTION_STATUS]: execStatusStr,
+    [COMPACT_SECTIONS.REVIEW_FEEDBACK]: reviewStr,
+    [COMPACT_SECTIONS.MEMORY_SNAPSHOT]: memoryStr,
+    [COMPACT_SECTIONS.PENDING_ACTIONS]: pendingStr,
+    [COMPACT_SECTIONS.CONTEXT_META]: contextMetaStr
+  };
+
+  return Object.freeze(sections);
+}
+
+/**
+ * 将压缩模板渲染为文本（用于注入上下文）
+ * @param {Object} template - fillCompactTemplate 的返回值
+ * @param {Object} [options]
+ * @param {boolean} [options.includeEmpty=false] - 是否包含空节段
+ * @param {boolean} [options.includeDescriptions=true] - 是否包含节段描述注释
+ * @returns {string}
+ */
+export function renderCompactTemplate(template, options = {}) {
+  const { includeEmpty = false, includeDescriptions = true } = options;
+  const lines = [];
+
+  for (const [key, value] of Object.entries(template)) {
+    if (!value && !includeEmpty) continue;
+
+    const sectionName = Object.entries(COMPACT_SECTIONS).find(([, v]) => v === key)?.[0] ?? key;
+    const separator = '='.repeat(40);
+
+    lines.push(separator);
+    if (includeDescriptions && SECTION_DESCRIPTIONS[key]) {
+      lines.push(`# ${sectionName}: ${SECTION_DESCRIPTIONS[key]}`);
+    } else {
+      lines.push(`# ${sectionName}`);
+    }
+    lines.push(separator);
+    lines.push(value || '(empty)');
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * 从压缩模板文本反向解析为对象
+ * @param {string} text - renderCompactTemplate 的输出
+ * @returns {Object} 节段映射
+ */
+export function parseCompactTemplate(text) {
+  const result = {};
+  const separatorPattern = /^={40}$/;
+  const headerPattern = /^# (\w+)(?::\s*(.+))?$/;
+
+  const lineGroups = [];
+  let currentHeader = null;
+  let currentLines = [];
+
+  for (const line of text.split('\n')) {
+    if (separatorPattern.test(line)) {
+      if (currentHeader !== null) {
+        lineGroups.push({ header: currentHeader, lines: [...currentLines] });
+      }
+      currentLines = [];
+      continue;
+    }
+    const headerMatch = line.match(headerPattern);
+    if (headerMatch) {
+      currentHeader = headerMatch[1];
+      continue;
+    }
+    currentLines.push(line);
+  }
+  if (currentHeader !== null) {
+    lineGroups.push({ header: currentHeader, lines: [...currentLines] });
+  }
+
+  for (const group of lineGroups) {
+    const sectionKey = COMPACT_SECTIONS[group.header];
+    if (sectionKey) {
+      const content = group.lines.join('\n').replace(/^\n+|\n+$/g, '');
+      result[sectionKey] = content === '(empty)' ? '' : content;
+    }
+  }
+
+  return Object.freeze(result);
+}
+
+/**
+ * 估算模板的总字符数
+ * @param {Object} template
+ * @returns {number}
+ */
+export function estimateTemplateSize(template) {
+  let total = 0;
+  for (const value of Object.values(template)) {
+    total += typeof value === 'string' ? value.length : 0;
+  }
+  return total;
+}

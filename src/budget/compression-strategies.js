@@ -24,7 +24,8 @@ export const COMPRESSION_LEVELS = Object.freeze({
   SNIP: 2,
   MICRO_COMPACT: 3,
   COLLAPSE: 4,
-  AUTO_COMPACT: 5
+  AUTO_COMPACT: 5,
+  REACTIVE_COMPACT: 6
 });
 
 /**
@@ -36,7 +37,8 @@ export const COMPRESSION_NAMES = Object.freeze({
   [COMPRESSION_LEVELS.SNIP]: 'SNIP',
   [COMPRESSION_LEVELS.MICRO_COMPACT]: 'MICRO_COMPACT',
   [COMPRESSION_LEVELS.COLLAPSE]: 'COLLAPSE',
-  [COMPRESSION_LEVELS.AUTO_COMPACT]: 'AUTO_COMPACT'
+  [COMPRESSION_LEVELS.AUTO_COMPACT]: 'AUTO_COMPACT',
+  [COMPRESSION_LEVELS.REACTIVE_COMPACT]: 'REACTIVE_COMPACT'
 });
 
 /**
@@ -55,7 +57,15 @@ export const STRATEGY_DEFAULTS = Object.freeze({
   /** MICRO_COMPACT: 保留的完整消息数 */
   microCompactKeepCount: 10,
   /** COLLAPSE: 合并窗口大小 */
-  collapseWindowSize: 3
+  collapseWindowSize: 3,
+  /** REACTIVE_COMPACT: 触发的上下文使用率阈值 */
+  reactiveCompactThreshold: 0.95,
+  /** REACTIVE_COMPACT: 工具输出持久化目录 */
+  reactiveCompactSpillDir: '.auto/spill',
+  /** MICRO_COMPACT: 工具输出感知 -- 是否持久化被移除的工具输出到磁盘 */
+  microCompactPersistToolOutput: true,
+  /** MICRO_COMPACT: 工具输出持久化目录 */
+  microCompactSpillDir: '.auto/spill'
 });
 
 /**
@@ -213,17 +223,33 @@ export function microCompactShouldApply(snapshot, config = {}) {
 }
 
 /**
- * MICRO_COMPACT 执行
+ * MICRO_COMPACT 执行（增强版 -- 工具输出感知持久化到磁盘）
  * @param {Object} snapshot
  * @param {Object} [config]
  * @returns {Object} 新快照
  */
 export function microCompactExecute(snapshot, config = {}) {
   const keepCount = config.microCompactKeepCount ?? STRATEGY_DEFAULTS.microCompactKeepCount;
+  const persistToolOutput =
+    config.microCompactPersistToolOutput ?? STRATEGY_DEFAULTS.microCompactPersistToolOutput;
+  const spillDir = config.microCompactSpillDir ?? STRATEGY_DEFAULTS.microCompactSpillDir;
 
   // 保留最近 N 条完整消息
   const kept = snapshot.history.slice(-keepCount);
   const removed = snapshot.history.slice(0, -keepCount);
+
+  // 工具输出感知：识别被移除的工具输出条目
+  const toolOutputTypes = ['Bash', 'Read', 'Grep', 'Glob', 'Write'];
+  const removedToolOutputs = persistToolOutput
+    ? removed.filter((h) => toolOutputTypes.some((t) => h.label && h.label.includes(t)))
+    : [];
+
+  // 异步持久化到磁盘（非阻塞，失败不影响压缩）
+  if (removedToolOutputs.length > 0) {
+    _spillToolOutputs(spillDir, removedToolOutputs).catch((err) => {
+      logger.debug(`工具输出持久化失败（不影响压缩）: ${err.message}`);
+    });
+  }
 
   const reducedTokens = removed.reduce((sum, h) => sum + h.tokens, 0);
   const newTokens = snapshot.currentTokens - reducedTokens;
@@ -234,6 +260,42 @@ export function microCompactExecute(snapshot, config = {}) {
     history: Object.freeze(kept),
     updatedAt: Date.now()
   });
+}
+
+/**
+ * 将被移除的工具输出持久化到磁盘（异步，非阻塞）
+ * @param {string} spillDir - 持久化目录
+ * @param {Object[]} entries - 被移除的工具输出条目
+ * @returns {Promise<void>}
+ * @private
+ */
+async function _spillToolOutputs(spillDir, entries) {
+  const fs = await import('fs-extra');
+  const path = await import('node:path');
+
+  await fs.ensureDir(spillDir);
+
+  const timestamp = Date.now();
+  const fileName = `micro-spill-${timestamp}.json`;
+  const filePath = path.join(spillDir, fileName);
+
+  const spillData = Object.freeze({
+    timestamp,
+    count: entries.length,
+    entries: Object.freeze(
+      entries.map((e) =>
+        Object.freeze({
+          label: e.label,
+          tokens: e.tokens,
+          chars: e.chars,
+          timestamp: e.timestamp
+        })
+      )
+    )
+  });
+
+  await fs.writeJson(filePath, spillData, { spaces: 2 });
+  logger.debug(`工具输出已持久化: ${filePath} (${entries.length} 条)`);
 }
 
 // ============================================================

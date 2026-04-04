@@ -156,3 +156,124 @@ export function getProjectMemoryDir(projectDir = process.cwd()) {
 export function getGlobalMemoryDir() {
   return path.join(os.homedir(), '.auto', 'memory');
 }
+
+// ============================================================
+// 加载分层（叠加在存储分层之上）
+// ============================================================
+
+/**
+ * 加载层级枚举 -- 控制记忆条目在上下文中的加载策略
+ *
+ * INDEX:      常驻加载，仅保留摘要（<=150字/条），用于快速定位
+ * TOPIC:      按需加载，当用户话题匹配时加载完整内容
+ * TRANSCRIPT: 永不加载到上下文，仅支持 grep 检索
+ *
+ * @readonly
+ */
+export const LOAD_TIERS = Object.freeze({
+  INDEX: 'index',
+  TOPIC: 'topic',
+  TRANSCRIPT: 'transcript'
+});
+
+/**
+ * 加载层级对应的上下文预算占比上限
+ * @readonly
+ */
+export const LOAD_TIER_BUDGET_RATIO = Object.freeze({
+  [LOAD_TIERS.INDEX]: 0.1,
+  [LOAD_TIERS.TOPIC]: 0.3,
+  [LOAD_TIERS.TRANSCRIPT]: 0.0
+});
+
+/**
+ * 加载层级对应的最大条目字符数
+ * @readonly
+ */
+export const LOAD_TIER_MAX_CHARS = Object.freeze({
+  [LOAD_TIERS.INDEX]: 150,
+  [LOAD_TIERS.TOPIC]: 2000,
+  [LOAD_TIERS.TRANSCRIPT]: Infinity
+});
+
+/**
+ * 为记忆条目创建加载视图（根据加载层级截断内容）
+ * @param {Object} entry - 记忆条目（来自 createMemoryEntry）
+ * @param {string} loadTier - LOAD_TIERS 中的值
+ * @returns {Object} 带加载视图的新条目（不可变）
+ */
+export function createLoadView(entry, loadTier = LOAD_TIERS.TOPIC) {
+  const maxChars = LOAD_TIER_MAX_CHARS[loadTier];
+  const valueStr = typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value);
+  const truncated = valueStr.length > maxChars;
+  const viewValue = truncated ? valueStr.slice(0, maxChars) + '...' : valueStr;
+
+  return Object.freeze({
+    ...entry,
+    loadTier,
+    loadView: Object.freeze({
+      value: viewValue,
+      truncated,
+      originalLength: valueStr.length,
+      viewLength: viewValue.length
+    })
+  });
+}
+
+/**
+ * 创建索引摘要行（用于 INDEX 层级输出）
+ * 单行格式: "key: value 前 150 字 [tags]"
+ * @param {Object} entry
+ * @returns {string}
+ */
+export function toIndexLine(entry) {
+  const valueStr = typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value);
+  const summary = valueStr.length > 150 ? valueStr.slice(0, 147) + '...' : valueStr;
+  const tagStr = entry.tags && entry.tags.length > 0 ? ` [${entry.tags.join(',')}]` : '';
+  const tierLabel = entry.tier ? `(${entry.tier})` : '';
+  return `${entry.key}: ${summary.replace(/\n/g, ' ')}${tagStr} ${tierLabel}`;
+}
+
+/**
+ * 根据 Topic 关键词匹配过滤条目
+ * @param {Object[]} entries - 记忆条目数组
+ * @param {string[]} keywords - 话题关键词
+ * @returns {Object[]} 匹配的条目（包含 INDEX 层级 + 匹配的 TOPIC 层级）
+ */
+export function filterByTopic(entries, keywords = []) {
+  if (keywords.length === 0) {
+    return entries.filter((e) => e.loadTier === LOAD_TIERS.INDEX);
+  }
+
+  const lowerKeywords = keywords.map((k) => k.toLowerCase());
+
+  return entries.filter((entry) => {
+    if (entry.loadTier === LOAD_TIERS.INDEX) return true;
+    if (entry.loadTier === LOAD_TIERS.TOPIC) {
+      const searchText = [
+        entry.key,
+        typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
+        ...(entry.tags || [])
+      ]
+        .join(' ')
+        .toLowerCase();
+      return lowerKeywords.some((kw) => searchText.includes(kw));
+    }
+    return false;
+  });
+}
+
+/**
+ * 估算加载一批条目的总字符数
+ * @param {Object[]} entries
+ * @returns {number}
+ */
+export function estimateLoadSize(entries) {
+  return entries.reduce((sum, entry) => {
+    if (entry.loadView) {
+      return sum + entry.loadView.viewLength;
+    }
+    const valueStr = typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value);
+    return sum + valueStr.length;
+  }, 0);
+}
