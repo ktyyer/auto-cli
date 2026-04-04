@@ -11,11 +11,11 @@
  * - TraceCompactor: PHASE 4 错误栈压缩
  */
 
-import { FlowEngine, FLOW_STATES, FLOW_EVENTS } from '../flow/flow-engine.js';
+import { FlowEngine, FLOW_EVENTS } from '../flow/flow-engine.js';
 import { MemoryManager } from '../memory/memory-manager.js';
 import { TokenBudgetManager } from '../budget/token-budget.js';
-import { ContextMonitor, CONTEXT_THRESHOLDS, CONTEXT_STATUS } from '../budget/context-monitor.js';
-import { routeModel, MODEL_TIERS } from '../router/model-router.js';
+import { ContextMonitor, CONTEXT_STATUS } from '../budget/context-monitor.js';
+import { routeModel } from '../router/model-router.js';
 import { SkillIndexer } from '../skills/skill-indexer.js';
 import { compactTrace } from '../utils/trace-compactor.js';
 import {
