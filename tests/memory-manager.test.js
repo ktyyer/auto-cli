@@ -155,4 +155,45 @@ describe('MemoryManager', () => {
       expect(stats.total).toBe(3);
     });
   });
+
+  describe('search (semantic)', () => {
+    it('should support multi-term matching', async () => {
+      await manager.set('db-config', { host: 'localhost', port: 5432 }, { tags: ['database'] });
+      await manager.set('api-config', { host: 'api.example.com' }, { tags: ['api'] });
+      await manager.set('auth-config', { host: 'auth.example.com' }, { tags: ['auth'] });
+
+      const results = await manager.search('localhost database');
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results.some((r) => r.key === 'db-config')).toBe(true);
+    });
+
+    it('should support semantic TF-IDF ranking', async () => {
+      await manager.set('item1', 'javascript typescript node', { tags: ['js'] });
+      await manager.set('item2', 'javascript only', { tags: ['js'] });
+      await manager.set('item3', 'python django flask', { tags: ['py'] });
+
+      const results = await manager.search('javascript typescript', { semantic: true });
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      // item1 should rank higher (matches more terms)
+      expect(results[0].key).toBe('item1');
+    });
+
+    it('should respect limit option', async () => {
+      for (let i = 0; i < 10; i++) {
+        await manager.set(`item-${i}`, `test value ${i}`);
+      }
+
+      const results = await manager.search('test', { limit: 3 });
+      expect(results.length).toBeLessThanOrEqual(3);
+    });
+
+    it('should search tags as well', async () => {
+      await manager.set('entry1', 'some value', { tags: ['architecture', 'fsm'] });
+      await manager.set('entry2', 'other value', { tags: ['testing'] });
+
+      const results = await manager.search('architecture');
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results.some((r) => r.key === 'entry1')).toBe(true);
+    });
+  });
 });

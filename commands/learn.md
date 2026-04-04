@@ -177,10 +177,11 @@ function parse<T extends string>(input: T): InferJSON<T> {
 git log --oneline -n 200 --name-only --pretty=format:"%H|%s|%ad" --date=short
 
 # 获取文件变更频率（哪些文件最常被修改）
+# 注意: 此命令在 Windows Git Bash 和 Unix 上均可运行
 git log --oneline -n 200 --name-only | grep -v "^$" | grep -v "^[a-f0-9]" | sort | uniq -c | sort -rn | head -20
 
 # 获取提交消息模式
-git log --oneline -n 200 | cut -d' ' -f2- | head -50
+git log --oneline -n 200 --pretty=format:"%s" | head -50
 ```
 
 #### 第二步：检测模式

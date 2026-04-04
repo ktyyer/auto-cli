@@ -107,6 +107,7 @@ describe('FlowEngine', () => {
     });
 
     it('should enforce max retries', () => {
+      engine = new FlowEngine('test', { maxRetries: 3, circuitFailureThreshold: 10 });
       engine.transition(FLOW_EVENTS.START);
 
       for (let i = 0; i < 3; i++) {

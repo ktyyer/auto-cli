@@ -14,7 +14,7 @@
  * 4. 执行 + 回退处理
  */
 import { logger } from '../logger.js';
-import { COMPLEXITY_LEVELS, AGENT_STATES } from './agent-types.js';
+import { COMPLEXITY_LEVELS, AGENT_STATES, COMPLEXITY_INDICATORS } from './agent-types.js';
 import { AgentRegistry } from './agent-registry.js';
 
 /**
@@ -23,52 +23,6 @@ import { AgentRegistry } from './agent-registry.js';
 const DEFAULT_AGENT = {
   name: 'quest-designer',
   reason: '无精确匹配，回退到闯关设计 Agent'
-};
-
-/**
- * 复杂度评估关键词
- */
-const COMPLEXITY_INDICATORS = {
-  [COMPLEXITY_LEVELS.HIGH]: [
-    '重构',
-    '架构',
-    '系统',
-    '迁移',
-    '全面',
-    'redesign',
-    'refactor',
-    'microservice',
-    '微服务',
-    '分布式',
-    '整体',
-    '批量'
-  ],
-  [COMPLEXITY_LEVELS.MEDIUM]: [
-    '功能',
-    '实现',
-    '开发',
-    '新增',
-    '修改',
-    'feature',
-    'implement',
-    '集成',
-    '优化',
-    'fix',
-    '修复'
-  ],
-  [COMPLEXITY_LEVELS.LOW]: [
-    '格式化',
-    '格式',
-    'rename',
-    '重命名',
-    '文档',
-    '注释',
-    '格式',
-    'format',
-    'lint',
-    '简单',
-    '快速'
-  ]
 };
 
 /**
@@ -97,6 +51,105 @@ const SECURITY_KEYWORDS = [
   'encrypt'
 ];
 
+/**
+ * CJK 关键词字典 — 用于中文分词
+ * 按领域分类，覆盖常见开发术语
+ */
+const CJK_KEYWORDS = [
+  // 架构
+  '重构',
+  '架构',
+  '系统',
+  '微服务',
+  '分布式',
+  '迁移',
+  '整体',
+  // 开发
+  '功能',
+  '实现',
+  '开发',
+  '新增',
+  '修改',
+  '集成',
+  '优化',
+  '修复',
+  '测试',
+  '单元测试',
+  '集成测试',
+  '端到端',
+  // 操作
+  '格式化',
+  '重命名',
+  '文档',
+  '注释',
+  '简单',
+  '快速',
+  '批量',
+  // 安全
+  '密码',
+  '密钥',
+  '认证',
+  '授权',
+  '权限',
+  '注入',
+  '加密',
+  '安全',
+  '漏洞',
+  '泄露',
+  '审查',
+  '检查',
+  // 质量
+  '代码审查',
+  '代码质量',
+  '性能',
+  '缓存',
+  '死代码',
+  '清理',
+  // 流程
+  '提交',
+  '部署',
+  '发布',
+  '回滚',
+  '分支',
+  // 构建
+  '构建',
+  '编译',
+  '类型',
+  '错误',
+  '失败'
+];
+
+/**
+ * 对中文文本进行简单分词（基于词典匹配）
+ * @param {string} text - 输入文本
+ * @returns {string[]} 分词结果
+ */
+function segmentCJK(text) {
+  const keywords = [];
+
+  // 正向最大匹配：从长词到短词
+  const sortedDict = [...CJK_KEYWORDS].sort((a, b) => b.length - a.length);
+
+  let remaining = text;
+  while (remaining.length > 0) {
+    let matched = false;
+    for (const word of sortedDict) {
+      if (remaining.startsWith(word)) {
+        keywords.push(word);
+        remaining = remaining.slice(word.length);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      // 跳过单字符
+      remaining = remaining.slice(1);
+    }
+  }
+
+  return keywords;
+}
+
 export class CanonicalRouter {
   /**
    * @param {AgentRegistry} [registry] - Agent 注册表
@@ -105,6 +158,9 @@ export class CanonicalRouter {
     this.registry = registry || new AgentRegistry();
     this.logger = logger;
     this._initialized = false;
+
+    // 路由反馈回路：记录路由历史和成功率
+    this._routingHistory = new Map();
   }
 
   /**
@@ -165,13 +221,18 @@ export class CanonicalRouter {
     const selected = ranked[0];
 
     // 6. 构建路由结果
+    const feedbackId = `route_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const result = {
       agent: selected.agent,
       score: selected.score,
       matchReason: this._buildMatchReason(selected),
       fallbackChain: this.registry.getFallbackChain(selected.agent.name),
-      isDefault: false
+      isDefault: false,
+      feedbackId
     };
+
+    // 记录路由历史用于反馈回路
+    this._recordRoutingAttempt(selected.agent.name, intent.keywords, feedbackId);
 
     this.logger.info(
       `路由结果: agent=${result.agent.name} score=${result.score} reason=${result.matchReason}`
@@ -190,8 +251,16 @@ export class CanonicalRouter {
   _analyzeIntent(userIntent, context) {
     const lowerIntent = userIntent.toLowerCase();
 
-    // 提取关键词
-    const keywords = lowerIntent.split(/[\s,，。.、；;！!？?：:]+/).filter((w) => w.length > 1);
+    // 提取英文关键词（基于 match 揾比 split更可靠)
+    const englishKeywords = (lowerIntent.match(/[a-z0-9._-]+|[\u4e00-\u9fff]+/g) || []).filter(
+      (t) => /^[a-z0-9._-]+$/.test(t) && t.length > 1
+    );
+
+    // 提取中文关键词（基于词典分词）
+    const cjkKeywords = segmentCJK(userIntent);
+
+    // 合并去重
+    const allKeywords = [...new Set([...englishKeywords, ...cjkKeywords])];
 
     // 评估复杂度
     const complexity = this._assessComplexity(lowerIntent);
@@ -208,7 +277,7 @@ export class CanonicalRouter {
       .filter(Boolean);
 
     return {
-      keywords: [...keywords, ...fileExtensions],
+      keywords: [...allKeywords, ...fileExtensions],
       complexity,
       securitySensitive,
       originalIntent: userIntent
@@ -270,12 +339,19 @@ export class CanonicalRouter {
       }
     }
 
-    // 根据复杂度偏好排序（匹配的复杂度优先）
+    // 根据复杂度偏好排序（匹配的复杂度优先）+ 历史成功率加权
     if (intent.complexity) {
       filtered = candidates.sort((a, b) => {
         const aMatch = a.agent.complexity === intent.complexity ? 10 : 0;
         const bMatch = b.agent.complexity === intent.complexity ? 10 : 0;
-        return b.score + bMatch - (a.score + aMatch);
+
+        // 反馈回路：历史成功率加权（至少 3 次记录才生效）
+        const aPerf = this.getAgentPerformance(a.agent.name);
+        const bPerf = this.getAgentPerformance(b.agent.name);
+        const aFeedback = aPerf.total >= 3 ? (aPerf.successRate - 0.5) * 20 : 0;
+        const bFeedback = bPerf.total >= 3 ? (bPerf.successRate - 0.5) * 20 : 0;
+
+        return b.score + bMatch + bFeedback - (a.score + aMatch + aFeedback);
       });
     }
 
@@ -354,6 +430,79 @@ export class CanonicalRouter {
       fallbackChain: this.registry.getFallbackChain(defaultAgent.name),
       isDefault: true
     };
+  }
+
+  /**
+   * 记录路由尝试（反馈回路基础数据）
+   * @param {string} agentName - 路由到的 Agent 名称
+   * @param {string[]} keywords - 触发关键词
+   * @param {string} feedbackId - 反馈 ID
+   * @private
+   */
+  _recordRoutingAttempt(agentName, keywords, feedbackId) {
+    this._routingHistory.set(feedbackId, {
+      agentName,
+      keywords: keywords.slice(0, 10),
+      timestamp: Date.now(),
+      outcome: null
+    });
+  }
+
+  /**
+   * 记录路由反馈（成功/失败）
+   * 反馈回路：根据历史成功率调整未来路由决策
+   * @param {string} feedbackId - 路由结果中的 feedbackId
+   * @param {Object} feedback
+   * @param {'success'|'failure'|'timeout'} feedback.outcome - 执行结果
+   * @param {string} [feedback.reason] - 失败原因
+   */
+  recordFeedback(feedbackId, feedback) {
+    const entry = this._routingHistory.get(feedbackId);
+    if (!entry) {
+      this.logger.debug(`路由反馈未找到: ${feedbackId}`);
+      return;
+    }
+
+    entry.outcome = feedback.outcome;
+    entry.reason = feedback.reason || null;
+
+    // 清理旧历史（保留最近 100 条）
+    if (this._routingHistory.size > 100) {
+      const oldest = [...this._routingHistory.entries()].sort(
+        ([, a], [, b]) => a.timestamp - b.timestamp
+      );
+      for (let i = 0; i < 20; i++) {
+        this._routingHistory.delete(oldest[i][0]);
+      }
+    }
+
+    this.logger.debug(`路由反馈: ${feedbackId} → ${feedback.outcome} for ${entry.agentName}`);
+  }
+
+  /**
+   * 获取 Agent 的历史成功率（反馈回路核心）
+   * @param {string} agentName
+   * @returns {{ total: number, successes: number, failures: number, successRate: number }}
+   */
+  getAgentPerformance(agentName) {
+    let total = 0;
+    let successes = 0;
+    let failures = 0;
+
+    for (const entry of this._routingHistory.values()) {
+      if (entry.agentName === agentName && entry.outcome) {
+        total++;
+        if (entry.outcome === 'success') successes++;
+        else failures++;
+      }
+    }
+
+    return Object.freeze({
+      total,
+      successes,
+      failures,
+      successRate: total > 0 ? successes / total : 0
+    });
   }
 
   /**

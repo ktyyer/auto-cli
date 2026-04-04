@@ -528,13 +528,99 @@ export class AgentRegistry {
    * @returns {Promise<import('./agent-types.js').AgentManifest|null>}
    * @private
    */
+  /**
+   * 解析 Agent .md 文件，提取清单（支持 YAML frontmatter）
+   *
+   * Frontmatter 格式（--- 包裹）：
+   * ---
+   * name: agent-name
+   * description: Agent 描述
+   * capabilities: [cap1, cap2]
+   * triggerKeywords: [kw1, kw2]
+   * priority: 75
+   * complexity: medium
+   * fallbackAgents: [other-agent]
+   * state: active
+   * source: custom
+   * version: '1.0.0'
+   * tags: [tag1]
+   * ---
+   *
+   * @param {string} filePath
+   * @param {string} name
+   * @returns {Promise<import('./agent-types.js').AgentManifest|null>}
+   * @private
+   */
+  /**
+   * 从 Markdown 内容提取 YAML frontmatter
+   * @param {string} content - 文件内容
+   * @returns {{ frontmatter: Object|null, bodyStart: number }}
+   * @private
+   */
+  _extractFrontmatter(content) {
+    const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!match) {
+      return { frontmatter: null, bodyStart: 0 };
+    }
+
+    const yaml = match[1];
+    const frontmatter = {};
+
+    for (const line of yaml.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const colonIdx = trimmed.indexOf(':');
+      if (colonIdx === -1) continue;
+
+      const key = trimmed.slice(0, colonIdx).trim();
+      let value = trimmed.slice(colonIdx + 1).trim();
+
+      // Parse array values: [a, b, c]
+      if (value.startsWith('[') && value.endsWith(']')) {
+        value = value
+          .slice(1, -1)
+          .split(',')
+          .map((v) => v.trim().replace(/['"]/g, ''))
+          .filter(Boolean);
+      }
+      // Parse numeric values
+      else if (/^-?\d+(\.\d+)?$/.test(value)) {
+        value = Number(value);
+      }
+      // Parse boolean values
+      else if (value === 'true') {
+        value = true;
+      } else if (value === 'false') {
+        value = false;
+      }
+      // Strip quotes from string values
+      else if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+
+      frontmatter[key] = value;
+    }
+
+    // bodyStart = position after closing ---
+    const bodyStart = match[0].length + match.index;
+    return { frontmatter, bodyStart };
+  }
+
   async _parseAgentFile(filePath, name) {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
+      const { frontmatter, bodyStart } = this._extractFrontmatter(content);
+
+      // Fallback: first non-heading line as title
       const firstLine = content.split('\n')[0] || '';
       const title = firstLine.replace(/^#+\s*/, '').trim() || name;
 
-      return {
+      // Build manifest with defaults
+      const manifest = {
         name,
         displayName: title,
         description: content.slice(0, 200).trim(),
@@ -549,6 +635,41 @@ export class AgentRegistry {
         filePath,
         tags: []
       };
+
+      // Override with frontmatter values if present
+      if (frontmatter) {
+        if (frontmatter.name) manifest.name = frontmatter.name;
+        if (frontmatter.displayName) manifest.displayName = frontmatter.displayName;
+        if (frontmatter.description) manifest.description = frontmatter.description;
+        if (frontmatter.capabilities) manifest.capabilities = frontmatter.capabilities;
+        if (frontmatter.triggerKeywords) {
+          manifest.triggerKeywords = frontmatter.triggerKeywords;
+        }
+        if (typeof frontmatter.priority === 'number') manifest.priority = frontmatter.priority;
+        if (frontmatter.complexity) manifest.complexity = frontmatter.complexity;
+        if (frontmatter.fallbackAgents) manifest.fallbackAgents = frontmatter.fallbackAgents;
+        if (frontmatter.state) manifest.state = frontmatter.state;
+        if (frontmatter.source) manifest.source = frontmatter.source;
+        if (frontmatter.version) manifest.version = frontmatter.version;
+        if (frontmatter.tags) manifest.tags = frontmatter.tags;
+      }
+
+      // Extract description from body if not in frontmatter
+      if (bodyStart > 0 && !frontmatter?.description) {
+        const lines = content
+          .split('\n')
+          .slice(bodyStart)
+          .filter((l) => l.trim());
+        const descriptionLines = lines
+          .filter((l) => l.length > 0 && l.length < 200)
+          .slice(0, 3)
+          .join(' ');
+        if (descriptionLines.length > 0) {
+          manifest.description = descriptionLines;
+        }
+      }
+
+      return manifest;
     } catch (error) {
       this.logger.warn(`解析 Agent 文件失败 ${filePath}: ${error.message}`);
       return null;

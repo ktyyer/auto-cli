@@ -218,4 +218,84 @@ export async function runRoute(userIntent, options = {}) {
   console.log('');
 }
 
+/**
+ * 分析任务 - 仅执行 PHASE 1 + PHASE 2，输出结构化分析 JSON
+ *
+ * @param {string} task - 任务描述
+ * @param {Object} options
+ * @param {string} [options.mode] - 执行模式 (micro|light|full)
+ * @param {string} [options.dir] - 项目目录
+ * @param {boolean} [options.json] - JSON 输出
+ * @returns {Promise<Object>} 分析结果
+ */
+export async function runAnalyze(task, options = {}) {
+  const orchestrator = new WorkflowOrchestrator({
+    projectDir: options.dir || process.cwd()
+  });
+
+  // PHASE 1: Discover
+  await orchestrator._runDiscover();
+
+  // PHASE 2: Reason
+  await orchestrator._runReason();
+
+  const ctx = orchestrator.getContext();
+  const modelResult = ctx.modelRecommendations;
+  const agentResult = ctx.agentRecommendation;
+  const questMap = ctx.questMap || [];
+
+  // 构建 team 信息
+  const teamResult = orchestrator.agentRegistry.resolveTeam({
+    keywords: orchestrator._extractKeywords(task),
+    maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
+  });
+
+  return {
+    task: task.slice(0, 80),
+    mode: ctx.mode,
+    detected_mode: ctx.mode,
+    routing: {
+      model: modelResult
+        ? {
+            id: modelResult.model,
+            tier: modelResult.tier,
+            reason: modelResult.reason
+          }
+        : null,
+      agent: agentResult
+        ? {
+            name: agentResult.agent.name,
+            displayName: agentResult.agent.displayName,
+            score: agentResult.score,
+            matchReason: agentResult.matchReason
+          }
+        : null
+    },
+    team: {
+      lead: teamResult.lead
+        ? {
+            name: teamResult.lead.name,
+            displayName: teamResult.lead.displayName,
+            capabilities: teamResult.lead.capabilities
+          }
+        : null,
+      members: teamResult.members.map((m) => ({
+        name: m.name,
+        displayName: m.displayName,
+        capabilities: m.capabilities
+      }))
+    },
+    quests: questMap.map((q) => ({
+      id: q.id,
+      title: q.title,
+      type: q.type,
+      keywords: q.keywords,
+      agent: q.agent,
+      priority: q.priority,
+      files: q.files
+    }))
+  };
+}
+
 export { WorkflowOrchestrator };
+export { RepoIndexer } from './indexer/repo-indexer.js';

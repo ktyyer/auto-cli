@@ -13,7 +13,6 @@ import fs from 'fs-extra';
 import { logger } from '../logger.js';
 import {
   MEMORY_TIERS,
-  TIER_PRIORITY,
   createMemoryEntry,
   touchEntry,
   updateEntryValue,
@@ -119,19 +118,23 @@ export class MemoryManager {
     }
 
     if (!tier || tier === MEMORY_TIERS.PROJECT) {
-      const store = await this._loadStore(getProjectMemoryDir(this.projectDir));
+      const dir = getProjectMemoryDir(this.projectDir);
+      const store = await this._getCachedStore(MEMORY_TIERS.PROJECT, dir);
       if (store[key]) {
         delete store[key];
-        await this._saveStore(getProjectMemoryDir(this.projectDir), store);
+        await this._saveStore(dir, store);
+        this._invalidateCache(MEMORY_TIERS.PROJECT);
         deleted = true;
       }
     }
 
     if (!tier || tier === MEMORY_TIERS.GLOBAL) {
-      const store = await this._loadStore(getGlobalMemoryDir());
+      const dir = getGlobalMemoryDir();
+      const store = await this._getCachedStore(MEMORY_TIERS.GLOBAL, dir);
       if (store[key]) {
         delete store[key];
-        await this._saveStore(getGlobalMemoryDir(), store);
+        await this._saveStore(dir, store);
+        this._invalidateCache(MEMORY_TIERS.GLOBAL);
         deleted = true;
       }
     }
@@ -168,28 +171,73 @@ export class MemoryManager {
 
   /**
    * 按关键词搜索（搜索 key 和 value）
+   * 支持多词匹配和 TF-IDF 排序的语义搜索
    * @param {string} query
+   * @param {Object} [options]
+   * @param {boolean} [options.semantic=false] - 启用语义排序（TF-IDF）
+   * @param {number} [options.limit=20] - 最大结果数
    * @returns {Promise<Object[]>}
    */
-  async search(query) {
+  async search(query, options = {}) {
     const lowerQuery = query.toLowerCase();
+    const queryTerms = lowerQuery.split(/[\s,;，；]+/).filter((t) => t.length > 1);
     const results = [];
     const seen = new Set();
 
     const allEntries = await this._getAllEntries();
+    const enableSemantic = options.semantic ?? false;
+    const limit = options.limit ?? 20;
+
+    // 构建 IDF（逆文档频率）
+    const docCount = allEntries.filter((e) => !isExpired(e)).length;
+    const docFreq = {};
+
+    if (enableSemantic && queryTerms.length > 0) {
+      for (const entry of allEntries) {
+        if (isExpired(entry)) continue;
+        const text =
+          `${entry.key} ${(entry.tags || []).join(' ')} ${JSON.stringify(entry.value)}`.toLowerCase();
+        const seen_terms = new Set();
+        for (const term of queryTerms) {
+          if (text.includes(term) && !seen_terms.has(term)) {
+            seen_terms.add(term);
+            docFreq[term] = (docFreq[term] || 0) + 1;
+          }
+        }
+      }
+    }
 
     for (const entry of allEntries) {
       if (seen.has(entry.key)) continue;
       if (isExpired(entry)) continue;
 
-      const searchText = `${entry.key} ${JSON.stringify(entry.value)}`.toLowerCase();
-      if (searchText.includes(lowerQuery)) {
-        results.push(entry);
+      const searchText =
+        `${entry.key} ${(entry.tags || []).join(' ')} ${JSON.stringify(entry.value)}`.toLowerCase();
+
+      // 基础匹配：包含查询词
+      const matchedTerms = queryTerms.filter((t) => searchText.includes(t));
+
+      if (searchText.includes(lowerQuery) || matchedTerms.length > 0) {
+        if (enableSemantic && queryTerms.length > 0) {
+          // TF-IDF 评分
+          let score = 0;
+          for (const term of matchedTerms) {
+            const tf = matchedTerms.length / queryTerms.length;
+            const idf = Math.log((docCount + 1) / ((docFreq[term] || 0) + 1)) + 1;
+            score += tf * idf;
+          }
+          results.push({ entry, score });
+        } else {
+          results.push({ entry, score: matchedTerms.length });
+        }
         seen.add(entry.key);
       }
     }
 
-    return results;
+    // 按评分排序
+    results.sort((a, b) => b.score - a.score);
+
+    return results.slice(0, limit).map((r) => r.entry);
   }
 
   /**
@@ -208,10 +256,10 @@ export class MemoryManager {
     }
 
     // Project 层
-    cleaned += await this._cleanupStore(getProjectMemoryDir(this.projectDir));
+    cleaned += await this._cleanupStore(getProjectMemoryDir(this.projectDir), MEMORY_TIERS.PROJECT);
 
     // Global 层
-    cleaned += await this._cleanupStore(getGlobalMemoryDir());
+    cleaned += await this._cleanupStore(getGlobalMemoryDir(), MEMORY_TIERS.GLOBAL);
 
     if (cleaned > 0) {
       logger.info(`记忆清理: 移除 ${cleaned} 个过期条目`);
@@ -225,8 +273,10 @@ export class MemoryManager {
    * @returns {Promise<Object>}
    */
   async getStats() {
-    const projectStore = await this._loadStore(getProjectMemoryDir(this.projectDir));
-    const globalStore = await this._loadStore(getGlobalMemoryDir());
+    const projectDir = getProjectMemoryDir(this.projectDir);
+    const globalDir = getGlobalMemoryDir();
+    const projectStore = await this._getCachedStore(MEMORY_TIERS.PROJECT, projectDir);
+    const globalStore = await this._getCachedStore(MEMORY_TIERS.GLOBAL, globalDir);
 
     return {
       session: this._session.size,
@@ -248,7 +298,7 @@ export class MemoryManager {
     const dir =
       tier === MEMORY_TIERS.PROJECT ? getProjectMemoryDir(this.projectDir) : getGlobalMemoryDir();
 
-    const store = await this._loadStore(dir);
+    const store = await this._getCachedStore(tier, dir);
     return store[key] || null;
   }
 
@@ -267,9 +317,11 @@ export class MemoryManager {
         ? getProjectMemoryDir(this.projectDir)
         : getGlobalMemoryDir();
 
-    const store = await this._loadStore(dir);
+    const store = await this._getCachedStore(entry.tier, dir);
     store[entry.key] = entry;
     await this._saveStore(dir, store);
+    // Invalidate cache so next read picks up the new data
+    this._invalidateCache(entry.tier);
   }
 
   /**
@@ -285,18 +337,48 @@ export class MemoryManager {
     }
 
     // Project
-    const projectStore = await this._loadStore(getProjectMemoryDir(this.projectDir));
+    const projectDir = getProjectMemoryDir(this.projectDir);
+    const projectStore = await this._getCachedStore(MEMORY_TIERS.PROJECT, projectDir);
     for (const entry of Object.values(projectStore)) {
       entries.push(entry);
     }
 
     // Global
-    const globalStore = await this._loadStore(getGlobalMemoryDir());
+    const globalDir = getGlobalMemoryDir();
+    const globalStore = await this._getCachedStore(MEMORY_TIERS.GLOBAL, globalDir);
     for (const entry of Object.values(globalStore)) {
       entries.push(entry);
     }
 
     return entries;
+  }
+
+  /**
+   * 获取缓存的存储（避免重复磁盘读取）
+   * @param {string} tier - 层级
+   * @param {string} dir - 存储目录
+   * @returns {Promise<Object>}
+   * @private
+   */
+  async _getCachedStore(tier, dir) {
+    const cacheKey = tier === MEMORY_TIERS.PROJECT ? '_projectCache' : '_globalCache';
+    if (this[cacheKey] === null) {
+      this[cacheKey] = await this._loadStore(dir);
+    }
+    return this[cacheKey];
+  }
+
+  /**
+   * 使缓存失效（写入后调用）
+   * @param {string} tier - 层级
+   * @private
+   */
+  _invalidateCache(tier) {
+    if (tier === MEMORY_TIERS.PROJECT) {
+      this._projectCache = null;
+    } else if (tier === MEMORY_TIERS.GLOBAL) {
+      this._globalCache = null;
+    }
   }
 
   /**
@@ -331,10 +413,12 @@ export class MemoryManager {
 
   /**
    * 清理指定存储中的过期条目
+   * @param {string} dir
+   * @param {string} [tier] - 层级，用于缓存
    * @private
    */
-  async _cleanupStore(dir) {
-    const store = await this._loadStore(dir);
+  async _cleanupStore(dir, tier) {
+    const store = await this._getCachedStore(tier, dir);
     let cleaned = 0;
 
     for (const [key, entry] of Object.entries(store)) {
@@ -346,6 +430,7 @@ export class MemoryManager {
 
     if (cleaned > 0) {
       await this._saveStore(dir, store);
+      this._invalidateCache(tier);
     }
 
     return cleaned;

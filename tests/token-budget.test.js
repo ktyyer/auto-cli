@@ -9,6 +9,7 @@ import {
   getPhaseStatus,
   canAfford,
   getBudgetSummary,
+  dynamicRebalance,
   TokenBudgetManager
 } from '../src/budget/token-budget.js';
 
@@ -119,10 +120,15 @@ describe('canAfford', () => {
     expect(canAfford(budget, 'discover', 5000)).toBe(true);
   });
 
-  it('should return false when phase budget exceeded', () => {
+  it('should return true when phase budget exceeded but total budget allows borrowing', () => {
     const budget = createBudget({ totalBudget: 100000 });
-    // discover has 10000 allocated
-    expect(canAfford(budget, 'discover', 15000)).toBe(false);
+    // discover has 10000 allocated, but dynamic borrowing allows it
+    expect(canAfford(budget, 'discover', 15000)).toBe(true);
+  });
+
+  it('should return false when total budget is exhausted', () => {
+    const budget = consumeTokens(createBudget({ totalBudget: 100000 }), 'execute', 100000);
+    expect(canAfford(budget, 'discover', 1000)).toBe(false);
   });
 
   it('should return false for unknown phase', () => {
@@ -171,5 +177,112 @@ describe('TokenBudgetManager', () => {
     const summary = mgr.getSummary();
     expect(typeof summary).toBe('string');
     expect(summary).toContain('Token 预算');
+  });
+});
+
+describe('dynamicRebalance', () => {
+  it('should redistribute surplus from completed phase', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    // discover only used 2000 out of 10000
+    budget = consumeTokens(budget, 'discover', 2000, 'quick scan');
+
+    const rebalanced = dynamicRebalance(budget, {
+      completedPhase: 'discover',
+      upcomingPhases: ['execute', 'verify'],
+      redistributeRatio: 0.5
+    });
+
+    // discover surplus = 10000 - 2000 = 8000
+    // redistributable = 8000 * 0.5 = 4000
+    // per phase = 4000 / 2 = 2000
+    expect(rebalanced.phaseAllocations.execute.allocated).toBe(
+      budget.phaseAllocations.execute.allocated + 2000
+    );
+    expect(rebalanced.phaseAllocations.verify.allocated).toBe(
+      budget.phaseAllocations.verify.allocated + 2000
+    );
+  });
+
+  it('should return same budget when no surplus', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    budget = consumeTokens(budget, 'discover', 10000, 'full scan');
+
+    const rebalanced = dynamicRebalance(budget, {
+      completedPhase: 'discover',
+      upcomingPhases: ['execute']
+    });
+
+    expect(rebalanced).toBe(budget); // no change
+  });
+
+  it('should return same budget for unknown phase', () => {
+    const budget = createBudget({ totalBudget: 100000 });
+
+    const rebalanced = dynamicRebalance(budget, {
+      completedPhase: 'unknown-phase',
+      upcomingPhases: ['execute']
+    });
+
+    expect(rebalanced).toBe(budget);
+  });
+
+  it('should return same budget when no upcoming phases', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    budget = consumeTokens(budget, 'discover', 2000);
+
+    const rebalanced = dynamicRebalance(budget, {
+      completedPhase: 'discover',
+      upcomingPhases: []
+    });
+
+    expect(rebalanced).toBe(budget);
+  });
+
+  it('should record rebalance in history', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    budget = consumeTokens(budget, 'discover', 2000);
+
+    const rebalanced = dynamicRebalance(budget, {
+      completedPhase: 'discover',
+      upcomingPhases: ['execute']
+    });
+
+    const lastHistoryEntry = rebalanced.history[rebalanced.history.length - 1];
+    expect(lastHistoryEntry.label).toContain('dynamic-rebalance');
+  });
+});
+
+describe('canAfford with dynamic borrowing', () => {
+  it('should allow borrowing from other phases when total budget allows', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    // Use up all discover budget
+    budget = consumeTokens(budget, 'discover', 10000);
+    // Try to afford more than discover has left (0) but total has remaining
+    // Phase remaining = 10000 - 10000 = 0, but total remaining = 90000
+    // With dynamic borrowing: should return true
+    expect(canAfford(budget, 'discover', 1000)).toBe(true);
+  });
+
+  it('should deny when total budget is exhausted', () => {
+    let budget = createBudget({ totalBudget: 100000 });
+    budget = consumeTokens(budget, 'execute', 100000);
+
+    expect(canAfford(budget, 'discover', 1000)).toBe(false);
+  });
+});
+
+describe('TokenBudgetManager.rebalance', () => {
+  it('should expose rebalance method', () => {
+    const mgr = new TokenBudgetManager({ totalBudget: 100000 });
+    mgr.consume('discover', 2000, 'quick scan');
+
+    const result = mgr.rebalance({
+      completedPhase: 'discover',
+      upcomingPhases: ['execute'],
+      redistributeRatio: 0.5
+    });
+
+    expect(result).toHaveProperty('budget');
+    expect(result).toHaveProperty('redistributed');
   });
 });

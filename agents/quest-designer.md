@@ -13,6 +13,7 @@ model: opus
 1. 你不输出需求描述，你输出 **完整可编译代码**
 2. 你不输出"参考 XX 文件"，你输出 **精确到行号的插入指令**
 3. 你不输出"使用 @Data 注解"，你输出 **包含 import 的完整文件内容**
+4. 每个 Quest 必须附带 **决策笔记** — 记录"为什么这样做"而不只是"做了什么"
 
 ---
 
@@ -318,6 +319,13 @@ public class OrderExcelVO {
 | 3 | Excel 注解正确 | `grep -c "@ExcelProperty" src/.../OrderExcelVO.java` | 5 |
 
 🔙 **回滚**：`rm src/.../ExportOrderRequest.java src/.../OrderExcelVO.java`
+
+📝 **决策笔记**（工工件交接标准）:
+| # | 决策 | 理由 | 备选方案 |
+|---|------|------|---------|
+| 1 | 使用 EasyExcel 而非 Apache POI | 项目已有依赖，风格一致 | 原生 SXSSFWorkbook（更灵活但代码量 x3） |
+| 2 | LocalDate 而非 Date | 项目统一使用新时间 API | Date（向后兼容但不一致） |
+| 3 | private toExcelVO 不抽取 Converter | 只在一处使用，避免过度抽象 | MapStruct（增加编译复杂度） |
 
 ---
 

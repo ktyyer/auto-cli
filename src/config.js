@@ -12,6 +12,7 @@
  */
 import { fileURLToPath } from 'url';
 import path from 'path';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,9 +37,9 @@ export const DEFAULT_MAX_RETRIES = 3;
 /** @type {number} */
 export const DEFAULT_TIMEOUT = 30000;
 
-// Claude Code 配置目录
+// Claude Code 配置目录（绝对路径，与 utils.js getClaudeDir() 保持一致）
 /** @type {string} */
-export const CLAUDE_DIR = process.env.CLAUDE_DIR || '.claude';
+export const CLAUDE_DIR = process.env.CLAUDE_DIR || path.join(os.homedir(), '.claude');
 
 /** @type {AppConfig} */
 export default {

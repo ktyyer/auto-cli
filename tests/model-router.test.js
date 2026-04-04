@@ -24,10 +24,10 @@ describe('MODEL_TIERS', () => {
 });
 
 describe('MODEL_IDS', () => {
-  it('should map tiers to model names', () => {
-    expect(MODEL_IDS[MODEL_TIERS.FAST]).toBe('haiku');
-    expect(MODEL_IDS[MODEL_TIERS.STANDARD]).toBe('sonnet');
-    expect(MODEL_IDS[MODEL_TIERS.DEEP]).toBe('opus');
+  it('should map tiers to model IDs', () => {
+    expect(MODEL_IDS[MODEL_TIERS.FAST]).toBe('claude-haiku-4-5-20251001');
+    expect(MODEL_IDS[MODEL_TIERS.STANDARD]).toBe('claude-sonnet-4-6');
+    expect(MODEL_IDS[MODEL_TIERS.DEEP]).toBe('claude-opus-4-6');
   });
 });
 
@@ -44,7 +44,7 @@ describe('routeByAgent', () => {
     const result = routeByAgent({ complexity: COMPLEXITY_LEVELS.LOW });
 
     expect(result.tier).toBe(MODEL_TIERS.FAST);
-    expect(result.model).toBe('haiku');
+    expect(result.model).toBe('claude-haiku-4-5-20251001');
     expect(result.reason).toContain('low');
   });
 
@@ -52,14 +52,14 @@ describe('routeByAgent', () => {
     const result = routeByAgent({ complexity: COMPLEXITY_LEVELS.MEDIUM });
 
     expect(result.tier).toBe(MODEL_TIERS.STANDARD);
-    expect(result.model).toBe('sonnet');
+    expect(result.model).toBe('claude-sonnet-4-6');
   });
 
   it('should route high complexity to DEEP', () => {
     const result = routeByAgent({ complexity: COMPLEXITY_LEVELS.HIGH });
 
     expect(result.tier).toBe(MODEL_TIERS.DEEP);
-    expect(result.model).toBe('opus');
+    expect(result.model).toBe('claude-opus-4-6');
   });
 
   it('should default to STANDARD for missing complexity', () => {
@@ -80,7 +80,7 @@ describe('routeByKeywords', () => {
     const result = routeByKeywords(['search', 'find']);
 
     expect(result.tier).toBe(MODEL_TIERS.FAST);
-    expect(result.model).toBe('haiku');
+    expect(result.model).toBe('claude-haiku-4-5-20251001');
     expect(result.matchedKeywords.length).toBeGreaterThan(0);
   });
 
@@ -88,14 +88,14 @@ describe('routeByKeywords', () => {
     const result = routeByKeywords(['implement', 'test']);
 
     expect(result.tier).toBe(MODEL_TIERS.STANDARD);
-    expect(result.model).toBe('sonnet');
+    expect(result.model).toBe('claude-sonnet-4-6');
   });
 
   it('should route architecture keywords to DEEP', () => {
     const result = routeByKeywords(['architect', 'security']);
 
     expect(result.tier).toBe(MODEL_TIERS.DEEP);
-    expect(result.model).toBe('opus');
+    expect(result.model).toBe('claude-opus-4-6');
   });
 
   it('should handle Chinese keywords', () => {
@@ -172,7 +172,7 @@ describe('routeModel', () => {
     const result = routeModel();
 
     expect(result.tier).toBe(MODEL_TIERS.STANDARD);
-    expect(result.model).toBe('sonnet');
+    expect(result.model).toBe('claude-sonnet-4-6');
     expect(result.reason).toContain('默认');
   });
 

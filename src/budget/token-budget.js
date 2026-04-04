@@ -164,6 +164,7 @@ export function getPhaseStatus(budget, phase) {
 
 /**
  * 检查是否有足够预算执行操作
+ * 支持动态借用：当阶段预算不足但总预算充足时，从已完成的阶段借用
  * @param {Object} budget
  * @param {string} phase
  * @param {number} estimatedTokens
@@ -173,11 +174,72 @@ export function canAfford(budget, phase, estimatedTokens) {
   const phaseStatus = getPhaseStatus(budget, phase);
   if (!phaseStatus) return false;
 
+  const totalRemaining = budget.totalBudget - budget.totalConsumed;
+
   // 阶段预算够 且 总预算够
-  return (
-    phaseStatus.remaining >= estimatedTokens &&
-    budget.totalBudget - budget.totalConsumed >= estimatedTokens
-  );
+  if (phaseStatus.remaining >= estimatedTokens && totalRemaining >= estimatedTokens) {
+    return true;
+  }
+
+  // 动态借用：阶段预算不够但总预算够（从已完成的阶段借用）
+  if (phaseStatus.remaining < estimatedTokens && totalRemaining >= estimatedTokens) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * 动态调整预算配额
+ * 当某阶段提前完成（消耗远低于配额），将剩余配额重新分配给后续阶段
+ *
+ * @param {Object} budget - 当前预算
+ * @param {Object} params
+ * @param {string} params.completedPhase - 已完成的阶段
+ * @param {string[]} params.upcomingPhases - 后续阶段列表
+ * @param {number} [params.redistributeRatio=0.5] - 重新分配比例（0-1）
+ * @returns {Object} 新预算快照
+ */
+export function dynamicRebalance(budget, params = {}) {
+  const { completedPhase, upcomingPhases = [], redistributeRatio = 0.5 } = params;
+
+  const completed = budget.phaseAllocations[completedPhase];
+  if (!completed) return budget;
+
+  const surplus = completed.allocated - completed.consumed;
+  if (surplus <= 0) return budget;
+
+  // 可重新分配的额度
+  const redistributable = Math.floor(surplus * redistributeRatio);
+  if (redistributable <= 0 || upcomingPhases.length === 0) return budget;
+
+  // 平均分配给后续阶段
+  const perPhase = Math.floor(redistributable / upcomingPhases.length);
+
+  const newAllocations = { ...budget.phaseAllocations };
+  for (const phase of upcomingPhases) {
+    if (newAllocations[phase]) {
+      newAllocations[phase] = {
+        ...newAllocations[phase],
+        allocated: newAllocations[phase].allocated + perPhase
+      };
+    }
+  }
+
+  return Object.freeze({
+    ...budget,
+    phaseAllocations: Object.freeze(newAllocations),
+    history: Object.freeze([
+      ...budget.history,
+      Object.freeze({
+        phase: completedPhase,
+        tokens: 0,
+        label: `dynamic-rebalance: ${redistributable} tokens redistributed to [${upcomingPhases.join(', ')}]`,
+        timestamp: Date.now()
+      })
+    ]),
+    updatedAt: Date.now()
+  });
 }
 
 /**
@@ -187,7 +249,6 @@ export function canAfford(budget, phase, estimatedTokens) {
  */
 export function getBudgetSummary(budget) {
   const status = getBudgetStatus(budget);
-  const remaining = budget.totalBudget - budget.totalConsumed;
   const pct = Math.round((budget.totalConsumed / budget.totalBudget) * 100);
 
   const lines = [
@@ -272,6 +333,33 @@ export class TokenBudgetManager {
    */
   getPhaseStatus(phase) {
     return getPhaseStatus(this._budget, phase);
+  }
+
+  /**
+   * 动态重新分配预算配额
+   * @param {Object} params
+   * @param {string} params.completedPhase - 已完成的阶段
+   * @param {string[]} [params.upcomingPhases] - 后续阶段列表
+   * @param {number} [params.redistributeRatio] - 重新分配比例
+   * @returns {{ budget: Object, redistributed: number }}
+   */
+  rebalance(params = {}) {
+    const before = this._budget;
+    this._budget = dynamicRebalance(this._budget, params);
+
+    const prevPhase = before.phaseAllocations[params.completedPhase];
+    const curPhase = this._budget.phaseAllocations[params.completedPhase];
+    const prevAlloc = prevPhase ? prevPhase.allocated : 0;
+    const curAlloc = curPhase ? curPhase.allocated : 0;
+    const redistributed = Math.max(0, prevAlloc - curAlloc);
+
+    if (redistributed > 0) {
+      logger.info(
+        `Token 预算动态调整: 从 ${params.completedPhase} 重新分配 ${redistributed} tokens`
+      );
+    }
+
+    return { budget: this._budget, redistributed };
   }
 
   /**

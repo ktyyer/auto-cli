@@ -25,13 +25,23 @@ export const MODEL_TIERS = Object.freeze({
 });
 
 /**
- * 模型层级 → 推荐模型 ID
+ * 模型层级 → 实际模型 ID
  * @readonly
  */
 export const MODEL_IDS = Object.freeze({
-  [MODEL_TIERS.FAST]: 'haiku',
-  [MODEL_TIERS.STANDARD]: 'sonnet',
-  [MODEL_TIERS.DEEP]: 'opus'
+  [MODEL_TIERS.FAST]: 'claude-haiku-4-5-20251001',
+  [MODEL_TIERS.STANDARD]: 'claude-sonnet-4-6',
+  [MODEL_TIERS.DEEP]: 'claude-opus-4-6'
+});
+
+/**
+ * 模型层级 → 人类可读模型名称
+ * @readonly
+ */
+export const MODEL_NAMES = Object.freeze({
+  fast: 'Claude Haiku 4.5',
+  standard: 'Claude Sonnet 4.6',
+  deep: 'Claude Opus 4.6'
 });
 
 /**

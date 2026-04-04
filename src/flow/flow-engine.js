@@ -22,6 +22,17 @@ import {
   isTerminal,
   isResumable
 } from './flow-state.js';
+import {
+  createCircuitState,
+  canExecute as circuitCanExecute,
+  recordSuccess as circuitRecordSuccess,
+  recordFailure as circuitRecordFailure,
+  tryHalfOpen as circuitTryHalfOpen,
+  recordHalfOpenAttempt,
+  resetCircuit,
+  getCircuitSummary,
+  CIRCUIT_STATES
+} from './circuit-breaker.js';
 import { logger } from '../logger.js';
 
 const MAX_RETRIES = 3;
@@ -44,6 +55,13 @@ export class FlowEngine {
     this._previousState = null;
     this._createdAt = Date.now();
     this._updatedAt = Date.now();
+
+    // 断路器：连续失败保护
+    this._circuitState = createCircuitState({
+      failureThreshold: options.circuitFailureThreshold ?? 3,
+      resetTimeout: options.circuitResetTimeout ?? 30000,
+      halfOpenMaxAttempts: options.circuitHalfOpenMaxAttempts ?? 1
+    });
   }
 
   /**
@@ -70,6 +88,19 @@ export class FlowEngine {
 
     // FAILED + RETRY → 回到失败前的状态（带重试计数）
     if (event === FLOW_EVENTS.RETRY) {
+      // 断路器检查：尝试 HALF_OPEN 转换
+      this._circuitState = circuitTryHalfOpen(this._circuitState);
+      const circuitCheck = circuitCanExecute(this._circuitState);
+      if (!circuitCheck.allowed) {
+        const error = `断路器阻止重试: ${circuitCheck.reason}`;
+        logger.warn(error);
+        return { success: false, from, to: from, error };
+      }
+      // 记录 HALF_OPEN 试探
+      if (this._circuitState.state === CIRCUIT_STATES.HALF_OPEN) {
+        this._circuitState = recordHalfOpenAttempt(this._circuitState);
+      }
+
       this.retryCount += 1;
       if (this.retryCount > this.maxRetries) {
         const error = `重试次数超限 (${this.retryCount}/${this.maxRetries})`;
@@ -84,11 +115,23 @@ export class FlowEngine {
       this._previousState = from;
     }
 
+    // FAIL 事件：记录到断路器
+    if (event === FLOW_EVENTS.FAIL) {
+      const failReason = data.error ?? data.reason ?? 'unknown';
+      this._circuitState = circuitRecordFailure(this._circuitState, String(failReason));
+    }
+
+    // 成功完成时：记录断路器成功（重置连续失败计数）
+    if (event === FLOW_EVENTS.EXECUTE_DONE || event === FLOW_EVENTS.REVIEW_DONE) {
+      this._circuitState = circuitRecordSuccess(this._circuitState);
+    }
+
     // 重置时清空
     if (event === FLOW_EVENTS.RESET) {
       this.retryCount = 0;
       this._previousState = null;
       this.context = {};
+      this._circuitState = resetCircuit(this._circuitState);
     }
 
     // 合并上下文（不可变）
@@ -139,10 +182,11 @@ export class FlowEngine {
       history: [...this.history],
       retryCount: this.retryCount,
       maxRetries: this.maxRetries,
+      circuitState: getCircuitSummary(this._circuitState),
       _previousState: this._previousState,
       _createdAt: this._createdAt,
       _updatedAt: this._updatedAt,
-      version: 1
+      version: 2
     };
   }
 
@@ -213,10 +257,19 @@ export class FlowEngine {
       isTerminal: isTerminal(this.state),
       isResumable: isResumable(this.state),
       retryCount: this.retryCount,
+      circuit: getCircuitSummary(this._circuitState),
       historyLength: this.history.length,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt
     };
+  }
+
+  /**
+   * 获取断路器状态
+   * @returns {Object}
+   */
+  getCircuitState() {
+    return getCircuitSummary(this._circuitState);
   }
 
   /**

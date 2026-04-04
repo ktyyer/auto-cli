@@ -1,0 +1,22 @@
+{
+  "prompts": {
+    "46db254b-0925-4eec-8cdb-d88a17478cf4": {
+      "id": "46db254b-0925-4eec-8cdb-d88a17478cf4",
+      "name": "升级",
+      "content": "/auto:auto 最新因为claude code源码泄露的问题，出现了很多优秀的能力，你先熟悉一下当前项目，然后全网找一写可以本项目借鉴的能力，从linux.do、码云、github等，必须适合当前项目的，如果不适合非必要不要引入",
+      "createdAt": 1775118984275
+    },
+    "47a0bfef-fad8-4e20-ba9b-80da33dddb45": {
+      "id": "47a0bfef-fad8-4e20-ba9b-80da33dddb45",
+      "name": "自查",
+      "content": "/auto:auto 熟悉当前项目，仔细分析，是否一条auto命令的超级开发辅助，是否需要精简的地方？是否有需要优化的地方",
+      "createdAt": 1775267568764
+    },
+    "ae757f46-642d-4ae2-b0ed-ea0e5cd157cf": {
+      "id": "ae757f46-642d-4ae2-b0ed-ea0e5cd157cf",
+      "name": "分析",
+      "content": "/auto:auto 分析所有能力，检查是否能力都可被auoto命令可达和编排，然后逐一分析各个能力的完善度，是否对auto超级辅助命令有帮助，是否可继续优化",
+      "createdAt": 1775287561006
+    }
+  }
+}

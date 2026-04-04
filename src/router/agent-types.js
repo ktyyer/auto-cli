@@ -5,6 +5,7 @@
  * - 定义 Agent 清单元数据结构
  * - 定义 Agent 能力声明格式
  * - 定义触发规则和回退链
+ * - 定义复杂度评估共享常量和函数
  */
 
 /**
@@ -16,6 +17,91 @@ export const COMPLEXITY_LEVELS = Object.freeze({
   MEDIUM: 'medium',
   HIGH: 'high'
 });
+
+/**
+ * 复杂度评估关键词（单一真相源）
+ *
+ * 被 CanonicalRouter 和 PhaseContext 共享。
+ * 修改此常量后无需同步其他文件。
+ *
+ * @readonly
+ */
+export const COMPLEXITY_INDICATORS = Object.freeze({
+  [COMPLEXITY_LEVELS.HIGH]: [
+    '重构',
+    '架构',
+    '系统',
+    '迁移',
+    '全面',
+    'redesign',
+    'refactor',
+    'microservice',
+    '微服务',
+    '分布式',
+    '整体',
+    '批量'
+  ],
+  [COMPLEXITY_LEVELS.MEDIUM]: [
+    '功能',
+    '实现',
+    '开发',
+    '新增',
+    '修改',
+    'feature',
+    'implement',
+    '集成',
+    '优化',
+    'fix',
+    '修复'
+  ],
+  [COMPLEXITY_LEVELS.LOW]: [
+    '格式化',
+    '格式',
+    'rename',
+    '重命名',
+    '文档',
+    '注释',
+    'format',
+    'lint',
+    '简单',
+    '快速'
+  ]
+});
+
+/**
+ * 评估任务复杂度（共享函数）
+ *
+ * @param {string} text - 小写化的任务文本
+ * @returns {string} COMPLEXITY_LEVELS 值
+ */
+export function assessComplexity(text) {
+  const scores = {
+    [COMPLEXITY_LEVELS.HIGH]: 0,
+    [COMPLEXITY_LEVELS.MEDIUM]: 0,
+    [COMPLEXITY_LEVELS.LOW]: 0
+  };
+
+  for (const [level, indicators] of Object.entries(COMPLEXITY_INDICATORS)) {
+    for (const indicator of indicators) {
+      if (text.includes(indicator)) {
+        scores[level] += 1;
+      }
+    }
+  }
+
+  const maxScore = Math.max(...Object.values(scores));
+  if (maxScore === 0) {
+    return COMPLEXITY_LEVELS.MEDIUM;
+  }
+
+  for (const [level, score] of Object.entries(scores)) {
+    if (score === maxScore) {
+      return level;
+    }
+  }
+
+  return COMPLEXITY_LEVELS.MEDIUM;
+}
 
 /**
  * Agent 状态
