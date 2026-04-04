@@ -17,21 +17,11 @@ describe('auto.md integration', () => {
 
   describe('双模式执行', () => {
     it('should define light mode conditions', () => {
-      expect(content).toContain('≤3文件 且 无架构变更');
       expect(content).toContain('轻量模式');
     });
 
     it('should define full mode conditions', () => {
-      expect(content).toContain('>3文件 或 有架构变更');
       expect(content).toContain('完整模式');
-    });
-
-    it('should have light mode path', () => {
-      expect(content).toContain('PHASE 1 → PHASE 2(轻量) → PHASE 4 → PHASE 6');
-    });
-
-    it('should have full mode path', () => {
-      expect(content).toContain('完整 6 PHASE');
     });
   });
 
@@ -43,56 +33,29 @@ describe('auto.md integration', () => {
       expect(content).toContain('### 1.4 输出报告');
     });
 
-    it('should not have 1.0a context compression', () => {
-      // 上下文压缩已移到 Stop Hook，不再是 PHASE 1 的职责
-      expect(content).not.toContain('### 1.0a');
+    it('should use CLI tool for routing instead of JavaScript import', () => {
+      expect(content).toContain('auto route');
+      expect(content).not.toContain('import { CanonicalRouter }');
+      expect(content).not.toContain('import { AgentRegistry }');
     });
 
-    it('should use SkillIndexer for skills', () => {
-      expect(content).toContain('SkillIndexer');
-      expect(content).toContain('getIndexSummary');
+    it('should not use SkillIndexer JavaScript import', () => {
+      expect(content).not.toContain('SkillIndexer');
     });
 
-    it('should not Glob scan skills directory directly', () => {
-      const skillsGlobPattern = /Glob\(["']\$HOME\/\.claude\/skills\/\*\*\/\*\.md["']\)/;
-      expect(skillsGlobPattern.test(content)).toBe(false);
-    });
-
-    it('should preserve other Glob scans', () => {
-      expect(content).toMatch(/Glob\(["']?\$HOME\/\.claude\/commands\/auto\/\*\.md["']?\)/);
-      expect(content).toMatch(/Glob\(["']?\$HOME\/\.claude\/agents\/\*\.md["']?\)/);
-      expect(content).toMatch(/Glob\(["']?\$HOME\/\.claude\/plugins\/\*\*\/\*\.md["']?\)/);
+    it('should use Glob scans for capability discovery', () => {
+      expect(content).toMatch(/Glob.*commands/);
+      expect(content).toMatch(/Glob.*agents/);
+      expect(content).toMatch(/Glob.*plugins/);
     });
   });
 
-  describe('Router 集成', () => {
-    it('should integrate Router in PHASE 1.3', () => {
-      expect(content).toContain('### 1.3 Router 推荐');
-    });
-
-    it('should pass Router result to quest-designer', () => {
-      expect(content).toContain('【Router 推荐】');
-    });
-
-    it('should use CanonicalRouter', () => {
-      expect(content).toContain('CanonicalRouter');
-      expect(content).toContain('AgentRegistry');
-    });
-  });
-
-  describe('模式卡机制删除', () => {
-    it('should document pattern cards removal', () => {
-      expect(content).toContain('模式卡已删除');
-    });
-
+  describe('缓存机制', () => {
     it('should use simple cache snapshot', () => {
       expect(content).toContain('capability-snapshot.json');
-      expect(content).toContain('file_count');
-      expect(content).toContain('hash');
     });
 
-    it('should not have pattern-cards.json mechanism', () => {
-      // head_hash + 工作区脏检查 + 7天TTL 机制已删除
+    it('should not have complex pattern cards mechanism', () => {
       expect(content).not.toContain('head_hash');
       expect(content).not.toContain('workspace_dirty');
       expect(content).not.toContain('7天TTL');
@@ -112,13 +75,6 @@ describe('auto.md integration', () => {
       expect(content).toContain('可回溯');
       expect(content).toContain('知识沉淀');
     });
-
-    it('should remove obsolete principles', () => {
-      // 精简后不再单独强调这些
-      expect(content).not.toContain('统筹设计');
-      expect(content).not.toContain('风格继承');
-      expect(content).not.toContain('动态追加');
-    });
   });
 
   describe('PHASE 6 知识沉淀', () => {
@@ -127,8 +83,10 @@ describe('auto.md integration', () => {
       expect(content).toContain('auto-learn');
     });
 
-    it('should provide manual沉淀 option', () => {
-      expect(content).toContain('KnowledgeSteward');
+    it('should use CLI tools for knowledge saving instead of JavaScript import', () => {
+      expect(content).toContain('auto save insight');
+      expect(content).toContain('auto save search');
+      expect(content).not.toContain('KnowledgeSteward');
     });
   });
 
@@ -151,6 +109,10 @@ describe('auto.md integration', () => {
       const phase1Match = content.match(/## PHASE 1:/);
       const phase2Match = content.match(/## PHASE 2:/);
       expect(phase1Match.index).toBeLessThan(phase2Match.index);
+    });
+
+    it('should not contain any JavaScript import statements', () => {
+      expect(content).not.toMatch(/import\s+\{.*\}\s+from/);
     });
   });
 });

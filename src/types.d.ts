@@ -3,20 +3,6 @@
  * 为 JavaScript 代码提供类型提示
  */
 
-export interface LoopState {
-  run_id: string;
-  task: string;
-  current_state: string;
-  current_step_index: number;
-  steps_total: number;
-  steps: string[];
-  retries: Record<string, number>;
-  gates: Record<string, string>;
-  next_action: string;
-  artifacts: unknown[];
-  updated_at: string;
-}
-
 /**
  * 组件定义（与 utils.js COMPONENTS 对象匹配）
  */
