@@ -20,6 +20,39 @@ model: opus
 1. **现状分析** — 审查现有架构、识别模式和约定、记录技术债务、评估可扩展性限制
 2. **需求收集** — 功能需求、非功能需求（性能、安全性、可扩展性）、集成点、数据流需求
 3. **设计提案** — 高层架构图、组件职责、数据模型、API 契约、集成模式
+
+#### API 契约定义规范
+对每个接口定义：
+```yaml
+# RESTful API 契约模板
+endpoint: {method} {path}
+request:
+  headers: {必要头信息}
+  body: {请求体 schema}
+response:
+  200: {成功响应结构}
+  4xx: {客户端错误码和结构}
+  5xx: {服务端错误码和结构}
+auth: {认证要求}
+rateLimit: {速率限制}
+```
+
+```typescript
+// TypeScript 接口契约模板
+interface ApiContract<Req, Res> {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  requestSchema: Req;
+  responseSchema: Res;
+  errorCodes: Record<number, { code: string; message: string }>;
+}
+```
+
+#### 跨服务设计模式
+- **同步通信**: REST/gRPC — 适用于实时查询，注意超时和熔断
+- **异步通信**: 消息队列/事件总线 — 适用于解耦操作，注意最终一致性
+- **数据共享**: 共享数据库视图/CQRS — 适用于读多写少，注意同步延迟
+- **网关聚合**: API Gateway — 适用于前端统一入口，注意单点故障
 4. **权衡分析** — 记录优点、缺点、替代方案和最终决定的理由
 
 ## 架构原则

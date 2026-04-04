@@ -14,7 +14,7 @@
  * 4. 执行 + 回退处理
  */
 import { logger } from '../logger.js';
-import { COMPLEXITY_LEVELS, AGENT_STATES, COMPLEXITY_INDICATORS } from './agent-types.js';
+import { COMPLEXITY_LEVELS, AGENT_STATES, assessComplexity } from './agent-types.js';
 import { AgentRegistry } from './agent-registry.js';
 
 /**
@@ -262,8 +262,8 @@ export class CanonicalRouter {
     // 合并去重
     const allKeywords = [...new Set([...englishKeywords, ...cjkKeywords])];
 
-    // 评估复杂度
-    const complexity = this._assessComplexity(lowerIntent);
+    // P4-10: 使用共享函数评估复杂度（去重）
+    const complexity = assessComplexity(lowerIntent);
 
     // 检查安全敏感性
     const securitySensitive = SECURITY_KEYWORDS.some((kw) => lowerIntent.includes(kw));
@@ -282,42 +282,6 @@ export class CanonicalRouter {
       securitySensitive,
       originalIntent: userIntent
     };
-  }
-
-  /**
-   * 评估任务复杂度
-   * @param {string} text
-   * @returns {string}
-   * @private
-   */
-  _assessComplexity(text) {
-    const scores = {
-      [COMPLEXITY_LEVELS.HIGH]: 0,
-      [COMPLEXITY_LEVELS.MEDIUM]: 0,
-      [COMPLEXITY_LEVELS.LOW]: 0
-    };
-
-    for (const [level, indicators] of Object.entries(COMPLEXITY_INDICATORS)) {
-      for (const indicator of indicators) {
-        if (text.includes(indicator)) {
-          scores[level] += 1;
-        }
-      }
-    }
-
-    // 取最高分
-    const maxScore = Math.max(...Object.values(scores));
-    if (maxScore === 0) {
-      return COMPLEXITY_LEVELS.MEDIUM; // 默认中等
-    }
-
-    for (const [level, score] of Object.entries(scores)) {
-      if (score === maxScore) {
-        return level;
-      }
-    }
-
-    return COMPLEXITY_LEVELS.MEDIUM;
   }
 
   /**
@@ -524,6 +488,17 @@ export class CanonicalRouter {
         triggerCount: a.triggerKeywords.length
       }))
     };
+  }
+
+  /**
+   * P4-10: 向后兼容别名 — 委托给共享函数 assessComplexity
+   * 保留此方法以兼容现有测试
+   * @param {string} text
+   * @returns {string}
+   * @private
+   */
+  _assessComplexity(text) {
+    return assessComplexity(text.toLowerCase());
   }
 }
 

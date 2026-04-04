@@ -443,7 +443,7 @@ describe('createSessionSummary', () => {
     const summary = createSessionSummary(state);
 
     expect(summary.type).toBe('session-summary');
-    expect(summary.version).toBe(1);
+    expect(summary.version).toBe(2);
     expect(summary.sections).toBeDefined();
     expect(summary.sections.primaryRequest).toBe('Fix authentication bug');
     expect(summary.sections.keyConcepts).toEqual([]);

@@ -54,12 +54,25 @@ export const CONTEXT_ACTIONS = Object.freeze({
 });
 
 /**
- * 估算字符数对应的 token 数（简单除以 4）
+ * 估算字符数对应的 token 数
+ * CJK 文本约 1.5 字符/token，英文约 4 字符/token
+ * 使用混合启发式：检测 CJK 字符比例后动态调整
  * @param {number} chars
+ * @param {string} [sample] - 可选文本样本，用于 CJK 检测
  * @returns {number}
  */
-export function estimateTokens(chars) {
-  return Math.ceil(chars / 4);
+export function estimateTokens(chars, sample = '') {
+  if (!chars) return 0;
+  // 如果有文本样本，检测 CJK 比例
+  if (sample && sample.length > 0) {
+    const cjkCount = (sample.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/g) || []).length;
+    const cjkRatio = cjkCount / sample.length;
+    // CJK 比例高时用 chars/1.5，低时用 chars/4，线性插值
+    const ratio = 1.5 + (4 - 1.5) * (1 - cjkRatio);
+    return Math.ceil(chars / ratio);
+  }
+  // 无样本时保守估算（chars/3，在 1.5~4 之间取中间值偏保守）
+  return Math.ceil(chars / 3);
 }
 
 /**

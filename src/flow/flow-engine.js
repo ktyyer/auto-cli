@@ -206,6 +206,25 @@ export class FlowEngine {
     engine._previousState = snapshot._previousState;
     engine._createdAt = snapshot._createdAt;
     engine._updatedAt = snapshot._updatedAt;
+
+    // P2-7: 恢复断路器状态（避免崩溃恢复后丢失失败历史）
+    if (snapshot.circuitState) {
+      const cs = snapshot.circuitState;
+      engine._circuitState = {
+        ...createCircuitState({
+          failureThreshold: cs.failureThreshold ?? 3,
+          resetTimeout: cs.resetTimeout ?? 30000,
+          halfOpenMaxAttempts: cs.halfOpenMaxAttempts ?? 1
+        }),
+        state: cs.state ?? CIRCUIT_STATES.CLOSED,
+        failureCount: cs.failureCount ?? 0,
+        lastFailureTime: cs.lastFailureTime ?? null,
+        lastFailureReason: cs.lastFailureReason ?? null,
+        halfOpenAttempts: cs.halfOpenAttempts ?? 0,
+        openedAt: cs.openedAt ?? null
+      };
+    }
+
     return engine;
   }
 

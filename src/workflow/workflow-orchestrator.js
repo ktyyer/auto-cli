@@ -428,21 +428,43 @@ export class WorkflowOrchestrator {
 
     // P0-3 + P2-4: 搜索匹配的 Skill 内容并注入上下文
     let matchedSkills = [];
+    const skillContents = [];
     try {
       const keywords = this._extractKeywords(this.phaseContext.task);
       const searchResult = await this.skillIndexer.search(keywords);
       matchedSkills = Array.isArray(searchResult) ? searchResult.slice(0, 3) : [];
+
+      // P0-3: 加载匹配 Skill 的完整内容（之前仅附加名字，现在注入全文）
+      for (const skill of matchedSkills) {
+        try {
+          const loaded = await this.skillIndexer.loadContent(skill.relativePath);
+          if (loaded) {
+            skillContents.push({
+              name: skill.name,
+              relativePath: skill.relativePath,
+              content: loaded.content
+            });
+          }
+        } catch (loadError) {
+          logger.debug(`[PHASE 2] Skill 内容加载失败 ${skill.name}: ${loadError.message}`);
+        }
+      }
+
       if (matchedSkills.length > 0) {
-        logger.info(`[PHASE 2] 匹配 Skills: ${matchedSkills.map((s) => s.name).join(', ')}`);
+        logger.info(
+          `[PHASE 2] 匹配 Skills: ${matchedSkills.map((s) => s.name).join(', ')} ` +
+            `(${skillContents.length} 个内容已加载)`
+        );
       }
     } catch (skillError) {
       logger.debug(`[PHASE 2] Skill 搜索跳过: ${skillError.message}`);
     }
 
-    // P0-1: 生成 Quest Map（之前为空，导致 PHASE 3 永远跳过）
+    // P0-1: 生成 Quest Map（委托 quest-designer 或内置逻辑）
     const questMap = this._generateQuestMap(this.phaseContext.task, {
       agentRecommendation,
       matchedSkills,
+      skillContents,
       modelRoute,
       mode: this.phaseContext.mode
     });
@@ -485,13 +507,17 @@ export class WorkflowOrchestrator {
 
   /**
    * 根据 Agent 路由结果生成 Quest Map
+   * P0-2: 完整模式委托 quest-designer，轻量模式简化生成
+   * P1-4/P1-5: 集成 code-reviewer / verification / e2e-runner
    * @param {string} task - 任务描述
    * @param {Object} context - 路由上下文
    * @returns {Object[]} Quest Map 数组
    * @private
    */
-  _generateQuestMap(task, { agentRecommendation, matchedSkills, modelRoute, mode }) {
+  _generateQuestMap(task, { agentRecommendation, matchedSkills, skillContents, modelRoute, mode }) {
     const keywords = this._extractKeywords(task);
+    const skillNames = matchedSkills.map((s) => s.name);
+    const skillData = skillContents || [];
 
     // 轻量模式：生成简化 Quest Map
     if (mode === EXECUTION_MODES.LIGHT) {
@@ -505,7 +531,8 @@ export class WorkflowOrchestrator {
           changedFiles: Object.freeze([]),
           acceptanceCriteria: Object.freeze(['编译通过', '相关测试通过']),
           decisionNotes: Object.freeze([]),
-          skills: Object.freeze(matchedSkills.map((s) => s.name)),
+          skills: Object.freeze(skillNames),
+          skillContents: Object.freeze(skillData),
           agent: agentRecommendation ? agentRecommendation.agent.name : null
         })
       ]);
@@ -514,63 +541,157 @@ export class WorkflowOrchestrator {
     // 完整模式：基于 Agent 能力生成多 Quest
     const quests = [];
 
-    // Quest 1: 分析和设计
-    if (agentRecommendation) {
-      const agent = agentRecommendation.agent;
-      const hasPlanning = agent.capabilities?.some((c) =>
-        ['planning', 'design', 'architecture'].includes(c)
-      );
-      if (hasPlanning) {
-        quests.push({
+    // Quest 1: 分析和设计（P0-2: 委托 quest-designer 或 architect）
+    const analysisAgent = agentRecommendation ? agentRecommendation.agent : null;
+    const hasPlanning = analysisAgent?.capabilities?.some((c) =>
+      ['planning', 'design', 'architecture'].includes(c)
+    );
+
+    if (hasPlanning) {
+      quests.push(
+        Object.freeze({
           id: 'quest-1',
           title: `分析和设计: ${task.slice(0, 60)}`,
-          description: `使用 ${agent.name} 进行任务分析和设计`,
+          description: `使用 ${analysisAgent.name} 进行任务分析和设计`,
           keywords: Object.freeze(keywords),
           complexity: 'high',
           changedFiles: Object.freeze([]),
           acceptanceCriteria: Object.freeze(['任务分析完成', '设计方案确定', '风险评估完成']),
           decisionNotes: Object.freeze([]),
-          skills: Object.freeze(matchedSkills.map((s) => s.name)),
-          agent: agent.name
-        });
-      }
+          skills: Object.freeze(skillNames),
+          skillContents: Object.freeze(skillData),
+          agent: analysisAgent.name,
+          agentInvocation: Object.freeze({
+            subagent_type: analysisAgent.name,
+            description: `分析设计: ${task.slice(0, 50)}`,
+            prompt: `分析以下任务并生成设计方案:\n\n任务: ${task}\n\n关键词: ${keywords.join(', ')}\n\n请输出: 1)现状分析 2)设计方案 3)影响文件 4)风险评估`,
+            model: modelRoute?.tier === 'FAST' ? 'haiku' : 'sonnet'
+          })
+        })
+      );
     }
 
     // Quest 2: 核心实现
-    quests.push({
-      id: `quest-${quests.length + 1}`,
-      title: `核心实现: ${task.slice(0, 60)}`,
-      description: task,
-      keywords: Object.freeze(keywords),
-      complexity: 'high',
-      changedFiles: Object.freeze([]),
-      acceptanceCriteria: Object.freeze(['功能实现完成', '编译通过', '测试通过']),
-      decisionNotes: Object.freeze(
-        matchedSkills.length > 0
-          ? [`参考 Skill: ${matchedSkills.map((s) => s.name).join(', ')}`]
-          : []
-      ),
-      skills: Object.freeze(matchedSkills.map((s) => s.name)),
-      agent: agentRecommendation ? agentRecommendation.agent.name : null
-    });
-
-    // Quest 3: 验证（完整模式）
-    if (mode === EXECUTION_MODES.FULL) {
-      quests.push({
+    const implAgent = agentRecommendation ? agentRecommendation.agent.name : null;
+    quests.push(
+      Object.freeze({
         id: `quest-${quests.length + 1}`,
-        title: `验证和测试`,
-        description: '验证实现质量，确保测试覆盖',
-        keywords: Object.freeze(['test', 'verify', 'review']),
-        complexity: 'medium',
+        title: `核心实现: ${task.slice(0, 60)}`,
+        description: task,
+        keywords: Object.freeze(keywords),
+        complexity: 'high',
         changedFiles: Object.freeze([]),
-        acceptanceCriteria: Object.freeze(['测试覆盖率 >= 80%', '安全扫描通过', '代码审查通过']),
-        decisionNotes: Object.freeze([]),
-        skills: Object.freeze([]),
-        agent: 'tdd-guide'
-      });
+        acceptanceCriteria: Object.freeze(['功能实现完成', '编译通过', '测试通过']),
+        decisionNotes: Object.freeze(
+          skillNames.length > 0 ? [`参考 Skill: ${skillNames.join(', ')}`] : []
+        ),
+        skills: Object.freeze(skillNames),
+        skillContents: Object.freeze(skillData),
+        agent: implAgent,
+        agentInvocation: Object.freeze({
+          subagent_type: implAgent || 'general-purpose',
+          description: `核心实现: ${task.slice(0, 50)}`,
+          prompt: `实现以下任务:\n\n${task}\n\n验收标准:\n- 功能实现完成\n- 编译通过\n- 测试通过\n${skillData.length > 0 ? `\n参考技能:\n${skillData.map((s) => `--- ${s.name} ---\n${s.content?.slice(0, 500) || ''}`).join('\n\n')}` : ''}`,
+          model: modelRoute?.tier === 'DEEP' ? 'opus' : 'sonnet'
+        })
+      })
+    );
+
+    // Quest 3: 代码审查（P1-4: 集成 code-reviewer）
+    if (mode === EXECUTION_MODES.FULL) {
+      quests.push(
+        Object.freeze({
+          id: `quest-${quests.length + 1}`,
+          title: '代码审查',
+          description: '审查变更代码的质量、安全性和规范性',
+          keywords: Object.freeze(['review', 'quality', 'security']),
+          complexity: 'low',
+          changedFiles: Object.freeze([]),
+          acceptanceCriteria: Object.freeze(['无 Critical 级别问题', '无硬编码密钥', '无安全漏洞']),
+          decisionNotes: Object.freeze([]),
+          skills: Object.freeze([]),
+          skillContents: Object.freeze([]),
+          agent: 'code-reviewer',
+          agentInvocation: Object.freeze({
+            subagent_type: 'code-reviewer',
+            description: '代码审查',
+            prompt:
+              '审查最近变更的代码。检查: 1)代码质量 2)命名规范 3)错误处理 4)安全隐患 5)性能问题。输出格式: Critical/Warning/Suggestion 分级。',
+            model: 'sonnet'
+          })
+        })
+      );
+
+      // Quest 4: 对抗性验证（P1-5: 集成 verification）
+      quests.push(
+        Object.freeze({
+          id: `quest-${quests.length + 1}`,
+          title: '对抗性验证',
+          description: '以对抗视角验证代码边界情况和异常处理',
+          keywords: Object.freeze(['verify', 'boundary', 'edge-case']),
+          complexity: 'medium',
+          changedFiles: Object.freeze([]),
+          acceptanceCriteria: Object.freeze(['边界值测试通过', '错误处理覆盖', '无自欺报告']),
+          decisionNotes: Object.freeze([]),
+          skills: Object.freeze([]),
+          skillContents: Object.freeze([]),
+          agent: 'verification',
+          agentInvocation: Object.freeze({
+            subagent_type: 'verification',
+            description: '对抗性验证',
+            prompt:
+              '以对抗性视角验证最近的代码变更。攻击面: 1)边界值 2)并发安全 3)幂等性 4)错误路径。每个 PASS 必须包含实际命令输出证明。',
+            model: 'sonnet'
+          })
+        })
+      );
+
+      // Quest 5 (条件): E2E 测试（P1-5: 检测 Playwright 时触发 e2e-runner）
+      const hasE2E = this._detectE2ECapability();
+      if (hasE2E) {
+        quests.push(
+          Object.freeze({
+            id: `quest-${quests.length + 1}`,
+            title: '端到端测试',
+            description: '使用 Playwright 验证关键用户流程',
+            keywords: Object.freeze(['e2e', 'playwright', 'integration']),
+            complexity: 'medium',
+            changedFiles: Object.freeze([]),
+            acceptanceCriteria: Object.freeze(['E2E 测试通过', '无 flaky 测试']),
+            decisionNotes: Object.freeze([]),
+            skills: Object.freeze([]),
+            skillContents: Object.freeze([]),
+            agent: 'e2e-runner',
+            agentInvocation: Object.freeze({
+              subagent_type: 'e2e-runner',
+              description: 'E2E 测试',
+              prompt:
+                '运行 Playwright E2E 测试验证关键用户流程。如无现有测试，生成覆盖主要路径的测试。',
+              model: 'sonnet'
+            })
+          })
+        );
+      }
     }
 
-    return Object.freeze(quests.map((q) => Object.freeze(q)));
+    return Object.freeze(quests);
+  }
+
+  /**
+   * 检测项目是否具备 E2E 测试能力（P1-5）
+   * @returns {boolean}
+   * @private
+   */
+  _detectE2ECapability() {
+    try {
+      const pkgPath = path.join(this.projectDir, 'package.json');
+      if (!fs.pathExistsSync(pkgPath)) return false;
+      const pkg = fs.readJsonSync(pkgPath);
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      return !!(deps['@playwright/test'] || deps['playwright']);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -673,11 +794,11 @@ export class WorkflowOrchestrator {
   }
 
   /**
-   * 执行单个 Quest（生成结构化执行计划）
+   * 执行单个 Quest（P0-1: 生成结构化 Agent 调用指令）
    * @param {Object} quest - Quest 描述
    * @param {Object} modelRoute - 模型路由结果
    * @param {FlowEngine} questEngine - Quest 级别 FSM
-   * @returns {Promise<{success: boolean, executionPlan?: Object}>}
+   * @returns {Promise<{success: boolean, executionPlan?: Object, agentInvocation?: Object}>}
    * @private
    */
   async _executeQuest(quest, modelRoute, questEngine) {
@@ -696,6 +817,19 @@ export class WorkflowOrchestrator {
       logger.warn(`[Quest ${quest.id}] 团队解析失败: ${e.message}`);
     }
 
+    // P0-1: 构建 Agent 调用指令（供 Claude Code Agent 工具消费）
+    const agentName = quest.agent || (team.lead ? team.lead.name : 'general-purpose');
+    const modelTier = modelRoute.tier?.toLowerCase();
+    const modelForAgent = modelTier === 'fast' ? 'haiku' : modelTier === 'deep' ? 'opus' : 'sonnet';
+
+    const agentInvocation = {
+      subagent_type: agentName,
+      description: quest.title || quest.id,
+      model: modelForAgent,
+      prompt: this._buildAgentPrompt(quest, team, quest.skillContents || []),
+      run_in_background: false
+    };
+
     // 构建执行计划
     const semanticDescription = _generateSemanticDescription(team.lead, quest);
     const executionPlan = Object.freeze({
@@ -703,6 +837,7 @@ export class WorkflowOrchestrator {
       model: modelRoute.model,
       tier: modelRoute.tier,
       semanticDescription,
+      agentInvocation,
       lead: team.lead
         ? { name: team.lead.name, capabilities: Object.freeze([...team.lead.capabilities]) }
         : null,
@@ -739,7 +874,70 @@ export class WorkflowOrchestrator {
     const leadName = team.lead ? team.lead.name : 'unknown';
     await this._persistAgentResult(leadName, { success: true }, quest.id);
 
-    return { success: true, executionPlan };
+    return { success: true, executionPlan, agentInvocation };
+  }
+
+  /**
+   * P0-1: 构建 Agent 调用 Prompt（包含 Quest 上下文 + Skill 内容）
+   * @param {Object} quest
+   * @param {Object} team
+   * @param {Object[]} [skillContents]
+   * @returns {string}
+   * @private
+   */
+  _buildAgentPrompt(quest, team, skillContents) {
+    const parts = [];
+
+    parts.push(`# Quest: ${quest.title}`);
+    parts.push('');
+    parts.push(`## 任务描述`);
+    parts.push(quest.description || '');
+    parts.push('');
+
+    if (quest.acceptanceCriteria?.length) {
+      parts.push('## 验收标准');
+      for (const ac of quest.acceptanceCriteria) {
+        parts.push(`- ${ac}`);
+      }
+      parts.push('');
+    }
+
+    if (quest.changedFiles?.length) {
+      parts.push('## 涉及文件');
+      for (const f of quest.changedFiles) {
+        parts.push(`- ${f}`);
+      }
+      parts.push('');
+    }
+
+    if (quest.skillContents?.length || skillContents?.length) {
+      const skills = quest.skillContents || skillContents || [];
+      parts.push('## 参考技能');
+      for (const skill of skills) {
+        parts.push(`### ${skill.name}`);
+        if (skill.content) {
+          parts.push(skill.content.slice(0, 1000));
+        }
+        parts.push('');
+      }
+    }
+
+    if (quest.decisionNotes?.length) {
+      parts.push('## 决策备忘');
+      for (const note of quest.decisionNotes) {
+        parts.push(`- ${note}`);
+      }
+      parts.push('');
+    }
+
+    if (team.lead) {
+      parts.push(`## 执行 Agent: ${team.lead.name}`);
+      if (team.lead.capabilities?.length) {
+        parts.push(`能力: ${team.lead.capabilities.join(', ')}`);
+      }
+    }
+
+    return parts.join('\n');
   }
 
   /**
@@ -831,6 +1029,44 @@ export class WorkflowOrchestrator {
       securityResult = await this._runSecurityScan();
       if (securityResult.scanTriggered) {
         logger.info(`[PHASE 4] 安全扫描已路由到 ${securityResult.agentName}`);
+      }
+
+      // P1-5: 对抗性验证路由（verification agent）
+      try {
+        if (this._canonicalRouter) {
+          const verifyRoute = await this._canonicalRouter.route(
+            'adversarial verification boundary test edge-case',
+            {
+              scope: 'on-demand'
+            }
+          );
+          if (verifyRoute.agent.name === 'verification') {
+            logger.info(
+              `[PHASE 4] 对抗性验证已路由到 verification agent (score=${verifyRoute.score})`
+            );
+          }
+        }
+      } catch (verifyError) {
+        logger.debug(`[PHASE 4] 验证路由跳过: ${verifyError.message}`);
+      }
+
+      // P1-5: E2E 测试检测（e2e-runner）
+      if (this._detectE2ECapability()) {
+        try {
+          if (this._canonicalRouter) {
+            const e2eRoute = await this._canonicalRouter.route(
+              'end-to-end playwright browser test',
+              {
+                scope: 'on-demand'
+              }
+            );
+            logger.info(
+              `[PHASE 4] E2E 测试已路由到 ${e2eRoute.agent.name} (score=${e2eRoute.score})`
+            );
+          }
+        } catch (e2eError) {
+          logger.debug(`[PHASE 4] E2E 路由跳过: ${e2eError.message}`);
+        }
       }
     }
 
@@ -1009,33 +1245,47 @@ export class WorkflowOrchestrator {
       logger.debug(`[PHASE 6] Git 模式分析跳过: ${gitError.message}`);
     }
 
-    // P1-3: 架构变更时自动触发 doc-updater 更新文档和 CODEMAPS
+    // P1-3/P1-6: 架构变更时自动触发 doc-updater 更新文档和 CODEMAPS
     try {
       const isArchitectureChange = this._detectArchitectureChange();
       if (isArchitectureChange) {
+        if (!this._canonicalRouter) {
+          this._canonicalRouter = new CanonicalRouter();
+          await this._canonicalRouter.initialize();
+        }
         const docRouteResult = await this._canonicalRouter.route(
           'update documentation and code maps',
           { scope: 'on-demand' }
         );
+
+        // P1-6: 生成 doc-updater 的执行指令（不再仅存储 pending）
+        const docInvocation = Object.freeze({
+          subagent_type: 'doc-updater',
+          description: '更新文档和代码地图',
+          prompt: `架构变更检测触发文档更新。\n\n变更文件:\n${this.phaseContext.changedFiles.map((f) => `- ${f}`).join('\n')}\n\n请:\n1. 更新 REPO_MAP.md 中的相关模块描述\n2. 生成/更新 docs/CODEMAPS/ 下对应的代码地图\n3. 更新 README.md 中过时的描述\n4. 验证所有链接有效`,
+          model: 'sonnet',
+          trigger: 'architecture-change'
+        });
+
         await this.memory.set(
-          'pending_doc_update',
+          'doc_update_invocation',
           {
+            invocation: docInvocation,
             agent: docRouteResult.agent.name,
-            trigger: 'architecture-change',
             changedFiles: [...this.phaseContext.changedFiles],
             timestamp: Date.now()
           },
-          { tier: 'session', tags: ['doc-updater', 'pending'] }
+          { tier: 'session', tags: ['doc-updater', 'invocation'] }
         );
         logger.info(
-          `[PHASE 6] 架构变更检测: 已记录 doc-updater 任务 (→ ${docRouteResult.agent.name})`
+          `[PHASE 6] 架构变更: doc-updater 执行指令已生成 (→ ${docRouteResult.agent.name})`
         );
       }
     } catch (docError) {
       logger.debug(`[PHASE 6] doc-updater 触发跳过: ${docError.message}`);
     }
 
-    // P1-4: refactor-cleaner DELETION_LOG 持久化
+    // P1-4/P1-6: refactor-cleaner — 生成死代码清理指令
     try {
       const deletionLog = await this._generateDeletionLog();
       if (deletionLog.entries.length > 0) {
@@ -1043,6 +1293,24 @@ export class WorkflowOrchestrator {
         await fs.ensureDir(logDir);
         await fs.writeJson(path.join(logDir, 'DELETION_LOG.json'), deletionLog, { spaces: 2 });
         logger.info(`[PHASE 6] DELETION_LOG: ${deletionLog.entries.length} 条记录已持久化`);
+
+        // P1-6: 当存在清理记录时，生成 refactor-cleaner 执行指令
+        const refactorInvocation = Object.freeze({
+          subagent_type: 'refactor-cleaner',
+          description: '死代码清理',
+          prompt: `检测到 ${deletionLog.entries.length} 个可清理项。请:\n1. 运行 npx knip 检测未使用的导出\n2. 运行 npx depcheck 检测未使用的依赖\n3. 按风险分类（安全/谨慎/危险）\n4. 只移除"安全"级别的项目\n5. 记录到 docs/DELETION_LOG.md`,
+          model: 'sonnet',
+          trigger: 'deletion-log-detected'
+        });
+        await this.memory.set(
+          'refactor_invocation',
+          {
+            invocation: refactorInvocation,
+            entries: deletionLog.entries.length,
+            timestamp: Date.now()
+          },
+          { tier: 'session', tags: ['refactor-cleaner', 'invocation'] }
+        );
       }
     } catch (logError) {
       logger.debug(`[PHASE 6] DELETION_LOG 生成跳过: ${logError.message}`);
@@ -1520,8 +1788,38 @@ export class WorkflowOrchestrator {
    */
   _extractKeywords(task) {
     if (!task) return [];
-    // 简单的关键词提取
-    return task.split(/[\s,.，。]+/).filter((w) => w.length > 2);
+    // P4-10: 增强关键词提取（保留英文技术术语 + 中文词组）
+    const englishTerms = (task.match(/[a-z][a-z0-9._-]+/gi) || []).filter((t) => t.length > 2);
+    const chineseTerms = task.match(/[\u4e00-\u9fff]{2,}/g) || [];
+    return [...new Set([...englishTerms, ...chineseTerms])];
+  }
+
+  /**
+   * 从任务上下文中提取关键概念（P2-7: 用于 Session Summary）
+   * @returns {string[]}
+   * @private
+   */
+  _extractKeyConcepts() {
+    const concepts = [];
+    const task = this.phaseContext.task || '';
+
+    // 从任务描述中提取技术概念
+    const techPatterns = [
+      /\b(REST|API|CRUD|CRDT|CQRS|ORM|TDD|BDD|DDD|SOLID|DRY)\b/gi,
+      /\b(React|Vue|Angular|Next|Nuxt|Svelte)\b/gi,
+      /\b(Node|Express|Fastify|Koa)\b/gi,
+      /\b(TypeScript|JavaScript|Python|Java|Go|Rust)\b/gi,
+      /\b(REST|GraphQL|gRPC|WebSocket)\b/gi,
+      /\b(SQL|NoSQL|Redis|Mongo|Postgres)\b/gi,
+      /\b(Docker|K8s|CI\/CD|GitHub Actions)\b/gi
+    ];
+
+    for (const pattern of techPatterns) {
+      const matches = task.match(pattern) || [];
+      concepts.push(...matches.map((m) => m.toUpperCase()));
+    }
+
+    return [...new Set(concepts)].slice(0, 10);
   }
 
   /**
@@ -1563,7 +1861,7 @@ export class WorkflowOrchestrator {
 
     // 从 session memory 中查找删除相关记录
     try {
-      const deletionEntries = this.memory.search('deletion remove delete removed clean');
+      const deletionEntries = await this.memory.search('deletion remove delete removed clean');
       for (const entry of deletionEntries.slice(0, 20)) {
         if (entry.value?.tags?.includes('deletion') || entry.value?.tags?.includes('cleanup')) {
           entries.push({
@@ -1698,11 +1996,17 @@ export class WorkflowOrchestrator {
 
     this._pendingSessionSummary = createSessionSummary({
       task: this.phaseContext.task,
-      userMessages: this._messageAccumulator.filter((m) => m.role === 'user').map((m) => m.content),
+      keyConcepts: this._extractKeyConcepts(),
+      filesAndCode: this.phaseContext.changedFiles.map((f) => ({ file: f })),
       errors: this.phaseContext.failedQuests.map((f) => ({
         error: f.error,
         fix: ''
       })),
+      problemSolving: this._messageAccumulator
+        .filter((m) => m.role === 'quest-plan')
+        .slice(-5)
+        .map((m) => ({ plan: m.content })),
+      userMessages: this._messageAccumulator.filter((m) => m.role === 'user').map((m) => m.content),
       pendingTasks: this.phaseContext.failedQuests.map((f) => `修复 Quest ${f.questId}`),
       currentWork: {
         phase: this.phaseContext.currentPhase,
@@ -1723,6 +2027,11 @@ export class WorkflowOrchestrator {
       .filter((m) => m.role === 'quest-plan')
       .map((m) => JSON.parse(m.content));
 
+    // P0-1: 提取所有 Agent 调用指令（供 Claude Code 消费）
+    const agentInvocations = questPlans
+      .filter((p) => p.agentInvocation)
+      .map((p) => p.agentInvocation);
+
     return {
       status,
       error,
@@ -1737,6 +2046,7 @@ export class WorkflowOrchestrator {
       doctorResult: this.phaseContext.doctorResult,
       gitResult: this.phaseContext.gitResult,
       questPlans,
+      agentInvocations: Object.freeze(agentInvocations),
       changedFiles: this.phaseContext.changedFiles,
       insights: this.phaseContext.insights,
       tokenBudget: this.phaseContext.tokenBudget,

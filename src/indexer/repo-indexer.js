@@ -552,10 +552,21 @@ export class RepoIndexer {
     const hashes = [];
     const files = await this._scanFiles();
 
+    // P4-10: 获取缓存的 hash 用于 mtimeMs 快速预过滤
+    const cachedMap = new Map((this._hashCache?.files || []).map((e) => [e.relativePath, e]));
+
     for (const relativePath of files) {
       const filePath = path.join(this.projectDir, relativePath);
       try {
         const stat = await fs.stat(filePath);
+        const cached = cachedMap.get(relativePath);
+
+        // P4-10: mtime 未变则直接复用缓存 hash，跳过文件读取
+        if (cached && Math.abs(stat.mtimeMs - cached.mtime) < 100) {
+          hashes.push({ relativePath, hash: cached.hash, mtime: stat.mtimeMs });
+          continue;
+        }
+
         const content = await fs.readFile(filePath, 'utf-8');
         const hash = createHash('sha256').update(content).digest('hex');
         hashes.push({ relativePath, hash, mtime: stat.mtimeMs });

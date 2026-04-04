@@ -20,13 +20,46 @@ model: opus
 npm audit --audit-level=high
 
 # 硬编码密钥
-grep -r "api[_-]?key\|password\|secret\|token" --include="*.js" --include="*.ts" --include="*.json" .
+grep -rn "api[_-]?key\|password\|secret\|token\|private_key\|auth_token" --include="*.js" --include="*.ts" --include="*.json" --include="*.env*" .
 
-# Git 历史中的密钥
-git log -p | grep -i "password\|api_key\|secret"
+# Git 历史中的密钥（检查是否曾经提交过）
+git log -p --all -S "password\|api_key\|secret\|token" -- "*.js" "*.ts" "*.json" "*.env*" | head -100
+
+# 检查 .gitignore 是否排除了敏感文件
+cat .gitignore | grep -E "\.env|credentials|secret|\.pem|\.key"
 ```
 
 重点扫描区域：认证/授权代码、用户输入端点、数据库查询、文件上传、支付处理、Webhook 处理器。
+
+### 1.5 语言特定漏洞模式
+
+#### Node.js / JavaScript
+```bash
+# 原型链污染
+grep -rn "__proto__\|constructor\[" --include="*.js" --include="*.ts" .
+# 不安全的 eval
+grep -rn "eval(\|new Function(\|setTimeout([^,]*string" --include="*.js" --include="*.ts" .
+# 正则 ReDoS
+grep -rn "RegExp(\|/.*{.*}.*{.*}/" --include="*.js" --include="*.ts" . | grep -v node_modules
+```
+
+#### Java / Spring Boot
+```bash
+# SQL 注入（字符串拼接）
+grep -rn '"select\|String.*+.*sql\|String.format.*sql' --include="*.java" .
+# 不安全的反序列化
+grep -rn "ObjectInputStream\|readObject\|Serializable" --include="*.java" .
+# 硬编码 JNDI
+grep -rn "jndi:lookup\|InitialContext" --include="*.java" .
+```
+
+#### 通用
+```bash
+# 命令注入
+grep -rn "exec\|spawn\|execSync\|Runtime.getRuntime" --include="*.js" --include="*.ts" --include="*.java" . | grep -v node_modules
+# 路径遍历
+grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --include="*.js" --include="*.ts" --include="*.java" .
+```
 
 ### 2. OWASP Top 10 分析
 

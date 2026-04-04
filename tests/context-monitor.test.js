@@ -15,9 +15,9 @@ import {
 } from '../src/budget/context-monitor.js';
 
 describe('estimateTokens', () => {
-  it('should estimate ~4 chars per token', () => {
-    expect(estimateTokens(400)).toBe(100);
-    expect(estimateTokens(401)).toBe(101); // ceil
+  it('should estimate ~3 chars per token (default conservative)', () => {
+    expect(estimateTokens(300)).toBe(100);
+    expect(estimateTokens(301)).toBe(101); // ceil
   });
 
   it('should handle zero', () => {
@@ -46,7 +46,7 @@ describe('recordUsage', () => {
     const snap = createContextSnapshot({ contextLimit: 100000 });
     const updated = recordUsage(snap, 4000, 'tool output');
 
-    expect(updated.currentTokens).toBe(1000); // 4000/4
+    expect(updated.currentTokens).toBe(1334); // ceil(4000/3)
     expect(updated.history).toHaveLength(1);
     expect(updated.history[0].label).toBe('tool output');
     expect(updated.history[0].chars).toBe(4000);
@@ -60,7 +60,7 @@ describe('recordUsage', () => {
     snap = recordUsage(snap, 4000);
     snap = recordUsage(snap, 8000);
 
-    expect(snap.currentTokens).toBe(3000); // 1000 + 2000
+    expect(snap.currentTokens).toBe(4001); // ceil(4000/3) + ceil(8000/3) = 1334 + 2667
     expect(snap.history).toHaveLength(2);
   });
 });
@@ -77,12 +77,12 @@ describe('getContextStatus', () => {
   });
 
   it('should return ISOLATE_SUGGESTED at 75%', () => {
-    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 300000);
+    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 225000);
     expect(getContextStatus(snap)).toBe(CONTEXT_STATUS.ISOLATE_SUGGESTED); // 75k/100k
   });
 
   it('should return COMPRESS_REQUIRED at 90%', () => {
-    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 360000);
+    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 270000);
     expect(getContextStatus(snap)).toBe(CONTEXT_STATUS.COMPRESS_REQUIRED); // 90k/100k
   });
 
@@ -105,7 +105,7 @@ describe('getSuggestedAction', () => {
   });
 
   it('should return isolate suggestion at 75%', () => {
-    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 300000);
+    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 225000);
     const action = getSuggestedAction(snap);
     expect(action).toContain('subagent');
   });
@@ -113,7 +113,7 @@ describe('getSuggestedAction', () => {
 
 describe('getContextSummary', () => {
   it('should return complete summary', () => {
-    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 40000);
+    const snap = recordUsage(createContextSnapshot({ contextLimit: 100000 }), 30000);
     const summary = getContextSummary(snap);
 
     expect(summary.tokens).toBe(10000);
@@ -129,7 +129,7 @@ describe('getContextSummary', () => {
 describe('applyCompaction', () => {
   it('should reduce token count', () => {
     let snap = createContextSnapshot({ contextLimit: 100000 });
-    snap = recordUsage(snap, 200000); // 50k tokens
+    snap = recordUsage(snap, 150000); // 50k tokens (ceil(150000/3))
     snap = applyCompaction(snap, 30000);
 
     expect(snap.currentTokens).toBe(20000);
@@ -155,7 +155,7 @@ describe('ContextMonitor', () => {
 
   it('should return summary', () => {
     const monitor = new ContextMonitor({ contextLimit: 100000 });
-    monitor.record(40000);
+    monitor.record(30000);
 
     const summary = monitor.getSummary();
     expect(summary.tokens).toBe(10000);
@@ -164,7 +164,7 @@ describe('ContextMonitor', () => {
 
   it('should support compaction', () => {
     const monitor = new ContextMonitor({ contextLimit: 100000 });
-    monitor.record(200000); // 50k tokens
+    monitor.record(150000); // 50k tokens (ceil(150000/3))
     monitor.compact(30000);
 
     expect(monitor.getSummary().tokens).toBe(20000);

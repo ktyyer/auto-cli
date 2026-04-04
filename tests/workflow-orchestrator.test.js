@@ -516,10 +516,9 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
     expect(keywords).toEqual([]);
   });
 
-  it('should split on dots and commas', () => {
+  it('should treat dot-connected terms as single keywords', () => {
     const keywords = orchestrator._extractKeywords('fix.error,handling the authentication');
-    expect(keywords).toContain('fix');
-    expect(keywords).toContain('error');
+    expect(keywords).toContain('fix.error');
     expect(keywords).toContain('handling');
     expect(keywords).toContain('the');
     expect(keywords).toContain('authentication');
@@ -1066,6 +1065,7 @@ describe('WorkflowOrchestrator - _buildResult edge cases', () => {
       doctorResult: null,
       gitResult: undefined,
       questPlans: [],
+      agentInvocations: [],
       changedFiles: ['a.js'],
       insights: [{ task: 'test' }],
       capabilities: orchestrator.phaseContext.capabilities,

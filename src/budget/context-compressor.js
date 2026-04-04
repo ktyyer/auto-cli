@@ -332,21 +332,23 @@ export function createSessionSummary(sessionState) {
 
   return Object.freeze({
     type: 'session-summary',
-    version: 1,
+    version: 2,
     createdAt: Date.now(),
     sections: Object.freeze({
       primaryRequest: sessionState.task ?? '',
-      keyConcepts: [],
-      filesAndCode: [],
-      errorsAndFixes: (sessionState.errors ?? []).map((e) => ({
-        error: e.message ?? String(e),
-        fix: e.fix ?? ''
-      })),
-      problemSolving: [],
+      keyConcepts: Object.freeze(sessionState.keyConcepts ?? []),
+      filesAndCode: Object.freeze(sessionState.filesAndCode ?? []),
+      errorsAndFixes: Object.freeze(
+        (sessionState.errors ?? []).map((e) => ({
+          error: e.message ?? String(e.error ?? e),
+          fix: e.fix ?? ''
+        }))
+      ),
+      problemSolving: Object.freeze(sessionState.problemSolving ?? []),
       userMessages: Object.freeze(userMessages.map((m) => String(m))),
       pendingTasks: Object.freeze(sessionState.pendingTasks ?? []),
       currentWork: Object.freeze(sessionState.currentWork ?? {}),
-      nextStep: ''
+      nextStep: sessionState.nextStep ?? ''
     }),
     tokenEstimate: estimateTokens(JSON.stringify(sessionState).length)
   });

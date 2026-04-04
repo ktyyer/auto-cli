@@ -9,6 +9,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { execSync } from 'child_process';
+import { createHash } from 'node:crypto';
 import { logger } from '../logger.js';
 import { classifyContent, CATEGORIES } from './categories.js';
 
@@ -80,8 +81,25 @@ class KnowledgeSteward {
       // 分类
       const matchedCategory = classifyContent(content, category);
 
-      // 格式化条目
-      const entry = this._formatEntry(content.trim(), tags);
+      // P4-10: 去重检查（基于内容 hash，避免重复保存相同经验）
+      const contentHash = createHash('sha256').update(content.trim()).digest('hex').slice(0, 16);
+      const catFile = path.join(this.insightsDir, matchedCategory.file);
+      if (await fs.pathExists(catFile)) {
+        const existingContent = await fs.readFile(catFile, 'utf-8');
+        if (existingContent.includes(contentHash)) {
+          logger.info(`知识已存在（hash=${contentHash}），跳过重复保存`);
+          return {
+            success: true,
+            filePath: catFile,
+            categoryName: matchedCategory.name,
+            skipped: true,
+            reason: 'duplicate'
+          };
+        }
+      }
+
+      // 格式化条目（附加 hash 用于后续去重）
+      const entry = this._formatEntry(content.trim(), tags, contentHash);
 
       // 追加到文件
       const filePath = path.join(this.insightsDir, matchedCategory.file);
@@ -201,7 +219,7 @@ class KnowledgeSteward {
    * @returns {string}
    * @private
    */
-  _formatEntry(content, tags) {
+  _formatEntry(content, tags, contentHash = '') {
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toISOString().slice(11, 19);
@@ -211,6 +229,7 @@ class KnowledgeSteward {
     const title = firstLine.length > 50 ? firstLine.slice(0, 50) + '...' : firstLine;
 
     const tagStr = tags && tags.length > 0 ? `\n**标签**: ${tags.join(', ')}` : '';
+    const hashStr = contentHash ? `\n**hash**: ${contentHash}` : '';
 
     // 防止 content 中的 ### 子标题与条目分隔符冲突，降级为 ####
     const safeContent = content.replace(/^### /gm, '#### ');
@@ -218,7 +237,7 @@ class KnowledgeSteward {
     return [
       `### ${title}`,
       '',
-      `**日期**: ${dateStr} ${timeStr}${tagStr}`,
+      `**日期**: ${dateStr} ${timeStr}${tagStr}${hashStr}`,
       '',
       safeContent,
       '',
