@@ -25,6 +25,7 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 1. 检测技术栈（package.json / pom.xml / go.mod 等）
 2. 列出可用能力（commands, agents, skills, hooks 元数据）
 3. 收集源码结构（优先读 REPO_MAP.md）
+4. Agent 匹配：使用 `/auto:route` 路由到合适的 Agent
 
 ```
 TodoWrite([
@@ -84,6 +85,7 @@ TodoWrite([
 ## PHASE 6: LEARN — 知识沉淀
 
 CLI 可用时运行 `auto save insight` 保存经验。
+CLI 未安装时，知识暂存本地，待 CLI 就绪后补录。
 核心架构变更时 → `/auto:update-codemaps`。
 
 ---
