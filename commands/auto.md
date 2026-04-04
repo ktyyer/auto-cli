@@ -75,26 +75,14 @@ Read(".auto/cache/capability-snapshot.json")
 
 ### 1.0a 上下文压缩检查（长对话场景）
 
-```javascript
-import { compressContext, CONTEXT_COMPRESSION } from 'src/utils.js';
+如对话消息数超过阈值，使用内置的上下文压缩技能保留关键信息：
 
-// 获取当前对话消息列表（Claude Code 内部可访问）
-const messages = getConversationMessages(); // Claude Code 内置能力
-
-if (messages && messages.length >= CONTEXT_COMPRESSION.MESSAGE_THRESHOLD) {
-  const result = compressContext(messages, {
-    threshold: CONTEXT_COMPRESSION.MESSAGE_THRESHOLD,
-    maxEntries: CONTEXT_COMPRESSION.MAX_COMPRESSED_ENTRIES
-  });
-
-  if (result.compressed) {
-    // 输出压缩摘要，让用户了解上下文已被压缩
-    console.log(result.summary);
-    // 输出提示信息
-    console.log(`[上下文压缩] 对话过长（${messages.length} 条），已压缩至 ${result.keptCount} 条关键消息。`);
-    console.log('[上下文压缩] 压缩策略：保留含关键词的消息 + 最近的消息。');
-  }
-}
+```
+IF 对话消息数 > 30:
+  使用 /context-compression 技能或手动摘要：
+  1. 保留含关键词的消息（TODO/FIXME/决策/架构/方案）
+  2. 保留最近 10 条完整消息
+  3. 输出压缩摘要告知用户
 ```
 
 > 设计原则：静默压缩，不打断工作流。仅在日志中记录，不阻塞 PHASE 流程。
