@@ -470,6 +470,44 @@ export class CanonicalRouter {
   }
 
   /**
+   * 获取路由效果统计（命中率/准确率追踪）
+   * @returns {Object} 路由统计数据
+   */
+  getRoutingStats() {
+    let totalRoutes = 0;
+    let successfulRoutes = 0;
+    const agentStats = {};
+
+    for (const entry of this._routingHistory.values()) {
+      if (entry.outcome) {
+        totalRoutes++;
+        if (entry.outcome === 'success') successfulRoutes++;
+
+        if (!agentStats[entry.agentName]) {
+          agentStats[entry.agentName] = { total: 0, successes: 0, avgScore: 0, scoreSum: 0 };
+        }
+        agentStats[entry.agentName].total++;
+        if (entry.outcome === 'success') agentStats[entry.agentName].successes++;
+      }
+    }
+
+    // Calculate averages
+    for (const stats of Object.values(agentStats)) {
+      stats.successRate = stats.total > 0 ? Math.round((stats.successes / stats.total) * 100) : 0;
+      delete stats.scoreSum;
+    }
+
+    return Object.freeze({
+      totalRoutes,
+      successfulRoutes,
+      overallSuccessRate: totalRoutes > 0 ? Math.round((successfulRoutes / totalRoutes) * 100) : 0,
+      agentStats: Object.freeze(agentStats),
+      historySize: this._routingHistory.size,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
    * 获取路由器的诊断信息
    * @returns {Promise<Object>}
    */
@@ -486,7 +524,8 @@ export class CanonicalRouter {
         priority: a.priority,
         state: a.state,
         triggerCount: a.triggerKeywords.length
-      }))
+      })),
+      routingStats: this.getRoutingStats()
     };
   }
 

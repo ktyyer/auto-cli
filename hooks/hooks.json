@@ -113,6 +113,16 @@
           }
         ],
         "description": "Remind to commit when 5+ files have uncommitted changes - encourages frequent incremental commits"
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'OUTPUT=\"$CLAUDE_TOOL_OUTPUT\"; if echo \"$OUTPUT\" | grep -q \"Tests.*passed\"; then COV=$(echo \"$OUTPUT\" | grep -oP \"All files.*?\\K[0-9.]+\" | head -1); if [ -n \"$COV\" ] && [ \"$(echo \"$COV < 80\" | bc -l)\" -eq 1 ] 2>/dev/null; then echo \"⚠ Coverage below 80%: ${COV}%\" >&2; fi; fi'",
+            "description": "Coverage check after test runs"
+          }
+        ]
       }
     ],
     "PostCompaction": [

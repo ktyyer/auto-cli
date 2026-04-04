@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_TOTAL_BUDGET,
-  PHASE_QUOTAS,
+  _PHASE_QUOTAS,
   BUDGET_STATUS,
   createBudget,
   consumeTokens,

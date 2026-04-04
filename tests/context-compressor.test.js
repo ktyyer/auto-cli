@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   COMPRESSION_LEVELS,
-  COMPRESSION_NAMES,
-  STATUS_TO_LEVEL,
+  _COMPRESSION_NAMES,
+  _STATUS_TO_LEVEL,
   COMPRESSION_DEFAULTS,
   selectCompressionLevel,
   createCompressionResult,

@@ -72,6 +72,30 @@ export const COMPRESSION_DEFAULTS = Object.freeze({
 });
 
 /**
+ * 项目类型自适应压缩配置
+ * @readonly
+ */
+export const ADAPTIVE_PROFILES = Object.freeze({
+  frontend: Object.freeze({
+    ...COMPRESSION_DEFAULTS,
+    truncateThreshold: 8000,
+    snipKeepRecent: 8
+  }),
+  backend: Object.freeze({
+    ...COMPRESSION_DEFAULTS,
+    truncateThreshold: 12000,
+    microCompactKeepCount: 15
+  }),
+  monorepo: Object.freeze({
+    ...COMPRESSION_DEFAULTS,
+    truncateThreshold: 6000,
+    snipKeepRecent: 3,
+    microCompactKeepCount: 8
+  }),
+  default: COMPRESSION_DEFAULTS
+});
+
+/**
  * 选择压缩级别
  * @param {string} contextStatus
  * @returns {number} COMPRESSION_LEVELS 值，未知状态返回 0
@@ -457,7 +481,13 @@ export class ContextCompressor {
    * @param {Object} [config] - 压缩配置
    */
   constructor(config = {}) {
-    this._config = Object.freeze({ ...COMPRESSION_DEFAULTS, ...config });
+    // Auto-detect adaptive profile from config
+    const profile =
+      config.adaptiveProfile && ADAPTIVE_PROFILES[config.adaptiveProfile]
+        ? ADAPTIVE_PROFILES[config.adaptiveProfile]
+        : COMPRESSION_DEFAULTS;
+    this._config = Object.freeze({ ...profile, ...config });
+    this._adaptiveProfile = config.adaptiveProfile || 'default';
   }
 
   /**
@@ -498,6 +528,41 @@ export class ContextCompressor {
    */
   getConfig() {
     return this._config;
+  }
+
+  /**
+   * 根据项目特征自动检测最佳压缩配置
+   * @param {Object} projectInfo - 项目信息
+   * @param {string[]} [projectInfo.dependencies] - 项目依赖列表
+   * @param {string} [projectInfo.type] - 项目类型提示
+   * @returns {{ profile: string, config: Object }}
+   */
+  detectAdaptiveProfile(projectInfo = {}) {
+    const deps = (projectInfo.dependencies || []).join(' ').toLowerCase();
+
+    let profile = 'default';
+    if (
+      deps.includes('react') ||
+      deps.includes('vue') ||
+      deps.includes('svelte') ||
+      deps.includes('angular')
+    ) {
+      profile = 'frontend';
+    } else if (
+      deps.includes('express') ||
+      deps.includes('fastify') ||
+      deps.includes('spring') ||
+      deps.includes('nestjs')
+    ) {
+      profile = 'backend';
+    } else if (deps.includes('turbo') || deps.includes('lerna') || deps.includes('nx')) {
+      profile = 'monorepo';
+    }
+
+    return {
+      profile,
+      config: ADAPTIVE_PROFILES[profile]
+    };
   }
 }
 

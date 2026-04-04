@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.24.0.tgz
+npm install -g auto-cli-0.27.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -76,24 +76,26 @@ auto install
 |------|------|
 | `/auto` | 超级命令 -- 说需求，AI 自动编排所有能力完成 |
 | `/auto:route` | 智能路由 -- 自动分析意图并推荐最合适的 Agent |
-| `/auto:doctor` | 环境诊断 -- 检查 Node.js、Claude Code 配置 |
-| `/auto:status` | 查看项目状态和能力 |
+| `/auto:doctor` | 环境诊断 -- `--fix` 自动修复可修复的问题 |
+| `/auto:status` | 项目状态 -- `--json` 结构化输出 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
-| `/auto:learn` | 从会话或 Git 历史提取可复用经验并保存为 Skill（双模式） |
+| `/auto:learn` | 从会话或 Git 历史提取可复用经验（git diff 精确锚点） |
 
-### Agent（9 个）
+### Agent（11 个）
 
-| Agent | 作用 |
-|-------|------|
-| quest-designer | 闯关大纲设计师 v4 -- PRD -> 完整代码蓝图 |
-| architect | 架构设计评审 |
-| tdd-guide | TDD 流程指导 |
-| code-reviewer | 代码质量审查 |
-| security-reviewer | 安全漏洞检查 |
-| build-error-resolver | 构建错误修复 |
-| e2e-runner | E2E 测试 |
-| doc-updater | 文档更新 |
-| refactor-cleaner | 死代码清理 |
+| Agent | 作用 | 模型 |
+|-------|------|------|
+| quest-designer | 闯关大纲设计师 v4 -- PRD -> 完整代码蓝图 | opus |
+| architect | 架构设计评审（只读） | opus |
+| tdd-guide | TDD 流程指导 | sonnet |
+| code-reviewer | 代码质量审查 | opus |
+| security-reviewer | 安全漏洞检查（OWASP Top 10） | opus |
+| build-error-resolver | 构建错误修复（最小 diff） | opus |
+| e2e-runner | Playwright E2E 测试 | opus |
+| refactor-cleaner | 死代码清理（Jaccard 去重） | sonnet |
+| doc-updater | 文档和 CODEMAPS 更新 | sonnet |
+| verification | 对抗性验证（红蓝对抗） | opus |
+| planner | 复杂功能实现规划 | opus |
 
 ### Rules 编码规范（7 个）
 
@@ -107,20 +109,35 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（4 个）
+### Skills 知识库（3 个）
 
 | Skill | 领域 |
 |-------|------|
-| workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪 + 10 维度代码审查清单） |
-| unified-memory-system | 统一记忆系统（上下文管理 + 会话恢复 + 知识沉淀） |
-| error-patterns | 常见错误模式速查与修复方案 |
-| init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成） |
+| workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪 + 10 维度审查） |
+| error-patterns | 常见错误模式速查（Node/Vitest/Git/Claude/跨平台/Java Spring 10 种） |
+| init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成 + 会话恢复） |
 
-### Hooks 自动化（7 类钩子）
+### Hooks 自动化（16 个 Hook，8 类事件）
 
-预定义配置覆盖：PreToolUse、PostToolUse、PostCompaction、UserPromptSubmit、TeammateIdle、TaskCompleted、Stop 等 7 类钩子事件。
-
-包含 TDD Guard、自动格式化、密钥检测、大文件警告、console.log 审计等实用 Hook。
+| 事件类型 | Hook | 功能 |
+|---------|------|------|
+| PreToolUse | TDD Guard | 强制测试文件存在 |
+| PreToolUse | Dev Server Blocker | 阻止非 tmux dev server |
+| PreToolUse | Long Cmd tmux | 建议长命令用 tmux |
+| PreToolUse | Git Push Review | 推送前审查 |
+| PreToolUse | Doc Blocker | 阻止随意创建 .md |
+| PreToolUse | File Size Warning | 500+ 行文件警告 |
+| PostToolUse | Prettier + ESLint | 自动格式化 |
+| PostToolUse | TypeScript Check | 即时类型检查 |
+| PostToolUse | Console.log Warning | console.log 告警 |
+| PostToolUse | Coverage Check | 测试覆盖率 < 80% 告警 |
+| PostToolUse | PR Auto-detect | PR URL + CI 状态 |
+| PostToolUse | Commit Reminder | 5+ 文件提醒提交 |
+| PostCompaction | Context Reinject | 上下文重注入 |
+| UserPromptSubmit | Secret Detection | 密钥模式检测 |
+| TeammateIdle | Team Lead Alert | 空闲队友通知 |
+| TaskCompleted | Quality Gate | 未提交变更拦截 |
+| Stop | Console.log Audit | 最终 console.log 审计 |
 
 ---
 
@@ -243,14 +260,31 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.24.0（当前）
+### v0.27.0（当前）
+
+**全能力审计 + 架构重构**：
+- WorkflowOrchestrator 拆分：2077行 → 579行协调器 + 5 个 phase 子模块
+- PHASE 1 新增 Doctor 环境快检 + CLAUDE.md 自动检测
+- PHASE 3 实现 Agent Teams 并行编排（Promise.allSettled + 批次分区）
+- PHASE 5 增加自动增量提交逻辑
+- CanonicalRouter 新增路由效果统计（getRoutingStats）
+- SkillIndexer 新增热度排序（访问频次追踪 + getPopularSkills）
+- ContextCompressor 新增自适应压缩策略（frontend/backend/monorepo 配置文件）
+- verification Agent 升级到 Opus 模型
+- error-patterns 新增 Java/Spring Boot 10 种错误模式
+- status 新增 `--json` 输出模式
+- doctor 新增 `--fix` 自动修复模式
+- learn 模式 1 新增 git diff 精确锚点
+- hooks.json 新增覆盖率自动检查 Hook
+- rules/hooks.md 同步全部 7 种 Hook 类型文档
+- 测试覆盖 91.61%（707 tests, 0 errors, 0 lint warnings）
+
+### v0.24.0
 
 **定位精简优化**：
 - 聚焦"智能超级命令"核心定位
 - Skills 精简：7 -> 5（移除 backend-patterns, frontend-patterns）
 - COMPONENTS 清理：6 -> 5（移除冗余 knowledge 定义）
-- 核心命令：7 个（auto, route, doctor, status, create-hook, skill-create, learn）
-- 项目定位更清晰，维护成本更低
 
 ### v0.23.0
 

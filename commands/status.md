@@ -8,6 +8,15 @@ description: 查看项目状态和能力安装情况
 
 ---
 
+## 使用方式
+
+```bash
+/auto:status              # 文本格式（默认）
+/auto:status --json       # JSON 格式输出（程序化集成）
+```
+
+---
+
 ## 执行步骤
 
 ### 1. 项目概览
@@ -163,6 +172,21 @@ rules/*.md: 检查文件非空且有实质内容（>100 字节）
 
 ### 建议
 - [ ] 缺失项的建议操作（如有）
+```
+
+#### JSON 输出模式
+
+当使用 `--json` 参数时，输出结构化 JSON：
+
+```json
+{
+  "project": { "name": "...", "version": "...", "branch": "..." },
+  "capabilities": { "agents": 10, "commands": 6, "skills": 3, "hooks": 16 },
+  "health": { "CLAUDE.md": true, "REPO_MAP.md": true, "node_modules": true },
+  "runtime": { "flowEngine": "IDLE", "memory": "OK", ... },
+  "issues": [...],
+  "timestamp": 1712200000
+}
 ```
 
 ### 7. 建议操作

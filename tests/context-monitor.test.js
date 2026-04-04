@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_CONTEXT_LIMIT,
-  CONTEXT_THRESHOLDS,
+  _CONTEXT_THRESHOLDS,
   CONTEXT_STATUS,
-  CONTEXT_ACTIONS,
+  _CONTEXT_ACTIONS,
   estimateTokens,
   createContextSnapshot,
   recordUsage,

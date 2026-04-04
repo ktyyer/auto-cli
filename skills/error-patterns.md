@@ -63,6 +63,21 @@ tags: [error, debugging, patterns, build-fix, troubleshooting]
 | `spawn X ENOENT` | 系统命令不存在 | 安装对应工具或检查 PATH |
 | `long path issues` | Windows 260 字符路径限制 | `git config core.longpaths true` |
 
+### 6. Java / Spring Boot 错误
+
+| 错误关键词 | 根因 | 速修方案 |
+|-----------|------|---------|
+| `Cannot resolve symbol` | 依赖未导入或 Maven/Gradle 未同步 | `mvn clean install` 或 IDEA 重新导入 |
+| `NullPointerException` | 未做空值检查或 Bean 未注入 | 检查 `@Autowired` 和 `@Nullable` |
+| `BeanCreationException` | Spring Bean 配置错误或循环依赖 | 检查 `@ComponentScan` 和 `@Qualifier` |
+| `TransactionSystemException` | `@Transactional` 回滚异常 | 检查 `rollbackFor = Exception.class` |
+| `HttpMessageNotReadable` | JSON 反序列化失败 | 检查 DTO 字段类型和 `@JsonFormat` |
+| `DataIntegrityViolation` | 数据库约束冲突（唯一键/外键） | 检查数据唯一性和关联关系 |
+| `OutOfMemoryError: Metaspace` | 类加载器泄漏或元空间不足 | `-XX:MaxMetaspaceSize=512m` |
+| `MyBatisSystemException` | Mapper XML 与接口不匹配 | 检查 namespace、方法签名、`#{}` 参数 |
+| `InvalidDefinitionException` | Jackson 序列化配置错误 | 检查 `@JsonIgnore`、无参构造器 |
+| `StackOverflowError` | 递归调用或双向引用序列化 | `@JsonManagedReference` + `@JsonBackReference` |
+
 ## 修复策略模板
 
 当 build-fix Agent 遇到错误时，按以下优先级尝试：

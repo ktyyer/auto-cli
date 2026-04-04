@@ -8,11 +8,7 @@
  */
 
 import { logger } from '../logger.js';
-import {
-  COMPLEXITY_LEVELS,
-  COMPLEXITY_INDICATORS,
-  assessComplexity
-} from '../router/agent-types.js';
+import { COMPLEXITY_LEVELS, assessComplexity } from '../router/agent-types.js';
 
 /**
  * PHASE 名称映射

@@ -3,8 +3,8 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs-extra';
 import {
-  DREAM_PHASES,
-  DREAM_GATE_DEFAULTS,
+  _DREAM_PHASES,
+  _DREAM_GATE_DEFAULTS,
   checkDreamGate,
   scoreEntry,
   selectMergeGroups,

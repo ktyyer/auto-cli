@@ -3,7 +3,7 @@ import {
   MODEL_TIERS,
   MODEL_IDS,
   COMPLEXITY_TO_TIER,
-  KEYWORD_TIERS,
+  _KEYWORD_TIERS,
   routeByAgent,
   routeByKeywords,
   routeModel

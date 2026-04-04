@@ -28,6 +28,8 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 4. Agent 匹配：使用 `/auto:route` 路由到合适的 Agent
 5. 上下文窗口检测 → 若 OVERFLOW 则生成会话摘要 + 续接指令
 6. **Hook 缺失检测**: 检查 hooks.json 配置，缺失时提示运行 `/auto:create-hook` 生成
+7. **环境快检**: 调用 `_runDoctorCheck()` 检查 Node.js 版本、依赖安装、Git 状态。WARN 级不阻断但记录到 `doctorResult`；FAIL 级（如依赖缺失）自动执行 `npm install` 修复
+8. **CLAUDE.md 检测**: 检查项目根目录是否有 CLAUDE.md。缺失时自动提示建议运行 `/auto:init-project` 生成，并记录到 doctor issues
 
 ```
 TodoWrite([
@@ -88,11 +90,15 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 ---
 
-## PHASE 5: COMMIT — 增量提交（完整模式）
+## PHASE 5: COMMIT — 自动增量提交（完整模式）
 
-每关通过后 `git add [当前 Quest 文件] && git commit`。
-只 add 当前 Quest 涉及的文件。
+每关通过后自动执行：
+1. `git add [当前 Quest 涉及文件]` — 只 add 当前 Quest 修改的文件
+2. `git commit -m "[type]: [Quest标题]"` — 使用 Quest 标题作为 commit message
+3. 决策笔记追加到 commit body
+
 每关 Quest 的决策笔记一并提交到 commit message 中。
+轻量/微型模式在所有任务完成后统一提交一次。
 
 ---
 

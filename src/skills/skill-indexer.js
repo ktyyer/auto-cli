@@ -80,6 +80,7 @@ export class SkillIndexer {
     this._cache = null;
     this._cacheTimestamp = 0;
     this._cacheTTL = 24 * 60 * 60 * 1000; // 24 小时
+    this._accessCounts = new Map();
   }
 
   /**
@@ -208,10 +209,17 @@ export class SkillIndexer {
     const index = await this.buildIndex();
     const lowerKeywords = keywords.map((k) => k.toLowerCase());
 
-    return index.entries.filter((entry) => {
-      const searchText = `${entry.name} ${entry.description} ${entry.tags.join(' ')}`.toLowerCase();
-      return lowerKeywords.some((kw) => searchText.includes(kw));
-    });
+    return index.entries
+      .filter((entry) => {
+        const searchText =
+          `${entry.name} ${entry.description} ${entry.tags.join(' ')}`.toLowerCase();
+        return lowerKeywords.some((kw) => searchText.includes(kw));
+      })
+      .sort(
+        (a, b) =>
+          (this._accessCounts.get(b.relativePath) || 0) -
+          (this._accessCounts.get(a.relativePath) || 0)
+      );
   }
 
   /**
@@ -228,6 +236,8 @@ export class SkillIndexer {
     }
 
     const content = await fs.readFile(filePath, 'utf-8');
+    // Track access for popularity sorting
+    this._accessCounts.set(relativePath, (this._accessCounts.get(relativePath) || 0) + 1);
     const index = await this.buildIndex();
     const entry = index.entries.find((e) => e.relativePath === relativePath);
 
@@ -408,6 +418,26 @@ export class SkillIndexer {
   clearCache() {
     this._cache = null;
     this._cacheTimestamp = 0;
+  }
+
+  /**
+   * 获取热门 Skill（按访问频次排序）
+   * @param {number} [limit=10] - 返回数量
+   * @returns {Promise<{name: string, relativePath: string, accessCount: number}[]>}
+   */
+  async getPopularSkills(limit = 10) {
+    const index = await this.buildIndex();
+    return [...this._accessCounts.entries()]
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, limit)
+      .map(([relativePath, accessCount]) => {
+        const entry = index.entries.find((e) => e.relativePath === relativePath);
+        return {
+          name: entry?.name || relativePath,
+          relativePath,
+          accessCount
+        };
+      });
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CIRCUIT_STATES,
-  CIRCUIT_EVENTS,
+  _CIRCUIT_EVENTS,
   DEFAULT_CIRCUIT_OPTIONS,
   createCircuitState,
   canExecute,
