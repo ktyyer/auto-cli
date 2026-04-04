@@ -24,8 +24,7 @@ export const COMPRESSION_LEVELS = Object.freeze({
   SNIP: 2,
   MICRO_COMPACT: 3,
   COLLAPSE: 4,
-  AUTO_COMPACT: 5,
-  REACTIVE_COMPACT: 6
+  AUTO_COMPACT: 5
 });
 
 /**
@@ -37,8 +36,7 @@ export const COMPRESSION_NAMES = Object.freeze({
   [COMPRESSION_LEVELS.SNIP]: 'SNIP',
   [COMPRESSION_LEVELS.MICRO_COMPACT]: 'MICRO_COMPACT',
   [COMPRESSION_LEVELS.COLLAPSE]: 'COLLAPSE',
-  [COMPRESSION_LEVELS.AUTO_COMPACT]: 'AUTO_COMPACT',
-  [COMPRESSION_LEVELS.REACTIVE_COMPACT]: 'REACTIVE_COMPACT'
+  [COMPRESSION_LEVELS.AUTO_COMPACT]: 'AUTO_COMPACT'
 });
 
 /**
@@ -58,10 +56,6 @@ export const STRATEGY_DEFAULTS = Object.freeze({
   microCompactKeepCount: 10,
   /** COLLAPSE: 合并窗口大小 */
   collapseWindowSize: 3,
-  /** REACTIVE_COMPACT: 触发的上下文使用率阈值 */
-  reactiveCompactThreshold: 0.95,
-  /** REACTIVE_COMPACT: 工具输出持久化目录 */
-  reactiveCompactSpillDir: '.auto/spill',
   /** MICRO_COMPACT: 工具输出感知 -- 是否持久化被移除的工具输出到磁盘 */
   microCompactPersistToolOutput: true,
   /** MICRO_COMPACT: 工具输出持久化目录 */

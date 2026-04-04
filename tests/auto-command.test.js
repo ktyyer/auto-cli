@@ -45,32 +45,6 @@ describe('auto.md integration', () => {
     });
   });
 
-  describe('compressContext integration', () => {
-    it('should reference compressContext in PHASE 1.0a', () => {
-      expect(content).toContain('compressContext');
-    });
-
-    it('should import from correct module path', () => {
-      expect(content).toContain('src/utils.js');
-    });
-
-    it('should reference CONTEXT_COMPRESSION config', () => {
-      expect(content).toContain('CONTEXT_COMPRESSION');
-    });
-
-    it('should have step 1.0a for compression check', () => {
-      expect(content).toContain('1.0a');
-    });
-
-    it('should mention long conversation threshold', () => {
-      expect(content).toContain('MESSAGE_THRESHOLD');
-    });
-
-    it('should include compression status in TodoWrite', () => {
-      expect(content).toContain('上下文压缩');
-    });
-  });
-
   describe('core principles', () => {
     it('should add index mode principle', () => {
       expect(content).toContain('索引模式');
@@ -118,7 +92,7 @@ describe('auto.md integration', () => {
       expect(content).toContain('约束 1：顺序锁定');
       expect(content).toContain('约束 2：quest-designer 必须被调用');
       expect(content).toContain('约束 3：代码修改前置条件');
-      expect(content).toContain('约束 4：无简单任务豁免');
+      expect(content).toContain('约束 4：简单任务快速通道');
     });
 
     it('should have PHASE 1.0a', () => {

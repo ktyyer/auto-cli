@@ -10,7 +10,6 @@
 | export | `checkStatus` | src/installer.js |
 | export | `CLAUDE_DIR` | src/config.js |
 | export | `COMPONENTS` | src/utils.js |
-| export | `CONTEXT_COMPRESSION` | src/utils.js |
 | export | `DEFAULT_MAX_RETRIES` | src/config.js |
 | export | `DEFAULT_TIMEOUT` | src/config.js |
 | export | `DOCS_URL` | src/config.js |
@@ -38,7 +37,6 @@
 | export | `saveInstalledVersion` | src/utils.js |
 | export | `showBanner` | src/prompts.js |
 | export | `uninstall` | src/installer.js |
-| export | `compressContext` | src/utils.js |
 | class | `AgentRegistry` | src/router/agent-registry.js |
 | export | `CanonicalRouter` | src/router/canonical-router.js |
 | export | `COMPLEXITY_LEVELS` | src/router/agent-types.js |

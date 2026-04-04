@@ -8,6 +8,7 @@
  * @property {boolean} [timestamp] - 是否显示时间戳
  */
 import chalk from 'chalk';
+import { LOG_LEVEL as configLogLevel } from './config.js';
 
 /**
  * 日志级别常量
@@ -172,8 +173,9 @@ class Logger {
 
 // 创建默认日志实例
 /** @type {Logger} */
+const resolvedLevel = typeof configLogLevel === 'string' ? configLogLevel.toUpperCase() : 'INFO';
 const logger = new Logger({
-  level: LOG_LEVELS.INFO,
+  level: LOG_LEVELS[resolvedLevel] ?? LOG_LEVELS.INFO,
   prefix: 'auto-cli',
   timestamp: false
 });
