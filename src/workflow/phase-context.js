@@ -8,6 +8,11 @@
  */
 
 import { logger } from '../logger.js';
+import {
+  COMPLEXITY_LEVELS,
+  COMPLEXITY_INDICATORS,
+  assessComplexity
+} from '../router/agent-types.js';
 
 /**
  * PHASE 名称映射
@@ -60,7 +65,10 @@ export function createPhaseContext(options = {}) {
     ),
 
     // Quest 地图
-    questMap: options.questMap || null,
+    questMap: options.questMap ? Object.freeze(options.questMap) : null,
+
+    // PHASE 2 匹配的 Skills
+    matchedSkills: Object.freeze(options.matchedSkills || []),
 
     // 当前执行的 Quest
     currentQuest: options.currentQuest || null,
@@ -70,6 +78,18 @@ export function createPhaseContext(options = {}) {
 
     // 失败重试的 Quest 列表
     failedQuests: Object.freeze(options.failedQuests || []),
+
+    // 验证阶段的智能体路由结果
+    verificationActions: Object.freeze(options.verificationActions || []),
+
+    // 覆盖率检查结果
+    coverageResult: Object.freeze(options.coverageResult || null),
+
+    // 安全扫描结果
+    securityResult: Object.freeze(options.securityResult || null),
+
+    // Doctor 快检结果
+    doctorResult: Object.freeze(options.doctorResult || null),
 
     // 变更的文件列表
     changedFiles: Object.freeze(options.changedFiles || []),
@@ -150,6 +170,30 @@ export function updatePhaseContext(ctx, updates) {
     processedUpdates.tokenBudget = Object.freeze({ ...updates.tokenBudget });
   }
 
+  if (updates.verificationActions) {
+    processedUpdates.verificationActions = Object.freeze([...updates.verificationActions]);
+  }
+
+  if (updates.coverageResult) {
+    processedUpdates.coverageResult = Object.freeze({ ...updates.coverageResult });
+  }
+
+  if (updates.securityResult) {
+    processedUpdates.securityResult = Object.freeze({ ...updates.securityResult });
+  }
+
+  if (updates.doctorResult) {
+    processedUpdates.doctorResult = Object.freeze({ ...updates.doctorResult });
+  }
+
+  if (updates.matchedSkills) {
+    processedUpdates.matchedSkills = Object.freeze([...updates.matchedSkills]);
+  }
+
+  if (updates.questMap) {
+    processedUpdates.questMap = Object.freeze(updates.questMap.map((q) => Object.freeze({ ...q })));
+  }
+
   return Object.freeze({
     ...ctx,
     ...processedUpdates,
@@ -158,7 +202,7 @@ export function updatePhaseContext(ctx, updates) {
 }
 
 /**
- * 检测执行模式
+ * 检测执行模式（基于共享的 assessComplexity 评估体系）
  * @param {string} task 任务描述
  * @param {Object} options 检测选项
  * @returns {string} micro | light | full
@@ -171,53 +215,45 @@ export function detectExecutionMode(task, options = {}) {
 
   const taskLower = task.toLowerCase();
 
-  // 微型模式特征：单文件小改动
-  const microPatterns = [
-    /fix.*typo/i,
-    /update.*readme/i,
-    /add.*comment/i,
-    /rename.*variable/i,
-    /格式.*调整/i,
-    /单.*文件/i
-  ];
+  // 复用复杂度评估（与 CanonicalRouter 共享同一指标体系）
+  const complexity = assessComplexity(taskLower);
 
-  // 轻量模式特征：少量文件，无架构变更
-  const lightPatterns = [
-    /add.*error.*handling/i,
-    /fix.*bug.*in/i,
-    /refactor.*function/i,
-    /add.*test/i,
-    /小.*改动/i,
-    /简单.*修复/i
-  ];
-
-  // 检查是否匹配微型模式
-  if (microPatterns.some((p) => p.test(taskLower))) {
+  // LOW 复杂度直接映射为微型模式
+  if (complexity === COMPLEXITY_LEVELS.LOW) {
     return EXECUTION_MODES.MICRO;
   }
 
-  // 检查是否匹配轻量模式
-  if (lightPatterns.some((p) => p.test(taskLower))) {
-    return EXECUTION_MODES.LIGHT;
-  }
-
-  // 架构变更关键词
-  const architectureKeywords = [
-    '架构',
-    '重构',
-    'refactor',
-    'architecture',
-    'system',
-    '系统',
-    '迁移',
-    'migration'
-  ];
-
-  if (architectureKeywords.some((k) => taskLower.includes(k))) {
+  // HIGH 复杂度直接映射为完整模式
+  if (complexity === COMPLEXITY_LEVELS.HIGH) {
     return EXECUTION_MODES.FULL;
   }
 
-  // 默认完整模式
+  // MEDIUM 复杂度：根据文件数量细化
+  // 有文件信息时，按数量降级
+  if (options.files) {
+    const fileCount = options.files.length;
+    if (fileCount <= 1) {
+      return EXECUTION_MODES.MICRO;
+    }
+    if (fileCount <= 3) {
+      return EXECUTION_MODES.LIGHT;
+    }
+    return EXECUTION_MODES.FULL;
+  }
+
+  // 无文件信息时：MEDIUM 中按任务语义二次分类
+  // 微型模式特征词（在 MEDIUM 基础上进一步缩小范围）
+  const microHints = ['typo', 'readme', 'comment', 'rename', 'update'];
+  if (microHints.some((h) => taskLower.includes(h))) {
+    return EXECUTION_MODES.MICRO;
+  }
+
+  // 轻量模式特征词
+  const lightHints = ['error', 'handling', 'bug', 'test', 'add'];
+  if (lightHints.some((h) => taskLower.includes(h))) {
+    return EXECUTION_MODES.LIGHT;
+  }
+
   return EXECUTION_MODES.FULL;
 }
 
