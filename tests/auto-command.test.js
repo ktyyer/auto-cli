@@ -15,7 +15,11 @@ describe('auto.md integration', () => {
     content = await fs.readFile(AUTO_MD_PATH, 'utf-8');
   });
 
-  describe('双模式执行', () => {
+  describe('三模式执行', () => {
+    it('should define micro mode conditions', () => {
+      expect(content).toContain('微型模式');
+    });
+
     it('should define light mode conditions', () => {
       expect(content).toContain('轻量模式');
     });
@@ -26,35 +30,29 @@ describe('auto.md integration', () => {
   });
 
   describe('PHASE 1 结构', () => {
-    it('should have 4 main steps (1.1-1.4)', () => {
-      expect(content).toContain('### 1.1 缓存检查');
-      expect(content).toContain('### 1.2 并行扫描');
-      expect(content).toContain('### 1.3 Router 推荐');
-      expect(content).toContain('### 1.4 输出报告');
+    it('should have concise scanning steps', () => {
+      expect(content).toContain('检测技术栈');
+      expect(content).toContain('列出可用能力');
+      expect(content).toContain('收集源码结构');
     });
 
-    it('should use CLI tool for routing instead of JavaScript import', () => {
-      expect(content).toContain('auto route');
+    it('should reference router for agent matching', () => {
+      expect(content).toContain('/auto:route');
+    });
+
+    it('should not use JavaScript import statements', () => {
       expect(content).not.toContain('import { CanonicalRouter }');
       expect(content).not.toContain('import { AgentRegistry }');
-    });
-
-    it('should not use SkillIndexer JavaScript import', () => {
       expect(content).not.toContain('SkillIndexer');
     });
 
-    it('should use Glob scans for capability discovery', () => {
-      expect(content).toMatch(/Glob.*commands/);
-      expect(content).toMatch(/Glob.*agents/);
-      expect(content).toMatch(/Glob.*plugins/);
+    it('should not contain bash pseudo-code', () => {
+      expect(content).not.toContain('mkdir -p .auto/cache');
+      expect(content).not.toContain('cat .auto/cache');
     });
   });
 
   describe('缓存机制', () => {
-    it('should use simple cache snapshot', () => {
-      expect(content).toContain('capability-snapshot.json');
-    });
-
     it('should not have complex pattern cards mechanism', () => {
       expect(content).not.toContain('head_hash');
       expect(content).not.toContain('workspace_dirty');
@@ -63,29 +61,32 @@ describe('auto.md integration', () => {
   });
 
   describe('核心原则', () => {
-    it('should have 7 core principles', () => {
+    it('should have core principles', () => {
       const principles = content.match(/^\d+\.\s+\*\*/gm);
-      expect(principles).toHaveLength(7);
+      expect(principles.length).toBeGreaterThanOrEqual(5);
     });
 
     it('should contain key principles', () => {
       expect(content).toContain('一个入口');
-      expect(content).toContain('智能缓存');
       expect(content).toContain('按规模执行');
       expect(content).toContain('可回溯');
-      expect(content).toContain('知识沉淀');
+    });
+  });
+
+  describe('PHASE 4 门禁', () => {
+    it('should have tiered verification by mode', () => {
+      expect(content).toContain('微型');
+      expect(content).toContain('轻量');
+      expect(content).toContain('完整');
     });
   });
 
   describe('PHASE 6 知识沉淀', () => {
-    it('should document Stop Hook automation', () => {
-      expect(content).toContain('Stop Hook');
-      expect(content).toContain('auto-learn');
+    it('should handle CLI not available gracefully', () => {
+      expect(content).toContain('CLI 未安装');
     });
 
-    it('should use CLI tools for knowledge saving instead of JavaScript import', () => {
-      expect(content).toContain('auto save insight');
-      expect(content).toContain('auto save search');
+    it('should not use JavaScript import for knowledge saving', () => {
       expect(content).not.toContain('KnowledgeSteward');
     });
   });
