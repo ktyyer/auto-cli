@@ -10,6 +10,7 @@ import {
 import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
+import { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
 
 /**
  * 交互模式 - 主菜单
@@ -216,3 +217,5 @@ export async function runRoute(userIntent, options = {}) {
   console.log(chalk.gray('━'.repeat(50)));
   console.log('');
 }
+
+export { WorkflowOrchestrator };
