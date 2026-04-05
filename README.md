@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.29.0.tgz
+npm install -g auto-cli-0.29.1.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -86,6 +86,7 @@ auto install
 | Agent | 作用 | 模型 |
 |-------|------|------|
 | quest-designer | 闯关大纲设计师 v4 -- PRD -> 完整代码蓝图 | opus |
+| planner | 复杂功能和重构的专业规划，分解为可执行步骤 | opus |
 | architect | 架构设计评审（只读） | opus |
 | tdd-guide | TDD 流程指导 | sonnet |
 | code-reviewer | 代码质量审查 | opus |
@@ -95,7 +96,6 @@ auto install
 | refactor-cleaner | 死代码清理（Jaccard 去重） | sonnet |
 | doc-updater | 文档和 CODEMAPS 更新 | sonnet |
 | verification | 对抗性验证（红蓝对抗） | opus |
-| planner | 复杂功能实现规划 | opus |
 
 ### Rules 编码规范（7 个）
 
@@ -187,7 +187,7 @@ auto install
 
 v0.12.0 引入的核心组件，实现中心化 Agent 路由决策：
 
-- **Agent 注册表**：10 个内置 Agent 的完整清单定义
+- **Agent 注册表**：11 个内置 Agent 的完整清单定义
 - **智能路由**：意图识别 + 关键词匹配 + 优先级排序 + 回退链
 - **安全优先**：安全敏感意图自动提升 security-reviewer 优先级
 
@@ -265,7 +265,16 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.29.0（当前）
+### v0.29.1（当前）
+
+**v9 深度审计 + planner Agent 注册 + 旧版清理**：
+- 注册 planner Agent（之前仅在 rules 中引用但未注册到 BUILT_IN_AGENTS）
+- 可达性从 94% 提升到 100%（11/11 Agent 全部可达）
+- 清理旧版 commands（13 个废弃命令）、agents（2 个）、skills（6 文件 + 12 目录）
+- 总评分 88/100，0 P0、0 P1、6 P2（均为低优先级）
+- 测试 727 全绿，lint 0 错误
+
+### v0.29.0
 
 **v6 深度审计 + 10 项架构修复**：
 - P0: 修复 PHASE 5 changedFiles 空转（Quest 执行后通过 git diff 收集变更文件）

@@ -203,6 +203,30 @@ const BUILT_IN_AGENTS = [
     source: 'built-in',
     version: '4.0.0',
     tags: ['core', 'planning']
+  },
+  {
+    name: 'planner',
+    displayName: '实现规划专家',
+    description: '复杂功能和重构的专业规划，分解为可执行步骤',
+    capabilities: ['planning', 'refactoring', 'implementation', 'risk-assessment'],
+    triggerKeywords: [
+      'plan',
+      '规划',
+      '计划',
+      'implement',
+      'refactor',
+      '实现',
+      '重构',
+      'approach',
+      '方案'
+    ],
+    priority: 80,
+    complexity: COMPLEXITY_LEVELS.HIGH,
+    fallbackAgents: ['architect', 'quest-designer'],
+    state: AGENT_STATES.ACTIVE,
+    source: 'built-in',
+    version: '1.0.0',
+    tags: ['core', 'planning']
   }
 ];
 
@@ -500,6 +524,9 @@ export class AgentRegistry {
       const files = await fs.readdir(agentsDir);
       for (const file of files) {
         if (!file.endsWith('.md')) continue;
+
+        // 跳过下划线前缀文件（如 _shared-principles.md），它们不是独立 Agent
+        if (file.startsWith('_')) continue;
 
         const filePath = path.join(agentsDir, file);
         const name = path.basename(file, '.md');

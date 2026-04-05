@@ -374,6 +374,40 @@ class KnowledgeSteward {
   }
 
   /**
+   * P1-5 fix: 清理低质量知识条目
+   * 将低质量条目从反馈数据中标记为 retired，并记录到清理日志
+   *
+   * @param {Array<{source: string, key: string, score: number}>} entries - 要清理的条目
+   * @returns {Promise<number>} 实际清理的条目数量
+   */
+  async cleanupLowQuality(entries) {
+    if (!entries || entries.length === 0) return 0;
+
+    const feedbackData = await this._loadFeedback();
+    let cleanedCount = 0;
+
+    for (const entry of entries) {
+      const entryKey = `${entry.source}:${entry.key}`;
+      if (feedbackData[entryKey]) {
+        feedbackData[entryKey].retired = true;
+        feedbackData[entryKey].retiredAt = Date.now();
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      await this._saveFeedback(feedbackData);
+      logger.info(
+        `[KnowledgeSteward] 清理 ${cleanedCount} 条低质量知识: ${entries
+          .map((e) => `${e.key}=${e.score.toFixed(2)}`)
+          .join(', ')}`
+      );
+    }
+
+    return cleanedCount;
+  }
+
+  /**
    * 加载反馈数据
    * @returns {Promise<Object>}
    * @private

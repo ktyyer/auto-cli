@@ -9,7 +9,7 @@ import { FLOW_EVENTS } from '../flow/flow-engine.js';
 import { CONTEXT_STATUS } from '../budget/context-monitor.js';
 import { AgentRegistry } from '../router/agent-registry.js';
 import { RepoIndexer } from '../indexer/repo-indexer.js';
-import { updatePhaseContext, detectProjectProfile } from './phase-context.js';
+import { updatePhaseContext, detectProjectProfile, PHASE_SKILL_MAP } from './phase-context.js';
 import { logger } from '../logger.js';
 import fs from 'fs-extra';
 import path from 'node:path';
@@ -77,6 +77,19 @@ export class PhaseDiscover {
     // 确保 REPO_MAP.md 存在且新鲜
     await this._ensureRepoMap();
 
+    // P0-1: 注入 discover 阶段 Skill（PHASE_SKILL_MAP.discover 消费）
+    let discoverSkills = await this._injectDiscoverSkills();
+
+    // P1-1 fix: 检测项目语言并自动注入对应 Skill（如 java-patterns）
+    const projectLanguages = this._detectProjectLanguages();
+    const languageSkills = await this._injectLanguageSkills(projectLanguages);
+    if (languageSkills.length > 0) {
+      discoverSkills = [...discoverSkills, ...languageSkills];
+    }
+
+    // P0-2: 消费上次 /auto 留下的 pending-invocations
+    const pendingInvocations = await this._consumePendingInvocations();
+
     // Doctor 快检：项目健康度诊断
     const doctorResult = await this._runDoctorCheck();
     if (doctorResult.issues.length > 0) {
@@ -133,7 +146,9 @@ export class PhaseDiscover {
       contextStatus,
       doctorResult,
       projectProfile: detectProjectProfile(this.projectDir),
-      projectLanguages: this._detectProjectLanguages()
+      projectLanguages,
+      discoverSkills,
+      pendingInvocations
     });
 
     logger.info(
@@ -512,5 +527,125 @@ export class PhaseDiscover {
 
     logger.info(`[PHASE 1] 项目语言检测: ${languages.join(', ') || 'unknown'}`);
     return Object.freeze(languages);
+  }
+
+  /**
+   * P0-1: 注入 discover 阶段的 Skill 到上下文
+   * 消费 PHASE_SKILL_MAP.discover 中定义的 Skill（dependency-analyzer）
+   * @returns {Promise<Readonly<Object[]>>} 已加载的 Skill 内容列表
+   * @private
+   */
+  async _injectDiscoverSkills() {
+    const skillNames = PHASE_SKILL_MAP.discover || [];
+    if (skillNames.length === 0) return Object.freeze([]);
+
+    const loaded = [];
+    try {
+      const index = await this.skillIndexer.buildIndex();
+      for (const name of skillNames) {
+        const entry = index.entries.find((e) => e.name === name);
+        if (entry) {
+          const result = await this.skillIndexer.loadContent(entry.relativePath);
+          if (result?.content) {
+            loaded.push(Object.freeze({ name: entry.name, content: result.content }));
+            logger.info(`[PHASE 1] discover Skill 已加载: ${entry.name}`);
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn(`[PHASE 1] discover Skill 注入失败: ${e.message}`);
+    }
+
+    return Object.freeze(loaded);
+  }
+
+  /**
+   * P1-1 fix: 根据项目语言自动注入对应的 Skill
+   * 如检测到 Java 项目时注入 java-patterns
+   * @param {Readonly<string[]>} languages - 检测到的语言列表
+   * @returns {Promise<Readonly<Object[]>>} 已加载的 Skill 内容列表
+   * @private
+   */
+  async _injectLanguageSkills(languages) {
+    const languageSkillMap = {
+      java: 'java-patterns'
+    };
+
+    const targetSkills = [];
+    for (const lang of languages) {
+      const skillName = languageSkillMap[lang];
+      if (skillName) {
+        targetSkills.push(skillName);
+      }
+    }
+
+    if (targetSkills.length === 0) return Object.freeze([]);
+
+    const loaded = [];
+    try {
+      const index = await this.skillIndexer.buildIndex();
+      for (const name of targetSkills) {
+        const entry = index.entries.find((e) => e.name === name);
+        if (entry) {
+          const result = await this.skillIndexer.loadContent(entry.relativePath);
+          if (result?.content) {
+            loaded.push(Object.freeze({ name: entry.name, content: result.content }));
+            logger.info(`[PHASE 1] 语言 Skill 自动注入: ${entry.name} (${languages.join(',')})`);
+          }
+        }
+      }
+    } catch (e) {
+      logger.debug(`[PHASE 1] 语言 Skill 注入跳过: ${e.message}`);
+    }
+
+    return Object.freeze(loaded);
+  }
+
+  /**
+   * P0-2: 消费 .auto/pending-invocations.json 中的待执行调度
+   * 将上次 /auto (PHASE 6) 生成的 doc-updater/refactor-cleaner 调度注入当前工作流
+   * @returns {Promise<Readonly<Object[]>>} 待执行的 invocation 列表
+   * @private
+   */
+  async _consumePendingInvocations() {
+    try {
+      const queuePath = path.join(this.projectDir, '.auto', 'pending-invocations.json');
+      if (!(await fs.pathExists(queuePath))) {
+        return [];
+      }
+
+      const queue = await fs.readJson(queuePath);
+      if (!Array.isArray(queue) || queue.length === 0) {
+        return [];
+      }
+
+      const pending = queue.filter((item) => item.status === 'pending');
+      if (pending.length === 0) {
+        return [];
+      }
+
+      const updated = queue.map((item) =>
+        item.status === 'pending' ? { ...item, status: 'consumed', consumedAt: Date.now() } : item
+      );
+      await fs.writeJson(queuePath, updated, { spaces: 2 });
+
+      logger.info(
+        `[PHASE 1] 消费 ${pending.length} 个待执行调度: ${pending.map((p) => p.subagent_type).join(', ')}`
+      );
+
+      return pending.map((p) =>
+        Object.freeze({
+          subagent_type: p.subagent_type,
+          description: p.description,
+          prompt: p.prompt,
+          model: p.model,
+          trigger: p.trigger,
+          enqueuedAt: p.enqueuedAt
+        })
+      );
+    } catch (e) {
+      logger.debug(`[PHASE 1] pending-invocations consumption skipped: ${e.message}`);
+      return [];
+    }
   }
 }

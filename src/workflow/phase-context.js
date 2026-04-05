@@ -65,6 +65,12 @@ export function createPhaseContext(options = {}) {
     // 项目编程语言（P1-4: 用于自动注入语言特定 Skill）
     projectLanguages: Object.freeze(options.projectLanguages || []),
 
+    // P0-1: discover 阶段已加载的 Skill 内容
+    discoverSkills: Object.freeze(options.discoverSkills || []),
+
+    // P0-2: 从上次 /auto 消费的待执行调度
+    pendingInvocations: Object.freeze(options.pendingInvocations || []),
+
     // Quest 地图
     questMap: options.questMap ? Object.freeze(options.questMap) : null,
 

@@ -16,6 +16,7 @@
 import { logger } from '../logger.js';
 import { COMPLEXITY_LEVELS, AGENT_STATES, assessComplexity } from './agent-types.js';
 import { AgentRegistry } from './agent-registry.js';
+import { segmentCJK as unifiedSegmentCJK } from './keyword-extractor.js';
 
 /**
  * 默认 Agent（无匹配时的兜底）
@@ -50,105 +51,6 @@ const SECURITY_KEYWORDS = [
   '加密',
   'encrypt'
 ];
-
-/**
- * CJK 关键词字典 — 用于中文分词
- * 按领域分类，覆盖常见开发术语
- */
-const CJK_KEYWORDS = [
-  // 架构
-  '重构',
-  '架构',
-  '系统',
-  '微服务',
-  '分布式',
-  '迁移',
-  '整体',
-  // 开发
-  '功能',
-  '实现',
-  '开发',
-  '新增',
-  '修改',
-  '集成',
-  '优化',
-  '修复',
-  '测试',
-  '单元测试',
-  '集成测试',
-  '端到端',
-  // 操作
-  '格式化',
-  '重命名',
-  '文档',
-  '注释',
-  '简单',
-  '快速',
-  '批量',
-  // 安全
-  '密码',
-  '密钥',
-  '认证',
-  '授权',
-  '权限',
-  '注入',
-  '加密',
-  '安全',
-  '漏洞',
-  '泄露',
-  '审查',
-  '检查',
-  // 质量
-  '代码审查',
-  '代码质量',
-  '性能',
-  '缓存',
-  '死代码',
-  '清理',
-  // 流程
-  '提交',
-  '部署',
-  '发布',
-  '回滚',
-  '分支',
-  // 构建
-  '构建',
-  '编译',
-  '类型',
-  '错误',
-  '失败'
-];
-
-/**
- * 对中文文本进行简单分词（基于词典匹配）
- * @param {string} text - 输入文本
- * @returns {string[]} 分词结果
- */
-function segmentCJK(text) {
-  const keywords = [];
-
-  // 正向最大匹配：从长词到短词
-  const sortedDict = [...CJK_KEYWORDS].sort((a, b) => b.length - a.length);
-
-  let remaining = text;
-  while (remaining.length > 0) {
-    let matched = false;
-    for (const word of sortedDict) {
-      if (remaining.startsWith(word)) {
-        keywords.push(word);
-        remaining = remaining.slice(word.length);
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) {
-      // 跳过单字符
-      remaining = remaining.slice(1);
-    }
-  }
-
-  return keywords;
-}
 
 export class CanonicalRouter {
   /**
@@ -257,7 +159,7 @@ export class CanonicalRouter {
     );
 
     // 提取中文关键词（基于词典分词）
-    const cjkKeywords = segmentCJK(userIntent);
+    const cjkKeywords = unifiedSegmentCJK(userIntent);
 
     // 合并去重
     const allKeywords = [...new Set([...englishKeywords, ...cjkKeywords])];

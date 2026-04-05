@@ -99,6 +99,11 @@ export class PhaseLearn {
         logger.info(
           `[PHASE 6] 低质量知识检测: ${lowQuality.length} 条 (分数: ${lowQuality.map((e) => `${e.key}=${e.score.toFixed(2)}`).join(', ')})`
         );
+        // P1-5 fix: 实际执行清理，不再只记录
+        const cleanedCount = await this._knowledgeSteward.cleanupLowQuality(lowQuality);
+        if (cleanedCount > 0) {
+          logger.info(`[PHASE 6] 已清理 ${cleanedCount} 条低质量知识`);
+        }
         await this.memory.set('low_quality_knowledge', lowQuality, {
           tier: 'session',
           tags: ['quality', 'feedback', 'cleanup']

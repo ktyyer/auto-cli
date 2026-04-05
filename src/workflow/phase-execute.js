@@ -341,8 +341,42 @@ export class PhaseExecute {
       throw new Error('Token 预算不足，无法执行 PHASE 3');
     }
 
-    const questMap = ctx.questMap;
-    if (!questMap || questMap.length === 0) {
+    // P0-1 fix: 将 pendingInvocations 转换为额外 Quest 并注入 Quest Map
+    const questMap = ctx.questMap ? [...ctx.questMap] : [];
+    if (ctx.pendingInvocations?.length > 0) {
+      for (const inv of ctx.pendingInvocations) {
+        questMap.push(
+          Object.freeze({
+            id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: inv.description || `待执行调度: ${inv.subagent_type}`,
+            description: inv.prompt || inv.description || '',
+            keywords: Object.freeze([inv.subagent_type]),
+            complexity: 'low',
+            changedFiles: Object.freeze([]),
+            acceptanceCriteria: Object.freeze(['执行完成']),
+            decisionNotes: Object.freeze([
+              `来源: pending-invocation (${inv.trigger || 'unknown'})`
+            ]),
+            skills: Object.freeze([]),
+            skillContents: Object.freeze([]),
+            insightContents: Object.freeze([]),
+            agent: inv.subagent_type,
+            agentInvocation: Object.freeze({
+              subagent_type: inv.subagent_type,
+              description: inv.description || '',
+              prompt: inv.prompt || '',
+              model: inv.model || 'sonnet',
+              run_in_background: false
+            })
+          })
+        );
+      }
+      logger.info(
+        `[PHASE 3] 注入 ${ctx.pendingInvocations.length} 个 pending-invocations 为 Quest`
+      );
+    }
+
+    if (questMap.length === 0) {
       logger.warn('[PHASE 3] 无 Quest 地图，跳过执行');
       this.flowEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
       return ctx;
@@ -377,20 +411,30 @@ export class PhaseExecute {
       }
     }
 
-    // P0-1: 执行后收集变更文件列表（通过 git diff --name-only）
+    // P0-1: 执行后收集变更文件列表（通过 git diff HEAD + cached 并集）
     let changedFiles = [];
     try {
       const { execSync } = await import('node:child_process');
-      const diffOutput = execSync('git diff --name-only HEAD', {
-        cwd: this.projectDir,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 5000
-      })
-        .toString()
-        .trim();
-      if (diffOutput) {
-        changedFiles = diffOutput.split('\n').filter(Boolean);
-      }
+      const [unstagedOutput, stagedOutput] = [
+        execSync('git diff --name-only HEAD', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim(),
+        execSync('git diff --cached --name-only', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim()
+      ];
+      const fileSet = new Set();
+      for (const f of unstagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
+      for (const f of stagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
+      changedFiles = [...fileSet];
     } catch (diffError) {
       logger.debug(`[PHASE 3] 变更文件检测跳过: ${diffError.message}`);
     }
@@ -492,20 +536,30 @@ export class PhaseExecute {
       await this._executeQuest(microQuest, modelRoute, questEngine, ctx);
       questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
-      // P0-1: MICRO 模式也收集变更文件
+      // P0-1: MICRO 模式也收集变更文件（HEAD + cached 并集）
       let microChangedFiles = [];
       try {
         const { execSync } = await import('node:child_process');
-        const diffOutput = execSync('git diff --name-only HEAD', {
-          cwd: this.projectDir,
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 5000
-        })
-          .toString()
-          .trim();
-        if (diffOutput) {
-          microChangedFiles = diffOutput.split('\n').filter(Boolean);
-        }
+        const [unstagedOutput, stagedOutput] = [
+          execSync('git diff --name-only HEAD', {
+            cwd: this.projectDir,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 5000
+          })
+            .toString()
+            .trim(),
+          execSync('git diff --cached --name-only', {
+            cwd: this.projectDir,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 5000
+          })
+            .toString()
+            .trim()
+        ];
+        const fileSet = new Set();
+        for (const f of unstagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
+        for (const f of stagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
+        microChangedFiles = [...fileSet];
       } catch {
         // git diff 失败不阻断
       }

@@ -83,6 +83,49 @@ export class SkillIndexer {
     this._accessCounts = new Map();
     /** @type {Map<string, {successes: number, failures: number}>} */
     this._successCounts = new Map();
+    // P1-4 fix: 持久化路径（与 skillsDir 同级的 .auto 目录）
+    this._feedbackPath = path.join(path.dirname(skillsDir), '.auto', 'skill-feedback.json');
+    this._loadPersistedFeedback();
+  }
+
+  /**
+   * P1-4 fix: 从磁盘加载持久化的 Skill 反馈数据
+   * @private
+   */
+  _loadPersistedFeedback() {
+    try {
+      if (fs.pathExistsSync(this._feedbackPath)) {
+        const data = fs.readJsonSync(this._feedbackPath);
+        if (data && typeof data === 'object') {
+          for (const [name, counts] of Object.entries(data)) {
+            if (counts.successes !== undefined && counts.failures !== undefined) {
+              this._successCounts.set(name, {
+                successes: counts.successes,
+                failures: counts.failures
+              });
+            }
+          }
+          this.logger.debug(`[SkillIndexer] 加载持久化反馈: ${this._successCounts.size} 条记录`);
+        }
+      }
+    } catch (e) {
+      this.logger.debug(`[SkillIndexer] 反馈持久化加载跳过: ${e.message}`);
+    }
+  }
+
+  /**
+   * P1-4 fix: 将反馈数据持久化到磁盘
+   * @private
+   */
+  _persistFeedback() {
+    try {
+      const dir = path.dirname(this._feedbackPath);
+      fs.ensureDirSync(dir);
+      const data = Object.fromEntries(this._successCounts.entries());
+      fs.writeJsonSync(this._feedbackPath, data, { spaces: 2 });
+    } catch (e) {
+      this.logger.debug(`[SkillIndexer] 反馈持久化写入跳过: ${e.message}`);
+    }
   }
 
   /**
@@ -482,6 +525,8 @@ export class SkillIndexer {
       current.failures += 1;
     }
     this._successCounts.set(skillName, current);
+    // P1-4 fix: 持久化反馈数据
+    this._persistFeedback();
   }
 
   /**
