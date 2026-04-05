@@ -9,6 +9,7 @@ import { CONTEXT_STATUS } from '../budget/context-monitor.js';
 import { CanonicalRouter } from '../router/canonical-router.js';
 import { compactTrace } from '../utils/trace-compactor.js';
 import { updatePhaseContext, EXECUTION_MODES, detectE2ECapability } from './phase-context.js';
+import { KnowledgeSteward } from '../knowledge/knowledge-steward.js';
 import { logger } from '../logger.js';
 import fs from 'fs-extra';
 import path from 'node:path';
@@ -21,13 +22,15 @@ export class PhaseVerify {
    * @param {import('../budget/context-monitor.js').ContextMonitor} deps.contextMonitor
    * @param {import('../flow/flow-engine.js').FlowEngine} deps.flowEngine
    * @param {string} deps.projectDir
+   * @param {import('../skills/skill-indexer.js').SkillIndexer} [deps.skillIndexer]
    */
-  constructor({ memory, tokenBudget, contextMonitor, flowEngine, projectDir }) {
+  constructor({ memory, tokenBudget, contextMonitor, flowEngine, projectDir, skillIndexer }) {
     this.memory = memory;
     this.tokenBudget = tokenBudget;
     this.contextMonitor = contextMonitor;
     this.flowEngine = flowEngine;
     this.projectDir = projectDir;
+    this.skillIndexer = skillIndexer;
 
     // 懒初始化
     this._canonicalRouter = null;
@@ -194,6 +197,45 @@ export class PhaseVerify {
       );
     } catch (persistError) {
       logger.debug(`验证结果持久化失败: ${persistError.message}`);
+    }
+
+    // P4-1: 知识反馈回路 — 记录 Skill/Insight 使用效果
+    try {
+      const steward = new KnowledgeSteward(this.projectDir);
+      const questSuccess = !ctx.failedQuests || ctx.failedQuests.length === 0;
+
+      // 记录 Skill 使用反馈
+      if (ctx.matchedSkills) {
+        for (const skill of ctx.matchedSkills) {
+          const skillName = skill.name || skill;
+          await steward.recordFeedback({
+            source: 'skill',
+            key: skillName,
+            successful: questSuccess
+          });
+          // 同步到 SkillIndexer 的质量评分
+          if (this.skillIndexer) {
+            this.skillIndexer.recordSuccess(skillName, questSuccess);
+          }
+        }
+      }
+
+      // 记录 Insight 使用反馈（通过 questMap 中的 insightContents 追溯）
+      if (ctx.questMap) {
+        for (const quest of ctx.questMap) {
+          if (quest.insightContents) {
+            for (const insight of quest.insightContents) {
+              await steward.recordFeedback({
+                source: 'insight',
+                key: insight.category,
+                successful: questSuccess
+              });
+            }
+          }
+        }
+      }
+    } catch (feedbackError) {
+      logger.debug(`[PHASE 4] 知识反馈记录跳过: ${feedbackError.message}`);
     }
 
     return ctx;

@@ -38,6 +38,9 @@ class KnowledgeSteward {
   constructor(projectDir) {
     this.projectDir = projectDir || process.cwd();
     this.insightsDir = path.join(this.projectDir, '.auto', 'insights');
+    this._feedbackFile = path.join(this.projectDir, '.auto', 'insights', '.feedback.json');
+    /** @type {Map<string, {hits: number, successes: number, lastUsed: number}>} */
+    this._feedbackCache = null;
   }
 
   /**
@@ -294,6 +297,117 @@ class KnowledgeSteward {
     } catch (error) {
       logger.warn(`Git 提交跳过: ${error.message}`);
       return '';
+    }
+  }
+
+  // ─── 反馈回路 ────────────────────────────────────
+
+  /**
+   * 记录知识使用反馈（PHASE 4 验证阶段调用）
+   *
+   * @param {Object} feedback - 反馈数据
+   * @param {string} feedback.source - 来源标识（'insight' 或 'skill'）
+   * @param {string} feedback.key - 知识条目标识（hash 或 skill name）
+   * @param {boolean} feedback.successful - 知识是否帮助完成任务
+   * @returns {Promise<void>}
+   */
+  async recordFeedback({ source, key, successful }) {
+    if (!source || !key) return;
+
+    const feedbackData = await this._loadFeedback();
+    const entryKey = `${source}:${key}`;
+
+    const entry = feedbackData[entryKey] || { hits: 0, successes: 0, lastUsed: 0 };
+    entry.hits += 1;
+    if (successful) entry.successes += 1;
+    entry.lastUsed = Date.now();
+    feedbackData[entryKey] = entry;
+
+    await this._saveFeedback(feedbackData);
+    logger.debug(`[KnowledgeSteward] 反馈已记录: ${entryKey} success=${successful}`);
+  }
+
+  /**
+   * 获取知识的质量分数（用于排序和淘汰决策）
+   *
+   * @param {string} source - 来源标识
+   * @param {string} key - 知识条目标识
+   * @returns {Promise<number>} 质量分数 0-1（无数据时返回 0.5 中性值）
+   */
+  async getQualityScore(source, key) {
+    const feedbackData = await this._loadFeedback();
+    const entryKey = `${source}:${key}`;
+    const entry = feedbackData[entryKey];
+
+    if (!entry || entry.hits === 0) return 0.5;
+
+    return entry.successes / entry.hits;
+  }
+
+  /**
+   * 获取低质量知识条目（用于 PHASE 6 清理决策）
+   *
+   * @param {number} [threshold=0.3] - 质量分数低于此值的视为低质量
+   * @param {number} [minHits=3] - 至少被使用这么多次才评估（避免样本不足）
+   * @returns {Promise<Array<{source: string, key: string, score: number, hits: number}>>}
+   */
+  async getLowQualityEntries(threshold = 0.3, minHits = 3) {
+    const feedbackData = await this._loadFeedback();
+    const results = [];
+
+    for (const [entryKey, entry] of Object.entries(feedbackData)) {
+      if (entry.hits < minHits) continue;
+      const score = entry.successes / entry.hits;
+      if (score < threshold) {
+        const [source, ...keyParts] = entryKey.split(':');
+        results.push({
+          source,
+          key: keyParts.join(':'),
+          score,
+          hits: entry.hits,
+          lastUsed: entry.lastUsed
+        });
+      }
+    }
+
+    return results.sort((a, b) => a.score - b.score);
+  }
+
+  /**
+   * 加载反馈数据
+   * @returns {Promise<Object>}
+   * @private
+   */
+  async _loadFeedback() {
+    if (this._feedbackCache) return this._feedbackCache;
+
+    try {
+      await this.ensureStructure();
+      if (await fs.pathExists(this._feedbackFile)) {
+        const raw = await fs.readFile(this._feedbackFile, 'utf-8');
+        this._feedbackCache = JSON.parse(raw);
+        return this._feedbackCache;
+      }
+    } catch (error) {
+      logger.debug(`[KnowledgeSteward] 反馈数据加载失败: ${error.message}`);
+    }
+
+    this._feedbackCache = {};
+    return this._feedbackCache;
+  }
+
+  /**
+   * 保存反馈数据
+   * @param {Object} data
+   * @private
+   */
+  async _saveFeedback(data) {
+    this._feedbackCache = data;
+    try {
+      await this.ensureStructure();
+      await fs.writeFile(this._feedbackFile, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+      logger.debug(`[KnowledgeSteward] 反馈数据保存失败: ${error.message}`);
     }
   }
 }

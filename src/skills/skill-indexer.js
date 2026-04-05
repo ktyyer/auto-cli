@@ -81,6 +81,8 @@ export class SkillIndexer {
     this._cacheTimestamp = 0;
     this._cacheTTL = 24 * 60 * 60 * 1000; // 24 小时
     this._accessCounts = new Map();
+    /** @type {Map<string, {successes: number, failures: number}>} */
+    this._successCounts = new Map();
   }
 
   /**
@@ -201,7 +203,15 @@ export class SkillIndexer {
   }
 
   /**
-   * 按关键词搜索 Skill（只搜索索引，不加载完整内容）
+   * 按关键词搜索 Skill（加权评分 + 相关性排序）
+   *
+   * 改进：不再只用子串匹配，而是计算相关性得分：
+   * - 精确匹配 name: +10 分
+   * - 前缀匹配: +5 分
+   * - 子串匹配 description/tags: +2 分
+   * - 词长度加分（长词更有区分度）
+   * - 流行度加分（访问次数）
+   *
    * @param {string[]} keywords - 关键词列表
    * @returns {Promise<SkillIndexEntry[]>}
    */
@@ -209,17 +219,56 @@ export class SkillIndexer {
     const index = await this.buildIndex();
     const lowerKeywords = keywords.map((k) => k.toLowerCase());
 
-    return index.entries
-      .filter((entry) => {
-        const searchText =
-          `${entry.name} ${entry.description} ${entry.tags.join(' ')}`.toLowerCase();
-        return lowerKeywords.some((kw) => searchText.includes(kw));
+    const scored = index.entries
+      .map((entry) => {
+        const nameText = entry.name.toLowerCase();
+        const descText = entry.description.toLowerCase();
+        const tagsText = entry.tags.join(' ').toLowerCase();
+
+        let relevanceScore = 0;
+
+        for (const kw of lowerKeywords) {
+          let matched = false;
+
+          // name 精确匹配（最高权重）
+          if (nameText === kw) {
+            relevanceScore += 10;
+            matched = true;
+          }
+          // name 包含匹配
+          else if (nameText.includes(kw)) {
+            relevanceScore += 5;
+            matched = true;
+          }
+          // description 匹配
+          if (descText.includes(kw)) {
+            relevanceScore += 3;
+            matched = true;
+          }
+          // tags 匹配
+          if (tagsText.includes(kw)) {
+            relevanceScore += 4;
+            matched = true;
+          }
+          // 匹配到的词长度加分（更有区分度的匹配）
+          if (matched) {
+            relevanceScore += Math.floor(kw.length / 4);
+          }
+        }
+
+        // 流行度加分（权重较低，作为排序 tiebreaker）
+        const popularityScore = (this._accessCounts.get(entry.relativePath) || 0) * 0.5;
+
+        // 质量反馈加分（成功使用过的 Skill 排名更高）
+        const successData = this._successCounts.get(entry.name);
+        const qualityScore = successData ? (successData.successes - successData.failures) * 2 : 0;
+
+        return { entry, score: relevanceScore + popularityScore + qualityScore, relevanceScore };
       })
-      .sort(
-        (a, b) =>
-          (this._accessCounts.get(b.relativePath) || 0) -
-          (this._accessCounts.get(a.relativePath) || 0)
-      );
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.map(({ entry }) => entry);
   }
 
   /**
@@ -418,6 +467,21 @@ export class SkillIndexer {
   clearCache() {
     this._cache = null;
     this._cacheTimestamp = 0;
+  }
+
+  /**
+   * 记录 Skill 使用结果（成功/失败）用于质量反馈
+   * @param {string} skillName - Skill 名称
+   * @param {boolean} successful - 是否成功帮助完成任务
+   */
+  recordSuccess(skillName, successful) {
+    const current = this._successCounts.get(skillName) || { successes: 0, failures: 0 };
+    if (successful) {
+      current.successes += 1;
+    } else {
+      current.failures += 1;
+    }
+    this._successCounts.set(skillName, current);
   }
 
   /**

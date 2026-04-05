@@ -89,6 +89,25 @@ export class PhaseLearn {
       logger.warn(`[PHASE 6] AutoDream 失败: ${dreamError.message}`);
     }
 
+    // P4-2: 低质量知识清理 — 基于反馈回路淘汰无效经验
+    try {
+      if (!this._knowledgeSteward) {
+        this._knowledgeSteward = new KnowledgeSteward(this.projectDir);
+      }
+      const lowQuality = await this._knowledgeSteward.getLowQualityEntries(0.3, 3);
+      if (lowQuality.length > 0) {
+        logger.info(
+          `[PHASE 6] 低质量知识检测: ${lowQuality.length} 条 (分数: ${lowQuality.map((e) => `${e.key}=${e.score.toFixed(2)}`).join(', ')})`
+        );
+        await this.memory.set('low_quality_knowledge', lowQuality, {
+          tier: 'session',
+          tags: ['quality', 'feedback', 'cleanup']
+        });
+      }
+    } catch (qualityError) {
+      logger.debug(`[PHASE 6] 知识质量检测跳过: ${qualityError.message}`);
+    }
+
     // KnowledgeSteward: 将执行经验持久化到 .auto/insights/
     try {
       if (!this._knowledgeSteward) {

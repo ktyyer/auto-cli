@@ -467,17 +467,21 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
     });
   });
 
-  it('should extract Chinese keywords (CJK characters as single tokens)', () => {
+  it('should extract Chinese keywords with dictionary segmentation', () => {
     const keywords = orchestrator._extractKeywords('添加安全认证功能模块');
-    expect(keywords).toHaveLength(1);
-    expect(keywords[0]).toBe('添加安全认证功能模块');
+    // 词典分词 + 同义词扩展：安全、认证、功能、添加、模块等
+    expect(keywords.length).toBeGreaterThan(0);
+    expect(keywords).toContain('安全');
+    expect(keywords).toContain('认证');
+    expect(keywords).toContain('功能');
   });
 
-  it('should split on Chinese comma and period', () => {
+  it('should split on Chinese comma and period with dictionary segmentation', () => {
     const keywords = orchestrator._extractKeywords('添加安全，认证功能。测试模块');
-    expect(keywords).toContain('添加安全');
-    expect(keywords).toContain('认证功能');
-    expect(keywords).toContain('测试模块');
+    expect(keywords).toContain('安全');
+    expect(keywords).toContain('认证');
+    expect(keywords).toContain('功能');
+    expect(keywords).toContain('测试');
   });
 
   it('should handle mixed Chinese and English text', () => {
@@ -515,7 +519,8 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
     const keywords = orchestrator._extractKeywords('fix.error,handling the authentication');
     expect(keywords).toContain('fix.error');
     expect(keywords).toContain('handling');
-    expect(keywords).toContain('the');
+    // 'the' is a stopword and gets filtered out
+    expect(keywords).not.toContain('the');
     expect(keywords).toContain('authentication');
   });
 

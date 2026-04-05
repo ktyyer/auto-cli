@@ -97,7 +97,8 @@ export class WorkflowOrchestrator {
       tokenBudget: this.tokenBudget,
       contextMonitor: this.contextMonitor,
       flowEngine: this.flowEngine,
-      projectDir: this.projectDir
+      projectDir: this.projectDir,
+      skillIndexer: this.skillIndexer
     });
 
     this.phaseCommit = new PhaseCommit({

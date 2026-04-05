@@ -298,4 +298,45 @@ describe('KnowledgeSteward', () => {
       }
     });
   });
+
+  describe('feedback', () => {
+    it('should record feedback and compute quality score', async () => {
+      await steward.recordFeedback({ source: 'skill', key: 'test-skill', successful: true });
+      await steward.recordFeedback({ source: 'skill', key: 'test-skill', successful: true });
+      await steward.recordFeedback({ source: 'skill', key: 'test-skill', successful: false });
+
+      const score = await steward.getQualityScore('skill', 'test-skill');
+      expect(score).toBeCloseTo(2 / 3, 1);
+    });
+
+    it('should return 0.5 for unknown entries', async () => {
+      const score = await steward.getQualityScore('skill', 'nonexistent');
+      expect(score).toBe(0.5);
+    });
+
+    it('should detect low quality entries', async () => {
+      // Record enough hits with low success rate
+      for (let i = 0; i < 4; i++) {
+        await steward.recordFeedback({ source: 'skill', key: 'bad-skill', successful: false });
+      }
+      await steward.recordFeedback({ source: 'skill', key: 'bad-skill', successful: true });
+
+      const lowQuality = await steward.getLowQualityEntries(0.3, 3);
+      expect(lowQuality.length).toBeGreaterThan(0);
+      expect(lowQuality[0].key).toBe('bad-skill');
+      expect(lowQuality[0].score).toBeLessThan(0.3);
+    });
+
+    it('should not flag entries with too few hits', async () => {
+      await steward.recordFeedback({ source: 'skill', key: 'new-skill', successful: false });
+
+      const lowQuality = await steward.getLowQualityEntries(0.3, 3);
+      expect(lowQuality.find((e) => e.key === 'new-skill')).toBeUndefined();
+    });
+
+    it('should ignore feedback without source or key', async () => {
+      await steward.recordFeedback({ source: '', key: '', successful: true });
+      // Should not throw
+    });
+  });
 });

@@ -16,6 +16,8 @@ import {
   PHASE_SKILL_MAP,
   detectE2ECapability
 } from './phase-context.js';
+import { extractKeywords } from '../router/keyword-extractor.js';
+import { KnowledgeSteward } from '../knowledge/knowledge-steward.js';
 import { logger } from '../logger.js';
 
 /**
@@ -255,11 +257,34 @@ export class PhaseExecute {
       }
     }
 
+    // P3-1: 从 .auto/insights/ 搜索历史经验并注入上下文
+    let insightContents = [];
+    try {
+      const steward = new KnowledgeSteward(this.projectDir);
+      const insightKeywords = this._extractKeywords(ctx.task).filter((kw) => kw.length > 1);
+      if (insightKeywords.length > 0) {
+        // 用最有区分度的前 3 个关键词搜索
+        const topKeywords = insightKeywords.slice(0, 3);
+        const insightResults = await steward.search(topKeywords.join(' '), { limit: 3 });
+        insightContents = insightResults.flatMap((r) =>
+          r.matches.slice(0, 2).map((m) => ({ category: r.category, content: m }))
+        );
+        if (insightContents.length > 0) {
+          logger.info(
+            `[PHASE 2] 注入历史经验: ${insightContents.length} 条 (关键词: ${topKeywords.join(',')})`
+          );
+        }
+      }
+    } catch (insightError) {
+      logger.debug(`[PHASE 2] 经验搜索跳过: ${insightError.message}`);
+    }
+
     // P0-1: 生成 Quest Map
     const questMap = await this._generateQuestMap(ctx.task, {
       agentRecommendation,
       matchedSkills,
       skillContents,
+      insightContents,
       modelRoute,
       mode: ctx.mode
     });
@@ -404,6 +429,23 @@ export class PhaseExecute {
       logger.debug(`[MICRO] Skill 搜索跳过: ${skillErr.message}`);
     }
 
+    // P3-1: MICRO 模式也注入历史经验
+    let microInsightContents = [];
+    try {
+      const steward = new KnowledgeSteward(this.projectDir);
+      const insightKeywords = this._extractKeywords(ctx.task).filter((kw) => kw.length > 1);
+      if (insightKeywords.length > 0) {
+        const insightResults = await steward.search(insightKeywords.slice(0, 3).join(' '), {
+          limit: 2
+        });
+        microInsightContents = insightResults.flatMap((r) =>
+          r.matches.slice(0, 1).map((m) => ({ category: r.category, content: m }))
+        );
+      }
+    } catch {
+      // MICRO 模式不因经验搜索失败而中断
+    }
+
     // 创建单 Quest 并执行（P1-5: 附带 Skill）
     const microQuest = Object.freeze({
       id: 'micro-1',
@@ -418,6 +460,7 @@ export class PhaseExecute {
       ),
       skills: Object.freeze(microSkills),
       skillContents: Object.freeze(microSkillContents),
+      insightContents: Object.freeze(microInsightContents),
       agent: null
     });
 
@@ -577,6 +620,17 @@ export class PhaseExecute {
       }
     }
 
+    if (quest.insightContents?.length) {
+      parts.push('## 历史经验参考');
+      for (const insight of quest.insightContents) {
+        parts.push(`### [${insight.category}]`);
+        if (insight.content) {
+          parts.push(insight.content.slice(0, 800));
+        }
+        parts.push('');
+      }
+    }
+
     if (quest.decisionNotes?.length) {
       parts.push('## 决策备忘');
       for (const note of quest.decisionNotes) {
@@ -604,11 +658,12 @@ export class PhaseExecute {
    */
   async _generateQuestMap(
     task,
-    { agentRecommendation, matchedSkills, skillContents, modelRoute, mode }
+    { agentRecommendation, matchedSkills, skillContents, insightContents, modelRoute, mode }
   ) {
     const keywords = this._extractKeywords(task);
     const skillNames = matchedSkills.map((s) => s.name);
     const skillData = skillContents || [];
+    const insightData = insightContents || [];
 
     // 轻量模式：生成简化 Quest Map
     if (mode === EXECUTION_MODES.LIGHT) {
@@ -624,6 +679,7 @@ export class PhaseExecute {
           decisionNotes: Object.freeze([]),
           skills: Object.freeze(skillNames),
           skillContents: Object.freeze(skillData),
+          insightContents: Object.freeze(insightData),
           agent: agentRecommendation ? agentRecommendation.agent.name : null
         })
       ]);
@@ -651,6 +707,7 @@ export class PhaseExecute {
           decisionNotes: Object.freeze([]),
           skills: Object.freeze(skillNames),
           skillContents: Object.freeze(skillData),
+          insightContents: Object.freeze(insightData),
           agent: analysisAgent.name,
           agentInvocation: Object.freeze({
             subagent_type: analysisAgent.name,
@@ -678,6 +735,7 @@ export class PhaseExecute {
         ),
         skills: Object.freeze(skillNames),
         skillContents: Object.freeze(skillData),
+        insightContents: Object.freeze(insightData),
         agent: implAgent,
         agentInvocation: Object.freeze({
           subagent_type: implAgent || 'general-purpose',
@@ -952,14 +1010,11 @@ export class PhaseExecute {
   }
 
   /**
-   * 从任务中提取关键词
+   * 从任务中提取关键词（使用统一提取器：停用词过滤 + 同义词扩展 + CJK 词典分词）
    * @private
    */
   _extractKeywords(task) {
-    if (!task) return [];
-    const englishTerms = (task.match(/[a-z][a-z0-9._-]+/gi) || []).filter((t) => t.length > 2);
-    const chineseTerms = task.match(/[\u4e00-\u9fff]{2,}/g) || [];
-    return [...new Set([...englishTerms, ...chineseTerms])];
+    return extractKeywords(task);
   }
 
   /**
