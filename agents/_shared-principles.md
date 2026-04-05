@@ -1,3 +1,9 @@
+---
+name: shared-principles
+description: Agent 公共原则和交接协议 — 通用工作流、报告格式、Agent 间交接路径和边界约束
+tags: [shared, protocol, handoff, agent, principles]
+---
+
 # Agent 公共原则
 
 > 此文件定义所有 Agent 共享的基础原则。各 Agent .md 文件无需重复这些内容。

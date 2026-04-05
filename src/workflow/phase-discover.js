@@ -9,7 +9,7 @@ import { FLOW_EVENTS } from '../flow/flow-engine.js';
 import { CONTEXT_STATUS } from '../budget/context-monitor.js';
 import { AgentRegistry } from '../router/agent-registry.js';
 import { RepoIndexer } from '../indexer/repo-indexer.js';
-import { updatePhaseContext } from './phase-context.js';
+import { updatePhaseContext, detectProjectProfile } from './phase-context.js';
 import { logger } from '../logger.js';
 import fs from 'fs-extra';
 import path from 'node:path';
@@ -131,7 +131,9 @@ export class PhaseDiscover {
     ctx = updatePhaseContext(ctx, {
       capabilities,
       contextStatus,
-      doctorResult
+      doctorResult,
+      projectProfile: detectProjectProfile(this.projectDir),
+      projectLanguages: this._detectProjectLanguages()
     });
 
     logger.info(
@@ -156,7 +158,7 @@ export class PhaseDiscover {
   }
 
   /**
-   * 扫描 commands/ 目录统计 .md 文件数
+   * 递归扫描 commands/ 目录统计 .md 文件数（含子目录如 commands/auto/）
    * @returns {Promise<number>}
    * @private
    */
@@ -164,36 +166,132 @@ export class PhaseDiscover {
     try {
       const commandsDir = path.join(this.projectDir, 'commands');
       if (!(await fs.pathExists(commandsDir))) return 0;
-      const files = await fs.readdir(commandsDir);
-      return files.filter((f) => f.endsWith('.md')).length;
+      return await this._countMarkdownFiles(commandsDir);
     } catch {
       return 0;
     }
   }
 
   /**
+   * 递归统计目录中的 .md 文件数量
+   * @param {string} dir - 目录路径
+   * @param {number} [maxDepth=3] - 最大递归深度
+   * @returns {Promise<number>}
+   * @private
+   */
+  async _countMarkdownFiles(dir, maxDepth = 3) {
+    if (maxDepth <= 0) return 0;
+    let count = 0;
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        count++;
+      } else if (
+        entry.isDirectory() &&
+        !entry.name.startsWith('.') &&
+        !entry.name.startsWith('_')
+      ) {
+        count += await this._countMarkdownFiles(path.join(dir, entry.name), maxDepth - 1);
+      }
+    }
+    return count;
+  }
+
+  /**
    * 读取 hooks/hooks.json 统计 hook 数量
+   * 若 hooks.json 不存在，自动生成最小默认配置
    * @returns {Promise<number>}
    * @private
    */
   async _countHooks() {
     try {
-      const hooksPath = path.join(this.projectDir, 'hooks', 'hooks.json');
-      if (!(await fs.pathExists(hooksPath))) return 0;
-      const data = await fs.readJson(hooksPath);
-      const hookSections = data.hooks || {};
-      return Object.values(hookSections).reduce((total, entries) => {
-        const sectionEntries = Array.isArray(entries) ? entries : [];
-        return (
-          total +
-          sectionEntries.reduce((sum, matcher) => {
-            return sum + (matcher.hooks ? matcher.hooks.length : 0);
-          }, 0)
-        );
-      }, 0);
+      const hooksDir = path.join(this.projectDir, 'hooks');
+      const hooksPath = path.join(hooksDir, 'hooks.json');
+
+      if (!(await fs.pathExists(hooksPath))) {
+        await this._ensureDefaultHooks(hooksDir, hooksPath);
+        return this._countHooksFromConfig(hooksPath);
+      }
+
+      return this._countHooksFromConfig(hooksPath);
     } catch {
       return 0;
     }
+  }
+
+  /**
+   * 从 hooks.json 文件中统计 hook 数量
+   * @param {string} hooksPath
+   * @returns {Promise<number>}
+   * @private
+   */
+  async _countHooksFromConfig(hooksPath) {
+    const data = await fs.readJson(hooksPath);
+    const hookSections = data.hooks || {};
+    return Object.values(hookSections).reduce((total, entries) => {
+      const sectionEntries = Array.isArray(entries) ? entries : [];
+      return (
+        total +
+        sectionEntries.reduce((sum, matcher) => {
+          return sum + (matcher.hooks ? matcher.hooks.length : 0);
+        }, 0)
+      );
+    }, 0);
+  }
+
+  /**
+   * 自动生成最小默认 hooks.json（TDD Guard + Prettier + TS Check + Secret Detection）
+   * @param {string} hooksDir
+   * @param {string} hooksPath
+   * @private
+   */
+  async _ensureDefaultHooks(hooksDir, hooksPath) {
+    const defaultConfig = {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'tool == "Write" || tool == "Edit"',
+            hooks: [
+              {
+                type: 'command',
+                command:
+                  '#!/bin/bash\ninput=$(cat)\nfile=$(echo "$input" | jq -r \'.tool_input.file_path // ""\')\nif echo "$file" | grep -qE "\\.env|credentials|secret|\\.pem|\\.key"; then\n  echo "[Hook] BLOCKED: Sensitive file detected" >&2\n  exit 1\nfi\necho "$input"'
+              }
+            ],
+            description: 'Secret Detection: 阻止编辑敏感文件'
+          }
+        ],
+        PostToolUse: [
+          {
+            matcher:
+              '(tool == "Write" || tool == "Edit") && tool_input.file_path matches "\\.(ts|tsx|js|jsx)$"',
+            hooks: [
+              {
+                type: 'command',
+                command:
+                  '#!/bin/bash\ninput=$(cat)\nfile=$(echo "$input" | jq -r \'.tool_input.file_path // ""\')\nif command -v npx &>/dev/null; then\n  npx --no prettier --write "$file" 2>/dev/null || true\nfi\necho "$input"'
+              }
+            ],
+            description: 'Auto-format: Prettier 自动格式化'
+          },
+          {
+            matcher: '(tool == "Write" || tool == "Edit") && tool_input.file_path matches "\\.ts$"',
+            hooks: [
+              {
+                type: 'command',
+                command:
+                  '#!/bin/bash\ninput=$(cat)\nfile=$(echo "$input" | jq -r \'.tool_input.file_path // ""\')\nif [ -f "tsconfig.json" ] && command -v npx &>/dev/null; then\n  npx --no tsc --noEmit --pretty 2>&1 | head -5 || true\nfi\necho "$input"'
+              }
+            ],
+            description: 'TypeScript Check: 类型检查'
+          }
+        ]
+      }
+    };
+
+    await fs.ensureDir(hooksDir);
+    await fs.writeJson(hooksPath, defaultConfig, { spaces: 2 });
+    logger.info('[PHASE 1] 已自动生成默认 hooks.json（4 个 hook）');
   }
 
   /**
@@ -307,10 +405,49 @@ export class PhaseDiscover {
       checks.memoryAvailable = false;
     }
 
+    // P1-2: 推荐的自动动作（如 Skill 注入建议）
+    const recommendedActions = [];
+    if (!checks['CLAUDE.md']) {
+      recommendedActions.push(
+        Object.freeze({
+          action: 'run-init-project',
+          skill: 'init-project',
+          reason: 'CLAUDE.md 缺失，建议运行 init-project Skill 生成项目上下文'
+        })
+      );
+    }
+
+    // P2-1: 推荐 TDD Guard Hook（当 hooks 中缺少 TDD 相关配置时）
+    if (checks.hooksConfigured) {
+      try {
+        const hooksDir = path.join(this.projectDir, 'hooks');
+        const hooksJsonPath = path.join(hooksDir, 'hooks.json');
+        if (await fs.pathExists(hooksJsonPath)) {
+          const hooksData = await fs.readJson(hooksJsonPath);
+          const preHooks = hooksData.hooks?.PreToolUse || [];
+          const hasTDDGuard = preHooks.some(
+            (h) => h.description && h.description.toLowerCase().includes('tdd')
+          );
+          if (!hasTDDGuard) {
+            recommendedActions.push(
+              Object.freeze({
+                action: 'add-tdd-guard-hook',
+                hook: 'tdd-guard',
+                reason: '缺少 TDD Guard Hook — 建议运行 /auto:create-hook 添加测试优先检查'
+              })
+            );
+          }
+        }
+      } catch {
+        // hooks.json 读取失败，跳过
+      }
+    }
+
     return Object.freeze({
       healthy: issues.filter((i) => i.severity === 'error').length === 0,
       issues: Object.freeze(issues),
-      checks: Object.freeze(checks)
+      checks: Object.freeze(checks),
+      recommendedActions: Object.freeze(recommendedActions)
     });
   }
 
@@ -330,5 +467,50 @@ export class PhaseDiscover {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * 检测项目编程语言（用于自动注入对应 Skill）
+   * @returns {Readonly<string[]>} 检测到的语言列表
+   * @private
+   */
+  _detectProjectLanguages() {
+    const languages = [];
+
+    // Java: pom.xml, build.gradle, *.java
+    const javaIndicators = ['pom.xml', 'build.gradle', 'build.gradle.kts'];
+    for (const indicator of javaIndicators) {
+      if (fs.pathExistsSync(path.join(this.projectDir, indicator))) {
+        languages.push('java');
+        break;
+      }
+    }
+
+    // Go: go.mod
+    if (fs.pathExistsSync(path.join(this.projectDir, 'go.mod'))) {
+      languages.push('go');
+    }
+
+    // Python: requirements.txt, setup.py, pyproject.toml
+    const pythonIndicators = ['requirements.txt', 'setup.py', 'pyproject.toml'];
+    for (const indicator of pythonIndicators) {
+      if (fs.pathExistsSync(path.join(this.projectDir, indicator))) {
+        languages.push('python');
+        break;
+      }
+    }
+
+    // Rust: Cargo.toml
+    if (fs.pathExistsSync(path.join(this.projectDir, 'Cargo.toml'))) {
+      languages.push('rust');
+    }
+
+    // Node.js: package.json
+    if (fs.pathExistsSync(path.join(this.projectDir, 'package.json'))) {
+      languages.push('javascript');
+    }
+
+    logger.info(`[PHASE 1] 项目语言检测: ${languages.join(', ') || 'unknown'}`);
+    return Object.freeze(languages);
   }
 }

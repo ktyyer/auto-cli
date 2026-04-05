@@ -2,6 +2,7 @@
  * Phase Commit — PHASE 5: 增量提交
  *
  * 负责 git commit 消息构建和执行
+ * P2-2: 自动加载 git-workflow Skill 约定作为 commit 格式参考
  */
 
 import { logger } from '../logger.js';
@@ -14,12 +15,15 @@ export class PhaseCommit {
    * @param {import('../budget/token-budget.js').TokenBudgetManager} deps.tokenBudget
    * @param {string} deps.projectDir
    * @param {boolean} deps.dryRun
+   * @param {import('../skills/skill-indexer.js').SkillIndexer} [deps.skillIndexer] - P2-2
    */
-  constructor({ memory, tokenBudget, projectDir, dryRun }) {
+  constructor({ memory, tokenBudget, projectDir, dryRun, skillIndexer }) {
     this.memory = memory;
     this.tokenBudget = tokenBudget;
     this.projectDir = projectDir;
     this.dryRun = dryRun;
+    this.skillIndexer = skillIndexer || null;
+    this._gitWorkflowContent = null;
   }
 
   /**
@@ -36,12 +40,17 @@ export class PhaseCommit {
       throw new Error('Token 预算不足，无法执行 PHASE 5');
     }
 
-    // 构建 commit 消息
+    // P2-2: 加载 git-workflow Skill 内容
+    await this._ensureGitWorkflowSkill();
+
+    // 构建约定式提交消息（与 git-workflow Skill 对齐）
+    const commitType = this._inferCommitType(ctx);
+    const scope = this._inferScope(ctx);
+    const summary = (ctx.task || 'task').slice(0, 72);
     const questCount = ctx.completedQuests?.length || 0;
-    const commitMessage =
-      questCount > 0
-        ? `auto: complete ${questCount} quest(s) - ${(ctx.task || 'task').slice(0, 60)}`
-        : `auto: update - ${(ctx.task || 'task').slice(0, 60)}`;
+    const commitMessage = scope
+      ? `${commitType}(${scope}): ${summary}`
+      : `${commitType}: ${summary}`;
 
     // 执行 git commit
     const gitResult = await this._executeGitCommit(ctx.changedFiles, commitMessage);
@@ -68,6 +77,46 @@ export class PhaseCommit {
     this.tokenBudget.consume('commit', 2000, 'PHASE 5 提交');
 
     return ctx;
+  }
+
+  /**
+   * 从上下文推断约定式提交类型
+   * @param {Object} ctx
+   * @returns {string} feat | fix | refactor | docs | test | chore
+   * @private
+   */
+  _inferCommitType(ctx) {
+    const task = (ctx.task || '').toLowerCase();
+    const mode = ctx.mode;
+
+    if (mode === 'micro') return 'fix';
+    if (task.includes('重构') || task.includes('refactor')) return 'refactor';
+    if (task.includes('文档') || task.includes('doc')) return 'docs';
+    if (task.includes('测试') || task.includes('test')) return 'test';
+    if (task.includes('修复') || task.includes('fix') || task.includes('bug')) return 'fix';
+    return 'feat';
+  }
+
+  /**
+   * 从变更文件推断提交作用域
+   * @param {Object} ctx
+   * @returns {string|null}
+   * @private
+   */
+  _inferScope(ctx) {
+    const files = ctx.changedFiles || [];
+    if (files.length === 0) return null;
+
+    // 从文件路径提取模块名
+    const modules = files
+      .map((f) => {
+        const parts = f.split('/');
+        return parts.length > 1 ? parts[0] : null;
+      })
+      .filter(Boolean);
+
+    const unique = [...new Set(modules)];
+    return unique.length === 1 ? unique[0] : null;
   }
 
   /**
@@ -98,6 +147,29 @@ export class PhaseCommit {
     } catch (error) {
       logger.warn(`[PHASE 5] Git commit 失败: ${error.message}`);
       return Object.freeze({ committed: false, reason: error.message });
+    }
+  }
+
+  /**
+   * P2-2: 加载 git-workflow Skill 内容（用于对齐提交约定）
+   * @private
+   */
+  async _ensureGitWorkflowSkill() {
+    if (this._gitWorkflowContent !== null || !this.skillIndexer) return;
+
+    try {
+      const index = await this.skillIndexer.buildIndex();
+      const gitSkill = index.entries.find((e) => e.name === 'git-workflow');
+      if (gitSkill) {
+        const loaded = await this.skillIndexer.loadContent(gitSkill.relativePath);
+        this._gitWorkflowContent = loaded?.content || null;
+        if (this._gitWorkflowContent) {
+          logger.info('[PHASE 5] git-workflow Skill 已加载，提交格式对齐');
+        }
+      }
+    } catch (e) {
+      logger.debug(`[PHASE 5] git-workflow Skill 加载跳过: ${e.message}`);
+      this._gitWorkflowContent = null;
     }
   }
 }

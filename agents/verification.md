@@ -133,9 +133,61 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
 
 ## 项目特定检查
 
+### 内置检查（auto-cli 项目）
+
 根据 auto-cli 项目特点，额外关注:
 - `Object.freeze()` 是否覆盖所有返回对象（不可变模式）
 - `fs-extra` 异步操作是否正确 await
 - `Map` 操作是否有内存泄漏（无限增长）
 - `process.env` 读取是否在启动时完成（而非运行时）
 - ESM import 是否使用了正确的文件扩展名 (.js)
+
+### 自定义检查（任意项目）
+
+若项目根目录存在 `.auto/verification-checks.json`，自动加载并执行用户自定义检查:
+
+```json
+{
+  "checks": [
+    {
+      "name": "immutable-pattern",
+      "pattern": "=\\s*\\{[^}]*\\}\\s*;",
+      "description": "可变对象赋值检测",
+      "severity": "warning",
+      "suggest": "使用展开运算符 { ...obj, key: value }"
+    },
+    {
+      "name": "no-hardcoded-urls",
+      "pattern": "https?://(?!localhost|127\\.0\\.0\\.1|example\\.com)\\S+",
+      "description": "硬编码外部 URL 检测",
+      "severity": "info"
+    },
+    {
+      "name": "env-usage",
+      "pattern": "process\\.env\\.",
+      "description": "环境变量使用检测",
+      "severity": "info",
+      "requireStartup": true
+    }
+  ],
+  "globals": {
+    "ignorePatterns": ["*.test.*", "*.spec.*", "__tests__/**"],
+    "maxFileSize": 500
+  }
+}
+```
+
+字段说明：
+- `name`: 检查项名称（唯一标识）
+- `pattern`: 正则表达式（匹配即告警）
+- `description`: 检查描述
+- `severity`: error / warning / info
+- `suggest`: 修复建议（可选）
+- `requireStartup`: 仅在启动时检查一次（可选，默认每次变更都检查）
+- `globals.ignorePatterns`: 忽略的文件模式
+- `globals.maxFileSize`: 超过此行数的文件告警
+
+加载优先级：
+1. `.auto/verification-checks.json`（项目级，优先）
+2. `~/.claude/verification-checks.json`（用户级，兜底）
+3. 内置检查（auto-cli 项目默认）

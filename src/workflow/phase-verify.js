@@ -8,7 +8,7 @@ import { FLOW_EVENTS } from '../flow/flow-engine.js';
 import { CONTEXT_STATUS } from '../budget/context-monitor.js';
 import { CanonicalRouter } from '../router/canonical-router.js';
 import { compactTrace } from '../utils/trace-compactor.js';
-import { updatePhaseContext, EXECUTION_MODES } from './phase-context.js';
+import { updatePhaseContext, EXECUTION_MODES, detectE2ECapability } from './phase-context.js';
 import { logger } from '../logger.js';
 import fs from 'fs-extra';
 import path from 'node:path';
@@ -97,19 +97,22 @@ export class PhaseVerify {
     if (testRunner) {
       logger.info(`[PHASE 4] 检测到测试运行器: ${testRunner.command}`);
 
-      testResult = await this._runTests(testRunner, isFullMode);
+      // 所有模式都运行覆盖率（light/micro 只用于信息展示，不阻断）
+      testResult = await this._runTests(testRunner, true);
       if (!testResult.passed) {
         logger.error(`[PHASE 4] 测试失败 (exit ${testResult.exitCode})`);
       } else {
         logger.info('[PHASE 4] 测试通过');
       }
 
-      if (isFullMode && testResult.coverage) {
+      if (testResult.coverage) {
         coverageResult = testResult.coverage;
         if (coverageResult.passing) {
           logger.info(`[PHASE 4] 覆盖率达标: ${coverageResult.overall}%`);
+        } else if (isFullMode) {
+          logger.warn(`[PHASE 4] 覆盖率不足: ${coverageResult.overall}% < 80% (完整模式门禁)`);
         } else {
-          logger.warn(`[PHASE 4] 覆盖率不足: ${coverageResult.overall}% < 80%`);
+          logger.info(`[PHASE 4] 覆盖率: ${coverageResult.overall}% (非阻断，信息记录)`);
         }
       }
     } else {
@@ -336,19 +339,11 @@ export class PhaseVerify {
   }
 
   /**
-   * 检测项目是否具备 E2E 测试能力
+   * 检测项目是否具备 E2E 测试能力（委托给共享函数）
    * @returns {boolean}
    * @private
    */
   _detectE2ECapability() {
-    try {
-      const pkgPath = path.join(this.projectDir, 'package.json');
-      if (!fs.pathExistsSync(pkgPath)) return false;
-      const pkg = fs.readJsonSync(pkgPath);
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      return !!(deps['@playwright/test'] || deps['playwright']);
-    } catch {
-      return false;
-    }
+    return detectE2ECapability(this.projectDir);
   }
 }

@@ -27,7 +27,7 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 3. 收集源码结构（优先读 REPO_MAP.md）
 4. Agent 匹配：使用 `/auto:route` 路由到合适的 Agent
 5. 上下文窗口检测 → 若 OVERFLOW 则生成会话摘要 + 续接指令
-6. **Hook 缺失检测**: 检查 hooks.json 配置，缺失时提示运行 `/auto:create-hook` 生成
+6. **Hook 缺失检测**: 检查 hooks.json 配置，缺失时自动调用 `_ensureDefaultHooks()` 生成最小可用配置（TDD Guard + Prettier + TypeScript Check + Secret Detection），无需用户手动运行 `/auto:create-hook`
 7. **环境快检**: 调用 `_runDoctorCheck()` 检查 Node.js 版本、依赖安装、Git 状态。WARN 级不阻断但记录到 `doctorResult`；FAIL 级（如依赖缺失）自动执行 `npm install` 修复
 8. **CLAUDE.md 检测**: 检查项目根目录是否有 CLAUDE.md。缺失时自动提示建议运行 `/auto:init-project` 生成，并记录到 doctor issues
 

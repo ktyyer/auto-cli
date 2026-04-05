@@ -339,6 +339,7 @@ export class PhaseLearn {
   _detectArchitectureChange(task) {
     const taskLower = (task || '').toLowerCase();
     const architectureKeywords = [
+      // 架构级变更
       '架构',
       'architecture',
       '重构',
@@ -355,7 +356,20 @@ export class PhaseLearn {
       '删除模块',
       '合并',
       '拆分',
-      '整合'
+      '整合',
+      // 功能级变更（影响文档/CODEMAPS）
+      '新增功能',
+      'add feature',
+      '实现功能',
+      '删除功能',
+      'deprecate',
+      'endpoint',
+      '更新文档',
+      'update readme',
+      '更新readme',
+      'changelog',
+      'update codemaps',
+      '更新代码地图'
     ];
     return architectureKeywords.some((kw) => taskLower.includes(kw));
   }

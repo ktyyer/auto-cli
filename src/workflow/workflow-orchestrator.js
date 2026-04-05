@@ -21,7 +21,11 @@ import { TokenBudgetManager } from '../budget/token-budget.js';
 import { ContextMonitor, CONTEXT_STATUS } from '../budget/context-monitor.js';
 import { SkillIndexer } from '../skills/skill-indexer.js';
 import { compactTrace } from '../utils/trace-compactor.js';
-import { createSessionSummary, createResumeDirective } from '../budget/context-compressor.js';
+import {
+  createSessionSummary,
+  createResumeDirective,
+  ADAPTIVE_PROFILES
+} from '../budget/context-compressor.js';
 import {
   createPhaseContext,
   updatePhaseContext,
@@ -54,7 +58,7 @@ export class WorkflowOrchestrator {
     this.dryRun = options.dryRun ?? false;
 
     // 初始化核心模块
-    this.flowEngine = new FlowEngine(WORKFLOW_ID, { maxRetries: 2 });
+    this.flowEngine = new FlowEngine(WORKFLOW_ID, { maxRetries: 3 });
     this.memory = new MemoryManager({ projectDir: this.projectDir });
     this.tokenBudget = new TokenBudgetManager();
     this.contextMonitor = new ContextMonitor();
@@ -100,7 +104,8 @@ export class WorkflowOrchestrator {
       memory: this.memory,
       tokenBudget: this.tokenBudget,
       projectDir: this.projectDir,
-      dryRun: this.dryRun
+      dryRun: this.dryRun,
+      skillIndexer: this.skillIndexer
     });
 
     this.phaseLearn = new PhaseLearn({
@@ -294,7 +299,10 @@ export class WorkflowOrchestrator {
   _checkContextOverflow(contextStatus) {
     if (contextStatus !== CONTEXT_STATUS.OVERFLOW) return;
 
-    logger.warn('[Orchestrator] 上下文窗口溢出，生成会话摘要');
+    // P2-3: 使用 adaptive profile 压缩策略
+    const profile = this.phaseContext.projectProfile || 'default';
+    const profileConfig = ADAPTIVE_PROFILES[profile] || ADAPTIVE_PROFILES.default;
+    logger.warn(`[Orchestrator] 上下文窗口溢出，生成会话摘要 (profile=${profile})`);
 
     this._pendingSessionSummary = createSessionSummary({
       task: this.phaseContext.task,
@@ -306,7 +314,7 @@ export class WorkflowOrchestrator {
       })),
       problemSolving: this._messageAccumulator
         .filter((m) => m.role === 'quest-plan')
-        .slice(-5)
+        .slice(-profileConfig.snipKeepRecent || 5)
         .map((m) => ({ plan: m.content })),
       userMessages: this._messageAccumulator.filter((m) => m.role === 'user').map((m) => m.content),
       pendingTasks: this.phaseContext.failedQuests.map((f) => `修复 Quest ${f.questId}`),
@@ -314,7 +322,8 @@ export class WorkflowOrchestrator {
         phase: this.phaseContext.currentPhase,
         completedQuests: this.phaseContext.completedQuests.length,
         failedQuests: this.phaseContext.failedQuests.length
-      }
+      },
+      profileConfig
     });
 
     logger.info('[Orchestrator] 会话摘要已生成，可通过 resumeDirective 续接');

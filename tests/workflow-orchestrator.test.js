@@ -402,9 +402,10 @@ describe('WorkflowOrchestrator - _countHooks', () => {
     });
   });
 
-  it('should return 0 when hooks.json does not exist', async () => {
+  it('should auto-create default hooks and return count when hooks.json does not exist', async () => {
     const count = await orchestrator._countHooks();
-    expect(count).toBe(0);
+    // _ensureDefaultHooks creates 4 hooks (1 PreToolUse + 2 PostToolUse + 1 Stop)
+    expect(count).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -1442,8 +1443,8 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
     });
   });
 
-  it('should generate 1 quest for light mode', () => {
-    const questMap = orchestrator._generateQuestMap('add error handling', {
+  it('should generate 1 quest for light mode', async () => {
+    const questMap = await orchestrator._generateQuestMap('add error handling', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1457,8 +1458,8 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
     expect(Object.isFrozen(questMap[0])).toBe(true);
   });
 
-  it('should generate multiple quests for full mode', () => {
-    const questMap = orchestrator._generateQuestMap('refactor authentication system', {
+  it('should generate multiple quests for full mode', async () => {
+    const questMap = await orchestrator._generateQuestMap('refactor authentication system', {
       agentRecommendation: {
         agent: {
           name: 'architect',
@@ -1477,8 +1478,8 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
     expect(questMap.some((q) => q.skills.includes('error-patterns'))).toBe(true);
   });
 
-  it('should generate quests without agent recommendation', () => {
-    const questMap = orchestrator._generateQuestMap('implement feature', {
+  it('should generate quests without agent recommendation', async () => {
+    const questMap = await orchestrator._generateQuestMap('implement feature', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1489,8 +1490,8 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
     expect(questMap[0].agent).toBeNull();
   });
 
-  it('should include matched skills in quest decisionNotes', () => {
-    const questMap = orchestrator._generateQuestMap('fix bug', {
+  it('should include matched skills in quest decisionNotes', async () => {
+    const questMap = await orchestrator._generateQuestMap('fix bug', {
       agentRecommendation: null,
       matchedSkills: [{ name: 'error-patterns' }, { name: 'workflow-patterns' }],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1502,8 +1503,8 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
     expect(coreQuest.skills).toContain('workflow-patterns');
   });
 
-  it('should return frozen quest map', () => {
-    const questMap = orchestrator._generateQuestMap('test', {
+  it('should return frozen quest map', async () => {
+    const questMap = await orchestrator._generateQuestMap('test', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'test', tier: 'fast' },

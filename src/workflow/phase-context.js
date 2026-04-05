@@ -9,6 +9,8 @@
 
 import { logger } from '../logger.js';
 import { COMPLEXITY_LEVELS, assessComplexity } from '../router/agent-types.js';
+import fs from 'fs-extra';
+import nodePath from 'node:path';
 
 /**
  * PHASE 名称映射
@@ -59,6 +61,9 @@ export function createPhaseContext(options = {}) {
         hooks: 0
       }
     ),
+
+    // 项目编程语言（P1-4: 用于自动注入语言特定 Skill）
+    projectLanguages: Object.freeze(options.projectLanguages || []),
 
     // Quest 地图
     questMap: options.questMap ? Object.freeze(options.questMap) : null,
@@ -253,10 +258,77 @@ export function detectExecutionMode(task, options = {}) {
   return EXECUTION_MODES.FULL;
 }
 
+/**
+ * Phase-Skill 映射表 — 每个 Phase 自动注入的 Skill
+ * @readonly
+ */
+export const PHASE_SKILL_MAP = Object.freeze({
+  discover: ['dependency-analyzer'],
+  reason: ['workflow-patterns'],
+  execute: ['performance-patterns'],
+  verify: ['code-style-enforcer', 'error-patterns', 'dependency-analyzer'],
+  commit: ['git-workflow']
+});
+
+/**
+ * 检测项目是否具备 E2E 测试能力
+ * @param {string} projectDir - 项目目录
+ * @returns {boolean}
+ */
+export function detectE2ECapability(projectDir) {
+  try {
+    const pkgPath = nodePath.join(projectDir, 'package.json');
+    if (!fs.pathExistsSync(pkgPath)) return false;
+    const pkg = fs.readJsonSync(pkgPath);
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    return !!(deps['@playwright/test'] || deps['playwright']);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 检测项目类型 profile（用于自适应压缩策略）
+ * @param {string} projectDir - 项目目录
+ * @returns {'frontend'|'backend'|'monorepo'|'default'}
+ */
+export function detectProjectProfile(projectDir) {
+  try {
+    const pkgPath = nodePath.join(projectDir, 'package.json');
+    if (!fs.pathExistsSync(pkgPath)) return 'default';
+    const pkg = fs.readJsonSync(pkgPath);
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+    // monorepo: workspaces 或 lerna/nx/turbo
+    if (pkg.workspaces || deps['lerna'] || deps['@nrwl/cli'] || deps['turbo']) {
+      return 'monorepo';
+    }
+
+    // frontend: react/vue/angular/svelte/next/nuxt
+    const frontendDeps = ['react', 'vue', 'angular', '@angular/core', 'svelte', 'next', 'nuxt'];
+    if (frontendDeps.some((d) => deps[d])) {
+      return 'frontend';
+    }
+
+    // backend: express/koa/fastify/nest/hapi
+    const backendDeps = ['express', 'koa', 'fastify', '@nestjs/core', '@hapi/hapi'];
+    if (backendDeps.some((d) => deps[d])) {
+      return 'backend';
+    }
+
+    return 'default';
+  } catch {
+    return 'default';
+  }
+}
+
 export default {
   PHASE_NAMES,
   EXECUTION_MODES,
+  PHASE_SKILL_MAP,
   createPhaseContext,
   updatePhaseContext,
-  detectExecutionMode
+  detectExecutionMode,
+  detectE2ECapability,
+  detectProjectProfile
 };

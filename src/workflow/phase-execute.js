@@ -10,10 +10,13 @@ import { routeModel } from '../router/model-router.js';
 import { AgentRegistry } from '../router/agent-registry.js';
 import { CanonicalRouter } from '../router/canonical-router.js';
 import { compactTrace } from '../utils/trace-compactor.js';
-import { updatePhaseContext, EXECUTION_MODES } from './phase-context.js';
+import {
+  updatePhaseContext,
+  EXECUTION_MODES,
+  PHASE_SKILL_MAP,
+  detectE2ECapability
+} from './phase-context.js';
 import { logger } from '../logger.js';
-import fs from 'fs-extra';
-import path from 'node:path';
 
 /**
  * 语义动作映射 — 将 Agent 能力标签映射为自然语言动作描述
@@ -197,8 +200,63 @@ export class PhaseExecute {
       logger.debug(`[PHASE 2] Skill 搜索跳过: ${skillError.message}`);
     }
 
+    // P1-1: Phase-Skill 映射注入（固定关联，不依赖关键词）
+    // 合并 reason + execute + verify 阶段的 Skill，确保全阶段覆盖
+    const phaseSkillNames = [
+      ...(PHASE_SKILL_MAP.reason || []),
+      ...(PHASE_SKILL_MAP.execute || []),
+      ...(PHASE_SKILL_MAP.verify || [])
+    ];
+    for (const skillName of phaseSkillNames) {
+      const alreadyMatched = matchedSkills.some((s) => s.name === skillName);
+      if (!alreadyMatched && matchedSkills.length < 5) {
+        try {
+          const allSkills = await this._skillIndexer.buildIndex();
+          const found = allSkills.entries.find((e) => e.name === skillName);
+          if (found) {
+            matchedSkills.push(found);
+            const loaded = await this._skillIndexer.loadContent(found.relativePath);
+            if (loaded) {
+              skillContents.push({
+                name: found.name,
+                relativePath: found.relativePath,
+                content: loaded.content
+              });
+            }
+          }
+        } catch (phaseSkillError) {
+          logger.debug(`[PHASE 2] Phase-Skill 注入跳过 ${skillName}: ${phaseSkillError.message}`);
+        }
+      }
+    }
+
+    // P1-2: Doctor 推荐的 Skill 自动注入
+    if (ctx.doctorResult?.recommendedActions) {
+      for (const action of ctx.doctorResult.recommendedActions) {
+        if (action.skill && !matchedSkills.some((s) => s.name === action.skill)) {
+          try {
+            const allSkills = await this._skillIndexer.buildIndex();
+            const found = allSkills.entries.find((e) => e.name === action.skill);
+            if (found) {
+              matchedSkills.push(found);
+              const loaded = await this._skillIndexer.loadContent(found.relativePath);
+              if (loaded) {
+                skillContents.push({
+                  name: found.name,
+                  relativePath: found.relativePath,
+                  content: loaded.content
+                });
+              }
+            }
+          } catch (doctorSkillError) {
+            logger.debug(`[PHASE 2] Doctor 推荐 Skill 注入跳过: ${doctorSkillError.message}`);
+          }
+        }
+      }
+    }
+
     // P0-1: 生成 Quest Map
-    const questMap = this._generateQuestMap(ctx.task, {
+    const questMap = await this._generateQuestMap(ctx.task, {
       agentRecommendation,
       matchedSkills,
       skillContents,
@@ -321,7 +379,32 @@ export class PhaseExecute {
       keywords: this._extractKeywords(ctx.task)
     });
 
-    // 创建单 Quest 并执行
+    // P1-5: 微型模式 Skill 注入（搜索 top 1 匹配 Skill）
+    const microSkills = [];
+    const microSkillContents = [];
+    try {
+      const keywords = this._extractKeywords(ctx.task);
+      const searchResult = await this._skillIndexer.search(keywords);
+      const topSkill = Array.isArray(searchResult) ? searchResult.slice(0, 1) : [];
+      for (const skill of topSkill) {
+        const loaded = await this._skillIndexer.loadContent(skill.relativePath);
+        if (loaded) {
+          microSkills.push(skill.name);
+          microSkillContents.push({
+            name: skill.name,
+            relativePath: skill.relativePath,
+            content: loaded.content
+          });
+        }
+      }
+      if (microSkills.length > 0) {
+        logger.info(`[MICRO] Skill 注入: ${microSkills.join(', ')}`);
+      }
+    } catch (skillErr) {
+      logger.debug(`[MICRO] Skill 搜索跳过: ${skillErr.message}`);
+    }
+
+    // 创建单 Quest 并执行（P1-5: 附带 Skill）
     const microQuest = Object.freeze({
       id: 'micro-1',
       title: ctx.task.slice(0, 80),
@@ -330,8 +413,11 @@ export class PhaseExecute {
       complexity: 'low',
       changedFiles: Object.freeze([]),
       acceptanceCriteria: Object.freeze(['编译通过', '相关测试通过']),
-      decisionNotes: Object.freeze([]),
-      skills: Object.freeze([]),
+      decisionNotes: Object.freeze(
+        microSkills.length > 0 ? [`参考 Skill: ${microSkills.join(', ')}`] : []
+      ),
+      skills: Object.freeze(microSkills),
+      skillContents: Object.freeze(microSkillContents),
       agent: null
     });
 
@@ -516,7 +602,10 @@ export class PhaseExecute {
    * @returns {Object[]} Quest Map 数组
    * @private
    */
-  _generateQuestMap(task, { agentRecommendation, matchedSkills, skillContents, modelRoute, mode }) {
+  async _generateQuestMap(
+    task,
+    { agentRecommendation, matchedSkills, skillContents, modelRoute, mode }
+  ) {
     const keywords = this._extractKeywords(task);
     const skillNames = matchedSkills.map((s) => s.name);
     const skillData = skillContents || [];
@@ -599,8 +688,15 @@ export class PhaseExecute {
       })
     );
 
-    // Quest 3: 代码审查
+    // Quest 3: 代码审查 (P1-4: 自动附带 performance-patterns Skill)
     if (mode === EXECUTION_MODES.FULL) {
+      // P2-1: 动态路由 code-reviewer
+      const reviewAgent = await this._resolveDynamicAgent(['review', 'quality'], 'code-reviewer');
+      // P1-4: 注入 performance-patterns 到审查 Skill
+      const perfSkill = skillData.find((s) => s.name === 'performance-patterns');
+      const reviewSkillContents = perfSkill ? [perfSkill] : [];
+      const reviewSkills = perfSkill ? ['performance-patterns'] : [];
+
       quests.push(
         Object.freeze({
           id: `quest-${quests.length + 1}`,
@@ -611,20 +707,23 @@ export class PhaseExecute {
           changedFiles: Object.freeze([]),
           acceptanceCriteria: Object.freeze(['无 Critical 级别问题', '无硬编码密钥', '无安全漏洞']),
           decisionNotes: Object.freeze([]),
-          skills: Object.freeze([]),
-          skillContents: Object.freeze([]),
-          agent: 'code-reviewer',
+          skills: Object.freeze(reviewSkills),
+          skillContents: Object.freeze(reviewSkillContents),
+          agent: reviewAgent,
           agentInvocation: Object.freeze({
-            subagent_type: 'code-reviewer',
+            subagent_type: reviewAgent,
             description: '代码审查',
-            prompt:
-              '审查最近变更的代码。检查: 1)代码质量 2)命名规范 3)错误处理 4)安全隐患 5)性能问题。输出格式: Critical/Warning/Suggestion 分级。',
+            prompt: `审查最近变更的代码。检查: 1)代码质量 2)命名规范 3)错误处理 4)安全隐患 5)性能问题。输出格式: Critical/Warning/Suggestion 分级。${perfSkill ? `\n\n参考性能模式:\n${perfSkill.content?.slice(0, 500) || ''}` : ''}`,
             model: 'sonnet'
           })
         })
       );
 
-      // Quest 4: 对抗性验证
+      // Quest 4: 对抗性验证 (P2-1: 动态路由)
+      const verifyAgent = await this._resolveDynamicAgent(
+        ['verify', 'adversarial'],
+        'verification'
+      );
       quests.push(
         Object.freeze({
           id: `quest-${quests.length + 1}`,
@@ -637,9 +736,9 @@ export class PhaseExecute {
           decisionNotes: Object.freeze([]),
           skills: Object.freeze([]),
           skillContents: Object.freeze([]),
-          agent: 'verification',
+          agent: verifyAgent,
           agentInvocation: Object.freeze({
-            subagent_type: 'verification',
+            subagent_type: verifyAgent,
             description: '对抗性验证',
             prompt:
               '以对抗性视角验证最近的代码变更。攻击面: 1)边界值 2)并发安全 3)幂等性 4)错误路径。每个 PASS 必须包含实际命令输出证明。',
@@ -674,26 +773,47 @@ export class PhaseExecute {
           })
         );
       }
+
+      // P1-3: Quest (条件): 死代码清理（refactor/clean/dead-code 关键词触发）
+      const hasRefactor = keywords.some((k) =>
+        /refactor|clean|dead.?code|unused|冗余|清理|重构/i.test(k)
+      );
+      if (hasRefactor) {
+        quests.push(
+          Object.freeze({
+            id: `quest-${quests.length + 1}`,
+            title: '死代码清理',
+            description: '识别和清理未使用的代码、导入和依赖',
+            keywords: Object.freeze(['refactor', 'cleanup', 'dead-code']),
+            complexity: 'low',
+            changedFiles: Object.freeze([]),
+            acceptanceCriteria: Object.freeze(['未使用代码已移除', '编译通过', '测试通过']),
+            decisionNotes: Object.freeze([]),
+            skills: Object.freeze([]),
+            skillContents: Object.freeze([]),
+            agent: 'refactor-cleaner',
+            agentInvocation: Object.freeze({
+              subagent_type: 'refactor-cleaner',
+              description: '死代码清理',
+              prompt:
+                '检测并清理死代码。步骤: 1)运行 npx knip 检测未使用导出 2)按风险分类 3)只移除安全级别项目 4)记录到 DELETION_LOG',
+              model: 'sonnet'
+            })
+          })
+        );
+      }
     }
 
     return Object.freeze(quests);
   }
 
   /**
-   * 检测项目是否具备 E2E 测试能力
+   * 检测项目是否具备 E2E 测试能力（委托给共享函数）
    * @returns {boolean}
    * @private
    */
   _detectE2ECapability() {
-    try {
-      const pkgPath = path.join(this.projectDir, 'package.json');
-      if (!fs.pathExistsSync(pkgPath)) return false;
-      const pkg = fs.readJsonSync(pkgPath);
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      return !!(deps['@playwright/test'] || deps['playwright']);
-    } catch {
-      return false;
-    }
+    return detectE2ECapability(this.projectDir);
   }
 
   /**
@@ -771,12 +891,19 @@ export class PhaseExecute {
       try {
         await this._executeQuest(quest, modelRoute, questEngine, ctx);
         questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
+        // P2-4: 记录成功反馈
+        const agentName = quest.agent || 'general-purpose';
+        await this._recordAgentFeedback(agentName, 'success');
         return { success: true, questId: quest.id };
       } catch (error) {
         lastError = error;
         logger.warn(`[Quest ${quest.id}] Attempt ${attempt + 1} failed: ${error.message}`);
       }
     }
+
+    // P2-4: 记录失败反馈
+    const failedAgent = quest.agent || 'general-purpose';
+    await this._recordAgentFeedback(failedAgent, 'failure', lastError?.message);
 
     return {
       success: false,
@@ -833,5 +960,47 @@ export class PhaseExecute {
     const englishTerms = (task.match(/[a-z][a-z0-9._-]+/gi) || []).filter((t) => t.length > 2);
     const chineseTerms = task.match(/[\u4e00-\u9fff]{2,}/g) || [];
     return [...new Set([...englishTerms, ...chineseTerms])];
+  }
+
+  /**
+   * P2-1: 动态路由 Agent（通过 resolveTeam 查找，失败时 fallback）
+   * @param {string[]} capabilityKeywords - 能力关键词
+   * @param {string} fallbackAgent - 默认 Agent 名称
+   * @returns {Promise<string>} Agent 名称
+   * @private
+   */
+  async _resolveDynamicAgent(capabilityKeywords, fallbackAgent) {
+    try {
+      const registry = await this._ensureAgentRegistry();
+      const team = registry.resolveTeam({
+        keywords: capabilityKeywords,
+        maxSize: 1
+      });
+      return team.lead ? team.lead.name : fallbackAgent;
+    } catch {
+      return fallbackAgent;
+    }
+  }
+
+  /**
+   * P2-4: 记录 Agent 执行反馈到 CanonicalRouter
+   * @param {string} agentName - Agent 名称
+   * @param {'success'|'failure'} outcome - 执行结果
+   * @param {string} [reason] - 失败原因
+   * @private
+   */
+  async _recordAgentFeedback(agentName, outcome, reason) {
+    try {
+      if (!this._canonicalRouter) {
+        this._canonicalRouter = new CanonicalRouter();
+        await this._canonicalRouter.initialize();
+      }
+      const feedbackId = `fb_${Date.now()}_${agentName}`;
+      this._canonicalRouter._recordRoutingAttempt(agentName, [], feedbackId);
+      this._canonicalRouter.recordFeedback(feedbackId, { outcome, reason });
+      logger.debug(`[PHASE 3] Agent 反馈已记录: ${agentName} → ${outcome}`);
+    } catch (fbError) {
+      logger.debug(`[PHASE 3] Agent 反馈记录跳过: ${fbError.message}`);
+    }
   }
 }
