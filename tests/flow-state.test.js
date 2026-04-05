@@ -12,8 +12,8 @@ import {
 } from '../src/flow/flow-state.js';
 
 describe('FLOW_STATES', () => {
-  it('should have 8 states', () => {
-    expect(Object.keys(FLOW_STATES)).toHaveLength(8);
+  it('should have 9 states', () => {
+    expect(Object.keys(FLOW_STATES)).toHaveLength(9);
   });
 
   it('should be frozen', () => {
@@ -33,8 +33,8 @@ describe('FLOW_STATES', () => {
 });
 
 describe('FLOW_EVENTS', () => {
-  it('should have 10 events', () => {
-    expect(Object.keys(FLOW_EVENTS)).toHaveLength(10);
+  it('should have 11 events', () => {
+    expect(Object.keys(FLOW_EVENTS)).toHaveLength(11);
   });
 
   it('should be frozen', () => {
@@ -62,7 +62,12 @@ describe('TRANSITIONS', () => {
     expect(TRANSITIONS[FLOW_STATES.EXECUTING][FLOW_EVENTS.EXECUTE_DONE]).toBe(
       FLOW_STATES.REVIEWING
     );
-    expect(TRANSITIONS[FLOW_STATES.REVIEWING][FLOW_EVENTS.REVIEW_DONE]).toBe(FLOW_STATES.COMPLETED);
+    expect(TRANSITIONS[FLOW_STATES.REVIEWING][FLOW_EVENTS.REVIEW_DONE]).toBe(
+      FLOW_STATES.COMMITTING
+    );
+    expect(TRANSITIONS[FLOW_STATES.COMMITTING][FLOW_EVENTS.COMMIT_DONE]).toBe(
+      FLOW_STATES.COMPLETED
+    );
   });
 
   it('should allow fail from working states', () => {
@@ -70,6 +75,7 @@ describe('TRANSITIONS', () => {
     expect(TRANSITIONS[FLOW_STATES.PLANNING][FLOW_EVENTS.FAIL]).toBe(FLOW_STATES.FAILED);
     expect(TRANSITIONS[FLOW_STATES.EXECUTING][FLOW_EVENTS.FAIL]).toBe(FLOW_STATES.FAILED);
     expect(TRANSITIONS[FLOW_STATES.REVIEWING][FLOW_EVENTS.FAIL]).toBe(FLOW_STATES.FAILED);
+    expect(TRANSITIONS[FLOW_STATES.COMMITTING][FLOW_EVENTS.FAIL]).toBe(FLOW_STATES.FAILED);
   });
 
   it('should allow pause from working states', () => {
@@ -77,6 +83,7 @@ describe('TRANSITIONS', () => {
     expect(TRANSITIONS[FLOW_STATES.PLANNING][FLOW_EVENTS.PAUSE]).toBe(FLOW_STATES.PAUSED);
     expect(TRANSITIONS[FLOW_STATES.EXECUTING][FLOW_EVENTS.PAUSE]).toBe(FLOW_STATES.PAUSED);
     expect(TRANSITIONS[FLOW_STATES.REVIEWING][FLOW_EVENTS.PAUSE]).toBe(FLOW_STATES.PAUSED);
+    expect(TRANSITIONS[FLOW_STATES.COMMITTING][FLOW_EVENTS.PAUSE]).toBe(FLOW_STATES.PAUSED);
   });
 
   it('should allow reset from terminal and paused states', () => {

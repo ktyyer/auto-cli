@@ -164,3 +164,10 @@ interface ApiContract<Req, Res> {
 1. **→ quest-designer**: 使用"交接指令"部分生成 Quest Map
 2. **→ tdd-guide**: 使用"组件设计"中的接口定义生成测试骨架
 3. **→ code-reviewer**: 架构决策表作为审查依据
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **java-patterns** — Java/Spring Boot 模式库（Controller-Service-Mapper 模板）
+- **performance-patterns** — 性能优化模式（缓存、查询优化、懒加载策略）
+- **workflow-patterns** — 工作流模式（Plan Mode、Agent 编排、代码审查清单）

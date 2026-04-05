@@ -104,6 +104,8 @@ export class WorkflowOrchestrator {
     this.phaseCommit = new PhaseCommit({
       memory: this.memory,
       tokenBudget: this.tokenBudget,
+      flowEngine: this.flowEngine,
+      contextMonitor: this.contextMonitor,
       projectDir: this.projectDir,
       dryRun: this.dryRun,
       skillIndexer: this.skillIndexer
@@ -170,6 +172,18 @@ export class WorkflowOrchestrator {
 
       // 5. PHASE 4: VERIFY
       this.phaseContext = await this.phaseVerify.run(this.phaseContext);
+
+      // P1-1: 门禁失败时回滚
+      if (this.phaseContext.gateFailed) {
+        logger.error(`[Orchestrator] 门禁失败: ${this.phaseContext.gateReason}，回滚变更`);
+        try {
+          const { execSync } = await import('node:child_process');
+          execSync('git checkout -- .', { cwd: this.projectDir, stdio: 'pipe' });
+        } catch (rollbackError) {
+          logger.warn(`[Orchestrator] 回滚失败: ${rollbackError.message}`);
+        }
+        return this._buildResult('gate_failed', new Error(this.phaseContext.gateReason));
+      }
 
       // 6. PHASE 5: COMMIT
       this.phaseContext = await this.phaseCommit.run(this.phaseContext);

@@ -18,6 +18,7 @@ export const FLOW_STATES = Object.freeze({
   PLANNING: 'planning',
   EXECUTING: 'executing',
   REVIEWING: 'reviewing',
+  COMMITTING: 'committing', // P1-3: PHASE 5 提交状态
   COMPLETED: 'completed',
   FAILED: 'failed',
   PAUSED: 'paused'
@@ -33,6 +34,7 @@ export const FLOW_EVENTS = Object.freeze({
   PLAN_DONE: 'plan_done',
   EXECUTE_DONE: 'execute_done',
   REVIEW_DONE: 'review_done',
+  COMMIT_DONE: 'commit_done', // P1-3: PHASE 5 完成事件
   FAIL: 'fail',
   RETRY: 'retry',
   PAUSE: 'pause',
@@ -66,7 +68,12 @@ export const TRANSITIONS = Object.freeze({
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
   }),
   [FLOW_STATES.REVIEWING]: Object.freeze({
-    [FLOW_EVENTS.REVIEW_DONE]: FLOW_STATES.COMPLETED,
+    [FLOW_EVENTS.REVIEW_DONE]: FLOW_STATES.COMMITTING, // P1-3: REVIEW → COMMIT
+    [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
+    [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
+  }),
+  [FLOW_STATES.COMMITTING]: Object.freeze({
+    [FLOW_EVENTS.COMMIT_DONE]: FLOW_STATES.COMPLETED, // P1-3: COMMIT → COMPLETED
     [FLOW_EVENTS.FAIL]: FLOW_STATES.FAILED,
     [FLOW_EVENTS.PAUSE]: FLOW_STATES.PAUSED
   }),

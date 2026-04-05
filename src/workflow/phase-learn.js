@@ -166,6 +166,7 @@ export class PhaseLearn {
     }
 
     // P1-3/P1-6: 架构变更时自动触发 doc-updater
+    // P1-2 修复: 不仅记录 invocation，还将调度信息写入待执行队列
     try {
       const isArchitectureChange = this._detectArchitectureChange(ctx.task);
       if (isArchitectureChange) {
@@ -196,6 +197,10 @@ export class PhaseLearn {
           },
           { tier: 'session', tags: ['doc-updater', 'invocation'] }
         );
+
+        // P1-2: 将调度信息写入 .auto/pending-invocations.json 供下次 /auto 消费
+        await this._persistPendingInvocation(docInvocation);
+
         logger.info(
           `[PHASE 6] 架构变更: doc-updater 执行指令已生成 (→ ${docRouteResult.agent.name})`
         );
@@ -205,6 +210,7 @@ export class PhaseLearn {
     }
 
     // P1-4/P1-6: refactor-cleaner — 生成死代码清理指令
+    // P1-2 修复: 不仅记录 invocation，还将调度信息写入待执行队列
     try {
       const deletionLog = await this._generateDeletionLog();
       if (deletionLog.entries.length > 0) {
@@ -229,6 +235,9 @@ export class PhaseLearn {
           },
           { tier: 'session', tags: ['refactor-cleaner', 'invocation'] }
         );
+
+        // P1-2: 将调度信息写入 .auto/pending-invocations.json 供下次 /auto 消费
+        await this._persistPendingInvocation(refactorInvocation);
       }
     } catch (logError) {
       logger.debug(`[PHASE 6] DELETION_LOG 生成跳过: ${logError.message}`);
@@ -420,6 +429,43 @@ export class PhaseLearn {
       entries: Object.freeze(entries),
       generatedAt: new Date().toISOString()
     });
+  }
+
+  /**
+   * P1-2: 将待执行的 Agent 调度写入持久化队列
+   * 写入 .auto/pending-invocations.json，供下次 /auto 消费
+   * @param {Object} invocation - Agent 调度描述
+   * @private
+   */
+  async _persistPendingInvocation(invocation) {
+    try {
+      const queueDir = path.join(this.projectDir, '.auto');
+      await fs.ensureDir(queueDir);
+      const queuePath = path.join(queueDir, 'pending-invocations.json');
+
+      let queue = [];
+      try {
+        queue = await fs.readJson(queuePath);
+      } catch {
+        queue = [];
+      }
+
+      queue.push({
+        ...invocation,
+        enqueuedAt: Date.now(),
+        status: 'pending'
+      });
+
+      // 保留最近 20 条
+      if (queue.length > 20) {
+        queue = queue.slice(-20);
+      }
+
+      await fs.writeJson(queuePath, queue, { spaces: 2 });
+      logger.info(`[PHASE 6] 待执行调度已入队: ${invocation.subagent_type} → ${queuePath}`);
+    } catch (persistError) {
+      logger.debug(`[PHASE 6] 调度队列持久化跳过: ${persistError.message}`);
+    }
   }
 
   /**

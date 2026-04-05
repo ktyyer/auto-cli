@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.28.0.tgz
+npm install -g auto-cli-0.29.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -265,7 +265,22 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.28.0（当前）
+### v0.29.0（当前）
+
+**v6 深度审计 + 10 项架构修复**：
+- P0: 修复 PHASE 5 changedFiles 空转（Quest 执行后通过 git diff 收集变更文件）
+- P0: 修复 Agent 反馈回路 ID 不匹配（预路由获取真实 feedbackId 关联路由决策）
+- P0: 修复 `auto analyze` 命令崩溃（安全访问 agentRegistry）
+- P1: 覆盖率门禁强制执行（FULL 模式 <80% 回滚变更）
+- P1: doc-updater/refactor-cleaner 实际调度执行（写入 .auto/pending-invocations.json 队列）
+- P1: PhaseCommit 集成 FlowEngine（新增 COMMITTING 状态 + COMMIT_DONE 事件）
+- P1: 扩展 handoff 路径含全部 10 Agent（7 条标准流程 + 触发条件映射）
+- P1: 全部 10 Agent 添加"参考 Skills"节（Agent-Skill 交叉引用）
+- P2: error-patterns 新增 TypeScript 编译错误表（10 个 TS 错误码）
+- P2: verification Agent 修复 Phase 编号缺失（新增 Phase 3 深度攻击执行）
+- 测试 727 全绿，lint 0 错误，评分 82→88
+
+### v0.28.0
 
 **全能力审计 v5 + PHASE_SKILL_MAP 扩展**：
 - PHASE_SKILL_MAP 从 3 phase 扩展到 5 phase（reason/execute/verify 自动注入 Skill）

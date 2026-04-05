@@ -119,6 +119,22 @@ tags: [error, debugging, patterns, build-fix, troubleshooting, python, go, rust,
 | `cannot find type xxx in scope` | 类型未导入 | 检查 `use` 和 `pub` 可见性 |
 | `borrow of moved value` | 移动后使用 | 使用 `.clone()` 或 `Rc/Arc` |
 
+
+### 10. TypeScript 编译错误
+
+| 错误代码 | 关键词 | 根因 | 修复 |
+|---------|--------|------|------|
+| TS2322 | 类型不可分配 | 类型推断不匹配 | 添加类型断言或修正接口定义 |
+| TS2307 | 找不到模块 | 模块路径错误或缺少类型声明 | 安装 @types/ 包或修正 import 路径 |
+| TS2304 | 找不到名称 | 未导入或缺少声明 | 添加 import 或声明文件 |
+| TS2554 | 参数数量错误 | 函数调用参数不匹配 | 检查函数签名，修正参数 |
+| TS2345 | 参数类型不兼容 | 传入参数类型与声明不符 | 使用类型断言或修正调用方 |
+| TS2694 | 命名空间无导出成员 | 接口/类型未导出 | 添加 export 关键字 |
+| TS18046 | 值可能为 undefined | 缺少 null 检查 | 添加可选链 `?.` 或空值检查 |
+| TS2740 | 缺少必要属性 | 对象字面量缺少必需字段 | 补充缺失属性或使用 Partial<T> |
+| TS2323 | 不能重新导出类型 | re-export 冲突 | 使用 `export type { ... }` 替代 |
+| TS2589 | 类型实例过深 | 递归类型或复杂泛型 | 简化类型定义或使用断言 |
+
 ## 修复策略模板
 
 当 build-fix Agent 遇到错误时，按以下优先级尝试：

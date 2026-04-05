@@ -86,7 +86,18 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
 - 重点审查最后 20%: 错误处理路径、边界分支、清理逻辑
 - 如果代码有 try/catch，catch 里的代码本身有 bug 吗?
 
-### Phase 4: 输出格式
+
+### Phase 3: 深度攻击执行
+
+对每个目标执行定向攻击：
+
+1. **边界值攻击** -- 超出范围的参数（0, -1, MAX_SAFE_INTEGER, Infinity）
+2. **类型混淆攻击** -- 错误类型参数（string where number expected）
+3. **并发攻击** -- 竞态条件、重复提交
+4. **幂等性验证** -- 同一操作执行两次结果是否一致
+5. **错误路径覆盖** -- 强制触发 catch 分支
+
+### Phase 5: 输出格式
 
 对每个验证点:
 
@@ -191,3 +202,9 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
 1. `.auto/verification-checks.json`（项目级，优先）
 2. `~/.claude/verification-checks.json`（用户级，兜底）
 3. 内置检查（auto-cli 项目默认）
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **error-patterns** — 常见错误模式库（边界值、并发、幂等性验证模式）
+- **code-style-enforcer** — 代码风格规则（不可变模式检测、可变操作识别）

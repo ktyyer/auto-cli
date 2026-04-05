@@ -244,9 +244,10 @@ export async function runAnalyze(task, options = {}) {
   const agentResult = ctx.agentRecommendation;
   const questMap = ctx.questMap || [];
 
-  // 构建 team 信息
-  const teamResult = orchestrator.agentRegistry.resolveTeam({
-    keywords: orchestrator._extractKeywords(task),
+  // 构建 team 信息（P0-3: 通过 phaseExecute._ensureAgentRegistry() 安全获取）
+  const registry = await orchestrator.phaseExecute._ensureAgentRegistry();
+  const teamResult = registry.resolveTeam({
+    keywords: orchestrator.phaseExecute._extractKeywords(task),
     maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
   });
 

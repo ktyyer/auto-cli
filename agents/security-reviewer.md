@@ -111,3 +111,9 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
 - [ ] 依赖无已知漏洞
 - [ ] 金融操作使用原子事务和行锁
 ```
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **error-patterns** — 常见错误模式库（安全漏洞模式、注入检测规则）
+- **code-style-enforcer** — 代码风格规则（安全编码规范、敏感信息检测）

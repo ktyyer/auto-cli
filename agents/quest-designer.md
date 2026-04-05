@@ -614,3 +614,10 @@ v4 质量项：
 - [ ] 所有 🚫 边界限制列出了具体文件名 + 禁止的技术/模式
 - [ ] 所有 🔴 高风险 Quest 配备了额外护栏
 - [ ] 依赖顺序经过拓扑排序验证，无循环依赖
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **java-patterns** — Java/Spring Boot 模式库（Controller-Service-Mapper 模板）
+- **workflow-patterns** — 工作流模式（Plan Mode、Agent 编排、代码审查清单）
+- **performance-patterns** — 性能优化模式（缓存、查询优化、懒加载策略）

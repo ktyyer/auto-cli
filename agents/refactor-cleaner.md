@@ -114,3 +114,9 @@ done
 - 有疑问时不移除，保守优于后悔
 - 不理解代码存在原因时绝不删除
 - 动态导入模式搜索：`grep -rn "require\(.*'\|import\(.*'" src/`
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **dependency-analyzer** — 依赖分析工具（npm 依赖图、未使用导出检测）
+- **code-style-enforcer** — 代码风格规则（命名、格式、import 排序规范）

@@ -49,11 +49,30 @@ Agent 向下游传递结果时，使用以下标准结构：
 
 ### 交接路径
 
-```
-architect → quest-designer → (tdd-guide | code-reviewer) → verification
-                                      ↓
-                              build-error-resolver（失败时）
-```
+完整 Handoff 路径：
+
+用户意图 → CanonicalRouter → [主 Agent]
+
+触发条件映射：
+- architect: 架构/系统/重构/迁移 关键词
+- quest-designer: 规划/任务拆解/Quest 设计
+- tdd-guide: 测试/TDD/覆盖率 关键词
+- code-reviewer: 审查/质量/code-review 关键词（自动：Agent 写代码后）
+- verification: 验证/边界/对抗/测试 关键词
+- security-reviewer: 安全/漏洞/注入/密钥 关键词
+- build-error-resolver: 编译失败/类型错误/构建错误（自动：Quest 执行失败时）
+- e2e-runner: E2E/Playwright/端到端 关键词
+- doc-updater: 文档/README/代码地图 关键词（自动：架构变更时）
+- refactor-cleaner: 清理/死代码/重构/unused 关键词
+
+标准流程：
+1. architect → quest-designer → [tdd-guide | code-reviewer] → verification
+2. 失败时: → build-error-resolver（重试 2 次后自动路由）
+3. 安全场景: → security-reviewer（安全敏感关键词触发 +50 分提升）
+4. 质量场景: code-reviewer → security-reviewer（安全升级 handoff）
+5. 架构变更: → doc-updater（Phase 6 自动检测触发）
+6. 死代码: → refactor-cleaner（deletion-log 触发）
+7. E2E: tdd-guide → e2e-runner（Playwright 检测到时 handoff）
 
 ### 交接规则
 

@@ -113,7 +113,12 @@ export class PhaseVerify {
         if (coverageResult.passing) {
           logger.info(`[PHASE 4] 覆盖率达标: ${coverageResult.overall}%`);
         } else if (isFullMode) {
-          logger.warn(`[PHASE 4] 覆盖率不足: ${coverageResult.overall}% < 80% (完整模式门禁)`);
+          // P1-1: FULL 模式下覆盖率门禁强制执行
+          logger.error(`[PHASE 4] 覆盖率门禁失败: ${coverageResult.overall}% < 80% (完整模式要求)`);
+          ctx = updatePhaseContext(ctx, {
+            gateFailed: true,
+            gateReason: `覆盖率 ${coverageResult.overall}% < 80%`
+          });
         } else {
           logger.info(`[PHASE 4] 覆盖率: ${coverageResult.overall}% (非阻断，信息记录)`);
         }

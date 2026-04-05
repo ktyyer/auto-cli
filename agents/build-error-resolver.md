@@ -144,3 +144,9 @@ npm run build 2>&1 | head -100
 ## 记住
 
 目标是以最小改动快速修复错误。修复错误，验证构建通过，继续前进。速度和精确度优于完美。
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **error-patterns** — 常见错误模式库（TypeScript/Java/Go/Rust 错误码映射）
+- **code-style-enforcer** — 代码风格规则（命名、格式、import 排序规范）

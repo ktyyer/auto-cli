@@ -377,14 +377,35 @@ export class PhaseExecute {
       }
     }
 
+    // P0-1: 执行后收集变更文件列表（通过 git diff --name-only）
+    let changedFiles = [];
+    try {
+      const { execSync } = await import('node:child_process');
+      const diffOutput = execSync('git diff --name-only HEAD', {
+        cwd: this.projectDir,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 5000
+      })
+        .toString()
+        .trim();
+      if (diffOutput) {
+        changedFiles = diffOutput.split('\n').filter(Boolean);
+      }
+    } catch (diffError) {
+      logger.debug(`[PHASE 3] 变更文件检测跳过: ${diffError.message}`);
+    }
+
     this.flowEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
     ctx = updatePhaseContext(ctx, {
       completedQuests,
-      failedQuests
+      failedQuests,
+      changedFiles
     });
 
-    logger.info(`[PHASE 3] 完成，成功: ${completedQuests.length}, 失败: ${failedQuests.length}`);
+    logger.info(
+      `[PHASE 3] 完成，成功: ${completedQuests.length}, 失败: ${failedQuests.length}, 变更: ${changedFiles.length} 文件`
+    );
 
     return ctx;
   }
@@ -471,10 +492,29 @@ export class PhaseExecute {
       await this._executeQuest(microQuest, modelRoute, questEngine, ctx);
       questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
+      // P0-1: MICRO 模式也收集变更文件
+      let microChangedFiles = [];
+      try {
+        const { execSync } = await import('node:child_process');
+        const diffOutput = execSync('git diff --name-only HEAD', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim();
+        if (diffOutput) {
+          microChangedFiles = diffOutput.split('\n').filter(Boolean);
+        }
+      } catch {
+        // git diff 失败不阻断
+      }
+
       ctx = updatePhaseContext(ctx, {
         completedQuests: [microQuest.id],
         failedQuests: [],
-        questMap: [microQuest]
+        questMap: [microQuest],
+        changedFiles: microChangedFiles
       });
 
       logger.info('[MICRO] 微型任务执行完成');
@@ -944,14 +984,29 @@ export class PhaseExecute {
 
     this.questEngines.set(quest.id, questEngine);
 
+    // P0-2: 预先路由获取真实 feedbackId
+    let routingFeedbackId = null;
+    try {
+      if (!this._canonicalRouter) {
+        this._canonicalRouter = new CanonicalRouter();
+        await this._canonicalRouter.initialize();
+      }
+      const preRoute = await this._canonicalRouter.route(quest.description || quest.title || '', {
+        scope: 'quest-execution'
+      });
+      routingFeedbackId = preRoute.feedbackId;
+    } catch {
+      // 路由失败不影响执行
+    }
+
     let lastError = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         await this._executeQuest(quest, modelRoute, questEngine, ctx);
         questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
-        // P2-4: 记录成功反馈
+        // P0-2: 使用真实的 feedbackId 记录成功反馈
         const agentName = quest.agent || 'general-purpose';
-        await this._recordAgentFeedback(agentName, 'success');
+        await this._recordAgentFeedback(agentName, 'success', undefined, routingFeedbackId);
         return { success: true, questId: quest.id };
       } catch (error) {
         lastError = error;
@@ -959,9 +1014,9 @@ export class PhaseExecute {
       }
     }
 
-    // P2-4: 记录失败反馈
+    // P0-2: 使用真实的 feedbackId 记录失败反馈
     const failedAgent = quest.agent || 'general-purpose';
-    await this._recordAgentFeedback(failedAgent, 'failure', lastError?.message);
+    await this._recordAgentFeedback(failedAgent, 'failure', lastError?.message, routingFeedbackId);
 
     return {
       success: false,
@@ -1039,21 +1094,29 @@ export class PhaseExecute {
 
   /**
    * P2-4: 记录 Agent 执行反馈到 CanonicalRouter
+   * P0-2 修复: 使用 route() 返回的真实 feedbackId，而非合成 ID
    * @param {string} agentName - Agent 名称
    * @param {'success'|'failure'} outcome - 执行结果
    * @param {string} [reason] - 失败原因
+   * @param {string} [feedbackId] - 来自 route() 的反馈 ID（优先使用）
    * @private
    */
-  async _recordAgentFeedback(agentName, outcome, reason) {
+  async _recordAgentFeedback(agentName, outcome, reason, feedbackId) {
     try {
       if (!this._canonicalRouter) {
         this._canonicalRouter = new CanonicalRouter();
         await this._canonicalRouter.initialize();
       }
-      const feedbackId = `fb_${Date.now()}_${agentName}`;
-      this._canonicalRouter._recordRoutingAttempt(agentName, [], feedbackId);
+      // P0-2: 如果有真实的 feedbackId 直接使用，否则通过路由获取
+      if (!feedbackId) {
+        const routeResult = await this._canonicalRouter.route(
+          `${agentName} feedback for ${outcome}`,
+          { scope: 'feedback' }
+        );
+        feedbackId = routeResult.feedbackId;
+      }
       this._canonicalRouter.recordFeedback(feedbackId, { outcome, reason });
-      logger.debug(`[PHASE 3] Agent 反馈已记录: ${agentName} → ${outcome}`);
+      logger.debug(`[PHASE 3] Agent 反馈已记录: ${agentName} → ${outcome} (id=${feedbackId})`);
     } catch (fbError) {
       logger.debug(`[PHASE 3] Agent 反馈记录跳过: ${fbError.message}`);
     }

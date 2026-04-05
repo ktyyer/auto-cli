@@ -2,9 +2,11 @@
  * Phase Commit — PHASE 5: 增量提交
  *
  * 负责 git commit 消息构建和执行
+ * P1-3: 集成 FlowEngine 状态跟踪
  * P2-2: 自动加载 git-workflow Skill 约定作为 commit 格式参考
  */
 
+import { FLOW_EVENTS } from '../flow/flow-engine.js';
 import { logger } from '../logger.js';
 import { updatePhaseContext } from './phase-context.js';
 
@@ -13,13 +15,25 @@ export class PhaseCommit {
    * @param {Object} deps
    * @param {import('../memory/memory-manager.js').MemoryManager} deps.memory
    * @param {import('../budget/token-budget.js').TokenBudgetManager} deps.tokenBudget
+   * @param {import('../flow/flow-engine.js').FlowEngine} [deps.flowEngine] - P1-3
+   * @param {import('../budget/context-monitor.js').ContextMonitor} [deps.contextMonitor] - P1-3
    * @param {string} deps.projectDir
    * @param {boolean} deps.dryRun
    * @param {import('../skills/skill-indexer.js').SkillIndexer} [deps.skillIndexer] - P2-2
    */
-  constructor({ memory, tokenBudget, projectDir, dryRun, skillIndexer }) {
+  constructor({
+    memory,
+    tokenBudget,
+    flowEngine,
+    contextMonitor,
+    projectDir,
+    dryRun,
+    skillIndexer
+  }) {
     this.memory = memory;
     this.tokenBudget = tokenBudget;
+    this.flowEngine = flowEngine || null;
+    this.contextMonitor = contextMonitor || null;
     this.projectDir = projectDir;
     this.dryRun = dryRun;
     this.skillIndexer = skillIndexer || null;
@@ -74,7 +88,16 @@ export class PhaseCommit {
       gitResult
     });
 
+    // P1-3: FlowEngine 状态转移
+    if (this.flowEngine) {
+      this.flowEngine.transition(FLOW_EVENTS.COMMIT_DONE);
+    }
+
     this.tokenBudget.consume('commit', 2000, 'PHASE 5 提交');
+
+    if (this.contextMonitor) {
+      this.contextMonitor.record(2000, 'PHASE 5');
+    }
 
     return ctx;
   }

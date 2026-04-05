@@ -73,9 +73,10 @@ describe('FlowEngine', () => {
       engine.transition(FLOW_EVENTS.PLAN_DONE);
       engine.transition(FLOW_EVENTS.EXECUTE_DONE);
       engine.transition(FLOW_EVENTS.REVIEW_DONE);
+      engine.transition(FLOW_EVENTS.COMMIT_DONE);
 
       expect(engine.state).toBe(FLOW_STATES.COMPLETED);
-      expect(engine.history).toHaveLength(5);
+      expect(engine.history).toHaveLength(6);
     });
   });
 

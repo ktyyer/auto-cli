@@ -103,3 +103,10 @@ const apiKey = process.env.API_KEY;  // ✓ 正确
 - 验证缓存回退行为
 
 根据你项目的 `CLAUDE.md` 或 skill 文件自定义。
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **code-style-enforcer** — 代码风格规则（命名、格式、import 排序规范）
+- **workflow-patterns** — 工作流模式（Plan Mode、Agent 编排、代码审查清单）
+- **java-patterns** — Java/Spring Boot 模式库（Controller-Service-Mapper 模板）

@@ -174,3 +174,8 @@ export default defineConfig({
   },
 });
 ```
+## 参考 Skills
+
+执行时自动加载以下 Skill 以增强分析能力：
+
+- **error-patterns** — 常见错误模式库（测试失败模式、超时、Flaky 检测）
