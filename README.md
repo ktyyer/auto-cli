@@ -36,7 +36,7 @@ auto install
 
 # 方式二：从源码安装
 npm pack
-npm install -g auto-cli-0.27.0.tgz
+npm install -g auto-cli-0.28.0.tgz
 auto install
 
 # 安装后重启 Claude Code
@@ -109,13 +109,18 @@ auto install
 | security | 安全检查清单 |
 | testing | 测试要求（80%+ 覆盖率） |
 
-### Skills 知识库（3 个）
+### Skills 知识库（8 个）
 
 | Skill | 领域 |
 |-------|------|
-| workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪 + 10 维度审查） |
-| error-patterns | 常见错误模式速查（Node/Vitest/Git/Claude/跨平台/Java Spring 10 种） |
 | init-project | CLAUDE.md 智能初始化（结构化模板 + 7 板块生成 + 会话恢复） |
+| workflow-patterns | 开发工作流模式（Plan Mode + Multi-Agent 编排 + 根因追踪 + 10 维度审查） |
+| code-style-enforcer | TS/JS + Java 代码风格规则（自动注入 PHASE 4 VERIFY） |
+| git-workflow | Git 分支策略 + 约定式提交 + PR 模板（自动注入 PHASE 5 COMMIT） |
+| dependency-analyzer | npm/Maven/Go 依赖安全分析（自动注入 PHASE 1 + PHASE 4） |
+| performance-patterns | 15+ 性能优化模式（DB/缓存/React/通用） |
+| java-patterns | Spring Boot + MyBatis Plus 12 个高频模板 |
+| error-patterns | 9 类错误模式速查（Node/Java/Go/Rust/Claude Code） |
 
 ### Hooks 自动化（16 个 Hook，8 类事件）
 
@@ -182,7 +187,7 @@ auto install
 
 v0.12.0 引入的核心组件，实现中心化 Agent 路由决策：
 
-- **Agent 注册表**：9 个内置 Agent 的完整清单定义
+- **Agent 注册表**：10 个内置 Agent 的完整清单定义
 - **智能路由**：意图识别 + 关键词匹配 + 优先级排序 + 回退链
 - **安全优先**：安全敏感意图自动提升 security-reviewer 优先级
 
@@ -260,7 +265,17 @@ auto save search -q "关键词"  # 搜索知识条目
 
 ## 版本历史
 
-### v0.27.0（当前）
+### v0.28.0（当前）
+
+**全能力审计 v5 + PHASE_SKILL_MAP 扩展**：
+- PHASE_SKILL_MAP 从 3 phase 扩展到 5 phase（reason/execute/verify 自动注入 Skill）
+- doc-updater 触发条件扩展（新增 15 个功能级+文档级关键词）
+- 项目语言自动检测（`_detectProjectLanguages()` 检测 Java/Go/Python/Rust/Node）
+- TDD Guard Hook 检查集成到 Doctor recommendedActions
+- Skills 数量从 3 个扩展到 8 个（新增 code-style-enforcer, git-workflow, dependency-analyzer, performance-patterns, java-patterns）
+- 测试 700 全绿，lint 0 错误，可达性 98%
+
+### v0.27.0
 
 **全能力审计 + 架构重构**：
 - WorkflowOrchestrator 拆分：2077行 → 579行协调器 + 5 个 phase 子模块
