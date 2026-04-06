@@ -264,7 +264,7 @@ export class PhaseDiscover {
   }
 
   /**
-   * 自动生成最小默认 hooks.json（TDD Guard + Prettier + TS Check + Secret Detection）
+   * 自动生成最小默认 hooks.json（Secret Detection + Prettier + TS Check）
    * @param {string} hooksDir
    * @param {string} hooksPath
    * @private
@@ -315,7 +315,7 @@ export class PhaseDiscover {
 
     await fs.ensureDir(hooksDir);
     await fs.writeJson(hooksPath, defaultConfig, { spaces: 2 });
-    logger.info('[PHASE 1] 已自动生成默认 hooks.json（4 个 hook）');
+    logger.info('[PHASE 1] 已自动生成默认 hooks.json（3 个 hook）');
   }
 
   /**
@@ -362,7 +362,9 @@ export class PhaseDiscover {
     const source = options.source || 'doctor';
 
     const installFixResult = async (installStatus) => {
-      const missingComponents = Object.entries(installStatus)
+      const normalizedInstallStatus =
+        installStatus && typeof installStatus === 'object' ? installStatus : {};
+      const missingComponents = Object.entries(normalizedInstallStatus)
         .filter(([, status]) => !status?.installed)
         .map(([componentKey]) => componentKey);
 

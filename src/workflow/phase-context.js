@@ -101,6 +101,9 @@ export function createPhaseContext(options = {}) {
     // 变更的文件列表
     changedFiles: Object.freeze(options.changedFiles || []),
 
+    // Quest 执行结果
+    executionResults: Object.freeze(options.executionResults || []),
+
     // 知识沉淀
     insights: Object.freeze(options.insights || []),
 
@@ -163,6 +166,12 @@ export function updatePhaseContext(ctx, updates) {
 
   if (updates.changedFiles) {
     processedUpdates.changedFiles = Object.freeze([...updates.changedFiles]);
+  }
+
+  if (updates.executionResults) {
+    processedUpdates.executionResults = Object.freeze(
+      updates.executionResults.map((result) => Object.freeze({ ...result }))
+    );
   }
 
   if (updates.insights) {

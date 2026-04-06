@@ -9,12 +9,12 @@
 Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
 
 1. **扫描项目** -- 检测语言、框架、已有规范
-2. **发现能力** -- 盘点所有可用的 commands、agents、skills、hooks
-3. **智能推理** -- quest-designer v4 深度分析代码，产出**完整可编译代码蓝图**
-4. **Quest 拆解** -- 将任务拆为原子化微步骤，每步含完整代码 + 预判坑点 + 验收标准
-5. **逐步执行** -- PHASE 3 直接复制蓝图代码，编译验证
-6. **自动门禁** -- 构建、测试、安全扫描全量检查
-7. **Git 提交** -- 完整模式结束后统一提交，失败时按阶段处理
+2. **发现能力** -- 盘点可用的 commands、agents、skills、hooks
+3. **智能推理** -- 结合 Router、Skills、当前上下文生成 Quest 计划
+4. **Quest 拆解** -- 将任务拆成可验证的执行步骤和验收标准
+5. **逐步执行** -- PHASE 3 产出执行计划并汇总真实执行结果
+6. **自动门禁** -- 按模式执行构建、测试、lint 与安全检查
+7. **Git 提交** -- 完整模式进入提交阶段，结果统一汇总输出
 
 **核心理念**：不是硬编码路由，是 AI 动态发现 + 推理编排。
 
@@ -73,16 +73,19 @@ auto install
 
 ## 能力总览
 
-### 命令（6 个）
+### 命令（9 个）
 
 | 命令 | 用途 |
 |------|------|
 | `/auto` | 超级命令 -- 说需求，AI 自动编排所有能力完成 |
 | `/auto:route` | 智能路由 -- 自动分析意图并推荐最合适的 Agent |
-| `/auto:doctor` | 环境诊断 -- 当前支持健康检查与安装状态输出 |
-| `/auto:status` | 项目状态 -- `--json` 结构化输出 |
-| `/auto:create-hook` | 交互式创建 Claude Code Hook |
-| `/auto:learn` | 从会话或 Git 历史提取可复用经验（git diff 精确锚点） |
+| `/auto:doctor` | 环境诊断 -- 支持健康检查与安全范围内的自动修复 |
+| `/auto:status` | 项目状态 -- 输出 runtime、summary、capabilities |
+| `/auto:create-hook` | 生成 Hook 模板建议 |
+| `/auto:learn` | 分析 Git 历史模式并返回结构化结果 |
+| `auto analyze` | 仅执行 PHASE 1 + 2，输出分析快照 |
+| `auto resume` | 根据 resume directive 继续任务 |
+| `auto codemaps` | 生成 REPO_MAP.md 与 symbol-index.json |
 
 ### Agent（11 个）
 
@@ -125,7 +128,7 @@ auto install
 | java-patterns | Spring Boot + MyBatis Plus 12 个高频模板 |
 | error-patterns | 9 类错误模式速查（Node/Java/Go/Rust/Claude Code） |
 
-### Hooks 自动化（16 个 Hook，8 类事件）
+### Hooks 自动化
 
 | 事件类型 | Hook | 功能 |
 |---------|------|------|
@@ -151,11 +154,13 @@ auto install
 
 ## 按规模自动选择执行模式
 
-| Quest Map 规模 | 执行模式 | 说明 |
-|----------------|---------|------|
-| 1-5 关 | 单 Agent | 主窗口串行逐关执行 |
-| 6-15 关 | Subagent 并行 | 按依赖分组，一次性委派多组 |
-| 15+ 关 | Agent Teams | 多队友网状协作，持续通信 |
+| 条件 | 执行模式 | 说明 |
+|------|---------|------|
+| 1 文件且预计 <=10 行变更 | 微型模式 | Discover → Micro Execute → Verify → Learn |
+| <=3 文件且无架构变更 | 轻量模式 | Discover → Reason → Verify → Learn |
+| >3 文件或存在架构变更 | 完整模式 | 完整 6 PHASE |
+
+完整模式内，PHASE 3 会根据 Quest 数量选择串行或分组执行策略；结果会汇总到 `executionSummary`。
 
 ---
 
@@ -168,19 +173,20 @@ auto install
 |  auto-core（智能路由大脑）                 |
 |                                          |
 |  PHASE 1: DISCOVER（健壮扫描）            |
-|    扫描技术栈、能力清单                   |
+|    扫描技术栈、能力清单、doctor 结果       |
 |                                          |
 |  PHASE 2: REASON                         |
-|    quest-designer 生成 Quest Map          |
+|    生成 Quest Map                         |
 |    Canonical Router 推荐 Agent            |
 |                                          |
 |  PHASE 3: EXECUTE                        |
-|    按规模选模式（单/Subagent/Teams）      |
-|    复制蓝图代码 -> 编译验证 -> 增量提交   |
+|    生成执行计划并消费执行结果              |
+|    汇总 changedFiles / executionSummary   |
 |                                          |
-|  PHASE 4: VERIFY（全量门禁）             |
-|  PHASE 5: COMMIT（Git 提交）             |
+|  PHASE 4: VERIFY（按模式门禁）           |
+|  PHASE 5: COMMIT（完整模式提交）         |
 |  PHASE 6: LEARN（经验沉淀）              |
+|    可选输出 Git patterns / resume 指令    |
 +------------------------------------------+
 ```
 
@@ -219,19 +225,24 @@ auto route "构建失败" --debug
 ## CLI 命令
 
 ```bash
-auto                        # 交互模式（安装/更新/卸载）
-auto install                # 安装组件（-y 跳过确认，-f 强制覆盖）
-auto update                 # 更新已安装组件
-auto uninstall              # 卸载组件
-auto doctor --json -d .     # 项目健康检查 + 安装状态
-auto resume "<directive>"   # 根据续接指令继续任务
-auto route <意图>           # 智能路由（-d 调试，-j JSON 输出）
-auto analyze <任务>         # 能力分析（-j JSON 输出）
-auto list                   # 列出可用组件
-auto docs                   # 打开文档
-auto save insight -c "内容"  # 保存知识条目
-auto save list              # 列出知识条目
-auto save search -q "关键词" # 搜索知识条目
+auto                           # 交互模式（安装/更新/卸载）
+auto install                   # 安装组件（-y 跳过确认，-f 强制覆盖）
+auto update                    # 更新已安装组件
+auto uninstall                 # 卸载组件
+auto run "修复登录流程"          # 执行完整 /auto 工作流
+auto analyze "修复登录流程"      # 仅执行 PHASE 1 + 2
+auto route <意图>              # 智能路由（-d 调试，-j JSON 输出）
+auto doctor --json -d .        # 项目健康检查 + 安装状态
+auto resume "<directive>"      # 根据续接指令继续任务
+auto status --json -d .        # 查看 runtime / summary / capabilities
+auto learn --git --json        # 分析 Git 历史模式
+auto create-hook --json        # 生成 Hook 模板建议
+auto codemaps -d .             # 生成 REPO_MAP.md 与 symbol-index.json
+auto list                      # 列出可用组件
+auto docs                      # 打开文档
+auto save insight -c "内容"     # 保存知识条目
+auto save list                 # 列出知识条目
+auto save search -q "关键词"    # 搜索知识条目
 ```
 
 ---
@@ -242,7 +253,11 @@ auto save search -q "关键词" # 搜索知识条目
 重启 Claude Code，检查 `node --version` >= 18。
 
 **Q: 代码会泄露吗？**
-不会。所有代码在本地处理。
+Auto CLI 本身主要负责本地安装、命令组织和结果汇总；具体数据流边界取决于你在 Claude Code 中启用的模型、Agent 和外部集成配置。
+
+**Q: 安装后怎么使用 `/auto`？**
+先在终端运行 `auto install` 安装命令文件，然后重启 Claude Code；`/auto`、`/auto:route` 等 slash commands 需要在 Claude Code 会话内使用，不是在普通 shell 里直接执行。
+
 
 **Q: `/auto` 和单个命令的区别？**
 `/auto` 是超级命令，AI 会自动判断并调用合适的 Agent。单个命令（如 `/auto:route`）用于精确控制。
@@ -262,9 +277,9 @@ auto save search -q "关键词" # 搜索知识条目
 ### Agent 循环：感知 -> 思考 -> 行动 -> 验证
 
 - **感知** = PHASE 1 DISCOVER（扫描项目上下文）
-- **思考** = PHASE 2 REASON（quest-designer 深度分析 + Quest Map）
-- **行动** = PHASE 3 EXECUTE（逐关执行蓝图代码）
-- **验证** = PHASE 4 VERIFY（全量门禁检查）
+- **思考** = PHASE 2 REASON（Quest Map + Router + Skills）
+- **行动** = PHASE 3 EXECUTE（执行计划 + 结果回流）
+- **验证** = PHASE 4 VERIFY（按模式门禁检查）
 
 ---
 
@@ -277,7 +292,7 @@ auto save search -q "关键词" # 搜索知识条目
 - 可达性从 94% 提升到 100%（11/11 Agent 全部可达）
 - 清理旧版 commands（13 个废弃命令）、agents（2 个）、skills（6 文件 + 12 目录）
 - 总评分 88/100，0 P0、0 P1、6 P2（均为低优先级）
-- 测试 727 全绿，lint 0 错误
+- 测试 738 全绿，lint 0 错误
 
 ### v0.29.0
 
@@ -317,7 +332,7 @@ auto save search -q "关键词" # 搜索知识条目
 - verification Agent 升级到 Opus 模型
 - error-patterns 新增 Java/Spring Boot 10 种错误模式
 - status 新增 `--json` 输出模式
-- learn 模式 1 新增 git diff 精确锚点
+- learn 命令新增 Git 历史模式分析入口
 - hooks.json 新增覆盖率自动检查 Hook
 - rules/hooks.md 同步全部 7 种 Hook 类型文档
 - 测试覆盖 91.61%（707 tests, 0 errors, 0 lint warnings）
@@ -332,7 +347,7 @@ auto save search -q "关键词" # 搜索知识条目
 ### v0.23.0
 
 **新增能力引入**：
-- 新增 `/skill-create` 和 `/learn` 命令
+- 新增知识学习相关命令雏形（后续收敛为当前 `auto learn` / `auto save` 体系）
 
 ### v0.22.0
 

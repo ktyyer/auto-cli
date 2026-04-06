@@ -65,7 +65,12 @@ vi.mock('../src/utils.js', async (importOriginal) => {
 });
 
 vi.mock('../src/logger.js', () => ({
-  logger: { warn: vi.fn() },
+  logger: {
+    warn: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn()
+  },
   Logger: class Logger {},
   LOG_LEVELS: {}
 }));
@@ -81,8 +86,12 @@ import {
   runUninstall,
   runDocs,
   runRoute,
+  runAnalyze,
   runDoctor,
-  runResume
+  runResume,
+  runStatus,
+  runLearn,
+  runCreateHook
 } from '../src/index.js';
 import { install, uninstall } from '../src/installer.js';
 import {
@@ -252,6 +261,57 @@ describe('index.js', () => {
     });
   });
 
+  describe('runAnalyze', () => {
+    it('should return initialized analyze snapshot', async () => {
+      const result = await runAnalyze('fix typo in readme', { dir: '/tmp/project' });
+      expect(result.task).toBe('fix typo in readme');
+      expect(result.mode).toBeDefined();
+      expect(result.detected_mode).toBe(result.mode);
+      expect(result).toHaveProperty('routing');
+      expect(result).toHaveProperty('team');
+      expect(result).toHaveProperty('quests');
+    });
+  });
+
+  describe('runStatus', () => {
+    it('should return runtime summary payload', async () => {
+      const result = await runStatus({ dir: '/tmp/project', task: 'status check' });
+      expect(result).toHaveProperty('runtime');
+      expect(result).toHaveProperty('summary');
+      expect(result).toHaveProperty('capabilities');
+      expect(result).toHaveProperty('doctorResult');
+      expect(result).toHaveProperty('pendingInvocations');
+      expect(result.summary).toHaveProperty('completedQuestsCount');
+      expect(result.summary).toHaveProperty('doctorIssuesCount');
+      expect(result.summary).toHaveProperty('pendingInvocationsCount');
+    });
+  });
+
+  describe('runLearn', () => {
+    it('should return git analysis payload when git mode enabled', async () => {
+      const result = await runLearn({ dir: '/tmp/project', git: true, commitCount: 5 });
+      expect(result.mode).toBe('git');
+      expect(result).toHaveProperty('gitPatterns');
+    });
+
+    it('should return default payload without git mode', async () => {
+      const result = await runLearn({ dir: '/tmp/project' });
+      expect(result).toEqual({ mode: 'default', gitPatterns: null });
+    });
+  });
+
+  describe('runCreateHook', () => {
+    it('should return hook template suggestion', async () => {
+      const result = await runCreateHook({ type: 'post-tool', name: 'format-check' });
+      expect(result).toEqual({
+        type: 'post-tool',
+        name: 'format-check',
+        template: 'post-tool:format-check',
+        recommendedLocation: '.claude/settings.json'
+      });
+    });
+  });
+
   describe('runDoctor', () => {
     it('should return report in json mode', async () => {
       const result = await runDoctor({ json: true, dir: '/tmp/project' });
@@ -278,6 +338,15 @@ describe('index.js', () => {
         fs.readFile(new URL('../bin/cli.js', import.meta.url), 'utf-8')
       );
       expect(cliSource).toContain(".option('--fix', '自动修复安全且已支持的问题')");
+    });
+
+    it('should expose status, learn and create-hook commands', async () => {
+      const cliSource = await import('node:fs/promises').then((fs) =>
+        fs.readFile(new URL('../bin/cli.js', import.meta.url), 'utf-8')
+      );
+      expect(cliSource).toContain(".command('status')");
+      expect(cliSource).toContain(".command('learn')");
+      expect(cliSource).toContain(".command('create-hook')");
     });
   });
 

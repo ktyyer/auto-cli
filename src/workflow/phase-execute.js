@@ -398,6 +398,9 @@ export class PhaseExecute {
         const batchResults = await this._executeBatch(batch, ctx);
         completedQuests.push(...batchResults.completed);
         failedQuests.push(...batchResults.failed);
+        for (const item of batchResults.executionResults) {
+          ctx = this.mergeExecutionResult(ctx, item.quest, item.executionResult);
+        }
       }
     } else {
       // 串行执行（原有逻辑）
@@ -405,46 +408,26 @@ export class PhaseExecute {
         const result = await this._executeSingleQuest(quest, ctx);
         if (result.success) {
           completedQuests.push(result.questId);
+          if (result.executionResult) {
+            ctx = this.mergeExecutionResult(ctx, quest, result.executionResult);
+          }
         } else {
           failedQuests.push({ questId: result.questId, error: result.error });
         }
       }
     }
 
-    // P0-1: 执行后收集变更文件列表（通过 git diff HEAD + cached 并集）
-    let changedFiles = [];
-    try {
-      const { execSync } = await import('node:child_process');
-      const [unstagedOutput, stagedOutput] = [
-        execSync('git diff --name-only HEAD', {
-          cwd: this.projectDir,
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 5000
-        })
-          .toString()
-          .trim(),
-        execSync('git diff --cached --name-only', {
-          cwd: this.projectDir,
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 5000
-        })
-          .toString()
-          .trim()
-      ];
-      const fileSet = new Set();
-      for (const f of unstagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
-      for (const f of stagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
-      changedFiles = [...fileSet];
-    } catch (diffError) {
-      logger.debug(`[PHASE 3] 变更文件检测跳过: ${diffError.message}`);
-    }
+    const executionChangedFiles = ctx.changedFiles || [];
+
+    // P0-1: 执行后收集变更文件列表（含 unstaged / staged / untracked）
+    const changedFiles = await this._collectChangedFiles('PHASE 3');
 
     this.flowEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
     ctx = updatePhaseContext(ctx, {
       completedQuests,
       failedQuests,
-      changedFiles
+      changedFiles: [...new Set([...executionChangedFiles, ...changedFiles])]
     });
 
     logger.info(
@@ -533,36 +516,14 @@ export class PhaseExecute {
     questEngine.transition(FLOW_EVENTS.START, { questId: microQuest.id });
 
     try {
-      await this._executeQuest(microQuest, modelRoute, questEngine, ctx);
+      const executeResult = await this._executeQuest(microQuest, modelRoute, questEngine, ctx);
+      if (executeResult.success === false) {
+        throw new Error(executeResult.executionResult?.error || 'Micro execution did not complete');
+      }
       questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
-      // P0-1: MICRO 模式也收集变更文件（HEAD + cached 并集）
-      let microChangedFiles = [];
-      try {
-        const { execSync } = await import('node:child_process');
-        const [unstagedOutput, stagedOutput] = [
-          execSync('git diff --name-only HEAD', {
-            cwd: this.projectDir,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            timeout: 5000
-          })
-            .toString()
-            .trim(),
-          execSync('git diff --cached --name-only', {
-            cwd: this.projectDir,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            timeout: 5000
-          })
-            .toString()
-            .trim()
-        ];
-        const fileSet = new Set();
-        for (const f of unstagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
-        for (const f of stagedOutput.split('\n').filter(Boolean)) fileSet.add(f);
-        microChangedFiles = [...fileSet];
-      } catch {
-        // git diff 失败不阻断
-      }
+      // P0-1: MICRO 模式也收集变更文件（含 unstaged / staged / untracked）
+      const microChangedFiles = await this._collectChangedFiles('MICRO');
 
       ctx = updatePhaseContext(ctx, {
         completedQuests: [microQuest.id],
@@ -601,7 +562,7 @@ export class PhaseExecute {
    * @returns {Promise<{success: boolean, executionPlan?: Object, agentInvocation?: Object}>}
    * @private
    */
-  async _executeQuest(quest, modelRoute, _questEngine, _phaseContext) {
+  async _executeQuest(quest, modelRoute, _questEngine, phaseContext) {
     logger.debug(`[Quest ${quest.id}] 使用模型 ${modelRoute.model} 执行`);
 
     // 解析团队
@@ -654,19 +615,259 @@ export class PhaseExecute {
       instructions: _generateQuestInstructions(quest, modelRoute, team)
     });
 
+    const executionResult = Object.freeze(
+      await this._invokeAgentInvocation(agentInvocation, executionPlan, phaseContext)
+    );
+
     // 记录合成消息到累加器（上限 50 条）
     if (this.messageAccumulator && this.messageAccumulator.length < 50) {
       this.messageAccumulator.push({
         role: 'quest-plan',
-        content: JSON.stringify(executionPlan)
+        content: JSON.stringify({
+          ...executionPlan,
+          executionResult
+        })
       });
     }
 
     // P2-1: 持久化 Agent 执行结果
-    const leadName = team.lead ? team.lead.name : 'unknown';
-    await this._persistAgentResult(leadName, { success: true }, quest.id);
+    const leadName = team.lead ? team.lead.name : agentName;
+    await this._persistAgentResult(leadName, executionResult, quest.id);
 
-    return { success: true, executionPlan, agentInvocation };
+    return {
+      success: executionResult.success !== false,
+      executionPlan,
+      agentInvocation,
+      executionResult
+    };
+  }
+
+  /**
+   * P0-1: 统一消费 Agent 调用指令，形成真实执行结果
+   * @param {Object} agentInvocation
+   * @param {Object} executionPlan
+   * @param {Object} phaseContext
+   * @returns {Promise<Object>}
+   * @private
+   */
+  async _invokeAgentInvocation(agentInvocation, executionPlan, phaseContext) {
+    const phaseChangedFiles = phaseContext?.changedFiles || [];
+    const questChangedFiles = executionPlan.changedFiles || [];
+    const changedFiles = [...new Set([...phaseChangedFiles, ...questChangedFiles])];
+
+    return {
+      success: false,
+      status: 'planned',
+      summary: `Prepared ${agentInvocation.subagent_type} for quest ${executionPlan.questId} (execution backend not connected)`,
+      changedFiles,
+      artifacts: {
+        executionPlan,
+        agentInvocation
+      },
+      error: 'Execution backend not connected'
+    };
+  }
+
+  async _collectChangedFiles(scopeLabel) {
+    try {
+      const { execSync } = await import('node:child_process');
+      const outputs = [
+        execSync('git diff --name-only HEAD', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim(),
+        execSync('git diff --cached --name-only', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim(),
+        execSync('git ls-files --others --exclude-standard', {
+          cwd: this.projectDir,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          timeout: 5000
+        })
+          .toString()
+          .trim()
+      ];
+
+      const fileSet = new Set();
+      for (const output of outputs) {
+        for (const file of output.split('\n').filter(Boolean)) {
+          fileSet.add(file);
+        }
+      }
+      return [...fileSet];
+    } catch (diffError) {
+      logger.debug(`[${scopeLabel}] 变更文件检测跳过: ${diffError.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 合并 Quest 执行结果到当前上下文
+   * @param {Object} phaseContext
+   * @param {Object} quest
+   * @param {Object} executionResult
+   * @returns {Object}
+   */
+  mergeExecutionResult(phaseContext, quest, executionResult) {
+    const mergedChangedFiles = [
+      ...new Set([...(phaseContext.changedFiles || []), ...(executionResult.changedFiles || [])])
+    ];
+    const prevResults = phaseContext.executionResults || [];
+    const nextResult = Object.freeze({
+      questId: quest.id,
+      success: executionResult.success !== false,
+      summary: executionResult.summary || null,
+      changedFiles: Object.freeze([...(executionResult.changedFiles || [])]),
+      artifacts: executionResult.artifacts || null,
+      error: executionResult.error || null
+    });
+
+    return updatePhaseContext(phaseContext, {
+      currentQuest: quest,
+      changedFiles: mergedChangedFiles,
+      executionResults: [...prevResults, nextResult]
+    });
+  }
+
+  /**
+   * 初始化工作流上下文
+   * @param {Object} phaseContext
+   * @param {string} task
+   * @param {Object} options
+   * @returns {Object}
+   */
+  initializeWorkflowContext(phaseContext, task, options = {}) {
+    const mode = options.mode || EXECUTION_MODES.FULL;
+    return updatePhaseContext(phaseContext, { mode, task });
+  }
+
+  /**
+   * 导出分析摘要
+   * @param {Object} phaseContext
+   * @returns {Promise<Object>}
+   */
+  async buildAnalyzeSnapshot(phaseContext) {
+    const ctx = phaseContext || this.initializeWorkflowContext({}, '', {});
+    const modelResult = ctx.modelRecommendations;
+    const agentResult = ctx.agentRecommendation;
+    const questMap = ctx.questMap || [];
+
+    const registry = await this._ensureAgentRegistry();
+    const teamResult = registry.resolveTeam({
+      keywords: this._extractKeywords(ctx.task),
+      maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
+    });
+
+    return {
+      task: (ctx.task || '').slice(0, 80),
+      mode: ctx.mode,
+      detected_mode: ctx.mode,
+      routing: {
+        model: modelResult
+          ? {
+              id: modelResult.model,
+              tier: modelResult.tier,
+              reason: modelResult.reason
+            }
+          : null,
+        agent: agentResult
+          ? {
+              name: agentResult.agent.name,
+              displayName: agentResult.agent.displayName,
+              score: agentResult.score,
+              matchReason: agentResult.matchReason
+            }
+          : null
+      },
+      team: {
+        lead: teamResult.lead
+          ? {
+              name: teamResult.lead.name,
+              displayName: teamResult.lead.displayName,
+              capabilities: teamResult.lead.capabilities
+            }
+          : null,
+        members: teamResult.members.map((m) => ({
+          name: m.name,
+          displayName: m.displayName,
+          capabilities: m.capabilities
+        }))
+      },
+      quests: questMap.map((q) => ({
+        id: q.id,
+        title: q.title,
+        type: q.type,
+        keywords: q.keywords,
+        agent: q.agent,
+        priority: q.priority,
+        files: q.files
+      }))
+    };
+  }
+
+  /**
+   * 构建执行摘要
+   * @param {Object} phaseContext
+   * @returns {Object[]}
+   */
+  buildExecutionSummary(phaseContext) {
+    return Object.freeze(
+      (phaseContext.executionResults || []).map((result) => ({
+        questId: result.questId,
+        success: result.success,
+        summary: result.summary,
+        changedFiles: result.changedFiles || [],
+        error: result.error || null
+      }))
+    );
+  }
+
+  /**
+   * 获取状态摘要
+   * @param {Object} phaseContext
+   * @returns {Object}
+   */
+  summarizeStatus(phaseContext) {
+    return Object.freeze({
+      mode: phaseContext.mode,
+      currentPhase: phaseContext.currentPhase,
+      completedQuestsCount: phaseContext.completedQuests.length,
+      failedQuestsCount: phaseContext.failedQuests.length,
+      changedFilesCount: phaseContext.changedFiles.length,
+      doctorIssuesCount: phaseContext.doctorResult?.issues?.length || 0,
+      verificationActionsCount: phaseContext.verificationActions.length,
+      securityScanTriggered: phaseContext.securityResult?.scanTriggered || false,
+      pendingInvocationsCount: phaseContext.pendingInvocations.length,
+      hasDoctorIssues: (phaseContext.doctorResult?.issues?.length || 0) > 0,
+      hasPendingInvocations: phaseContext.pendingInvocations.length > 0
+    });
+  }
+
+  /**
+   * 导出 Git learn 摘要
+   * @param {number} [commitCount=50]
+   * @returns {Promise<Object|null>}
+   */
+  async analyzeGitLearn(commitCount = 50) {
+    const result = await this.memory.get('last_git_patterns');
+    if (result) {
+      return result;
+    }
+    const steward = new KnowledgeSteward(this.projectDir);
+    if (typeof steward.list !== 'function') {
+      return null;
+    }
+    return {
+      commitCount,
+      available: true
+    };
   }
 
   /**
@@ -807,7 +1008,7 @@ export class PhaseExecute {
             subagent_type: analysisAgent.name,
             description: `分析设计: ${task.slice(0, 50)}`,
             prompt: `分析以下任务并生成设计方案:\n\n任务: ${task}\n\n关键词: ${keywords.join(', ')}\n\n请输出: 1)现状分析 2)设计方案 3)影响文件 4)风险评估`,
-            model: modelRoute?.tier === 'FAST' ? 'haiku' : 'sonnet'
+            model: modelRoute?.tier?.toLowerCase() === 'fast' ? 'haiku' : 'sonnet'
           })
         })
       );
@@ -835,7 +1036,7 @@ export class PhaseExecute {
           subagent_type: implAgent || 'general-purpose',
           description: `核心实现: ${task.slice(0, 50)}`,
           prompt: `实现以下任务:\n\n${task}\n\n验收标准:\n- 功能实现完成\n- 编译通过\n- 测试通过\n${skillData.length > 0 ? `\n参考技能:\n${skillData.map((s) => `--- ${s.name} ---\n${s.content?.slice(0, 500) || ''}`).join('\n\n')}` : ''}`,
-          model: modelRoute?.tier === 'DEEP' ? 'opus' : 'sonnet'
+          model: modelRoute?.tier?.toLowerCase() === 'deep' ? 'opus' : 'sonnet'
         })
       })
     );
@@ -1006,6 +1207,7 @@ export class PhaseExecute {
   async _executeBatch(batch, ctx) {
     const completed = [];
     const failed = [];
+    const executionResults = [];
     const results = await Promise.allSettled(
       batch.map((quest) => this._executeSingleQuest(quest, ctx))
     );
@@ -1013,6 +1215,9 @@ export class PhaseExecute {
       const r = results[i];
       if (r.status === 'fulfilled' && r.value.success) {
         completed.push(r.value.questId);
+        if (r.value.executionResult) {
+          executionResults.push({ quest: batch[i], executionResult: r.value.executionResult });
+        }
       } else {
         const errMsg =
           r.status === 'rejected'
@@ -1021,7 +1226,7 @@ export class PhaseExecute {
         failed.push({ questId: batch[i].id, error: errMsg });
       }
     }
-    return { completed, failed };
+    return { completed, failed, executionResults };
   }
 
   /**
@@ -1056,12 +1261,15 @@ export class PhaseExecute {
     let lastError = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await this._executeQuest(quest, modelRoute, questEngine, ctx);
+        const executeResult = await this._executeQuest(quest, modelRoute, questEngine, ctx);
+        if (executeResult.success === false) {
+          throw new Error(executeResult.executionResult?.error || 'Quest execution did not complete');
+        }
         questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
         // P0-2: 使用真实的 feedbackId 记录成功反馈
         const agentName = quest.agent || 'general-purpose';
         await this._recordAgentFeedback(agentName, 'success', undefined, routingFeedbackId);
-        return { success: true, questId: quest.id };
+        return { success: true, questId: quest.id, executionResult: executeResult.executionResult };
       } catch (error) {
         lastError = error;
         logger.warn(`[Quest ${quest.id}] Attempt ${attempt + 1} failed: ${error.message}`);

@@ -140,7 +140,10 @@ export class WorkflowOrchestrator {
     try {
       // 1. 确定执行模式
       const mode = detectExecutionMode(task, options);
-      this.phaseContext = updatePhaseContext(this.phaseContext, { mode, task });
+      this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, task, {
+        ...options,
+        mode
+      });
 
       logger.info(`[Orchestrator] 开始执行工作流，模式: ${mode}, 任务: ${task}`);
 
@@ -280,6 +283,7 @@ export class WorkflowOrchestrator {
     const agentInvocations = questPlans
       .filter((p) => p.agentInvocation)
       .map((p) => p.agentInvocation);
+    const executionSummary = this.phaseExecute.buildExecutionSummary(this.phaseContext);
 
     return {
       status,
@@ -296,6 +300,7 @@ export class WorkflowOrchestrator {
       gitResult: this.phaseContext.gitResult,
       questPlans,
       agentInvocations: Object.freeze(agentInvocations),
+      executionSummary,
       changedFiles: this.phaseContext.changedFiles,
       insights: this.phaseContext.insights,
       tokenBudget: this.phaseContext.tokenBudget,
@@ -371,11 +376,6 @@ export class WorkflowOrchestrator {
     return [...new Set(concepts)].slice(0, 10);
   }
 
-  // --- 向后兼容委托方法 ---
-  // 测试和外部调用者通过 orchestrator 实例访问这些方法，
-  // 实际实现已移到对应的 Phase 子模块中。
-  // 每个委托方法在调用前同步测试可能 mock 的依赖项。
-
   /**
    * 将 orchestrator 上测试可能 mock 的依赖同步到子模块
    * @private
@@ -393,202 +393,12 @@ export class WorkflowOrchestrator {
       if ('contextMonitor' in mod) mod.contextMonitor = this.contextMonitor;
       if ('memory' in mod) mod.memory = this.memory;
     }
-    // 同步 orchestrator 上测试可能 stub 的 _canonicalRouter 到子模块
     if (this._canonicalRouter !== undefined) {
       this.phaseVerify._canonicalRouter = this._canonicalRouter;
       this.phaseExecute._canonicalRouter = this._canonicalRouter;
     }
   }
 
-  /**
-   * @deprecated 使用 phaseDiscover.run() 代替
-   */
-  async _runDiscover() {
-    this._syncDepsToModules();
-    this.phaseContext = await this.phaseDiscover.run(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute.runReason() 代替
-   */
-  async _runReason() {
-    this._syncDepsToModules();
-    this.phaseContext = await this.phaseExecute.runReason(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute.runExecute() 代替
-   */
-  async _runExecute() {
-    this._syncDepsToModules();
-    this.phaseExecute.setMessageAccumulator(this._messageAccumulator);
-    this.phaseContext = await this.phaseExecute.runExecute(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute.runMicroExecute() 代替
-   */
-  async _runMicroExecute() {
-    this._syncDepsToModules();
-    this.phaseExecute.setMessageAccumulator(this._messageAccumulator);
-    this.phaseContext = await this.phaseExecute.runMicroExecute(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseVerify.run() 代替
-   */
-  async _runVerify() {
-    this._syncDepsToModules();
-    this.phaseContext = await this.phaseVerify.run(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseCommit.run() 代替
-   */
-  async _runCommit() {
-    this._syncDepsToModules();
-    this.phaseCommit.dryRun = this.dryRun;
-    this.phaseContext = await this.phaseCommit.run(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseLearn.run() 代替
-   */
-  async _runLearn() {
-    this._syncDepsToModules();
-    this.phaseLearn.setMessageAccumulator(this._messageAccumulator);
-    this.phaseContext = await this.phaseLearn.run(this.phaseContext);
-  }
-
-  /**
-   * @deprecated 使用 phaseDiscover._ensureAgentRegistry() 代替
-   */
-  async _ensureAgentRegistry() {
-    return this.phaseDiscover._ensureAgentRegistry();
-  }
-
-  /**
-   * @deprecated 使用 phaseDiscover._countCommands() 代替
-   */
-  async _countCommands() {
-    return this.phaseDiscover._countCommands();
-  }
-
-  /**
-   * @deprecated 使用 phaseDiscover._countHooks() 代替
-   */
-  async _countHooks() {
-    return this.phaseDiscover._countHooks();
-  }
-
-  /**
-   * @deprecated 使用 phaseDiscover._runDoctorCheck() 代替
-   */
-  async _runDoctorCheck() {
-    return this.phaseDiscover._runDoctorCheck();
-  }
-
-  /**
-   * @deprecated 使用 phaseVerify._detectTestRunner() 代替
-   */
-  async _detectTestRunner() {
-    return this.phaseVerify._detectTestRunner();
-  }
-
-  /**
-   * @deprecated 使用 phaseVerify._parseCoverageOutput() 代替
-   */
-  _parseCoverageOutput(output) {
-    return this.phaseVerify._parseCoverageOutput(output);
-  }
-
-  /**
-   * @deprecated 使用 phaseVerify._runSecurityScan() 代替
-   */
-  async _runSecurityScan() {
-    this._syncDepsToModules();
-    return this.phaseVerify._runSecurityScan();
-  }
-
-  /**
-   * @deprecated 使用 phaseCommit._executeGitCommit() 代替
-   */
-  async _executeGitCommit(files, message) {
-    this.phaseCommit.dryRun = this.dryRun;
-    return this.phaseCommit._executeGitCommit(files, message);
-  }
-
-  /**
-   * @deprecated 使用 phaseLearn._analyzeGitPatterns() 代替
-   */
-  async _analyzeGitPatterns(commitCount) {
-    return this.phaseLearn._analyzeGitPatterns(commitCount);
-  }
-
-  /**
-   * @deprecated 使用 phaseLearn._detectArchitectureChange() 代替
-   */
-  _detectArchitectureChange() {
-    return this.phaseLearn._detectArchitectureChange(this.phaseContext.task);
-  }
-
-  /**
-   * @deprecated 使用 phaseLearn._generateDeletionLog() 代替
-   */
-  async _generateDeletionLog() {
-    return this.phaseLearn._generateDeletionLog();
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute._executeQuest() 代替
-   */
-  async _executeQuest(quest, modelRoute, questEngine) {
-    this._syncDepsToModules();
-    this.phaseExecute.setMessageAccumulator(this._messageAccumulator);
-    const result = await this.phaseExecute._executeQuest(
-      quest,
-      modelRoute,
-      questEngine,
-      this.phaseContext
-    );
-
-    // 同步 phaseContext 变更（_executeQuest 中 changedFiles 合并）
-    if (quest.changedFiles) {
-      this.phaseContext = updatePhaseContext(this.phaseContext, {
-        currentQuest: quest,
-        changedFiles: quest.changedFiles
-          ? [...this.phaseContext.changedFiles, ...quest.changedFiles]
-          : this.phaseContext.changedFiles
-      });
-    }
-
-    return result;
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute._generateQuestMap() 代替
-   */
-  _generateQuestMap(task, context) {
-    return this.phaseExecute._generateQuestMap(task, context);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute._extractKeywords() 代替
-   */
-  _extractKeywords(task) {
-    return this.phaseExecute._extractKeywords(task);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute._persistAgentResult() 代替
-   */
-  async _persistAgentResult(agentName, result, questId) {
-    return this.phaseExecute._persistAgentResult(agentName, result, questId);
-  }
-
-  /**
-   * @deprecated 使用 phaseExecute.questEngines 代替
-   */
   get questEngines() {
     return this.phaseExecute.questEngines;
   }

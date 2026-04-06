@@ -12,6 +12,94 @@ import {
   PHASE_NAMES
 } from '../src/workflow/phase-context.js';
 
+async function runDiscover(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseContext = await orchestrator.phaseDiscover.run(orchestrator.phaseContext);
+}
+
+async function runReason(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseContext = await orchestrator.phaseExecute.runReason(orchestrator.phaseContext);
+}
+
+async function runExecute(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseExecute.setMessageAccumulator(orchestrator._messageAccumulator || []);
+  orchestrator.phaseContext = await orchestrator.phaseExecute.runExecute(orchestrator.phaseContext);
+}
+
+async function runMicroExecute(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseExecute.setMessageAccumulator(orchestrator._messageAccumulator || []);
+  orchestrator.phaseContext = await orchestrator.phaseExecute.runMicroExecute(orchestrator.phaseContext);
+}
+
+async function runVerify(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseContext = await orchestrator.phaseVerify.run(orchestrator.phaseContext);
+}
+
+async function runLearn(orchestrator) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseLearn.setMessageAccumulator(orchestrator._messageAccumulator || []);
+  orchestrator.phaseContext = await orchestrator.phaseLearn.run(orchestrator.phaseContext);
+}
+
+async function executeQuest(orchestrator, quest, modelRoute, questEngine) {
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseExecute.setMessageAccumulator(orchestrator._messageAccumulator || []);
+  const result = await orchestrator.phaseExecute._executeQuest(
+    quest,
+    modelRoute,
+    questEngine,
+    orchestrator.phaseContext
+  );
+
+  if (result.executionResult) {
+    orchestrator.phaseContext = orchestrator.phaseExecute.mergeExecutionResult(
+      orchestrator.phaseContext,
+      quest,
+      result.executionResult
+    );
+  }
+
+  return result;
+}
+
+async function runDoctorCheck(orchestrator, options) {
+  orchestrator._syncDepsToModules();
+  return orchestrator.phaseDiscover.runDoctorCheck(options);
+}
+
+function parseCoverageOutput(orchestrator, output) {
+  return orchestrator.phaseVerify._parseCoverageOutput(output);
+}
+
+async function runSecurityScan(orchestrator) {
+  orchestrator._syncDepsToModules();
+  return orchestrator.phaseVerify._runSecurityScan();
+}
+
+async function analyzeGitPatterns(orchestrator, commitCount) {
+  return orchestrator.phaseLearn._analyzeGitPatterns(commitCount);
+}
+
+function detectArchitectureChange(orchestrator) {
+  return orchestrator.phaseLearn._detectArchitectureChange(orchestrator.phaseContext.task);
+}
+
+async function generateDeletionLog(orchestrator) {
+  return orchestrator.phaseLearn._generateDeletionLog();
+}
+
+async function persistAgentResult(orchestrator, agentName, result, questId) {
+  return orchestrator.phaseExecute._persistAgentResult(agentName, result, questId);
+}
+
+async function generateQuestMap(orchestrator, task, context) {
+  return orchestrator.phaseExecute._generateQuestMap(task, context);
+}
+
 describe('WorkflowOrchestrator', () => {
   let orchestrator;
 
@@ -182,97 +270,13 @@ describe('PHASE_NAMES', () => {
   });
 });
 
-describe('WorkflowOrchestrator - PHASE Methods', () => {
+describe('WorkflowOrchestrator - current API and result helpers', () => {
   let orchestrator;
 
   beforeEach(() => {
     orchestrator = new WorkflowOrchestrator({
       projectDir: '/tmp/test-project',
       skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  describe('_runDiscover', () => {
-    it('should run discover phase and update context', async () => {
-      await orchestrator._runDiscover();
-      expect(orchestrator.phaseContext.currentPhase).toBe(1);
-      expect(orchestrator.phaseContext.capabilities).toBeDefined();
-    });
-  });
-
-  describe('_runReason', () => {
-    it('should run reason phase with quest map', async () => {
-      orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-        questMap: [{ id: 'q1', keywords: ['test'] }]
-      });
-      await orchestrator._runReason();
-      expect(orchestrator.phaseContext.currentPhase).toBe(2);
-    });
-  });
-
-  describe('_runExecute', () => {
-    it('should skip execute when no quest map', async () => {
-      orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-        questMap: null
-      });
-      await orchestrator._runExecute();
-      expect(orchestrator.phaseContext.completedQuests).toHaveLength(0);
-    });
-
-    it('should execute quests from quest map', async () => {
-      // Mock _executeSingleQuest on the phaseExecute sub-module
-      orchestrator.phaseExecute._executeSingleQuest = vi.fn().mockResolvedValue({
-        success: true,
-        questId: 'q1'
-      });
-
-      orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-        questMap: [{ id: 'q1', keywords: ['test'], changedFiles: ['file.js'] }]
-      });
-      await orchestrator._runExecute();
-      expect(orchestrator.phaseContext.completedQuests).toContain('q1');
-    });
-  });
-
-  describe('_runVerify', () => {
-    it('should run verify phase', async () => {
-      await orchestrator._runVerify();
-      expect(orchestrator.phaseContext.currentPhase).toBe(4);
-    });
-  });
-
-  describe('_runCommit', () => {
-    it('should run commit phase', async () => {
-      orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-        changedFiles: ['a.js', 'b.js']
-      });
-      await orchestrator._runCommit();
-      expect(orchestrator.phaseContext.currentPhase).toBe(5);
-    });
-  });
-
-  describe('_runLearn', () => {
-    it('should run learn phase and store insight', async () => {
-      orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-        task: 'test task',
-        mode: 'full'
-      });
-      await orchestrator._runLearn();
-      expect(orchestrator.phaseContext.currentPhase).toBe(6);
-      expect(orchestrator.phaseContext.insights.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('_extractKeywords', () => {
-    it('should extract keywords from task', () => {
-      const keywords = orchestrator._extractKeywords('add error handling to auth module');
-      expect(keywords).toContain('error');
-      expect(keywords).toContain('handling');
-    });
-
-    it('should return empty array for short words', () => {
-      const keywords = orchestrator._extractKeywords('hi');
-      expect(keywords).toHaveLength(0);
     });
   });
 
@@ -289,6 +293,12 @@ describe('WorkflowOrchestrator - PHASE Methods', () => {
       const result = orchestrator._buildResult('failed', error);
       expect(result.status).toBe('failed');
       expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('questEngines', () => {
+    it('should expose phaseExecute quest engines', () => {
+      expect(orchestrator.questEngines).toBe(orchestrator.phaseExecute.questEngines);
     });
   });
 });
@@ -352,112 +362,7 @@ describe('EXECUTION_MODES', () => {
 // NEW TESTS: PHASE helpers, _executeQuest, _buildResult, integration tests
 // =========================================================================
 
-describe('WorkflowOrchestrator - _ensureAgentRegistry', () => {
-  let orchestrator;
-
-  beforeEach(() => {
-    orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
-      skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  it('should lazily initialize AgentRegistry and return it', async () => {
-    const registry = await orchestrator._ensureAgentRegistry();
-    expect(registry).toBeDefined();
-    expect(typeof registry.listAgents).toBe('function');
-    expect(typeof registry.resolveTeam).toBe('function');
-  });
-
-  it('should return cached registry on subsequent calls', async () => {
-    const first = await orchestrator._ensureAgentRegistry();
-    const second = await orchestrator._ensureAgentRegistry();
-    expect(first).toBe(second);
-  });
-});
-
-describe('WorkflowOrchestrator - _countCommands', () => {
-  let orchestrator;
-
-  beforeEach(() => {
-    orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
-      skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  it('should return 0 when commands directory does not exist', async () => {
-    const count = await orchestrator._countCommands();
-    expect(count).toBe(0);
-  });
-});
-
-describe('WorkflowOrchestrator - _countHooks', () => {
-  let orchestrator;
-
-  beforeEach(() => {
-    orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
-      skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  it('should auto-create default hooks and return count when hooks.json does not exist', async () => {
-    const count = await orchestrator._countHooks();
-    // _ensureDefaultHooks creates 4 hooks (1 PreToolUse + 2 PostToolUse + 1 Stop)
-    expect(count).toBeGreaterThanOrEqual(3);
-  });
-});
-
-describe('WorkflowOrchestrator - _detectTestRunner', () => {
-  let orchestrator;
-
-  beforeEach(() => {
-    orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
-      skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  it('should return null when package.json does not exist', async () => {
-    const result = await orchestrator._detectTestRunner();
-    expect(result).toBeNull();
-  });
-});
-
-describe('WorkflowOrchestrator - _executeGitCommit', () => {
-  let orchestrator;
-
-  beforeEach(() => {
-    orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
-      skillsDir: '/tmp/test-skills'
-    });
-  });
-
-  it('should skip commit in dryRun mode', async () => {
-    orchestrator.dryRun = true;
-    const result = await orchestrator._executeGitCommit(['a.js'], 'test commit');
-    expect(result.committed).toBe(false);
-    expect(result.reason).toBe('dry-run');
-  });
-
-  it('should skip commit when no files provided', async () => {
-    orchestrator.dryRun = false;
-    const result = await orchestrator._executeGitCommit([], 'test commit');
-    expect(result.committed).toBe(false);
-    expect(result.reason).toBe('no-files');
-  });
-
-  it('should skip commit when files is null', async () => {
-    orchestrator.dryRun = false;
-    const result = await orchestrator._executeGitCommit(null, 'test commit');
-    expect(result.committed).toBe(false);
-    expect(result.reason).toBe('no-files');
-  });
-});
-
-describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
+describe('PhaseExecute - _extractKeywords with edge cases', () => {
   let orchestrator;
 
   beforeEach(() => {
@@ -468,8 +373,7 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
   });
 
   it('should extract Chinese keywords with dictionary segmentation', () => {
-    const keywords = orchestrator._extractKeywords('添加安全认证功能模块');
-    // 词典分词 + 同义词扩展：安全、认证、功能、添加、模块等
+    const keywords = orchestrator.phaseExecute._extractKeywords('添加安全认证功能模块');
     expect(keywords.length).toBeGreaterThan(0);
     expect(keywords).toContain('安全');
     expect(keywords).toContain('认证');
@@ -477,7 +381,7 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
   });
 
   it('should split on Chinese comma and period with dictionary segmentation', () => {
-    const keywords = orchestrator._extractKeywords('添加安全，认证功能。测试模块');
+    const keywords = orchestrator.phaseExecute._extractKeywords('添加安全，认证功能。测试模块');
     expect(keywords).toContain('安全');
     expect(keywords).toContain('认证');
     expect(keywords).toContain('功能');
@@ -485,7 +389,7 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
   });
 
   it('should handle mixed Chinese and English text', () => {
-    const keywords = orchestrator._extractKeywords('refactor authentication refactor-clean module');
+    const keywords = orchestrator.phaseExecute._extractKeywords('refactor authentication refactor-clean module');
     expect(keywords).toContain('refactor');
     expect(keywords).toContain('authentication');
     expect(keywords).toContain('module');
@@ -493,7 +397,7 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
   });
 
   it('should filter out words shorter than 3 characters', () => {
-    const keywords = orchestrator._extractKeywords('a ab abc abcd');
+    const keywords = orchestrator.phaseExecute._extractKeywords('a ab abc abcd');
     expect(keywords).not.toContain('a');
     expect(keywords).not.toContain('ab');
     expect(keywords).toContain('abc');
@@ -501,36 +405,35 @@ describe('WorkflowOrchestrator - _extractKeywords with edge cases', () => {
   });
 
   it('should return empty array for null input', () => {
-    const keywords = orchestrator._extractKeywords(null);
+    const keywords = orchestrator.phaseExecute._extractKeywords(null);
     expect(keywords).toEqual([]);
   });
 
   it('should return empty array for undefined input', () => {
-    const keywords = orchestrator._extractKeywords(undefined);
+    const keywords = orchestrator.phaseExecute._extractKeywords(undefined);
     expect(keywords).toEqual([]);
   });
 
   it('should return empty array for empty string', () => {
-    const keywords = orchestrator._extractKeywords('');
+    const keywords = orchestrator.phaseExecute._extractKeywords('');
     expect(keywords).toEqual([]);
   });
 
   it('should treat dot-connected terms as single keywords', () => {
-    const keywords = orchestrator._extractKeywords('fix.error,handling the authentication');
+    const keywords = orchestrator.phaseExecute._extractKeywords('fix.error,handling the authentication');
     expect(keywords).toContain('fix.error');
     expect(keywords).toContain('handling');
-    // 'the' is a stopword and gets filtered out
     expect(keywords).not.toContain('the');
     expect(keywords).toContain('authentication');
   });
 
   it('should handle special characters gracefully', () => {
-    const keywords = orchestrator._extractKeywords('fix @#$% bug!!! in auth');
+    const keywords = orchestrator.phaseExecute._extractKeywords('fix @#$% bug!!! in auth');
     expect(keywords.length).toBeGreaterThan(0);
   });
 });
 
-describe('WorkflowOrchestrator - _runCommit flow', () => {
+describe('PhaseCommit - run flow', () => {
   let orchestrator;
 
   beforeEach(() => {
@@ -544,7 +447,9 @@ describe('WorkflowOrchestrator - _runCommit flow', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       changedFiles: []
     });
-    await orchestrator._runCommit();
+    orchestrator._syncDepsToModules();
+    orchestrator.phaseCommit.dryRun = orchestrator.dryRun;
+    orchestrator.phaseContext = await orchestrator.phaseCommit.run(orchestrator.phaseContext);
     expect(orchestrator.phaseContext.currentPhase).toBe(5);
   });
 
@@ -552,7 +457,9 @@ describe('WorkflowOrchestrator - _runCommit flow', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       changedFiles: []
     });
-    await orchestrator._runCommit();
+    orchestrator._syncDepsToModules();
+    orchestrator.phaseCommit.dryRun = orchestrator.dryRun;
+    orchestrator.phaseContext = await orchestrator.phaseCommit.run(orchestrator.phaseContext);
 
     const stored = await orchestrator.memory.get('last_commit');
     expect(stored).toBeDefined();
@@ -568,7 +475,9 @@ describe('WorkflowOrchestrator - _runCommit flow', () => {
       task: 'add error handling to auth'
     });
 
-    await orchestrator._runCommit();
+    orchestrator._syncDepsToModules();
+    orchestrator.phaseCommit.dryRun = orchestrator.dryRun;
+    orchestrator.phaseContext = await orchestrator.phaseCommit.run(orchestrator.phaseContext);
     expect(orchestrator.phaseContext.currentPhase).toBe(5);
 
     const stored = await orchestrator.memory.get('last_commit');
@@ -586,7 +495,10 @@ describe('WorkflowOrchestrator - _runCommit flow', () => {
       changedFiles: []
     });
 
-    await expect(orchestrator._runCommit()).rejects.toThrow('Token 预算不足');
+    orchestrator._syncDepsToModules();
+    await expect(orchestrator.phaseCommit.run(orchestrator.phaseContext)).rejects.toThrow(
+      'Token 预算不足'
+    );
   });
 });
 
@@ -601,9 +513,12 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
   });
 
   it('should create a quest engine for each quest', async () => {
-    orchestrator.phaseExecute._executeQuest = vi
-      .fn()
-      .mockResolvedValue({ success: true, executionPlan: {}, agentInvocation: {} });
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: true,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
+    });
 
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       questMap: [
@@ -611,7 +526,7 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
         { id: 'q2', keywords: ['verify'] }
       ]
     });
-    await orchestrator._runExecute();
+    await runExecute(orchestrator);
 
     expect(orchestrator.questEngines.size).toBe(2);
     expect(orchestrator.questEngines.has('q1')).toBe(true);
@@ -626,7 +541,7 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       questMap: [{ id: 'q1', keywords: ['test'] }]
     });
-    await orchestrator._runExecute();
+    await runExecute(orchestrator);
 
     expect(orchestrator.phaseContext.completedQuests).toContain('q1');
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(0);
@@ -645,7 +560,7 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       questMap: [{ id: 'q1', keywords: ['test'] }]
     });
-    await orchestrator._runExecute();
+    await runExecute(orchestrator);
 
     expect(orchestrator.phaseExecute._executeQuest).toHaveBeenCalledTimes(2);
     expect(orchestrator.phaseContext.completedQuests).toContain('q1');
@@ -659,7 +574,7 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       questMap: [{ id: 'q1', keywords: ['test'] }]
     });
-    await orchestrator._runExecute();
+    await runExecute(orchestrator);
 
     expect(orchestrator.phaseExecute._executeQuest).toHaveBeenCalledTimes(3);
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
@@ -677,18 +592,21 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
       questMap: [{ id: 'q1', keywords: ['test'] }]
     });
 
-    await expect(orchestrator._runExecute()).rejects.toThrow('Token 预算不足');
+    await expect(runExecute(orchestrator)).rejects.toThrow('Token 预算不足');
   });
 
   it('should check context overflow after quests', async () => {
-    orchestrator.phaseExecute._executeQuest = vi
-      .fn()
-      .mockResolvedValue({ success: true, executionPlan: {}, agentInvocation: {} });
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: true,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
+    });
 
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       questMap: [{ id: 'q1', keywords: ['test'] }]
     });
-    await orchestrator._runExecute();
+    await runExecute(orchestrator);
 
     // Verify quests were executed and context updated
     expect(orchestrator.phaseContext.completedQuests).toContain('q1');
@@ -728,9 +646,9 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
 
     orchestrator._messageAccumulator = [{ role: 'user', content: 'test' }];
 
-    const result = await orchestrator._executeQuest(quest, modelRoute, questEngine);
+    const result = await executeQuest(orchestrator, quest, modelRoute, questEngine);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.executionPlan).toBeDefined();
     expect(result.executionPlan.questId).toBe('q1_test');
     expect(result.executionPlan.model).toBe('claude-sonnet');
@@ -740,6 +658,11 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
     expect(result.executionPlan.acceptanceCriteria).toContain('All tests pass');
     expect(result.executionPlan.changedFiles).toContain('auth.js');
     expect(result.executionPlan.instructions).toBeDefined();
+    expect(result.executionResult).toBeDefined();
+    expect(result.executionResult.success).toBe(false);
+    expect(result.executionResult.error).toBe('Execution backend not connected');
+    expect(result.executionResult.changedFiles).toContain('auth.js');
+    expect(result.executionResult.summary).toContain('Prepared');
   });
 
   it('should handle resolveTeam failure gracefully', async () => {
@@ -752,15 +675,15 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
 
     orchestrator._messageAccumulator = [];
 
-    const result = await orchestrator._executeQuest(quest, modelRoute, orchestrator.flowEngine);
+    const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.executionPlan).toBeDefined();
     expect(result.executionPlan.lead).toBeNull();
     expect(result.executionPlan.members).toHaveLength(0);
   });
 
-  it('should merge changedFiles into phaseContext', async () => {
+  it('should merge changedFiles from executionResult into phaseContext via wrapper', async () => {
     orchestrator.phaseExecute._ensureAgentRegistry = vi.fn().mockRejectedValue(new Error('skip'));
 
     const quest = {
@@ -772,8 +695,11 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
 
     orchestrator._messageAccumulator = [];
 
-    await orchestrator._executeQuest(quest, modelRoute, orchestrator.flowEngine);
+    const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
 
+    expect(result.executionResult.changedFiles).toContain('auth.js');
+    expect(result.executionResult.changedFiles).toContain('login.js');
+    expect(orchestrator.phaseContext.changedFiles).toHaveLength(2);
     expect(orchestrator.phaseContext.changedFiles).toContain('auth.js');
     expect(orchestrator.phaseContext.changedFiles).toContain('login.js');
   });
@@ -788,7 +714,7 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
     const quest = { id: 'q_overflow', keywords: ['test'] };
     const modelRoute = { model: 'test', tier: 'light' };
 
-    await orchestrator._executeQuest(quest, modelRoute, orchestrator.flowEngine);
+    await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
     expect(orchestrator._messageAccumulator.length).toBe(50);
   });
 });
@@ -818,7 +744,7 @@ describe('WorkflowOrchestrator - _runVerify', () => {
       initialize: vi.fn().mockResolvedValue(undefined)
     };
 
-    await orchestrator._runVerify();
+    await runVerify(orchestrator);
     expect(orchestrator.phaseContext.currentPhase).toBe(4);
     expect(orchestrator.phaseContext.verificationActions).toHaveLength(1);
     expect(orchestrator.phaseContext.verificationActions[0].agentName).toBe('build-error-resolver');
@@ -834,7 +760,7 @@ describe('WorkflowOrchestrator - _runVerify', () => {
       initialize: vi.fn().mockRejectedValue(new Error('Init failed'))
     };
 
-    await orchestrator._runVerify();
+    await runVerify(orchestrator);
 
     expect(orchestrator.phaseContext.verificationActions).toHaveLength(1);
     expect(orchestrator.phaseContext.verificationActions[0].agentName).toBe('build-error-resolver');
@@ -846,12 +772,12 @@ describe('WorkflowOrchestrator - _runVerify', () => {
       failedQuests: []
     });
 
-    await orchestrator._runVerify();
+    await runVerify(orchestrator);
     expect(orchestrator.phaseContext.verificationActions).toEqual([]);
   });
 
   it('should record contextStatus in phaseContext', async () => {
-    await orchestrator._runVerify();
+    await runVerify(orchestrator);
     expect(orchestrator.phaseContext.contextStatus).toBeDefined();
   });
 
@@ -861,7 +787,7 @@ describe('WorkflowOrchestrator - _runVerify', () => {
       consume: vi.fn()
     };
 
-    await expect(orchestrator._runVerify()).rejects.toThrow('Token 预算不足');
+    await expect(runVerify(orchestrator)).rejects.toThrow('Token 预算不足');
   });
 
   it('should route multiple failed quests independently', async () => {
@@ -886,7 +812,7 @@ describe('WorkflowOrchestrator - _runVerify', () => {
       initialize: vi.fn().mockResolvedValue(undefined)
     };
 
-    await orchestrator._runVerify();
+    await runVerify(orchestrator);
 
     expect(orchestrator.phaseContext.verificationActions).toHaveLength(2);
     expect(orchestrator.phaseContext.verificationActions[0].agentName).toBe('build-error-resolver');
@@ -914,7 +840,7 @@ describe('WorkflowOrchestrator - _runLearn with twoTurnExtract', () => {
   });
 
   it('should call twoTurnExtract and store insight', async () => {
-    await orchestrator._runLearn();
+    await runLearn(orchestrator);
 
     expect(orchestrator.phaseContext.currentPhase).toBe(6);
     expect(orchestrator.phaseContext.insights.length).toBeGreaterThan(0);
@@ -928,7 +854,7 @@ describe('WorkflowOrchestrator - _runLearn with twoTurnExtract', () => {
   it('should handle twoTurnExtract failure gracefully', async () => {
     orchestrator.memory.getAll = vi.fn().mockRejectedValue(new Error('DB read error'));
 
-    await orchestrator._runLearn();
+    await runLearn(orchestrator);
     expect(orchestrator.phaseContext.currentPhase).toBe(6);
   });
 
@@ -938,7 +864,7 @@ describe('WorkflowOrchestrator - _runLearn with twoTurnExtract', () => {
       consume: vi.fn()
     };
 
-    await orchestrator._runLearn();
+    await runLearn(orchestrator);
     expect(orchestrator.phaseContext.currentPhase).toBe(6);
     expect(orchestrator.tokenBudget.consume).not.toHaveBeenCalled();
   });
@@ -968,9 +894,12 @@ describe('WorkflowOrchestrator - full run() flow', () => {
   });
 
   it('should complete micro mode workflow (PHASE 1 + micro execute + verify + learn)', async () => {
-    orchestrator.phaseExecute._executeQuest = vi
-      .fn()
-      .mockResolvedValue({ success: true, executionPlan: {}, agentInvocation: {} });
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: true,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
+    });
 
     const result = await orchestrator.run('fix typo in readme');
 
@@ -1066,6 +995,7 @@ describe('WorkflowOrchestrator - _buildResult edge cases', () => {
       status: 'completed',
       error: null,
       mode: 'full',
+      capabilities: orchestrator.phaseContext.capabilities,
       completedQuests: ['q1'],
       failedQuests: [],
       verificationActions: [],
@@ -1076,9 +1006,9 @@ describe('WorkflowOrchestrator - _buildResult edge cases', () => {
       gitResult: undefined,
       questPlans: [],
       agentInvocations: [],
+      executionSummary: [],
       changedFiles: ['a.js'],
       insights: [{ task: 'test' }],
-      capabilities: orchestrator.phaseContext.capabilities,
       tokenBudget: orchestrator.phaseContext.tokenBudget,
       contextStatus: 'ok',
       sessionSummary: null,
@@ -1189,7 +1119,7 @@ File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 All files |   85.2  |   72.1   |   90.0  |   83.5  |
 ----------|---------|----------|---------|---------|-------------------
 `;
-      const coverage = orchestrator._parseCoverageOutput(output);
+      const coverage = parseCoverageOutput(orchestrator, output);
       expect(coverage.statements).toBe(85.2);
       expect(coverage.branches).toBe(72.1);
       expect(coverage.functions).toBe(90.0);
@@ -1205,7 +1135,7 @@ Branches     : 78.2% ( 89/114 )
 Functions    : 92.1% ( 70/76 )
 Lines        : 86.3% ( 167/194 )
 `;
-      const coverage = orchestrator._parseCoverageOutput(output);
+      const coverage = parseCoverageOutput(orchestrator, output);
       expect(coverage.statements).toBe(85.5);
       expect(coverage.branches).toBe(78.2);
       expect(coverage.functions).toBe(92.1);
@@ -1221,14 +1151,14 @@ Branches     : 82% ( 93/114 )
 Functions    : 90% ( 68/76 )
 Lines        : 88% ( 170/194 )
 `;
-      const coverage = orchestrator._parseCoverageOutput(output);
+      const coverage = parseCoverageOutput(orchestrator, output);
       expect(coverage.overall).toBe(82);
       expect(coverage.passing).toBe(true);
     });
 
     it('should return zeros for unrecognized format', () => {
       const output = 'some random output without coverage data';
-      const coverage = orchestrator._parseCoverageOutput(output);
+      const coverage = parseCoverageOutput(orchestrator, output);
       expect(coverage.statements).toBe(0);
       expect(coverage.overall).toBe(0);
       expect(coverage.passing).toBe(false);
@@ -1246,7 +1176,7 @@ Lines        : 88% ( 170/194 )
         initialize: vi.fn().mockResolvedValue(undefined)
       };
 
-      const result = await orchestrator._runSecurityScan();
+      const result = await runSecurityScan(orchestrator);
       expect(result.agentName).toBe('security-reviewer');
       expect(result.scanTriggered).toBe(true);
     });
@@ -1257,7 +1187,7 @@ Lines        : 88% ( 170/194 )
         initialize: vi.fn().mockRejectedValue(new Error('Init error'))
       };
 
-      const result = await orchestrator._runSecurityScan();
+      const result = await runSecurityScan(orchestrator);
       expect(result.agentName).toBe('security-reviewer');
       expect(result.scanTriggered).toBe(false);
     });
@@ -1270,7 +1200,7 @@ Lines        : 88% ( 170/194 )
         failedQuests: []
       });
 
-      await orchestrator._runVerify();
+      await runVerify(orchestrator);
       expect(orchestrator.phaseContext.currentPhase).toBe(4);
       // coverageResult and securityResult should be set (null when no test runner)
       expect(orchestrator.phaseContext).toHaveProperty('coverageResult');
@@ -1283,7 +1213,7 @@ Lines        : 88% ( 170/194 )
         failedQuests: []
       });
 
-      await orchestrator._runVerify();
+      await runVerify(orchestrator);
       expect(orchestrator.phaseContext.securityResult).toBeNull();
     });
   });
@@ -1301,7 +1231,7 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
 
   describe('_runDoctorCheck', () => {
     it('should return structured result with checks and issues', async () => {
-      const result = await orchestrator._runDoctorCheck();
+      const result = await runDoctorCheck(orchestrator);
       expect(result).toHaveProperty('healthy');
       expect(result).toHaveProperty('issues');
       expect(result).toHaveProperty('checks');
@@ -1309,7 +1239,7 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
     });
 
     it('should detect missing CLAUDE.md as warning', async () => {
-      const result = await orchestrator._runDoctorCheck();
+      const result = await runDoctorCheck(orchestrator);
       const claudeIssue = result.issues.find((i) => i.file === 'CLAUDE.md');
       // In /tmp/test-project, CLAUDE.md won't exist
       if (claudeIssue) {
@@ -1318,18 +1248,18 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
     });
 
     it('should check for test runner', async () => {
-      const result = await orchestrator._runDoctorCheck();
+      const result = await runDoctorCheck(orchestrator);
       expect(result.checks).toHaveProperty('testRunner');
     });
 
     it('should include doctorResult in discover phase context', async () => {
-      await orchestrator._runDiscover();
+      await runDiscover(orchestrator);
       expect(orchestrator.phaseContext.doctorResult).toBeDefined();
       expect(orchestrator.phaseContext.doctorResult).toHaveProperty('healthy');
     });
 
     it('should include fix metadata when fix mode is enabled', async () => {
-      const result = await orchestrator._runDoctorCheck({ fix: true, source: 'test' });
+      const result = await runDoctorCheck(orchestrator, { fix: true, source: 'test' });
       expect(result).toHaveProperty('fixesApplied');
       expect(result).toHaveProperty('fixesSkipped');
       expect(result).toHaveProperty('changedFiles');
@@ -1348,7 +1278,7 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
         changedFiles: ['/tmp/test-project/REPO_MAP.md']
       });
 
-      await orchestrator._runDiscover();
+      await runDiscover(orchestrator);
 
       expect(orchestrator.phaseDiscover._runDoctorCheck).toHaveBeenCalledWith({
         fix: true,
@@ -1371,7 +1301,7 @@ describe('WorkflowOrchestrator - PHASE 6 Git Patterns', () => {
 
   describe('_analyzeGitPatterns', () => {
     it('should return null when git is not available', async () => {
-      const result = await orchestrator._analyzeGitPatterns();
+      const result = await analyzeGitPatterns(orchestrator);
       // In /tmp/test-project, git won't work
       expect(result).toBeNull();
     });
@@ -1413,9 +1343,9 @@ describe('WorkflowOrchestrator - Agent Semantic Description', () => {
 
     orchestrator._messageAccumulator = [];
 
-    const result = await orchestrator._executeQuest(quest, modelRoute, orchestrator.flowEngine);
+    const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.executionPlan.semanticDescription).toBeDefined();
     expect(result.executionPlan.semanticDescription).toContain('测试驱动开发专家');
     expect(result.executionPlan.semanticDescription).toContain('编写和运行测试用例');
@@ -1450,6 +1380,31 @@ describe('WorkflowOrchestrator - _buildResult includes new fields', () => {
     expect(result.securityResult.agentName).toBe('security-reviewer');
   });
 
+  it('should include executionSummary in result', () => {
+    orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
+      executionResults: [
+        {
+          questId: 'quest-1',
+          success: false,
+          summary: 'Prepared architect for quest quest-1 (execution backend not connected)',
+          changedFiles: ['src/a.js'],
+          artifacts: null,
+          error: 'Execution backend not connected'
+        }
+      ]
+    });
+    const result = orchestrator._buildResult('completed');
+    expect(result.executionSummary).toEqual([
+      {
+        questId: 'quest-1',
+        success: false,
+        summary: 'Prepared architect for quest quest-1 (execution backend not connected)',
+        changedFiles: ['src/a.js'],
+        error: 'Execution backend not connected'
+      }
+    ]);
+  });
+
   it('should include doctorResult in result', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       doctorResult: { healthy: true, issues: [], checks: {} }
@@ -1478,7 +1433,7 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
   });
 
   it('should generate 1 quest for light mode', async () => {
-    const questMap = await orchestrator._generateQuestMap('add error handling', {
+    const questMap = await generateQuestMap(orchestrator, 'add error handling', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1493,7 +1448,7 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
   });
 
   it('should generate multiple quests for full mode', async () => {
-    const questMap = await orchestrator._generateQuestMap('refactor authentication system', {
+    const questMap = await generateQuestMap(orchestrator, 'refactor authentication system', {
       agentRecommendation: {
         agent: {
           name: 'architect',
@@ -1513,7 +1468,7 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
   });
 
   it('should generate quests without agent recommendation', async () => {
-    const questMap = await orchestrator._generateQuestMap('implement feature', {
+    const questMap = await generateQuestMap(orchestrator, 'implement feature', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1525,7 +1480,7 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
   });
 
   it('should include matched skills in quest decisionNotes', async () => {
-    const questMap = await orchestrator._generateQuestMap('fix bug', {
+    const questMap = await generateQuestMap(orchestrator, 'fix bug', {
       agentRecommendation: null,
       matchedSkills: [{ name: 'error-patterns' }, { name: 'workflow-patterns' }],
       modelRoute: { model: 'claude-sonnet', tier: 'standard' },
@@ -1538,7 +1493,7 @@ describe('WorkflowOrchestrator - _generateQuestMap', () => {
   });
 
   it('should return frozen quest map', async () => {
-    const questMap = await orchestrator._generateQuestMap('test', {
+    const questMap = await generateQuestMap(orchestrator, 'test', {
       agentRecommendation: null,
       matchedSkills: [],
       modelRoute: { model: 'test', tier: 'fast' },
@@ -1567,11 +1522,14 @@ describe('WorkflowOrchestrator - _runMicroExecute (P0-2)', () => {
   });
 
   it('should execute micro quest and update completedQuests', async () => {
-    orchestrator.phaseExecute._executeQuest = vi
-      .fn()
-      .mockResolvedValue({ success: true, executionPlan: {}, agentInvocation: {} });
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: true,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
+    });
 
-    await orchestrator._runMicroExecute();
+    await runMicroExecute(orchestrator);
 
     expect(orchestrator.phaseContext.completedQuests).toContain('micro-1');
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(0);
@@ -1582,7 +1540,7 @@ describe('WorkflowOrchestrator - _runMicroExecute (P0-2)', () => {
       .fn()
       .mockRejectedValue(new Error('Execution failed'));
 
-    await orchestrator._runMicroExecute();
+    await runMicroExecute(orchestrator);
 
     expect(orchestrator.phaseContext.completedQuests).toHaveLength(0);
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
@@ -1590,11 +1548,14 @@ describe('WorkflowOrchestrator - _runMicroExecute (P0-2)', () => {
   });
 
   it('should consume tokens and record context', async () => {
-    orchestrator.phaseExecute._executeQuest = vi
-      .fn()
-      .mockResolvedValue({ success: true, executionPlan: {}, agentInvocation: {} });
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: true,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
+    });
 
-    await orchestrator._runMicroExecute();
+    await runMicroExecute(orchestrator);
 
     // Verify flow engine transitions happened
     expect(orchestrator.flowEngine.state).toBeDefined();
@@ -1615,28 +1576,28 @@ describe('WorkflowOrchestrator - _detectArchitectureChange (P1-3)', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       task: 'refactor authentication system architecture'
     });
-    expect(orchestrator._detectArchitectureChange()).toBe(true);
+    expect(detectArchitectureChange(orchestrator)).toBe(true);
   });
 
   it('should detect Chinese architecture keywords', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       task: '重构认证模块架构'
     });
-    expect(orchestrator._detectArchitectureChange()).toBe(true);
+    expect(detectArchitectureChange(orchestrator)).toBe(true);
   });
 
   it('should return false for non-architecture tasks', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       task: 'fix typo in readme'
     });
-    expect(orchestrator._detectArchitectureChange()).toBe(false);
+    expect(detectArchitectureChange(orchestrator)).toBe(false);
   });
 
   it('should detect migration keywords', () => {
     orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
       task: 'migrate database to postgres'
     });
-    expect(orchestrator._detectArchitectureChange()).toBe(true);
+    expect(detectArchitectureChange(orchestrator)).toBe(true);
   });
 });
 
@@ -1651,7 +1612,7 @@ describe('WorkflowOrchestrator - _generateDeletionLog (P1-4)', () => {
   });
 
   it('should return empty entries when no deletion records', async () => {
-    const log = await orchestrator._generateDeletionLog();
+    const log = await generateDeletionLog(orchestrator);
     expect(log.entries).toEqual([]);
     expect(log.generatedAt).toBeDefined();
     expect(Object.isFrozen(log)).toBe(true);
@@ -1668,7 +1629,7 @@ describe('WorkflowOrchestrator - _generateDeletionLog (P1-4)', () => {
       { tier: 'session' }
     );
 
-    const log = await orchestrator._generateDeletionLog();
+    const log = await generateDeletionLog(orchestrator);
     expect(log.entries.length).toBeGreaterThanOrEqual(0);
   });
 });
@@ -1684,7 +1645,7 @@ describe('WorkflowOrchestrator - _persistAgentResult (P2-1)', () => {
   });
 
   it('should store agent result to memory', async () => {
-    await orchestrator._persistAgentResult('architect', { success: true }, 'quest-1');
+    await persistAgentResult(orchestrator, 'architect', { success: true }, 'quest-1');
 
     // Search for the stored result
     const results = await orchestrator.memory.search('agent_result_quest-1');
@@ -1700,7 +1661,7 @@ describe('WorkflowOrchestrator - _persistAgentResult (P2-1)', () => {
 
     // Should not throw
     await expect(
-      orchestrator._persistAgentResult('test', { success: true }, 'q1')
+      persistAgentResult(orchestrator, 'test', { success: true }, 'q1')
     ).resolves.toBeUndefined();
   });
 });
@@ -1763,7 +1724,7 @@ describe('WorkflowOrchestrator - _runReason generates questMap (P0-1)', () => {
       task: 'add error handling to auth module'
     });
 
-    await orchestrator._runReason();
+    await runReason(orchestrator);
 
     expect(orchestrator.phaseContext.questMap).toBeDefined();
     expect(orchestrator.phaseContext.questMap).not.toBeNull();
@@ -1776,7 +1737,7 @@ describe('WorkflowOrchestrator - _runReason generates questMap (P0-1)', () => {
       task: 'refactor authentication system'
     });
 
-    await orchestrator._runReason();
+    await runReason(orchestrator);
 
     expect(orchestrator.phaseContext.questMap).toBeDefined();
     expect(orchestrator.phaseContext.questMap.length).toBeGreaterThanOrEqual(2);
@@ -1788,7 +1749,7 @@ describe('WorkflowOrchestrator - _runReason generates questMap (P0-1)', () => {
       task: 'fix error in code'
     });
 
-    await orchestrator._runReason();
+    await runReason(orchestrator);
 
     expect(orchestrator.phaseContext.matchedSkills).toBeDefined();
     expect(Array.isArray(orchestrator.phaseContext.matchedSkills)).toBe(true);

@@ -13,6 +13,7 @@ import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
 import { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
+import { detectExecutionMode } from './workflow/phase-context.js';
 
 /**
  * 交互模式 - 主菜单
@@ -235,68 +236,83 @@ export async function runAnalyze(task, options = {}) {
     projectDir: options.dir || process.cwd()
   });
 
+  const mode = detectExecutionMode(task, options);
+  orchestrator.phaseContext = orchestrator.phaseExecute.initializeWorkflowContext(
+    orchestrator.phaseContext,
+    task,
+    {
+      ...options,
+      mode
+    }
+  );
+
   // PHASE 1: Discover
-  await orchestrator._runDiscover();
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseContext = await orchestrator.phaseDiscover.run(orchestrator.phaseContext);
 
   // PHASE 2: Reason
-  await orchestrator._runReason();
+  orchestrator.phaseContext = await orchestrator.phaseExecute.runReason(orchestrator.phaseContext);
 
-  const ctx = orchestrator.getContext();
-  const modelResult = ctx.modelRecommendations;
-  const agentResult = ctx.agentRecommendation;
-  const questMap = ctx.questMap || [];
+  return orchestrator.phaseExecute.buildAnalyzeSnapshot(orchestrator.getContext());
+}
 
-  // 构建 team 信息（P0-3: 通过 phaseExecute._ensureAgentRegistry() 安全获取）
-  const registry = await orchestrator.phaseExecute._ensureAgentRegistry();
-  const teamResult = registry.resolveTeam({
-    keywords: orchestrator.phaseExecute._extractKeywords(task),
-    maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
+export async function runStatus(options = {}) {
+  const orchestrator = new WorkflowOrchestrator({
+    projectDir: options.dir || process.cwd()
   });
 
+  const mode = detectExecutionMode(options.task || 'status', options);
+  orchestrator.phaseContext = orchestrator.phaseExecute.initializeWorkflowContext(
+    orchestrator.phaseContext,
+    options.task || 'status',
+    {
+      ...options,
+      mode
+    }
+  );
+
+  orchestrator._syncDepsToModules();
+  orchestrator.phaseContext = await orchestrator.phaseDiscover.run(orchestrator.phaseContext);
+
+  const runtime = orchestrator.getRuntimeStatus();
+  const summary = orchestrator.phaseExecute.summarizeStatus(orchestrator.getContext());
+
   return {
-    task: task.slice(0, 80),
-    mode: ctx.mode,
-    detected_mode: ctx.mode,
-    routing: {
-      model: modelResult
-        ? {
-            id: modelResult.model,
-            tier: modelResult.tier,
-            reason: modelResult.reason
-          }
-        : null,
-      agent: agentResult
-        ? {
-            name: agentResult.agent.name,
-            displayName: agentResult.agent.displayName,
-            score: agentResult.score,
-            matchReason: agentResult.matchReason
-          }
-        : null
-    },
-    team: {
-      lead: teamResult.lead
-        ? {
-            name: teamResult.lead.name,
-            displayName: teamResult.lead.displayName,
-            capabilities: teamResult.lead.capabilities
-          }
-        : null,
-      members: teamResult.members.map((m) => ({
-        name: m.name,
-        displayName: m.displayName,
-        capabilities: m.capabilities
-      }))
-    },
-    quests: questMap.map((q) => ({
-      id: q.id,
-      title: q.title,
-      type: q.type,
-      keywords: q.keywords,
-      agent: q.agent,
-      priority: q.priority,
-      files: q.files
-    }))
+    runtime,
+    summary,
+    capabilities: orchestrator.getContext().capabilities,
+    doctorResult: orchestrator.getContext().doctorResult,
+    pendingInvocations: orchestrator.getContext().pendingInvocations
+  };
+}
+
+export async function runLearn(options = {}) {
+  const orchestrator = new WorkflowOrchestrator({
+    projectDir: options.dir || process.cwd()
+  });
+
+  if (options.git) {
+    const gitPatterns = await orchestrator.phaseLearn._analyzeGitPatterns(options.commitCount || 50);
+    return {
+      mode: 'git',
+      gitPatterns
+    };
+  }
+
+  return {
+    mode: 'default',
+    gitPatterns: null
+  };
+}
+
+export async function runCreateHook(options = {}) {
+  const hookType = options.type || 'template';
+  const hookName = options.name || 'custom-hook';
+  return {
+    type: hookType,
+    name: hookName,
+    template: `${hookType}:${hookName}`,
+    recommendedLocation: '.claude/settings.json'
   };
 }
 

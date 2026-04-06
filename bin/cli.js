@@ -11,6 +11,9 @@ import {
   runAnalyze,
   runDoctor,
   runResume,
+  runStatus,
+  runLearn,
+  runCreateHook,
   WorkflowOrchestrator
 } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
@@ -235,11 +238,12 @@ program
       });
 
       if (options.dryRun) {
-        console.log(chalk.cyan.bold('\n/auto 工作流分析（dry-run 模式）'));
-        console.log(chalk.gray(`  任务: ${task}`));
-        console.log(chalk.gray(`  模式: ${options.mode}`));
-        console.log(chalk.gray(`  目录: ${options.dir}`));
-        console.log('');
+        const result = await runAnalyze(task, {
+          mode: options.mode,
+          dir: options.dir,
+          json: true
+        });
+        console.log(JSON.stringify(result, null, 2));
         return;
       }
 
@@ -256,8 +260,23 @@ program
         if (result.completedQuests && result.completedQuests.length > 0) {
           console.log(chalk.gray(`  完成 Quests: ${result.completedQuests.length}`));
         }
+        if (result.executionSummary && result.executionSummary.length > 0) {
+          console.log(chalk.gray(`  执行摘要: ${result.executionSummary.length}`));
+        }
         if (result.changedFiles && result.changedFiles.length > 0) {
           console.log(chalk.gray(`  变更文件: ${result.changedFiles.length}`));
+        }
+        if (result.verificationActions && result.verificationActions.length > 0) {
+          console.log(chalk.gray(`  验证动作: ${result.verificationActions.length}`));
+        }
+        if (result.doctorResult?.issues?.length > 0) {
+          console.log(chalk.gray(`  Doctor 问题: ${result.doctorResult.issues.length}`));
+        }
+        if (result.securityResult?.scanTriggered) {
+          console.log(chalk.gray('  安全扫描: 已触发'));
+        }
+        if (result.resumeDirective) {
+          console.log(chalk.gray('  Resume: 已生成续接指令'));
         }
       } else {
         console.log(chalk.red.bold('\n/auto 工作流执行失败'));
@@ -320,6 +339,136 @@ program
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));
       }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Status 命令
+program
+  .command('status')
+  .description('显示 /auto 运行时状态、能力概览与健康信息')
+  .option('--json', '输出 JSON')
+  .option('-d, --dir <dir>', '项目目录')
+  .option('-t, --task <task>', '可选任务描述，用于模式推断')
+  .action(async (options) => {
+    try {
+      const result = await runStatus(options);
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold('auto status'));
+      console.log(chalk.gray('━'.repeat(50)));
+      console.log('');
+
+      console.log(chalk.white.bold('Summary:'));
+      console.log(
+        `  ${chalk.gray(`mode=${result.summary.mode}, phase=${result.summary.currentPhase}`)}`
+      );
+      console.log(
+        `  ${chalk.gray(`completed=${result.summary.completedQuestsCount}, failed=${result.summary.failedQuestsCount}`)}`
+      );
+      console.log(
+        `  ${chalk.gray(`changedFiles=${result.summary.changedFilesCount}, verificationActions=${result.summary.verificationActionsCount}`)}`
+      );
+      console.log('');
+
+      console.log(chalk.white.bold('Capabilities:'));
+      console.log(`  ${chalk.gray(`commands=${result.capabilities.commands}`)}`);
+      console.log(`  ${chalk.gray(`agents=${result.capabilities.agents}`)}`);
+      console.log(`  ${chalk.gray(`skills=${result.capabilities.skills}`)}`);
+      console.log(`  ${chalk.gray(`hooks=${result.capabilities.hooks}`)}`);
+      console.log('');
+
+      if (result.summary.hasDoctorIssues) {
+        console.log(chalk.white.bold('Doctor:'));
+        console.log(`  ${chalk.yellow(`issues=${result.summary.doctorIssuesCount}`)}`);
+        console.log('');
+      }
+
+      if (result.summary.hasPendingInvocations) {
+        console.log(chalk.white.bold('Pending Invocations:'));
+        console.log(`  ${chalk.yellow(result.summary.pendingInvocationsCount)}`);
+        console.log('');
+      }
+
+      console.log(chalk.gray('━'.repeat(50)));
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Learn 命令
+program
+  .command('learn')
+  .description('分析知识模式与 Git 历史经验')
+  .option('--git', '分析 Git 历史模式')
+  .option('--commit-count <n>', '分析最近 N 条提交', '50')
+  .option('--json', '输出 JSON')
+  .option('-d, --dir <dir>', '项目目录')
+  .action(async (options) => {
+    try {
+      const result = await runLearn({
+        ...options,
+        commitCount: Number(options.commitCount)
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold('auto learn'));
+      console.log(chalk.gray('━'.repeat(50)));
+      console.log('');
+
+      console.log(chalk.white.bold('Mode:'));
+      console.log(`  ${chalk.green(result.mode)}`);
+      console.log('');
+
+      if (result.gitPatterns) {
+        console.log(chalk.white.bold('Git Patterns:'));
+        console.log(`  ${chalk.gray(JSON.stringify(result.gitPatterns, null, 2))}`);
+        console.log('');
+      }
+
+      console.log(chalk.gray('━'.repeat(50)));
+      console.log('');
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Create Hook 命令
+program
+  .command('create-hook')
+  .description('生成 Hook 模板建议')
+  .option('-t, --type <type>', 'hook 类型')
+  .option('-n, --name <name>', 'hook 名称')
+  .option('--json', '输出 JSON')
+  .action(async (options) => {
+    try {
+      const result = await runCreateHook(options);
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan.bold('Hook template'));
+      console.log(chalk.gray(`  type: ${result.type}`));
+      console.log(chalk.gray(`  name: ${result.name}`));
+      console.log(chalk.gray(`  template: ${result.template}`));
+      console.log(chalk.gray(`  location: ${result.recommendedLocation}`));
+      console.log('');
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);
