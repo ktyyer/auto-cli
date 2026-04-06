@@ -486,6 +486,48 @@ describe('WorkflowOrchestrator', () => {
         'Unsupported auto action: unknown-action'
       );
     });
+
+    it('should reset stale state when status follows a completed run', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, {
+          completedQuests: ['stale-quest'],
+          failedQuests: [{ questId: 'stale-fail', error: 'stale' }],
+          changedFiles: ['stale.js']
+        })
+      );
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
+      await orchestrator.run('fix typo');
+
+      const statusResult = await orchestrator.runAutoAction('status', {}, { dir: '/tmp/test-project' });
+
+      expect(statusResult.runtime.flowEngine.state).toBe('idle');
+      expect(statusResult.summary.completedQuestsCount).toBe(0);
+      expect(statusResult.summary.failedQuestsCount).toBe(0);
+    });
+
+    it('should reset stale state when analyze follows a completed run', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, {
+          completedQuests: ['stale-quest-2'],
+          changedFiles: ['stale2.js']
+        })
+      );
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
+      await orchestrator.run('fix typo');
+
+      const analyzeResult = await orchestrator.runAutoAction('analyze', { task: 'check code' });
+
+      expect(analyzeResult).toBeDefined();
+      expect(orchestrator.getFlowState()).toBe('idle');
+      expect(orchestrator.phaseContext.completedQuests).toHaveLength(0);
+    });
   });
 
   describe('getFlowState', () => {

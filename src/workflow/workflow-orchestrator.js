@@ -421,6 +421,27 @@ export class WorkflowOrchestrator {
     }
   }
 
+  _resetForReadOnlyAction(task, options = {}) {
+    this.phaseContext = createPhaseContext();
+    this._messageAccumulator = [{ role: 'user', content: task }];
+    this._pendingSessionSummary = null;
+    this._resetFlowToIdle({ phase: 'read-only-reset' });
+    this._syncDepsToModules();
+  }
+
+  _resetFlowToIdle(meta = {}) {
+    const state = this.flowEngine.state;
+    if (state === FLOW_STATES.IDLE) {
+      return;
+    }
+    if (state === FLOW_STATES.FAILED || state === FLOW_STATES.COMPLETED || state === FLOW_STATES.PAUSED) {
+      try { this.flowEngine.transition(FLOW_EVENTS.RESET, meta); } catch { /* ignore */ }
+      return;
+    }
+    try { this.flowEngine.transition(FLOW_EVENTS.FAIL, meta); } catch { /* ignore */ }
+    try { this.flowEngine.transition(FLOW_EVENTS.RESET, meta); } catch { /* ignore */ }
+  }
+
   async runAutoAction(action, payload = {}, options = {}) {
     const normalizedAction = action || 'run';
 
@@ -450,10 +471,10 @@ export class WorkflowOrchestrator {
   }
 
   async _runAnalyzeAction(task, options = {}) {
-    const mode = detectExecutionMode(task, options);
+    this._resetForReadOnlyAction(task, options);
     this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, task, {
       ...options,
-      mode
+      mode: detectExecutionMode(task, options)
     });
 
     this._syncDepsToModules();
@@ -464,12 +485,10 @@ export class WorkflowOrchestrator {
   }
 
   async _runStatusAction(payload = {}, options = {}) {
-    const task = payload.task || options.task || 'status';
-    const mode = detectExecutionMode(task, options);
-
-    this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, task, {
+    this._resetForReadOnlyAction(payload.task || 'status', options);
+    this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, payload.task || 'status', {
       ...options,
-      mode
+      mode: detectExecutionMode(payload.task || 'status', options)
     });
 
     this._syncDepsToModules();
