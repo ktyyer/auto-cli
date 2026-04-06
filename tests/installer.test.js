@@ -50,9 +50,10 @@ describe('installer.js', () => {
     await fs.ensureDir(testClaudeDir);
     await fs.ensureDir(testSourceDir);
 
-    // commands: source='commands', target='commands/auto', pattern='*.md'
-    await fs.ensureDir(path.join(testSourceDir, 'commands'));
+    // commands: source='commands', target='commands/auto', recursive=true
+    await fs.ensureDir(path.join(testSourceDir, 'commands', 'auto'));
     await fs.writeFile(path.join(testSourceDir, 'commands', 'auto.md'), '# Auto Command v2');
+    await fs.writeFile(path.join(testSourceDir, 'commands', 'auto', 'route.md'), '# Auto Route v2');
 
     // agents: source='agents', target='agents', pattern='*.md'
     await fs.ensureDir(path.join(testSourceDir, 'agents'));
@@ -110,39 +111,55 @@ describe('installer.js', () => {
       expect(result.installedFiles).toEqual([]);
     });
 
-    it('should install non-recursive files to target directory', async () => {
+    it('should install recursive command files to target directory', async () => {
       const result = await install(['commands'], { backup: false });
 
       expect(result.installedFiles.length).toBeGreaterThan(0);
-      const content = await fs.readFile(
+      const rootContent = await fs.readFile(
         path.join(testClaudeDir, 'commands', 'auto', 'auto.md'),
         'utf-8'
       );
-      expect(content).toContain('# Auto Command v2');
+      const nestedContent = await fs.readFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md'),
+        'utf-8'
+      );
+      expect(rootContent).toContain('# Auto Command v2');
+      expect(nestedContent).toContain('# Auto Route v2');
     });
 
-    it('should skip existing files when force=false (non-recursive, commands)', async () => {
+    it('should count nested command files in status', async () => {
+      await install(['commands'], { backup: false });
+
+      const status = await checkStatus();
+
+      expect(status.commands.installed).toBe(true);
+      expect(status.commands.fileCount).toBe(2);
+    });
+
+    it('should skip existing root command file when force=false and still install missing nested files', async () => {
       const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 
       const result = await install(['commands'], { backup: false, force: false });
 
-      expect(result.installedFiles).toEqual([]);
-      expect(result.skippedFiles.length).toBeGreaterThan(0);
+      expect(result.skippedFiles).toContain(targetFile);
+      expect(result.installedFiles).toContain(nestedTargetFile);
 
       const content = await fs.readFile(targetFile, 'utf-8');
       expect(content).toBe('# Old Content');
     });
 
-    it('should create backup when force=false and backup=true (non-recursive)', async () => {
+    it('should create backup for existing root command file and still install missing nested files', async () => {
       const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 
       const result = await install(['commands'], { backup: true, force: false });
 
-      expect(result.installedFiles).toEqual([]);
+      expect(result.installedFiles).toContain(nestedTargetFile);
 
       // 备份文件名格式：{filename}.backup.{timestamp}
       const dir = path.dirname(targetFile);

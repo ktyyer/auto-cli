@@ -407,6 +407,65 @@ export function createResumeDirective(summary) {
 }
 
 /**
+ * 解析 createResumeDirective() 生成的续接指令
+ * @param {string} directive
+ * @returns {{task: string, pendingTasks: readonly string[], currentWork: Readonly<object>, raw: string}}
+ */
+export function parseResumeDirective(directive) {
+  if (typeof directive !== 'string' || directive.trim() === '') {
+    throw new Error('resume directive 不能为空');
+  }
+
+  const lines = directive
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const header = lines[0];
+  if (header !== '[会话续接] 上次会话摘要:') {
+    throw new Error('无效的 resume directive');
+  }
+
+  const taskLine = lines.find((line) => line.startsWith('任务: '));
+  if (!taskLine) {
+    throw new Error('resume directive 缺少任务信息');
+  }
+
+  const pendingLine = lines.find((line) => line.startsWith('待办: '));
+  const currentLine = lines.find((line) => line.startsWith('当前: '));
+
+  const task = taskLine.slice('任务: '.length).trim();
+  if (!task) {
+    throw new Error('resume directive 缺少任务信息');
+  }
+
+  const pendingTasks = pendingLine
+    ? pendingLine
+        .slice('待办: '.length)
+        .split(';')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
+  let currentWork = {};
+  if (currentLine) {
+    const currentRaw = currentLine.slice('当前: '.length).trim();
+    try {
+      currentWork = currentRaw ? JSON.parse(currentRaw) : {};
+    } catch {
+      throw new Error('resume directive 当前工作区块不是合法 JSON');
+    }
+  }
+
+  return Object.freeze({
+    task,
+    pendingTasks: Object.freeze(pendingTasks),
+    currentWork: Object.freeze({ ...currentWork }),
+    raw: directive
+  });
+}
+
+/**
  * 压缩协调器：根据 contextStatus 选择级别，链式执行策略
  *
  * @param {Object} snapshot - ContextMonitor 快照

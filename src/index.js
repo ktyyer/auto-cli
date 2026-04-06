@@ -1,5 +1,7 @@
 import chalk from 'chalk';
 import { install, uninstall } from './installer.js';
+import { runDoctorChecks, formatDoctorReport } from './doctor.js';
+import { runResume as runResumeWorkflow } from './resume.js';
 import {
   showBanner,
   promptConfirmation,
@@ -296,6 +298,36 @@ export async function runAnalyze(task, options = {}) {
       files: q.files
     }))
   };
+}
+
+export async function runDoctor(options = {}) {
+  const report = await runDoctorChecks(options);
+
+  if (options.json) {
+    return report;
+  }
+
+  console.log(formatDoctorReport(report));
+  return report;
+}
+
+export async function runDoctorFix(options = {}) {
+  return runDoctor({ ...options, fix: true });
+}
+
+export async function runResume(directive, options = {}) {
+  const resumed = await runResumeWorkflow(directive, options);
+
+  if (options.json) {
+    return resumed;
+  }
+
+  console.log(`Resumed task: ${resumed.parsedDirective.task}`);
+  if (resumed.parsedDirective.pendingTasks.length > 0) {
+    console.log(`Pending: ${resumed.parsedDirective.pendingTasks.join('; ')}`);
+  }
+  console.log(`Status: ${resumed.result.status}`);
+  return resumed;
 }
 
 export { WorkflowOrchestrator };

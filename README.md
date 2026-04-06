@@ -12,9 +12,9 @@ Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto
 2. **发现能力** -- 盘点所有可用的 commands、agents、skills、hooks
 3. **智能推理** -- quest-designer v4 深度分析代码，产出**完整可编译代码蓝图**
 4. **Quest 拆解** -- 将任务拆为原子化微步骤，每步含完整代码 + 预判坑点 + 验收标准
-5. **逐步执行** -- PHASE 3 直接复制蓝图代码，编译验证，增量提交
+5. **逐步执行** -- PHASE 3 直接复制蓝图代码，编译验证
 6. **自动门禁** -- 构建、测试、安全扫描全量检查
-7. **Git 提交** -- 每关通过后增量提交，失败只回滚当前关
+7. **Git 提交** -- 完整模式结束后统一提交，失败时按阶段处理
 
 **核心理念**：不是硬编码路由，是 AI 动态发现 + 推理编排。
 
@@ -59,6 +59,9 @@ auto install
 # 环境诊断
 /auto:doctor
 
+# 会话续接
+# 将 createResumeDirective() 生成的指令交给 auto resume
+
 # 项目状态
 /auto:status
 
@@ -76,7 +79,7 @@ auto install
 |------|------|
 | `/auto` | 超级命令 -- 说需求，AI 自动编排所有能力完成 |
 | `/auto:route` | 智能路由 -- 自动分析意图并推荐最合适的 Agent |
-| `/auto:doctor` | 环境诊断 -- `--fix` 自动修复可修复的问题 |
+| `/auto:doctor` | 环境诊断 -- 当前支持健康检查与安装状态输出 |
 | `/auto:status` | 项目状态 -- `--json` 结构化输出 |
 | `/auto:create-hook` | 交互式创建 Claude Code Hook |
 | `/auto:learn` | 从会话或 Git 历史提取可复用经验（git diff 精确锚点） |
@@ -216,17 +219,19 @@ auto route "构建失败" --debug
 ## CLI 命令
 
 ```bash
-auto              # 交互模式（安装/更新/卸载）
-auto install      # 安装组件（-y 跳过确认，-f 强制覆盖）
-auto update       # 更新已安装组件
-auto uninstall    # 卸载组件
-auto route <意图> # 智能路由（-d 调试，-j JSON 输出）
-auto analyze      # 能力分析（-j JSON 输出）
-auto list         # 列出可用组件
-auto docs         # 打开文档
+auto                        # 交互模式（安装/更新/卸载）
+auto install                # 安装组件（-y 跳过确认，-f 强制覆盖）
+auto update                 # 更新已安装组件
+auto uninstall              # 卸载组件
+auto doctor --json -d .     # 项目健康检查 + 安装状态
+auto resume "<directive>"   # 根据续接指令继续任务
+auto route <意图>           # 智能路由（-d 调试，-j JSON 输出）
+auto analyze <任务>         # 能力分析（-j JSON 输出）
+auto list                   # 列出可用组件
+auto docs                   # 打开文档
 auto save insight -c "内容"  # 保存知识条目
-auto save list                 # 列出知识条目
-auto save search -q "关键词"  # 搜索知识条目
+auto save list              # 列出知识条目
+auto save search -q "关键词" # 搜索知识条目
 ```
 
 ---
@@ -312,7 +317,6 @@ auto save search -q "关键词"  # 搜索知识条目
 - verification Agent 升级到 Opus 模型
 - error-patterns 新增 Java/Spring Boot 10 种错误模式
 - status 新增 `--json` 输出模式
-- doctor 新增 `--fix` 自动修复模式
 - learn 模式 1 新增 git diff 精确锚点
 - hooks.json 新增覆盖率自动检查 Hook
 - rules/hooks.md 同步全部 7 种 Hook 类型文档

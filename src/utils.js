@@ -119,7 +119,8 @@ export const COMPONENTS = {
     description: '斜杠命令（/auto, /auto:route, /auto:doctor 等）',
     source: 'commands',
     target: 'commands/auto',
-    pattern: '*.md'
+    pattern: '*.md',
+    recursive: true
   },
   skills: {
     name: 'Skills（技能）',

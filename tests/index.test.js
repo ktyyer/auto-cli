@@ -14,7 +14,36 @@ vi.mock('chalk', () => ({
 
 vi.mock('../src/installer.js', () => ({
   install: vi.fn().mockResolvedValue({ installedFiles: [], skippedFiles: [] }),
-  uninstall: vi.fn().mockResolvedValue([])
+  uninstall: vi.fn().mockResolvedValue([]),
+  checkStatus: vi.fn().mockResolvedValue({
+    commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
+  })
+}));
+
+vi.mock('../src/doctor.js', () => ({
+  runDoctorChecks: vi.fn().mockResolvedValue({
+    projectDir: '/tmp/project',
+    healthy: true,
+    issues: [],
+    checks: {},
+    recommendedActions: [],
+    installStatus: {
+      commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
+    },
+    fixRequested: false,
+    fixesApplied: [],
+    fixesSkipped: [],
+    changedFiles: []
+  }),
+  formatDoctorReport: vi.fn().mockReturnValue('Auto Doctor')
+}));
+
+vi.mock('../src/resume.js', () => ({
+  runResume: vi.fn().mockResolvedValue({
+    resumedFromDirective: '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
+    parsedDirective: { task: 'fix bug', pendingTasks: [], currentWork: {} },
+    result: { status: 'completed' }
+  })
 }));
 
 vi.mock('../src/prompts.js', () => ({
@@ -51,7 +80,9 @@ import {
   runUpdate,
   runUninstall,
   runDocs,
-  runRoute
+  runRoute,
+  runDoctor,
+  runResume
 } from '../src/index.js';
 import { install, uninstall } from '../src/installer.js';
 import {
@@ -62,10 +93,32 @@ import {
 } from '../src/prompts.js';
 import { getInstalledVersion, openBrowser } from '../src/utils.js';
 import { logger } from '../src/logger.js';
+import { runDoctorChecks, formatDoctorReport } from '../src/doctor.js';
+import { runResume as runResumeWorkflow } from '../src/resume.js';
 
 describe('index.js', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runDoctorChecks.mockResolvedValue({
+      projectDir: '/tmp/project',
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      installStatus: {
+        commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
+      },
+      fixRequested: false,
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    formatDoctorReport.mockReturnValue('Auto Doctor');
+    runResumeWorkflow.mockResolvedValue({
+      resumedFromDirective: '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
+      parsedDirective: { task: 'fix bug', pendingTasks: [], currentWork: {} },
+      result: { status: 'completed' }
+    });
     vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
@@ -196,6 +249,49 @@ describe('index.js', () => {
       openBrowser.mockResolvedValue(true);
       await runDocs();
       expect(logger.warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runDoctor', () => {
+    it('should return report in json mode', async () => {
+      const result = await runDoctor({ json: true, dir: '/tmp/project' });
+      expect(result).toHaveProperty('healthy', true);
+      expect(console.log).not.toHaveBeenCalledWith('Auto Doctor');
+    });
+
+    it('should print formatted report in text mode', async () => {
+      await runDoctor({ dir: '/tmp/project' });
+      expect(console.log).toHaveBeenCalledWith('Auto Doctor');
+    });
+
+    it('should forward fix option to doctor checks', async () => {
+      await runDoctor({ dir: '/tmp/project', fix: true, json: true });
+      expect(runDoctorChecks).toHaveBeenCalledWith(
+        expect.objectContaining({ dir: '/tmp/project', fix: true, json: true })
+      );
+    });
+  });
+
+  describe('doctor CLI definition', () => {
+    it('should expose --fix option on doctor command', async () => {
+      const cliSource = await import('node:fs/promises').then((fs) =>
+        fs.readFile(new URL('../bin/cli.js', import.meta.url), 'utf-8')
+      );
+      expect(cliSource).toContain(".option('--fix', '自动修复安全且已支持的问题')");
+    });
+  });
+
+  describe('runResume', () => {
+    it('should return resumed payload in json mode', async () => {
+      const result = await runResume('directive', { json: true, dir: '/tmp/project' });
+      expect(result).toHaveProperty('result.status', 'completed');
+    });
+
+    it('should print resume summary in text mode', async () => {
+      await runResume('directive', { dir: '/tmp/project' });
+      const output = console.log.mock.calls.flat().join(' ');
+      expect(output).toContain('Resumed task: fix bug');
+      expect(output).toContain('Status: completed');
     });
   });
 

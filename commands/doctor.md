@@ -108,22 +108,217 @@ Glob("package.json")
 
 ## 核心原则
 
-1. **只读诊断** -- doctor 不修改任何文件，只报告状态
+1. **默认只读诊断** -- 不带 `--fix` 时只报告状态
 2. **分级报告** -- PASS/WARN/FAIL 三级，WARN 不阻塞正常使用
-3. **修复建议** -- 每个问题附带具体修复命令
+3. **安全修复优先** -- `--fix` 仅执行仓库内已支持、可逆且低风险的修复
 
 ## 自动修复模式 (--fix)
 
-使用 `--fix` 时，自动执行以下修复操作：
+使用 `--fix` 时，当前会自动执行以下修复操作：
 
-| 问题 | 自动修复命令 | 风险 |
+| 问题 | 自动修复动作 | 风险 |
 |------|-------------|------|
-| node_modules 缺失 | `npm install` | 安全 |
-| REPO_MAP.md 缺失 | `npx auto codemaps` | 安全 |
-| Husky 未安装 | `npx husky install` | 安全 |
-| Hooks 格式错误 | 重新生成 hooks.json | 低风险 |
+| REPO_MAP.md 缺失 | 调用 RepoIndexer 生成 `REPO_MAP.md` | 安全 |
+| hooks/hooks.json 缺失 | 生成最小默认 hooks 配置 | 安全 |
+| Claude 组件缺失 | 调用 installer 补齐缺失组件 | 安全 |
 
 以下问题**不会自动修复**（需人工确认）：
 - Node.js 版本过低（需要手动升级）
 - CLAUDE.md 缺失（需要根据项目内容生成）
-- Agent/Command 文件不完整（需要重新 install）
+- node_modules 缺失（当前只提示，不自动执行 `npm install`）
+- 任何需要删除文件、覆盖用户配置或修改 Git 状态的操作
+
+## /auto 自动编排
+
+`/auto` 的 PHASE 1 DISCOVER 会自动调用同一套安全修复逻辑：
+- 缺失 `REPO_MAP.md` 时自动补生成
+- 缺失 `hooks/hooks.json` 时自动补生成
+- 缺失已安装 Claude 组件时自动尝试补齐
+
+自动编排只使用上述安全修复，不会执行依赖安装、删除文件或覆盖用户内容。
+
+## 输出
+
+诊断结果会额外包含：
+- `fixRequested`：是否请求自动修复
+- `fixesApplied`：已成功应用的修复
+- `fixesSkipped`：尝试但跳过/失败的修复
+- `changedFiles`：本次修复实际变更的文件
+
+这部分结果既可供 CLI 输出，也可被 `/auto` 后续阶段消费。
+
+## 与 /auto 集成
+
+DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
+- PHASE 2 可消费 `recommendedActions`
+- 工作流结果会包含 `doctorResult`
+- 自动修复产生的 `changedFiles` 会合并进当前工作流上下文
+
+因此 `doctor` 不只是独立命令，也可以被 `auto` 作为前置健康修复器自动编排和复用。
+
+## 不会做的事
+
+- 不自动执行 `npm install`
+- 不删除文件
+- 不覆盖已有用户文件
+- 不修改 Git 工作区状态
+- 不执行需要人工判断的高风险修复
+
+这样可以保证 doctor 既能自动修一点“低成本高收益”的问题，又不会越权。
+
+## 适用场景
+
+- 新项目首次运行 `/auto` 前的环境补齐
+- 安装 Auto CLI 后检查 Claude 组件是否缺失
+- 代码地图和默认 hooks 缺失时的快速自愈
+- 在完整工作流开始前做最小健康修复
+
+这使 `doctor` 成为 `/auto` 的前置守门与自愈能力，而不是单独的诊断工具。
+
+## 示例
+
+```bash
+auto doctor
+auto doctor --fix
+auto doctor --fix --json -d .
+```
+
+`/auto` 在进入 PHASE 1 时会自动复用相同修复逻辑，无需额外手动调用。
+
+## 备注
+
+当前实现优先追求**改动小、收益大、风险低**。后续如果需要，可以再扩展更细粒度的 fix 策略，但不会默认扩大自动修复权限。
+
+以上规则保证 doctor 既可独立使用，也可被 auto 自动编排和使用。
+
+## 手动确认项
+
+对于下列问题，doctor 只会提示，不会替你做决定：
+- 项目初始化类文件缺失
+- 依赖安装和升级
+- 破坏性清理
+- 需要业务上下文判断的修复
+
+保持这一边界，才能让 auto 的自动编排长期可信。
+
+## 总结
+
+- `doctor` = 健康检查 + 安全修复
+- `auto` = 自动调用 doctor 安全修复并继续后续工作流
+- 两者共享同一套最小自愈能力
+- 修复结果结构化可传递、可测试、可扩展
+
+这就是当前版本的设计目标。
+
+## CLI
+
+```bash
+auto doctor --json -d .
+auto doctor --fix -d .
+```
+
+`/auto:doctor --fix` 与 `auto doctor --fix` 语义保持一致。
+
+## 实现约束
+
+修复逻辑必须复用现有模块：installer、RepoIndexer、默认 hooks 生成器；不引入新的重型修复子系统。
+
+## 验收
+
+- `auto doctor --fix` 可运行
+- `/auto` PHASE 1 会自动尝试安全修复
+- 结果中能看到 applied/skipped/changedFiles
+- 不执行高风险操作
+- 后续 PHASE 可消费 doctorResult
+
+满足以上即视为当前阶段完成。
+
+## 后续优化方向
+
+- 更细粒度的 component 级修复报告
+- 针对 hooks 配置损坏的结构校验修复
+- doctor fix 的 dry-run 模式
+- 将更多低风险修复沉淀为显式规则
+
+但这些都属于下一阶段，不属于当前最小实现范围。
+
+## 使用方式补充
+
+```bash
+/auto:doctor
+/auto:doctor --fix
+auto doctor
+auto doctor --fix
+```
+
+`--fix` 始终只代表“安全自动修复”。
+
+## 最后原则
+
+doctor 的目标不是替代人工维护，而是把 `/auto` 启动前最常见、最机械、最安全的问题自动收口。
+
+这也是它对 auto 超级辅助命令的最大价值所在。
+
+## 输出样例（fix）
+
+```markdown
+Auto Doctor
+目录: /project
+健康状态: healthy
+问题数: 1
+
+已应用修复:
+- generate-repo-map: auto-phase-discover 自动生成 REPO_MAP.md
+
+修复变更文件:
+- /project/REPO_MAP.md
+```
+
+这样输出既适合人看，也适合后续阶段继续消费。
+
+## 结束
+
+doctor 现在既能独立运行，也能作为 auto 的安全前置修复器被自动编排。
+
+## 限制
+
+如果某项修复需要联网、安装依赖、删除内容或覆盖已有文件，则当前版本一律不自动处理。
+
+这是刻意设计，不是缺失。
+
+## 目标达成
+
+本阶段目标：`修复，并可以被auto自动编排和使用`。
+已通过上述设计直接对应。
+
+## 边界保持
+
+继续保持 doctor 小而稳，不把它做成全能运维器。这样最符合当前仓库定位和收益目标。
+
+## Done
+
+当前支持：
+- 诊断
+- 安全 fix
+- auto 自动编排
+- 结构化结果透传
+
+不支持：
+- 高风险修复自动化
+- 大范围环境变更
+- 依赖安装自动化
+
+这就是当前版本最合适的边界。
+
+## 最短结论
+
+`doctor --fix` 已定位为 `/auto` 的安全自愈前置能力。它既可单独跑，也可被 `/auto` 自动消费。
+
+这正是当前最小改动、高收益的实现方向。
+
+## 结束语
+
+以上即当前 `/auto:doctor` 的实现语义。
+
+## EOF
+

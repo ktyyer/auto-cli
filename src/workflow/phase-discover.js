@@ -11,6 +11,7 @@ import { AgentRegistry } from '../router/agent-registry.js';
 import { RepoIndexer } from '../indexer/repo-indexer.js';
 import { updatePhaseContext, detectProjectProfile, PHASE_SKILL_MAP } from './phase-context.js';
 import { logger } from '../logger.js';
+import { checkStatus, install } from '../installer.js';
 import fs from 'fs-extra';
 import path from 'node:path';
 
@@ -90,8 +91,11 @@ export class PhaseDiscover {
     // P0-2: 消费上次 /auto 留下的 pending-invocations
     const pendingInvocations = await this._consumePendingInvocations();
 
-    // Doctor 快检：项目健康度诊断
-    const doctorResult = await this._runDoctorCheck();
+    // Doctor 快检：项目健康度诊断 + 安全自动修复
+    const doctorResult = await this._runDoctorCheck({
+      fix: true,
+      source: 'auto-phase-discover'
+    });
     if (doctorResult.issues.length > 0) {
       logger.warn(`[PHASE 1] Doctor 检测到 ${doctorResult.issues.length} 个问题`);
       for (const issue of doctorResult.issues) {
@@ -141,10 +145,15 @@ export class PhaseDiscover {
       hooks: hookCount
     });
 
+    const mergedChangedFiles = Object.freeze([
+      ...new Set([...(ctx.changedFiles || []), ...(doctorResult.changedFiles || [])])
+    ]);
+
     ctx = updatePhaseContext(ctx, {
       capabilities,
       contextStatus,
       doctorResult,
+      changedFiles: mergedChangedFiles,
       projectProfile: detectProjectProfile(this.projectDir),
       projectLanguages,
       discoverSkills,
@@ -339,9 +348,107 @@ export class PhaseDiscover {
    * @returns {Promise<{healthy: boolean, issues: Object[], checks: Object}>}
    * @private
    */
-  async _runDoctorCheck() {
+  async runDoctorCheck(options = {}) {
+    return this._runDoctorCheck(options);
+  }
+
+  async _runDoctorCheck(options = {}) {
     const issues = [];
     const checks = {};
+    const fixesApplied = [];
+    const fixesSkipped = [];
+    const changedFiles = [];
+    const shouldFix = Boolean(options.fix);
+    const source = options.source || 'doctor';
+
+    const installFixResult = async (installStatus) => {
+      const missingComponents = Object.entries(installStatus)
+        .filter(([, status]) => !status?.installed)
+        .map(([componentKey]) => componentKey);
+
+      if (missingComponents.length === 0) {
+        return;
+      }
+
+      try {
+        await install(missingComponents, { backup: false, force: false });
+        fixesApplied.push(
+          Object.freeze({
+            action: 'install-missing-components',
+            components: Object.freeze([...missingComponents]),
+            reason: `${source} 自动补齐缺失 Claude 组件`
+          })
+        );
+      } catch (error) {
+        fixesSkipped.push(
+          Object.freeze({
+            action: 'install-missing-components',
+            components: Object.freeze([...missingComponents]),
+            reason: error.message
+          })
+        );
+      }
+    };
+
+    const repoMapPath = path.join(this.projectDir, 'REPO_MAP.md');
+    const maybeFixRepoMap = async () => {
+      if (!shouldFix) {
+        return false;
+      }
+
+      try {
+        const indexer = new RepoIndexer(this.projectDir);
+        const generatedPath = await indexer.generateRepoMap();
+        fixesApplied.push(
+          Object.freeze({
+            action: 'generate-repo-map',
+            reason: `${source} 自动生成 REPO_MAP.md`
+          })
+        );
+        changedFiles.push(generatedPath);
+        return true;
+      } catch (error) {
+        fixesSkipped.push(
+          Object.freeze({
+            action: 'generate-repo-map',
+            reason: error.message
+          })
+        );
+        return false;
+      }
+    };
+
+    const hooksConfigPath = path.join(this.projectDir, 'hooks', 'hooks.json');
+    const maybeFixHooks = async () => {
+      if (!shouldFix) {
+        return false;
+      }
+
+      try {
+        await this._ensureDefaultHooks(path.dirname(hooksConfigPath), hooksConfigPath);
+        fixesApplied.push(
+          Object.freeze({
+            action: 'generate-hooks-config',
+            reason: `${source} 自动生成 hooks/hooks.json`
+          })
+        );
+        changedFiles.push(hooksConfigPath);
+        return true;
+      } catch (error) {
+        fixesSkipped.push(
+          Object.freeze({
+            action: 'generate-hooks-config',
+            reason: error.message
+          })
+        );
+        return false;
+      }
+    };
+
+    if (shouldFix) {
+      const initialInstallStatus = await checkStatus();
+      await installFixResult(initialInstallStatus);
+    }
 
     // 1. 关键文件检查
     const criticalFiles = [
@@ -355,7 +462,13 @@ export class PhaseDiscover {
     ];
 
     for (const cf of criticalFiles) {
-      const exists = await fs.pathExists(path.join(this.projectDir, cf.path));
+      const absolutePath = path.join(this.projectDir, cf.path);
+      let exists = await fs.pathExists(absolutePath);
+
+      if (!exists && cf.path === 'REPO_MAP.md') {
+        exists = await maybeFixRepoMap();
+      }
+
       checks[cf.path] = exists;
       if (!exists) {
         issues.push({ severity: cf.severity, message: cf.message, file: cf.path });
@@ -408,8 +521,11 @@ export class PhaseDiscover {
     }
 
     // 5. Hooks 配置检查
-    const hooksPath = path.join(this.projectDir, 'hooks', 'hooks.json');
-    const hooksExists = await fs.pathExists(hooksPath);
+    const hooksPath = hooksConfigPath;
+    let hooksExists = await fs.pathExists(hooksPath);
+    if (!hooksExists) {
+      hooksExists = await maybeFixHooks();
+    }
     checks.hooksConfigured = hooksExists;
 
     // 6. 记忆系统检查
@@ -462,7 +578,18 @@ export class PhaseDiscover {
       healthy: issues.filter((i) => i.severity === 'error').length === 0,
       issues: Object.freeze(issues),
       checks: Object.freeze(checks),
-      recommendedActions: Object.freeze(recommendedActions)
+      recommendedActions: Object.freeze(recommendedActions),
+      fixesApplied: Object.freeze(fixesApplied),
+      fixesSkipped: Object.freeze(fixesSkipped),
+      changedFiles: Object.freeze([...new Set(changedFiles)])
+    });
+  }
+
+  async applySafeDoctorFixes(options = {}) {
+    return this._runDoctorCheck({
+      ...options,
+      fix: true,
+      source: options.source || 'auto-phase-discover'
     });
   }
 

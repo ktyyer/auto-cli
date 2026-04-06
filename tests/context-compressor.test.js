@@ -14,7 +14,8 @@ import {
   compressContext,
   ContextCompressor,
   createSessionSummary,
-  createResumeDirective
+  createResumeDirective,
+  parseResumeDirective
 } from '../src/budget/context-compressor.js';
 import { CONTEXT_STATUS, ContextMonitor } from '../src/budget/context-monitor.js';
 
@@ -519,5 +520,75 @@ describe('createResumeDirective', () => {
     const directive = createResumeDirective(summary);
 
     expect(directive).not.toContain('待办');
+  });
+});
+
+describe('parseResumeDirective', () => {
+  it('should parse task, pending tasks and current work', () => {
+    const directive = [
+      '[会话续接] 上次会话摘要:',
+      '任务: fix bug',
+      '待办: add tests; update docs',
+      '当前: {"file":"src/index.js","step":"editing"}',
+      '--- 立即继续，不要确认或回顾 ---'
+    ].join('\n');
+
+    const result = parseResumeDirective(directive);
+
+    expect(result.task).toBe('fix bug');
+    expect(result.pendingTasks).toEqual(['add tests', 'update docs']);
+    expect(result.currentWork).toEqual({ file: 'src/index.js', step: 'editing' });
+    expect(result.raw).toBe(directive);
+  });
+
+  it('should parse directive without optional sections', () => {
+    const directive = [
+      '[会话续接] 上次会话摘要:',
+      '任务: fix bug',
+      '--- 立即继续，不要确认或回顾 ---'
+    ].join('\n');
+
+    const result = parseResumeDirective(directive);
+
+    expect(result.task).toBe('fix bug');
+    expect(result.pendingTasks).toEqual([]);
+    expect(result.currentWork).toEqual({});
+  });
+
+  it('should throw on invalid header', () => {
+    expect(() => parseResumeDirective('任务: fix bug')).toThrow('无效的 resume directive');
+  });
+
+  it('should throw when task is missing', () => {
+    const directive = [
+      '[会话续接] 上次会话摘要:',
+      '待办: add tests',
+      '--- 立即继续，不要确认或回顾 ---'
+    ].join('\n');
+
+    expect(() => parseResumeDirective(directive)).toThrow('resume directive 缺少任务信息');
+  });
+
+  it('should throw when task is empty', () => {
+    const directive = [
+      '[会话续接] 上次会话摘要:',
+      '任务:   ',
+      '--- 立即继续，不要确认或回顾 ---'
+    ].join('\n');
+
+    expect(() => parseResumeDirective(directive)).toThrow('resume directive 缺少任务信息');
+  });
+
+  it('should throw when current work is invalid json', () => {
+    const directive = [
+      '[会话续接] 上次会话摘要:',
+      '任务: fix bug',
+      '当前: {invalid}',
+      '--- 立即继续，不要确认或回顾 ---'
+    ].join('\n');
+
+    expect(() => parseResumeDirective(directive)).toThrow(
+      'resume directive 当前工作区块不是合法 JSON'
+    );
   });
 });

@@ -1327,6 +1327,35 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
       expect(orchestrator.phaseContext.doctorResult).toBeDefined();
       expect(orchestrator.phaseContext.doctorResult).toHaveProperty('healthy');
     });
+
+    it('should include fix metadata when fix mode is enabled', async () => {
+      const result = await orchestrator._runDoctorCheck({ fix: true, source: 'test' });
+      expect(result).toHaveProperty('fixesApplied');
+      expect(result).toHaveProperty('fixesSkipped');
+      expect(result).toHaveProperty('changedFiles');
+      expect(Array.isArray(result.fixesApplied)).toBe(true);
+      expect(Array.isArray(result.changedFiles)).toBe(true);
+    });
+
+    it('should merge doctor changed files into phase context during discover', async () => {
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [{ action: 'generate-repo-map' }],
+        fixesSkipped: [],
+        changedFiles: ['/tmp/test-project/REPO_MAP.md']
+      });
+
+      await orchestrator._runDiscover();
+
+      expect(orchestrator.phaseDiscover._runDoctorCheck).toHaveBeenCalledWith({
+        fix: true,
+        source: 'auto-phase-discover'
+      });
+      expect(orchestrator.phaseContext.changedFiles).toContain('/tmp/test-project/REPO_MAP.md');
+    });
   });
 });
 

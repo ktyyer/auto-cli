@@ -90,15 +90,12 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 ---
 
-## PHASE 5: COMMIT — 自动增量提交（完整模式）
+## PHASE 5: COMMIT — 自动提交（按模式）
 
-每关通过后自动执行：
-1. `git add [当前 Quest 涉及文件]` — 只 add 当前 Quest 修改的文件
-2. `git commit -m "[type]: [Quest标题]"` — 使用 Quest 标题作为 commit message
-3. 决策笔记追加到 commit body
+- **完整模式**: 所有 Quest 完成并通过验证后，在 PHASE 5 统一执行一次提交。
+- **轻量/微型模式**: 所有任务完成后统一提交一次。
 
-每关 Quest 的决策笔记一并提交到 commit message 中。
-轻量/微型模式在所有任务完成后统一提交一次。
+提交内容基于本次工作流累计的变更文件与决策信息生成，不保证每个 Quest 单独提交。
 
 ---
 

@@ -9,6 +9,8 @@ import {
   runUninstall,
   runRoute,
   runAnalyze,
+  runDoctor,
+  runResume,
   WorkflowOrchestrator
 } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
@@ -280,6 +282,44 @@ program
   .action(async (intent, options) => {
     try {
       await runRoute(intent, options);
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Doctor 命令
+program
+  .command('doctor')
+  .description('检查项目健康状态与 Auto CLI 安装状态')
+  .option('--json', '输出 JSON')
+  .option('--fix', '自动修复安全且已支持的问题')
+  .option('-d, --dir <dir>', '项目目录')
+  .action(async (options) => {
+    try {
+      const result = await runDoctor(options);
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      }
+    } catch (error) {
+      console.error(chalk.red('错误：'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Resume 命令
+program
+  .command('resume <directive>')
+  .description('根据 resume directive 继续任务')
+  .option('--json', '输出 JSON')
+  .option('-d, --dir <dir>', '项目目录')
+  .option('-m, --mode <mode>', '执行模式 (micro|light|full)')
+  .action(async (directive, options) => {
+    try {
+      const result = await runResume(directive, options);
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      }
     } catch (error) {
       console.error(chalk.red('错误：'), error.message);
       process.exit(1);
