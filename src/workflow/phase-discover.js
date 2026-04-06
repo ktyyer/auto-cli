@@ -15,6 +15,8 @@ import { checkStatus, install } from '../installer.js';
 import fs from 'fs-extra';
 import path from 'node:path';
 
+const MAX_PENDING_INVOCATION_ATTEMPTS = 3;
+
 export class PhaseDiscover {
   /**
    * @param {Object} deps
@@ -361,19 +363,48 @@ export class PhaseDiscover {
         return Object.freeze([]);
       }
 
-      const pending = queue
-        .filter((item) => item && typeof item === 'object' && item.status === 'pending')
-        .map((item) => Object.freeze({ ...item }));
+      const retryable = queue
+        .filter((item) => {
+          if (!item || typeof item !== 'object') {
+            return false;
+          }
 
-      if (pending.length > 0) {
+          const attempts = Number.isFinite(item.attempts) ? item.attempts : 0;
+
+          if (item.status === 'pending') {
+            return true;
+          }
+
+          if (item.status === 'failed') {
+            return attempts < MAX_PENDING_INVOCATION_ATTEMPTS;
+          }
+
+          return (
+            item.status === 'running' &&
+            Number.isFinite(item.updatedAt) &&
+            Date.now() - item.updatedAt > 5 * 60 * 1000
+          );
+        })
+        .map((item, index) =>
+          Object.freeze({
+            ...item,
+            id:
+              item.id ||
+              `${item.subagent_type || item.type || 'invocation'}-${item.enqueuedAt || 0}-${item.description || ''}-${index}`,
+            attempts: Number.isFinite(item.attempts) ? item.attempts : 0,
+            lastError: item.lastError || null
+          })
+        );
+
+      if (retryable.length > 0) {
         logger.info(
-          `[PHASE 1] 检测到 ${pending.length} 个待执行调度（只读快照）: ${pending
+          `[PHASE 1] 检测到 ${retryable.length} 个待执行调度（只读快照）: ${retryable
             .map((p) => p.subagent_type || p.type || 'unknown')
             .join(', ')}`
         );
       }
 
-      return Object.freeze(pending);
+      return Object.freeze(retryable);
     } catch (e) {
       logger.debug(`[PHASE 1] pending-invocations inspect skipped: ${e.message}`);
       return Object.freeze([]);

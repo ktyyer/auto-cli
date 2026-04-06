@@ -249,6 +249,8 @@ describe('index.js', () => {
 
   describe('runAuto', () => {
     it('should delegate workflow execution to orchestrator action facade', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ status: 'completed' });
+
       await runAuto('fix typo in readme', { dir: '/tmp/project', mode: 'micro' });
       expect(runAutoActionSpy).toHaveBeenCalledWith(
         'run',
@@ -258,6 +260,8 @@ describe('index.js', () => {
     });
 
     it('should preserve dry-run option for unified run facade', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ status: 'completed' });
+
       await runAuto('fix typo in readme', { dir: '/tmp/project', mode: 'light', dryRun: true });
       expect(runAutoActionSpy).toHaveBeenCalledWith(
         'run',

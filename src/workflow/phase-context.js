@@ -94,6 +94,9 @@ export function createPhaseContext(options = {}) {
     // P0-2: 从上次 /auto 读取的待执行调度快照（只读）
     pendingInvocations: freezeObjectArray(options.pendingInvocations || []),
 
+    // pending-only 执行结果（隔离于主任务结果）
+    pendingExecution: options.pendingExecution ? freezeSnapshot(options.pendingExecution) : null,
+
     // Quest 地图
     questMap: options.questMap ? Object.freeze(options.questMap) : null,
 
@@ -239,6 +242,11 @@ export function updatePhaseContext(ctx, updates) {
 
   if (updates.pendingInvocations) {
     processedUpdates.pendingInvocations = freezeObjectArray(updates.pendingInvocations);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'pendingExecution')) {
+    processedUpdates.pendingExecution =
+      updates.pendingExecution === null ? null : freezeSnapshot(updates.pendingExecution);
   }
 
   return Object.freeze({

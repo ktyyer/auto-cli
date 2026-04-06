@@ -50,10 +50,15 @@ export class PhaseVerify {
       throw new Error('Token 预算不足，无法执行 PHASE 4');
     }
 
+    const allFailedQuests = [
+      ...(ctx.failedQuests || []),
+      ...((ctx.pendingExecution && ctx.pendingExecution.failedQuests) || [])
+    ];
+
     // 验证失败场景处理 — 自动路由到 build-error-resolver
     const verificationActions = [];
-    if (ctx.failedQuests && ctx.failedQuests.length > 0) {
-      for (const failed of ctx.failedQuests) {
+    if (allFailedQuests.length > 0) {
+      for (const failed of allFailedQuests) {
         const compacted = compactTrace(new Error(failed.error));
         logger.error(`[PHASE 4] Quest ${failed.questId} 验证失败: ${compacted.compacted}`);
 
@@ -195,7 +200,7 @@ export class PhaseVerify {
           testPassed: testResult?.passed ?? null,
           coverageOverall: coverageResult?.overall ?? null,
           securityScanTriggered: securityResult?.scanTriggered ?? false,
-          failedQuests: [...ctx.failedQuests].map((f) => f.questId),
+          failedQuests: [...allFailedQuests].map((f) => f.questId),
           timestamp: Date.now()
         },
         { tier: 'session', tags: ['verification', 'results'] }

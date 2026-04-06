@@ -455,11 +455,44 @@ export class PhaseLearn {
         queue = [];
       }
 
-      queue.push({
+      const now = Date.now();
+      const normalizedInvocation = {
         ...invocation,
-        enqueuedAt: Date.now(),
-        status: 'pending'
+        id: invocation.id || `${invocation.subagent_type || 'invocation'}-${now}`,
+        enqueuedAt: invocation.enqueuedAt || now,
+        status: 'pending',
+        attempts: Number.isFinite(invocation.attempts) ? invocation.attempts : 0,
+        lastError: invocation.lastError || null
+      };
+
+      const duplicateIndex = queue.findIndex((item) => {
+        if (item.id && item.id === normalizedInvocation.id) {
+          return true;
+        }
+
+        return (
+          (item.subagent_type || item.type) === normalizedInvocation.subagent_type &&
+          item.description === normalizedInvocation.description &&
+          item.prompt === normalizedInvocation.prompt &&
+          (item.trigger || null) === (normalizedInvocation.trigger || null)
+        );
       });
+
+      if (duplicateIndex === -1) {
+        queue.push(normalizedInvocation);
+      } else {
+        const existing = queue[duplicateIndex];
+        queue[duplicateIndex] = {
+          ...existing,
+          ...normalizedInvocation,
+          id: existing.id || normalizedInvocation.id,
+          enqueuedAt: existing.enqueuedAt || normalizedInvocation.enqueuedAt,
+          status: 'pending',
+          attempts: 0,
+          lastError: null,
+          updatedAt: now
+        };
+      }
 
       // 保留最近 20 条
       if (queue.length > 20) {

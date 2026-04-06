@@ -10,6 +10,9 @@ import { routeModel } from '../router/model-router.js';
 import { AgentRegistry } from '../router/agent-registry.js';
 import { CanonicalRouter } from '../router/canonical-router.js';
 import { compactTrace } from '../utils/trace-compactor.js';
+import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { promisify } from 'node:util';
 import {
   updatePhaseContext,
   EXECUTION_MODES,
@@ -19,6 +22,8 @@ import {
 import { extractKeywords } from '../router/keyword-extractor.js';
 import { KnowledgeSteward } from '../knowledge/knowledge-steward.js';
 import { logger } from '../logger.js';
+import fs from 'fs-extra';
+import path from 'node:path';
 
 /**
  * 语义动作映射 — 将 Agent 能力标签映射为自然语言动作描述
@@ -37,6 +42,8 @@ const CAPABILITY_SEMANTICS = Object.freeze({
   implementation: '实现功能代码',
   optimization: '优化性能和资源使用'
 });
+
+const execFileAsync = promisify(execFile);
 
 /**
  * 生成 Quest 执行指令文本
@@ -113,6 +120,15 @@ export class PhaseExecute {
 
     // 消息累加器引用（由 Orchestrator 注入）
     this.messageAccumulator = null;
+
+    // 可注入执行器（测试或自定义适配）
+    this.agentExecutor = null;
+
+    // 复用 discover 的 pending queue 只读检查器，避免状态口径漂移
+    this.pendingInvocationInspector = null;
+
+    // 队列状态写回串行化，避免并发 quest 覆盖彼此更新
+    this._pendingQueueWrite = Promise.resolve();
   }
 
   /**
@@ -124,11 +140,27 @@ export class PhaseExecute {
   }
 
   /**
+   * 设置 Agent 执行器
+   * @param {Function|null} executor
+   */
+  setAgentExecutor(executor) {
+    this.agentExecutor = executor;
+  }
+
+  /**
    * 设置 SkillIndexer 引用
    * @param {SkillIndexer} indexer
    */
   setSkillIndexer(indexer) {
     this._skillIndexer = indexer;
+  }
+
+  /**
+   * 设置 pending invocation 只读检查器
+   * @param {Function|null} inspector
+   */
+  setPendingInvocationInspector(inspector) {
+    this.pendingInvocationInspector = inspector;
   }
 
   /**
@@ -345,12 +377,13 @@ export class PhaseExecute {
     const questMap = ctx.questMap ? [...ctx.questMap] : [];
     if (ctx.pendingInvocations?.length > 0) {
       for (const inv of ctx.pendingInvocations) {
+        const agentType = inv.subagent_type || inv.type || 'general-purpose';
         questMap.push(
           Object.freeze({
-            id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            title: inv.description || `待执行调度: ${inv.subagent_type}`,
+            id: `pending-${inv.id || Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title: inv.description || `待执行调度: ${agentType}`,
             description: inv.prompt || inv.description || '',
-            keywords: Object.freeze([inv.subagent_type]),
+            keywords: Object.freeze([agentType]),
             complexity: 'low',
             changedFiles: Object.freeze([]),
             acceptanceCriteria: Object.freeze(['执行完成']),
@@ -360,9 +393,16 @@ export class PhaseExecute {
             skills: Object.freeze([]),
             skillContents: Object.freeze([]),
             insightContents: Object.freeze([]),
-            agent: inv.subagent_type,
+            agent: agentType,
+            pendingInvocation: Object.freeze({
+              id: inv.id,
+              status: inv.status,
+              attempts: Number.isFinite(inv.attempts) ? inv.attempts : 0,
+              lastError: inv.lastError || null,
+              matchKey: inv.id
+            }),
             agentInvocation: Object.freeze({
-              subagent_type: inv.subagent_type,
+              subagent_type: agentType,
               description: inv.description || '',
               prompt: inv.prompt || '',
               model: inv.model || 'sonnet',
@@ -424,10 +464,16 @@ export class PhaseExecute {
 
     this.flowEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
 
+    let pendingInvocations = ctx.pendingInvocations || [];
+    if (typeof this.pendingInvocationInspector === 'function') {
+      pendingInvocations = await this.pendingInvocationInspector();
+    }
+
     ctx = updatePhaseContext(ctx, {
       completedQuests,
       failedQuests,
-      changedFiles: [...new Set([...executionChangedFiles, ...changedFiles])]
+      changedFiles: [...new Set([...executionChangedFiles, ...changedFiles])],
+      pendingInvocations
     });
 
     logger.info(
@@ -654,18 +700,159 @@ export class PhaseExecute {
     const phaseChangedFiles = phaseContext?.changedFiles || [];
     const questChangedFiles = executionPlan.changedFiles || [];
     const changedFiles = [...new Set([...phaseChangedFiles, ...questChangedFiles])];
+    const executor = this.agentExecutor || this._executeAgentWithClaudeCli.bind(this);
+
+    try {
+      const rawResult = await executor(agentInvocation, executionPlan, phaseContext);
+      return this._normalizeExecutionResult(
+        rawResult,
+        agentInvocation,
+        executionPlan,
+        changedFiles
+      );
+    } catch (error) {
+      const compacted = compactTrace(error);
+      logger.warn(
+        `[PHASE 3] Agent 调用失败 ${agentInvocation.subagent_type}: ${compacted.compacted}`
+      );
+      return {
+        success: false,
+        status: 'failed',
+        summary: `Failed ${agentInvocation.subagent_type} for quest ${executionPlan.questId}`,
+        changedFiles,
+        artifacts: {
+          executionPlan,
+          agentInvocation
+        },
+        error: compacted.compacted
+      };
+    }
+  }
+
+  async _executeAgentWithClaudeCli(agentInvocation, executionPlan) {
+    const command = this._resolveClaudeCommand();
+    const env = this._buildClaudeCliEnv();
+    const args = ['-p', agentInvocation.prompt, '--output-format', 'json'];
+
+    if (agentInvocation.subagent_type) {
+      args.push('--agent', agentInvocation.subagent_type);
+    }
+
+    if (agentInvocation.model) {
+      args.push('--model', agentInvocation.model);
+    }
+
+    if (process.env.AUTO_CLAUDE_PERMISSION_MODE) {
+      args.push('--permission-mode', process.env.AUTO_CLAUDE_PERMISSION_MODE);
+    }
+
+    const invocation = this._buildClaudeCliInvocation(command, args);
+    const { stdout, stderr } = await execFileAsync(invocation.command, invocation.args, {
+      cwd: this.projectDir,
+      env,
+      timeout: 600000,
+      maxBuffer: 10 * 1024 * 1024,
+      windowsHide: true
+    });
+
+    const output = `${stdout || ''}`.trim();
+    if (!output) {
+      throw new Error(
+        (stderr || '').trim() ||
+          `Claude CLI returned empty output for quest ${executionPlan.questId}`
+      );
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      const detail = (stderr || output || '').trim().slice(0, 300);
+      throw new Error(`Claude CLI returned non-JSON output: ${detail}`);
+    }
+
+    const changedFiles = await this._collectChangedFiles(`Quest ${executionPlan.questId}`);
+    const success = parsed?.subtype === 'success' && parsed?.is_error !== true;
+    const resultText = typeof parsed?.result === 'string' ? parsed.result.trim() : '';
 
     return {
-      success: false,
-      status: 'planned',
-      summary: `Prepared ${agentInvocation.subagent_type} for quest ${executionPlan.questId} (execution backend not connected)`,
+      success,
+      status: success ? 'completed' : 'failed',
+      summary:
+        resultText ||
+        `${success ? 'Executed' : 'Failed'} ${agentInvocation.subagent_type} for quest ${executionPlan.questId}`,
       changedFiles,
       artifacts: {
-        executionPlan,
-        agentInvocation
+        cliResult: parsed,
+        stderr: (stderr || '').trim() || null
       },
-      error: 'Execution backend not connected'
+      error: success ? null : resultText || (stderr || '').trim() || 'Claude execution failed'
     };
+  }
+
+  _buildClaudeCliInvocation(command, args) {
+    const normalizedCommand = String(command || '').toLowerCase();
+    if (normalizedCommand.endsWith('.cmd') || normalizedCommand.endsWith('.bat')) {
+      return {
+        command: 'cmd.exe',
+        args: ['/d', '/s', '/c', command, ...args]
+      };
+    }
+
+    return { command, args };
+  }
+
+  _normalizeExecutionResult(result, agentInvocation, executionPlan, changedFiles) {
+    const mergedChangedFiles = [
+      ...new Set([...(changedFiles || []), ...((result && result.changedFiles) || [])])
+    ];
+    const hasExplicitSuccess = typeof result?.success === 'boolean';
+    const hasFailedStatus = result?.status === 'failed';
+    const hasCompletedStatus = result?.status === 'completed';
+    const hasError = Boolean(result?.error);
+    const success = hasExplicitSuccess
+      ? result.success
+      : hasCompletedStatus && !hasFailedStatus && !hasError;
+
+    return {
+      success,
+      status: result?.status || (success ? 'completed' : 'failed'),
+      summary:
+        result?.summary ||
+        `${success ? 'Executed' : 'Failed'} ${agentInvocation.subagent_type} for quest ${executionPlan.questId}`,
+      changedFiles: mergedChangedFiles,
+      artifacts: {
+        executionPlan,
+        agentInvocation,
+        ...(result?.artifacts || {})
+      },
+      error: result?.error || null
+    };
+  }
+
+  _resolveClaudeCommand() {
+    if (process.env.CLAUDE_CLI_PATH) {
+      return process.env.CLAUDE_CLI_PATH;
+    }
+    return process.platform === 'win32' ? 'claude.cmd' : 'claude';
+  }
+
+  _buildClaudeCliEnv() {
+    const env = { ...process.env };
+
+    if (process.platform === 'win32' && !env.CLAUDE_CODE_GIT_BASH_PATH) {
+      const candidates = [
+        'D:\\Git\\Git\\usr\\bin\\bash.exe',
+        'C:\\Program Files\\Git\\bin\\bash.exe',
+        'C:\\Program Files\\Git\\usr\\bin\\bash.exe'
+      ];
+      const match = candidates.find((candidate) => existsSync(candidate));
+      if (match) {
+        env.CLAUDE_CODE_GIT_BASH_PATH = match;
+      }
+    }
+
+    return env;
   }
 
   async _collectChangedFiles(scopeLabel) {
@@ -1237,6 +1424,17 @@ export class PhaseExecute {
    * @private
    */
   async _executeSingleQuest(quest, ctx) {
+    const pendingInvocationId = quest.pendingInvocation?.id || null;
+    const pendingInvocationMatchKey = quest.pendingInvocation?.matchKey || pendingInvocationId;
+    if (pendingInvocationMatchKey) {
+      await this._updatePendingInvocationState(pendingInvocationId, {
+        matchKey: pendingInvocationMatchKey,
+        status: 'running',
+        attemptsIncrement: 1,
+        lastError: null
+      });
+    }
+
     const modelRoute = routeModel({ keywords: quest.keywords || [] });
     const questEngine = new FlowEngine(`quest-${quest.id}`, { maxRetries: 2 });
     questEngine.transition(FLOW_EVENTS.START, { questId: quest.id });
@@ -1271,6 +1469,13 @@ export class PhaseExecute {
         // P0-2: 使用真实的 feedbackId 记录成功反馈
         const agentName = quest.agent || 'general-purpose';
         await this._recordAgentFeedback(agentName, 'success', undefined, routingFeedbackId);
+        if (pendingInvocationMatchKey) {
+          await this._updatePendingInvocationState(pendingInvocationId, {
+            matchKey: pendingInvocationMatchKey,
+            status: 'completed',
+            lastError: null
+          });
+        }
         return { success: true, questId: quest.id, executionResult: executeResult.executionResult };
       } catch (error) {
         lastError = error;
@@ -1281,12 +1486,75 @@ export class PhaseExecute {
     // P0-2: 使用真实的 feedbackId 记录失败反馈
     const failedAgent = quest.agent || 'general-purpose';
     await this._recordAgentFeedback(failedAgent, 'failure', lastError?.message, routingFeedbackId);
+    if (pendingInvocationMatchKey) {
+      await this._updatePendingInvocationState(pendingInvocationId, {
+        matchKey: pendingInvocationMatchKey,
+        status: 'failed',
+        lastError: lastError?.message || 'All retries exhausted'
+      });
+    }
 
     return {
       success: false,
       questId: quest.id,
       error: lastError?.message || 'All retries exhausted'
     };
+  }
+
+  async _updatePendingInvocationState(invocationId, updates = {}) {
+    const matchKey = updates.matchKey || invocationId;
+    if (!matchKey) {
+      return;
+    }
+
+    this._pendingQueueWrite = this._pendingQueueWrite.then(async () => {
+      try {
+        const queuePath = path.join(this.projectDir, '.auto', 'pending-invocations.json');
+        if (!(await fs.pathExists(queuePath))) {
+          return;
+        }
+
+        const queue = await fs.readJson(queuePath);
+        if (!Array.isArray(queue) || queue.length === 0) {
+          return;
+        }
+
+        const nextQueue = queue.map((item, index) => {
+          if (!item || typeof item !== 'object') {
+            return item;
+          }
+
+          const itemMatchKey =
+            item.id ||
+            `${item.subagent_type || item.type || 'invocation'}-${item.enqueuedAt || 0}-${item.description || ''}-${index}`;
+          if (itemMatchKey !== matchKey) {
+            return item;
+          }
+
+          const currentAttempts = Number.isFinite(item.attempts) ? item.attempts : 0;
+          const nextItem = {
+            ...item,
+            id: item.id || invocationId || matchKey,
+            status: updates.status || item.status,
+            attempts:
+              currentAttempts + (updates.attemptsIncrement ? Number(updates.attemptsIncrement) : 0),
+            updatedAt: Date.now()
+          };
+
+          if (Object.prototype.hasOwnProperty.call(updates, 'lastError')) {
+            nextItem.lastError = updates.lastError || null;
+          }
+
+          return nextItem;
+        });
+
+        await fs.writeJson(queuePath, nextQueue, { spaces: 2 });
+      } catch (error) {
+        logger.debug(`[PHASE 3] pending invocation 状态写回跳过: ${error.message}`);
+      }
+    });
+
+    await this._pendingQueueWrite;
   }
 
   // --- 辅助方法 ---

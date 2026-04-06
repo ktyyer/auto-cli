@@ -76,6 +76,20 @@ async function runDoctorCheck(orchestrator, options) {
   return orchestrator.phaseDiscover.runDoctorCheck(options);
 }
 
+function mockAgentExecution(orchestrator, result = {}) {
+  orchestrator.phaseExecute.setAgentExecutor(
+    vi.fn().mockResolvedValue({
+      success: true,
+      status: 'completed',
+      summary: 'Executed mock agent',
+      changedFiles: [],
+      artifacts: { cliResult: { subtype: 'success', result: 'Executed mock agent' } },
+      error: null,
+      ...result
+    })
+  );
+}
+
 function parseCoverageOutput(orchestrator, output) {
   return orchestrator.phaseVerify._parseCoverageOutput(output);
 }
@@ -237,15 +251,61 @@ describe('WorkflowOrchestrator', () => {
 
   describe('run 方法', () => {
     it('should return result object with status', async () => {
-      const result = await orchestrator.run('test task');
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
+      const result = await orchestrator.run('test task', { mode: 'light' });
       expect(result).toHaveProperty('status');
       expect(result).toHaveProperty('mode');
       expect(['completed', 'failed']).toContain(result.status);
     });
 
     it('should set execution mode based on task', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
       await orchestrator.run('fix typo in readme');
       expect(orchestrator.phaseContext.mode).toBe(EXECUTION_MODES.MICRO);
+    });
+
+    it('should return gate_failed for micro mode without triggering learn', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, {
+          gateFailed: true,
+          gateReason: 'micro verification failed'
+        })
+      );
+      const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+      const result = await orchestrator.run('fix typo in readme');
+
+      expect(result.status).toBe('gate_failed');
+      expect(learnSpy).not.toHaveBeenCalled();
+      expect(orchestrator.getFlowState()).toBe('idle');
+    });
+
+    it('should return gate_failed for light mode without triggering learn', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, {
+          gateFailed: true,
+          gateReason: 'light verification failed'
+        })
+      );
+      const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+      const result = await orchestrator.run('fix bug in login');
+
+      expect(result.status).toBe('gate_failed');
+      expect(learnSpy).not.toHaveBeenCalled();
+      expect(orchestrator.getFlowState()).toBe('idle');
     });
 
     it('should return gate_failed without triggering destructive rollback', async () => {
@@ -269,6 +329,44 @@ describe('WorkflowOrchestrator', () => {
       expect(result.status).toBe('gate_failed');
       expect(commitSpy).not.toHaveBeenCalled();
       expect(learnSpy).not.toHaveBeenCalled();
+      expect(orchestrator.getFlowState()).toBe('idle');
+    });
+
+    it('should reset flow state to idle after full-mode gate failure with real phase transitions', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => {
+        orchestrator.flowEngine.transition('start', { phase: 1 });
+        orchestrator.flowEngine.transition('analysis_done', { phase: 1 });
+        return updatePhaseContext(ctx, { currentPhase: 1 });
+      });
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => {
+        orchestrator.flowEngine.transition('plan_done', { phase: 2 });
+        return updatePhaseContext(ctx, { currentPhase: 2 });
+      });
+      vi.spyOn(orchestrator.phaseExecute, 'runExecute').mockImplementation(async (ctx) => {
+        orchestrator.flowEngine.transition('execute_done', { phase: 3 });
+        return updatePhaseContext(ctx, {
+          currentPhase: 3,
+          changedFiles: ['src/safe.js']
+        });
+      });
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => {
+        orchestrator.flowEngine.transition('review_done', { phase: 4 });
+        return updatePhaseContext(ctx, {
+          currentPhase: 4,
+          gateFailed: true,
+          gateReason: 'verification failed',
+          changedFiles: ['src/safe.js']
+        });
+      });
+      const commitSpy = vi.spyOn(orchestrator.phaseCommit, 'run');
+      const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+      const result = await orchestrator.run('refactor authentication system');
+
+      expect(result.status).toBe('gate_failed');
+      expect(commitSpy).not.toHaveBeenCalled();
+      expect(learnSpy).not.toHaveBeenCalled();
+      expect(orchestrator.getFlowState()).toBe('idle');
     });
   });
 
@@ -788,21 +886,43 @@ describe('WorkflowOrchestrator - _runExecute with retry and quest engines', () =
     await expect(runExecute(orchestrator)).rejects.toThrow('Token 预算不足');
   });
 
-  it('should check context overflow after quests', async () => {
-    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
-      success: true,
-      executionPlan: {},
-      agentInvocation: {},
-      executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
-    });
+  it('should wrap cmd-based Claude CLI commands for execFile', () => {
+    const invocation = orchestrator.phaseExecute._buildClaudeCliInvocation('claude.cmd', [
+      '-p',
+      'run quest',
+      '--output-format',
+      'json',
+      '--agent',
+      'doc-updater'
+    ]);
 
-    orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
-      questMap: [{ id: 'q1', keywords: ['test'] }]
+    expect(invocation).toEqual({
+      command: 'cmd.exe',
+      args: [
+        '/d',
+        '/s',
+        '/c',
+        'claude.cmd',
+        '-p',
+        'run quest',
+        '--output-format',
+        'json',
+        '--agent',
+        'doc-updater'
+      ]
     });
-    await runExecute(orchestrator);
+  });
 
-    // Verify quests were executed and context updated
-    expect(orchestrator.phaseContext.completedQuests).toContain('q1');
+  it('should keep direct executable commands unchanged', () => {
+    const invocation = orchestrator.phaseExecute._buildClaudeCliInvocation('claude', [
+      '-p',
+      'run quest'
+    ]);
+
+    expect(invocation).toEqual({
+      command: 'claude',
+      args: ['-p', 'run quest']
+    });
   });
 });
 
@@ -814,6 +934,7 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
       projectDir: '/tmp/test-project',
       skillsDir: '/tmp/test-skills'
     });
+    mockAgentExecution(orchestrator);
   });
 
   it('should resolve team and build executionPlan', async () => {
@@ -841,7 +962,7 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
 
     const result = await executeQuest(orchestrator, quest, modelRoute, questEngine);
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
     expect(result.executionPlan).toBeDefined();
     expect(result.executionPlan.questId).toBe('q1_test');
     expect(result.executionPlan.model).toBe('claude-sonnet');
@@ -852,10 +973,10 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
     expect(result.executionPlan.changedFiles).toContain('auth.js');
     expect(result.executionPlan.instructions).toBeDefined();
     expect(result.executionResult).toBeDefined();
-    expect(result.executionResult.success).toBe(false);
-    expect(result.executionResult.error).toBe('Execution backend not connected');
+    expect(result.executionResult.success).toBe(true);
+    expect(result.executionResult.error).toBeNull();
     expect(result.executionResult.changedFiles).toContain('auth.js');
-    expect(result.executionResult.summary).toContain('Prepared');
+    expect(result.executionResult.summary).toContain('Executed mock agent');
   });
 
   it('should handle resolveTeam failure gracefully', async () => {
@@ -870,7 +991,7 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
 
     const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
     expect(result.executionPlan).toBeDefined();
     expect(result.executionPlan.lead).toBeNull();
     expect(result.executionPlan.members).toHaveLength(0);
@@ -895,6 +1016,78 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
     expect(orchestrator.phaseContext.changedFiles).toHaveLength(2);
     expect(orchestrator.phaseContext.changedFiles).toContain('auth.js');
     expect(orchestrator.phaseContext.changedFiles).toContain('login.js');
+  });
+
+  it('should treat injected failed contract as quest failure', async () => {
+    orchestrator.phaseExecute.setAgentExecutor(
+      vi.fn().mockResolvedValue({
+        success: false,
+        status: 'failed',
+        summary: 'Mock execution failed',
+        changedFiles: [],
+        artifacts: { cliResult: { subtype: 'error' } },
+        error: 'Mock execution failed'
+      })
+    );
+    orchestrator.phaseExecute._ensureAgentRegistry = vi.fn().mockRejectedValue(new Error('skip'));
+
+    const quest = { id: 'q_fail', keywords: ['test'] };
+    const modelRoute = { model: 'claude-sonnet', tier: 'standard' };
+
+    orchestrator._messageAccumulator = [];
+
+    const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
+
+    expect(result.success).toBe(false);
+    expect(result.executionResult.success).toBe(false);
+    expect(result.executionResult.status).toBe('failed');
+    expect(result.executionResult.error).toBe('Mock execution failed');
+  });
+
+  it('should treat incomplete failed contract as quest failure', async () => {
+    orchestrator.phaseExecute.setAgentExecutor(
+      vi.fn().mockResolvedValue({
+        status: 'failed',
+        summary: 'Executor returned failed status',
+        changedFiles: [],
+        error: 'Executor returned failed status'
+      })
+    );
+    orchestrator.phaseExecute._ensureAgentRegistry = vi.fn().mockRejectedValue(new Error('skip'));
+
+    const quest = { id: 'q_incomplete_fail', keywords: ['test'] };
+    const modelRoute = { model: 'claude-sonnet', tier: 'standard' };
+
+    orchestrator._messageAccumulator = [];
+
+    const result = await executeQuest(orchestrator, quest, modelRoute, orchestrator.flowEngine);
+
+    expect(result.success).toBe(false);
+    expect(result.executionResult.success).toBe(false);
+    expect(result.executionResult.status).toBe('failed');
+    expect(result.executionResult.error).toBe('Executor returned failed status');
+  });
+
+  it('should keep incomplete failed contract in failedQuests during execute phase', async () => {
+    orchestrator.phaseExecute.setAgentExecutor(
+      vi.fn().mockResolvedValue({
+        status: 'failed',
+        summary: 'Executor returned failed status',
+        changedFiles: [],
+        error: 'Executor returned failed status'
+      })
+    );
+
+    orchestrator.phaseContext = updatePhaseContext(orchestrator.phaseContext, {
+      questMap: [{ id: 'q_failed_queue', keywords: ['test'] }]
+    });
+
+    await runExecute(orchestrator);
+
+    expect(orchestrator.phaseContext.completedQuests).toHaveLength(0);
+    expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
+    expect(orchestrator.phaseContext.failedQuests[0].questId).toBe('q_failed_queue');
+    expect(orchestrator.phaseContext.failedQuests[0].error).toBe('Executor returned failed status');
   });
 
   it('should respect 50 message limit in accumulator', async () => {
@@ -928,9 +1121,9 @@ describe('WorkflowOrchestrator - _runVerify', () => {
     });
 
     const mockRoute = vi.fn().mockResolvedValue({
-      agentName: 'build-error-resolver',
+      agent: { name: 'build-error-resolver' },
       score: 95,
-      reason: 'build error detected'
+      matchReason: 'build error detected'
     });
     orchestrator._canonicalRouter = {
       route: mockRoute,
@@ -1063,7 +1256,7 @@ describe('WorkflowOrchestrator - _runLearn with twoTurnExtract', () => {
   });
 });
 
-describe('WorkflowOrchestrator - full run() flow', () => {
+describe('WorkflowOrchestrator - full workflow execution', () => {
   let orchestrator;
 
   beforeEach(() => {
@@ -1109,6 +1302,247 @@ describe('WorkflowOrchestrator - full run() flow', () => {
     expect(result.mode).toBe('light');
   });
 
+  it('should consume pending invocations alongside micro execution before learn', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-run-micro-'));
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-run-micro',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+
+    const pendingOrchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+
+    pendingOrchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    pendingOrchestrator.phaseExecute._collectChangedFiles = vi
+      .fn()
+      .mockResolvedValueOnce(['README.md'])
+      .mockResolvedValueOnce(['docs/CODEMAPS/auth.md']);
+    mockAgentExecution(pendingOrchestrator, { changedFiles: ['docs/CODEMAPS/auth.md'] });
+
+    const microExecuteSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runMicroExecute');
+    const reasonSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runReason');
+    const executeSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runExecute');
+    const commitSpy = vi.spyOn(pendingOrchestrator.phaseCommit, 'run');
+
+    try {
+      const result = await pendingOrchestrator.run('fix typo in readme');
+
+      expect(result.status).toBe('completed');
+      expect(result.mode).toBe('micro');
+      expect(result.completedQuests).toEqual(
+        expect.arrayContaining(['micro-1', expect.stringMatching(/^pending-/)])
+      );
+      expect(result.failedQuests).toEqual([]);
+      expect(result.changedFiles).toEqual(
+        expect.arrayContaining(['README.md', 'docs/CODEMAPS/auth.md'])
+      );
+      expect(result.questPlans).toHaveLength(2);
+      expect(result.agentInvocations).toHaveLength(2);
+      expect(result.pendingExecution).toEqual(
+        expect.objectContaining({
+          changedFiles: ['docs/CODEMAPS/auth.md'],
+          completedQuests: expect.arrayContaining([expect.stringMatching(/^pending-/)]),
+          failedQuests: [],
+          questPlans: expect.any(Array),
+          agentInvocations: expect.any(Array),
+          executionSummary: expect.any(Array)
+        })
+      );
+      expect(result.pendingExecution.questPlans).toHaveLength(1);
+      expect(result.pendingExecution.agentInvocations).toHaveLength(1);
+      expect(microExecuteSpy).toHaveBeenCalledTimes(1);
+      expect(reasonSpy).not.toHaveBeenCalled();
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      expect(commitSpy).not.toHaveBeenCalled();
+      expect(pendingOrchestrator.phaseContext.pendingInvocations).toEqual([]);
+    } finally {
+      await fs.remove(tempDir);
+    }
+  });
+
+  it('should consume pending invocations alongside light execution before learn', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-run-light-'));
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-run-light',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+
+    const pendingOrchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+
+    pendingOrchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    pendingOrchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+    mockAgentExecution(pendingOrchestrator);
+
+    const microExecuteSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runMicroExecute');
+    const reasonSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runReason');
+    const executeSpy = vi.spyOn(pendingOrchestrator.phaseExecute, 'runExecute');
+    const commitSpy = vi.spyOn(pendingOrchestrator.phaseCommit, 'run');
+
+    try {
+      const result = await pendingOrchestrator.run('add error handling to auth.js');
+
+      expect(result.status).toBe('completed');
+      expect(result.mode).toBe('light');
+      expect(result.completedQuests).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^pending-/)])
+      );
+      expect(result.failedQuests).toEqual([]);
+      expect(result.questPlans).toHaveLength(1);
+      expect(result.agentInvocations).toHaveLength(1);
+      expect(result.pendingExecution).toEqual(
+        expect.objectContaining({
+          completedQuests: expect.arrayContaining([expect.stringMatching(/^pending-/)]),
+          failedQuests: [],
+          questPlans: expect.any(Array),
+          agentInvocations: expect.any(Array)
+        })
+      );
+      expect(result.pendingExecution.questPlans).toHaveLength(1);
+      expect(result.pendingExecution.agentInvocations).toHaveLength(1);
+      expect(microExecuteSpy).not.toHaveBeenCalled();
+      expect(reasonSpy).toHaveBeenCalledTimes(1);
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      expect(commitSpy).not.toHaveBeenCalled();
+      expect(pendingOrchestrator.phaseContext.pendingInvocations).toEqual([]);
+    } finally {
+      await fs.remove(tempDir);
+    }
+  });
+
+  it('should fail the workflow when pending invocation execution fails', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-run-pending-fail-'));
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-run-fail',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+
+    const pendingOrchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+
+    pendingOrchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    pendingOrchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+    pendingOrchestrator.phaseExecute.setAgentExecutor(
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          success: true,
+          status: 'completed',
+          summary: 'Executed mock agent',
+          changedFiles: [],
+          artifacts: { cliResult: { subtype: 'success', result: 'Executed mock agent' } },
+          error: null
+        })
+        .mockResolvedValue({
+          success: false,
+          status: 'failed',
+          summary: 'Pending invocation failed',
+          changedFiles: [],
+          artifacts: { cliResult: { subtype: 'error', result: 'Pending invocation failed' } },
+          error: 'Pending invocation failed'
+        })
+    );
+
+    try {
+      const result = await pendingOrchestrator.run('fix typo in readme');
+
+      expect(result.status).toBe('gate_failed');
+      expect(result.completedQuests).toEqual(['micro-1']);
+      expect(result.failedQuests).toEqual([
+        expect.objectContaining({
+          error: 'Pending invocation failed'
+        })
+      ]);
+      expect(result.pendingExecution).toEqual(
+        expect.objectContaining({
+          completedQuests: [],
+          failedQuests: [
+            expect.objectContaining({
+              error: 'Pending invocation failed'
+            })
+          ]
+        })
+      );
+      expect(result.verificationActions).toHaveLength(1);
+      expect(result.error).toBeInstanceOf(Error);
+      expect(String(result.error.message)).toContain('1 pending invocation(s) failed');
+    } finally {
+      await fs.remove(tempDir);
+    }
+  });
+
   it('should return failed result when an error occurs mid-workflow', async () => {
     const originalCanAfford = orchestrator.tokenBudget.canAfford.bind(orchestrator.tokenBudget);
     orchestrator.tokenBudget.canAfford = vi.fn().mockImplementation((phase, cost) => {
@@ -1123,6 +1557,11 @@ describe('WorkflowOrchestrator - full run() flow', () => {
   });
 
   it('should use explicit mode from options', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
     const result = await orchestrator.run('some arbitrary task', { mode: 'micro' });
 
     expect(result.status).toBe('completed');
@@ -1159,6 +1598,204 @@ describe('WorkflowOrchestrator - full run() flow', () => {
 
     expect(result.status).toBe('failed');
     expect(result.error).toBeDefined();
+  });
+
+  it('should reset all prior run state when reusing the same orchestrator instance', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementationOnce(async (ctx) =>
+      updatePhaseContext(ctx, {
+        pendingInvocations: [],
+        pendingExecution: {
+          completedQuests: ['stale-pending'],
+          failedQuests: [{ questId: 'pending-stale', error: 'pending failed' }],
+          changedFiles: ['pending.md'],
+          executionSummary: ['pending summary'],
+          questPlans: []
+        }
+      })
+    );
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute')
+      .mockImplementationOnce(async (ctx) =>
+        updatePhaseContext(ctx, {
+          completedQuests: ['stale-micro-1'],
+          failedQuests: [{ questId: 'stale-q', error: 'stale failure' }],
+          changedFiles: ['README.old.md'],
+          executionResults: [{ questId: 'stale-q', status: 'failed' }]
+        })
+      )
+      .mockImplementationOnce(async (ctx) =>
+        updatePhaseContext(ctx, {
+          completedQuests: ['fresh-micro-1'],
+          failedQuests: [],
+          changedFiles: ['README.md'],
+          executionResults: []
+        })
+      );
+    vi.spyOn(orchestrator.phaseVerify, 'run')
+      .mockImplementationOnce(async (ctx) =>
+        updatePhaseContext(ctx, {
+          verificationActions: [{ agentName: 'tdd-guide', matchReason: 'stale' }]
+        })
+      )
+      .mockImplementationOnce(async (ctx) =>
+        updatePhaseContext(ctx, {
+          verificationActions: []
+        })
+      );
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
+    const first = await orchestrator.run('fix typo in readme');
+    expect(first.pendingExecution).toBeDefined();
+    expect(first.completedQuests).toEqual(
+      expect.arrayContaining(['stale-micro-1', 'stale-pending'])
+    );
+    expect(first.failedQuests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ questId: 'stale-q' }),
+        expect.objectContaining({ questId: 'pending-stale' })
+      ])
+    );
+
+    orchestrator.phaseDiscover.run.mockImplementationOnce(async (ctx) =>
+      updatePhaseContext(ctx, {
+        pendingInvocations: []
+      })
+    );
+
+    const second = await orchestrator.run('fix typo in readme');
+
+    expect(second.status).toBe('completed');
+    expect(second.completedQuests).toEqual(['fresh-micro-1']);
+    expect(second.failedQuests).toEqual([]);
+    expect(second.changedFiles).toEqual(['README.md']);
+    expect(second.verificationActions).toEqual([]);
+    expect(second.pendingExecution).toBeUndefined();
+    expect(second.executionSummary).toEqual([]);
+    expect(orchestrator.phaseContext.pendingExecution).toBeNull();
+    expect(orchestrator.phaseContext.executionResults).toEqual([]);
+  });
+
+  it('should reset main flow state to idle when learn fails after micro workflow completed', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockRejectedValue(new Error('micro learn failed'));
+
+    const result = await orchestrator.run('fix typo in readme');
+
+    expect(result.status).toBe('failed');
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error.message).toBe('micro learn failed');
+    expect(orchestrator.getFlowState()).toBe('idle');
+  });
+
+  it('should reset main flow state to idle when learn fails after light workflow completed', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockRejectedValue(new Error('light learn failed'));
+
+    const result = await orchestrator.run('add error handling to auth.js');
+
+    expect(result.status).toBe('failed');
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error.message).toBe('light learn failed');
+    expect(orchestrator.getFlowState()).toBe('idle');
+  });
+
+  it('should restore main flow state to idle after micro workflow with pending execution', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-run-micro-flow-'));
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-run-micro-flow',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+
+    const pendingOrchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+
+    pendingOrchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    pendingOrchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+    mockAgentExecution(pendingOrchestrator);
+
+    try {
+      const result = await pendingOrchestrator.run('fix typo in readme');
+
+      expect(result.status).toBe('completed');
+      expect(pendingOrchestrator.getFlowState()).toBe('idle');
+    } finally {
+      await fs.remove(tempDir);
+    }
+  });
+
+  it('should restore main flow state to idle after light workflow with pending execution', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-run-light-flow-'));
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-run-light-flow',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+
+    const pendingOrchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+
+    pendingOrchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    pendingOrchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+    mockAgentExecution(pendingOrchestrator);
+
+    try {
+      const result = await pendingOrchestrator.run('add error handling to auth.js');
+
+      expect(result.status).toBe('completed');
+      expect(pendingOrchestrator.getFlowState()).toBe('idle');
+    } finally {
+      await fs.remove(tempDir);
+    }
   });
 });
 
@@ -1234,6 +1871,11 @@ describe('WorkflowOrchestrator - Session Summary on Context Overflow', () => {
   });
 
   it('should initialize _messageAccumulator on run()', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
     await orchestrator.run('fix typo');
     expect(orchestrator._messageAccumulator).toBeDefined();
     expect(orchestrator._messageAccumulator[0]).toEqual({ role: 'user', content: 'fix typo' });
@@ -1244,6 +1886,10 @@ describe('WorkflowOrchestrator - Session Summary on Context Overflow', () => {
       getStatus: vi.fn().mockReturnValue('overflow'),
       record: vi.fn()
     };
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
 
     const result = await orchestrator.run('fix typo');
 
@@ -1254,6 +1900,11 @@ describe('WorkflowOrchestrator - Session Summary on Context Overflow', () => {
   });
 
   it('should not generate session summary when context is OK', async () => {
+    vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+    vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
     const result = await orchestrator.run('fix typo');
     expect(result.sessionSummary).toBeNull();
     expect(result.resumeDirective).toBeNull();
@@ -1584,8 +2235,10 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
       );
     });
 
-    it('should filter pending snapshot to pending items only', async () => {
+    it('should expose retryable queue snapshot entries only', async () => {
       const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      const staleRunningUpdatedAt = Date.now() - 6 * 60 * 1000;
+      const freshRunningUpdatedAt = Date.now() - 60 * 1000;
       await fs.ensureDir(path.dirname(queuePath));
       await fs.writeJson(
         queuePath,
@@ -1598,9 +2251,92 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
           },
           {
             subagent_type: 'refactor-cleaner',
-            description: 'clean code',
+            description: 'retry cleanup',
             prompt: 'clean code',
+            status: 'failed',
+            lastError: 'cleanup failed',
+            attempts: 2
+          },
+          {
+            subagent_type: 'planner',
+            description: 'resume stale work',
+            prompt: 'resume quest',
+            status: 'running',
+            updatedAt: staleRunningUpdatedAt
+          },
+          {
+            subagent_type: 'architect',
+            description: 'still running',
+            prompt: 'keep going',
+            status: 'running',
+            updatedAt: freshRunningUpdatedAt
+          },
+          {
+            subagent_type: 'security-reviewer',
+            description: 'already done',
+            prompt: 'scan done',
             status: 'completed'
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext.pendingInvocations).toHaveLength(3);
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            subagent_type: 'doc-updater',
+            status: 'pending',
+            attempts: 0,
+            lastError: null
+          }),
+          expect.objectContaining({
+            subagent_type: 'refactor-cleaner',
+            status: 'failed',
+            attempts: 2,
+            lastError: 'cleanup failed'
+          }),
+          expect.objectContaining({
+            subagent_type: 'planner',
+            status: 'running'
+          })
+        ])
+      );
+      expect(
+        orchestrator.phaseContext.pendingInvocations.some(
+          (item) => item.subagent_type === 'architect'
+        )
+      ).toBe(false);
+      expect(
+        orchestrator.phaseContext.pendingInvocations.some(
+          (item) => item.subagent_type === 'security-reviewer'
+        )
+      ).toBe(false);
+    });
+
+    it('should skip failed queue entries that exhausted retry attempts', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'retry docs',
+            prompt: 'update docs',
+            status: 'failed',
+            attempts: 3,
+            lastError: 'still broken'
+          },
+          {
+            subagent_type: 'planner',
+            description: 'give it one last try',
+            prompt: 'resume quest',
+            status: 'failed',
+            attempts: 1,
+            lastError: 'temporary issue'
           }
         ],
         { spaces: 2 }
@@ -1611,8 +2347,79 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
       expect(orchestrator.phaseContext.pendingInvocations).toHaveLength(1);
       expect(orchestrator.phaseContext.pendingInvocations[0]).toEqual(
         expect.objectContaining({
+          subagent_type: 'planner',
+          status: 'failed',
+          attempts: 1,
+          lastError: 'temporary issue'
+        })
+      );
+    });
+
+    it('should build pending invocation quest from legacy type field', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending',
+            enqueuedAt: 1234567890
+          }
+        ],
+        { spaces: 2 }
+      );
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [],
+        fixesSkipped: [],
+        changedFiles: []
+      });
+      orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+      const agentExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        summary: 'Executed mock agent',
+        changedFiles: [],
+        artifacts: { cliResult: { subtype: 'success', result: 'Executed mock agent' } },
+        error: null
+      });
+      orchestrator.phaseExecute.setAgentExecutor(agentExecutor);
+
+      await runDiscover(orchestrator);
+      await runExecute(orchestrator);
+
+      expect(agentExecutor).toHaveBeenCalledWith(
+        expect.objectContaining({
           subagent_type: 'doc-updater',
-          status: 'pending'
+          description: 'refresh docs'
+        }),
+        expect.objectContaining({
+          agentInvocation: expect.objectContaining({
+            subagent_type: 'doc-updater',
+            description: 'refresh docs'
+          })
+        }),
+        expect.objectContaining({
+          pendingInvocations: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'doc-updater',
+              id: 'doc-updater-1234567890-refresh docs-0'
+            })
+          ])
+        })
+      );
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          id: 'doc-updater-1234567890-refresh docs-0',
+          status: 'completed'
         })
       );
     });
@@ -1687,29 +2494,105 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
       expect(result.fixesApplied).toEqual([]);
     });
 
-    it('should preserve queue file mtime and content during discover snapshot', async () => {
-      const queue = [
-        {
-          subagent_type: 'doc-updater',
-          description: 'refresh docs',
-          prompt: 'update docs',
-          status: 'pending',
-          trigger: 'learn',
-          enqueuedAt: 123
-        }
-      ];
+    it('should dedupe identical pending invocations persisted by learn phase', async () => {
       const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
       await fs.ensureDir(path.dirname(queuePath));
-      await fs.writeJson(queuePath, queue, { spaces: 2 });
-      const before = await fs.readFile(queuePath, 'utf8');
-      const beforeStat = await fs.stat(queuePath);
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: '更新文档和代码地图',
+            prompt: 'same prompt',
+            status: 'pending',
+            trigger: 'architecture-change',
+            enqueuedAt: 123
+          }
+        ],
+        { spaces: 2 }
+      );
 
-      await runDiscover(orchestrator);
+      await orchestrator.phaseLearn._persistPendingInvocation({
+        subagent_type: 'doc-updater',
+        description: '更新文档和代码地图',
+        prompt: 'same prompt',
+        trigger: 'architecture-change'
+      });
 
-      const after = await fs.readFile(queuePath, 'utf8');
-      const afterStat = await fs.stat(queuePath);
-      expect(after).toBe(before);
-      expect(afterStat.mtimeMs).toBe(beforeStat.mtimeMs);
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          subagent_type: 'doc-updater',
+          description: '更新文档和代码地图',
+          prompt: 'same prompt',
+          trigger: 'architecture-change',
+          enqueuedAt: 123
+        })
+      );
+    });
+
+    it('should reset completed duplicate invocations back to pending', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            id: 'doc-updater-old',
+            subagent_type: 'doc-updater',
+            description: '更新文档和代码地图',
+            prompt: 'same prompt',
+            status: 'completed',
+            trigger: 'architecture-change',
+            attempts: 3,
+            lastError: 'old failure',
+            enqueuedAt: 123,
+            updatedAt: 456
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await orchestrator.phaseLearn._persistPendingInvocation({
+        subagent_type: 'doc-updater',
+        description: '更新文档和代码地图',
+        prompt: 'same prompt',
+        trigger: 'architecture-change'
+      });
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          id: 'doc-updater-old',
+          subagent_type: 'doc-updater',
+          status: 'pending',
+          attempts: 0,
+          lastError: null,
+          trigger: 'architecture-change'
+        })
+      );
+      expect(queue[0].updatedAt).toEqual(expect.any(Number));
+    });
+
+    it('should cleanup low-quality knowledge entries during learn phase', async () => {
+      const lowQualityEntries = [{ key: 'stale-pattern', score: 0.2 }];
+      const cleanupLowQuality = vi.fn().mockResolvedValue(1);
+      const getLowQualityEntries = vi.fn().mockResolvedValue(lowQualityEntries);
+      const save = vi.fn().mockResolvedValue(undefined);
+
+      orchestrator.phaseLearn._knowledgeSteward = {
+        getLowQualityEntries,
+        cleanupLowQuality,
+        save
+      };
+
+      await runLearn(orchestrator);
+
+      expect(getLowQualityEntries).toHaveBeenCalledWith(0.3, 3);
+      expect(cleanupLowQuality).toHaveBeenCalledWith(lowQualityEntries);
+      expect(orchestrator.phaseContext.currentPhase).toBe(6);
     });
 
     it('should keep discover snapshot independent from later queue mutations', async () => {
@@ -1806,6 +2689,258 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
         })
       ]);
     });
+
+    it('should mark pending invocation as completed after execute success', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            id: 'inv-doc-1',
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending',
+            attempts: 0,
+            lastError: null
+          }
+        ],
+        { spaces: 2 }
+      );
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [],
+        fixesSkipped: [],
+        changedFiles: []
+      });
+      orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+      mockAgentExecution(orchestrator);
+
+      await runDiscover(orchestrator);
+      await runExecute(orchestrator);
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          id: 'inv-doc-1',
+          subagent_type: 'doc-updater',
+          status: 'completed',
+          attempts: 1,
+          lastError: null
+        })
+      );
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([]);
+    });
+
+    it('should assign an id when updating a legacy pending invocation without one', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending',
+            enqueuedAt: 1234567890
+          }
+        ],
+        { spaces: 2 }
+      );
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [],
+        fixesSkipped: [],
+        changedFiles: []
+      });
+      orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+      mockAgentExecution(orchestrator);
+
+      await runDiscover(orchestrator);
+      await runExecute(orchestrator);
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          id: 'doc-updater-1234567890-refresh docs-0',
+          subagent_type: 'doc-updater',
+          status: 'completed',
+          attempts: 1,
+          lastError: null
+        })
+      );
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([]);
+    });
+
+    it('should only update the matched legacy queue item when fallback fields collide', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending',
+            enqueuedAt: 1234567890
+          },
+          {
+            type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs later',
+            status: 'pending',
+            enqueuedAt: 1234567890
+          }
+        ],
+        { spaces: 2 }
+      );
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [],
+        fixesSkipped: [],
+        changedFiles: []
+      });
+      orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+      orchestrator.phaseExecute._executeQuest = vi
+        .fn()
+        .mockResolvedValueOnce({
+          success: true,
+          executionResult: {
+            success: true,
+            status: 'completed',
+            summary: 'Executed first legacy queue item',
+            changedFiles: [],
+            artifacts: {},
+            error: null
+          }
+        })
+        .mockResolvedValueOnce({
+          success: false,
+          executionResult: {
+            success: false,
+            status: 'failed',
+            summary: null,
+            changedFiles: [],
+            artifacts: {},
+            error: 'second item failed'
+          }
+        })
+        .mockResolvedValueOnce({
+          success: false,
+          executionResult: {
+            success: false,
+            status: 'failed',
+            summary: null,
+            changedFiles: [],
+            artifacts: {},
+            error: 'second item failed'
+          }
+        })
+        .mockResolvedValueOnce({
+          success: false,
+          executionResult: {
+            success: false,
+            status: 'failed',
+            summary: null,
+            changedFiles: [],
+            artifacts: {},
+            error: 'second item failed'
+          }
+        });
+
+      await runDiscover(orchestrator);
+      await runExecute(orchestrator);
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toEqual([
+        expect.objectContaining({
+          id: 'doc-updater-1234567890-refresh docs-0',
+          status: 'completed',
+          attempts: 1,
+          lastError: null,
+          prompt: 'update docs'
+        }),
+        expect.objectContaining({
+          id: 'doc-updater-1234567890-refresh docs-1',
+          status: 'failed',
+          attempts: 1,
+          lastError: 'second item failed',
+          prompt: 'update docs later'
+        })
+      ]);
+    });
+
+    it('should mark pending invocation as failed and keep error for retry', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            id: 'inv-doc-2',
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending',
+            attempts: 0,
+            lastError: null
+          }
+        ],
+        { spaces: 2 }
+      );
+      orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+        healthy: true,
+        issues: [],
+        checks: {},
+        recommendedActions: [],
+        fixesApplied: [],
+        fixesSkipped: [],
+        changedFiles: []
+      });
+      orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+      orchestrator.phaseExecute._invokeAgentInvocation = vi.fn().mockResolvedValue({
+        success: false,
+        changedFiles: [],
+        summary: null,
+        error: 'agent crashed'
+      });
+
+      await runDiscover(orchestrator);
+      await runExecute(orchestrator);
+
+      const queue = await fs.readJson(queuePath);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toEqual(
+        expect.objectContaining({
+          id: 'inv-doc-2',
+          subagent_type: 'doc-updater',
+          status: 'failed',
+          attempts: 1,
+          lastError: 'agent crashed'
+        })
+      );
+      expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
+      expect(orchestrator.phaseContext.failedQuests[0]).toEqual(
+        expect.objectContaining({
+          questId: expect.any(String),
+          error: 'agent crashed'
+        })
+      );
+    });
   });
 });
 
@@ -1852,6 +2987,12 @@ describe('WorkflowOrchestrator - Agent Semantic Description', () => {
       })
     };
     orchestrator.phaseExecute._ensureAgentRegistry = vi.fn().mockResolvedValue(mockRegistry);
+    mockAgentExecution(orchestrator, {
+      success: false,
+      status: 'failed',
+      summary: 'Mock execution failed',
+      error: 'mock failure'
+    });
 
     const quest = {
       id: 'q1',
@@ -1906,10 +3047,10 @@ describe('WorkflowOrchestrator - _buildResult includes new fields', () => {
         {
           questId: 'quest-1',
           success: false,
-          summary: 'Prepared architect for quest quest-1 (execution backend not connected)',
+          summary: 'Executed architect for quest quest-1',
           changedFiles: ['src/a.js'],
           artifacts: null,
-          error: 'Execution backend not connected'
+          error: null
         }
       ]
     });
@@ -1918,9 +3059,9 @@ describe('WorkflowOrchestrator - _buildResult includes new fields', () => {
       {
         questId: 'quest-1',
         success: false,
-        summary: 'Prepared architect for quest quest-1 (execution backend not connected)',
+        summary: 'Executed architect for quest quest-1',
         changedFiles: ['src/a.js'],
-        error: 'Execution backend not connected'
+        error: null
       }
     ]);
   });
@@ -2225,6 +3366,134 @@ describe('WorkflowOrchestrator - getRuntimeStatus (P3-1)', () => {
     const status = orchestrator.getRuntimeStatus();
     expect(status.workflow).toHaveProperty('currentPhase');
     expect(status.workflow).toHaveProperty('mode');
+  });
+});
+
+describe('WorkflowOrchestrator - status payload sources (Phase 2)', () => {
+  let orchestrator;
+  let tempDir;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-status-'));
+    await fs.ensureDir(path.join(tempDir, 'commands'));
+    await fs.writeFile(path.join(tempDir, 'commands', 'auto.md'), '# auto\n');
+    await fs.ensureDir(path.join(tempDir, 'hooks'));
+    await fs.writeJson(path.join(tempDir, 'hooks', 'hooks.json'), { hooks: {} }, { spaces: 2 });
+    orchestrator = new WorkflowOrchestrator({
+      projectDir: tempDir,
+      skillsDir: '/tmp/test-skills'
+    });
+    orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    orchestrator.phaseDiscover.skillIndexer.buildIndex = vi
+      .fn()
+      .mockResolvedValue({ totalSkills: 3, indexSize: 3, entries: [] });
+    orchestrator.phaseDiscover._ensureAgentRegistry = vi.fn().mockResolvedValue({
+      listAgents: vi.fn().mockReturnValue([{ name: 'architect' }, { name: 'code-reviewer' }])
+    });
+    orchestrator.phaseExecute._agentRegistry = {
+      getStats: vi.fn().mockReturnValue({ totalAgents: 5, teams: 2 })
+    };
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    if (tempDir) {
+      await fs.remove(tempDir);
+    }
+  });
+
+  it('should separate repo runtime and global capability sources in status action', async () => {
+    const installer = await import('../src/installer.js');
+    vi.spyOn(installer, 'checkStatus').mockResolvedValue({
+      agents: { installed: true, path: '/global/agents', fileCount: 4 },
+      commands: { installed: true, path: '/global/commands', fileCount: 2 },
+      skills: { installed: false, path: '/global/skills', fileCount: 0 },
+      hooks: { installed: true, path: '/global/hooks', fileCount: 1 },
+      rules: { installed: true, path: '/global/rules', fileCount: 3 }
+    });
+
+    const result = await orchestrator._runStatusAction({}, {});
+
+    expect(result.capabilities).toEqual({
+      commands: 1,
+      agents: 2,
+      skills: 3,
+      hooks: 0
+    });
+    expect(result.runtime).toHaveProperty('agentRegistry');
+    expect(result.runtime.agentRegistry).toEqual(
+      expect.objectContaining({
+        initialized: true,
+        stats: { totalAgents: 5, teams: 2 }
+      })
+    );
+    expect(result).toHaveProperty('capabilitySources');
+    expect(result.capabilitySources).toEqual(
+      expect.objectContaining({
+        repo: { commands: 1, agents: 2, skills: 3, hooks: 0 },
+        runtime: result.runtime,
+        global: expect.objectContaining({
+          agents: expect.objectContaining({ installed: true, fileCount: 4 }),
+          skills: expect.objectContaining({ installed: false, fileCount: 0 })
+        })
+      })
+    );
+  });
+
+  it('should refresh pending summary after execute consumes repo queue items', async () => {
+    const installer = await import('../src/installer.js');
+    vi.spyOn(installer, 'checkStatus').mockResolvedValue({
+      agents: { installed: true, path: '/global/agents', fileCount: 99 },
+      commands: { installed: true, path: '/global/commands', fileCount: 99 },
+      skills: { installed: true, path: '/global/skills', fileCount: 99 },
+      hooks: { installed: true, path: '/global/hooks', fileCount: 99 },
+      rules: { installed: true, path: '/global/rules', fileCount: 99 }
+    });
+    const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+    await fs.ensureDir(path.dirname(queuePath));
+    await fs.writeJson(
+      queuePath,
+      [
+        {
+          id: 'inv-doc-1',
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          attempts: 0,
+          lastError: null
+        }
+      ],
+      { spaces: 2 }
+    );
+    orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
+      healthy: true,
+      issues: [],
+      checks: {},
+      recommendedActions: [],
+      fixesApplied: [],
+      fixesSkipped: [],
+      changedFiles: []
+    });
+    orchestrator.phaseExecute._collectChangedFiles = vi.fn().mockResolvedValue([]);
+    mockAgentExecution(orchestrator);
+
+    await runDiscover(orchestrator);
+    await runExecute(orchestrator);
+
+    const result = await orchestrator._runStatusAction({}, {});
+
+    expect(result.summary.pendingInvocationsCount).toBe(0);
+    expect(result.summary.hasPendingInvocations).toBe(false);
+    expect(result.pendingInvocations).toEqual([]);
   });
 });
 

@@ -16,6 +16,7 @@
  */
 
 import { FlowEngine } from '../flow/flow-engine.js';
+import { FLOW_EVENTS, FLOW_STATES } from '../flow/flow-state.js';
 import { MemoryManager } from '../memory/memory-manager.js';
 import { TokenBudgetManager } from '../budget/token-budget.js';
 import { ContextMonitor, CONTEXT_STATUS } from '../budget/context-monitor.js';
@@ -33,6 +34,7 @@ import {
   EXECUTION_MODES
 } from './phase-context.js';
 import { logger } from '../logger.js';
+import { checkStatus } from '../installer.js';
 import { runDoctorChecks } from '../doctor.js';
 import { runResume as runResumeWorkflow } from '../resume.js';
 
@@ -93,6 +95,9 @@ export class WorkflowOrchestrator {
       projectDir: this.projectDir
     });
     this.phaseExecute.setSkillIndexer(this.skillIndexer);
+    this.phaseExecute.setPendingInvocationInspector(
+      this.phaseDiscover._inspectPendingInvocations.bind(this.phaseDiscover)
+    );
 
     this.phaseVerify = new PhaseVerify({
       memory: this.memory,
@@ -133,6 +138,7 @@ export class WorkflowOrchestrator {
     // 初始化消息累加器并注入到 Phase 子模块
     this._messageAccumulator = [{ role: 'user', content: task }];
     this._pendingSessionSummary = null;
+    this.phaseContext = createPhaseContext();
 
     // 同步测试可能 mock 的依赖到子模块
     this._syncDepsToModules();
@@ -153,11 +159,39 @@ export class WorkflowOrchestrator {
       this.phaseContext = await this.phaseDiscover.run(this.phaseContext);
       this._checkContextOverflow(this.contextMonitor.getStatus());
 
+      const hasPendingInvocations = (this.phaseContext.pendingInvocations?.length || 0) > 0;
+
       // 微型模式：DISCOVER → MICRO_EXECUTE → VERIFY → LEARN
       if (mode === EXECUTION_MODES.MICRO) {
-        this.phaseContext = await this.phaseExecute.runMicroExecute(this.phaseContext);
+        this.phaseContext = await this._runPhaseExecuteIsolated(
+          'runMicroExecute',
+          this.phaseContext
+        );
+
+        if (hasPendingInvocations) {
+          await this._executePendingInvocationsOnly();
+          this._checkContextOverflow(this.contextMonitor.getStatus());
+        }
+
+        this._advanceMainFlowTo(FLOW_STATES.REVIEWING);
         this.phaseContext = await this.phaseVerify.run(this.phaseContext);
-        this.phaseContext = await this.phaseLearn.run(this.phaseContext);
+
+        const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
+        if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+          const gateReason =
+            this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+          logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
+          this._resetMainFlowAfterGateFailure(gateReason);
+          return this._buildResult('gate_failed', new Error(gateReason));
+        }
+
+        this._advanceMainFlowTo(FLOW_STATES.COMPLETED);
+        try {
+          this.phaseContext = await this.phaseLearn.run(this.phaseContext);
+        } catch (learnError) {
+          this._resetMainFlowAfterGateFailure(learnError.message || 'learn failed');
+          throw learnError;
+        }
         return this._buildResult('completed');
       }
 
@@ -166,8 +200,30 @@ export class WorkflowOrchestrator {
 
       // 轻量模式：REASON → VERIFY → LEARN
       if (mode === EXECUTION_MODES.LIGHT) {
+        if (hasPendingInvocations) {
+          await this._executePendingInvocationsOnly();
+          this._checkContextOverflow(this.contextMonitor.getStatus());
+        }
+
+        this._advanceMainFlowTo(FLOW_STATES.REVIEWING);
         this.phaseContext = await this.phaseVerify.run(this.phaseContext);
-        this.phaseContext = await this.phaseLearn.run(this.phaseContext);
+
+        const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
+        if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+          const gateReason =
+            this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+          logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
+          this._resetMainFlowAfterGateFailure(gateReason);
+          return this._buildResult('gate_failed', new Error(gateReason));
+        }
+
+        this._advanceMainFlowTo(FLOW_STATES.COMPLETED);
+        try {
+          this.phaseContext = await this.phaseLearn.run(this.phaseContext);
+        } catch (learnError) {
+          this._resetMainFlowAfterGateFailure(learnError.message || 'learn failed');
+          throw learnError;
+        }
         return this._buildResult('completed');
       }
 
@@ -179,9 +235,18 @@ export class WorkflowOrchestrator {
       this.phaseContext = await this.phaseVerify.run(this.phaseContext);
 
       // P1-1: 门禁失败时停止工作流，避免误回滚用户的无关改动
-      if (this.phaseContext.gateFailed) {
-        logger.error(`[Orchestrator] 门禁失败: ${this.phaseContext.gateReason}`);
-        return this._buildResult('gate_failed', new Error(this.phaseContext.gateReason));
+      const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
+      if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+        const gateReason =
+          this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+        logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
+        this._resetMainFlowAfterGateFailure(gateReason);
+        return this._buildResult('gate_failed', new Error(gateReason));
+      }
+
+      if (mode !== EXECUTION_MODES.FULL) {
+        this.phaseContext = await this.phaseLearn.run(this.phaseContext);
+        return this._buildResult('completed');
       }
 
       // 6. PHASE 5: COMMIT
@@ -200,6 +265,159 @@ export class WorkflowOrchestrator {
       });
 
       return this._buildResult('failed', error);
+    }
+  }
+
+  async _executePendingInvocationsOnly() {
+    const mainContext = this.phaseContext;
+    const pendingMessages = [];
+    const previousAccumulator = this._messageAccumulator;
+
+    this.phaseContext = updatePhaseContext(this.phaseContext, {
+      task: '[pending-invocations]',
+      mode: EXECUTION_MODES.LIGHT,
+      completedQuests: [],
+      failedQuests: [],
+      changedFiles: [],
+      executionResults: [],
+      pendingExecution: null,
+      questMap: [],
+      matchedSkills: [],
+      modelRecommendations: null,
+      agentRecommendation: null
+    });
+
+    try {
+      this.phaseContext = await this._runPhaseExecuteIsolated(
+        'runExecute',
+        this.phaseContext,
+        pendingMessages
+      );
+    } finally {
+      const pendingContext = this.phaseContext;
+      const pendingExecution = Object.freeze({
+        completedQuests: Object.freeze([...(pendingContext.completedQuests || [])]),
+        failedQuests: Object.freeze([...(pendingContext.failedQuests || [])]),
+        changedFiles: Object.freeze([...(pendingContext.changedFiles || [])]),
+        executionSummary: this.phaseExecute.buildExecutionSummary(pendingContext),
+        questPlans: Object.freeze(
+          pendingMessages.filter((m) => m.role === 'quest-plan').map((m) => JSON.parse(m.content))
+        )
+      });
+      const pendingInvocations = pendingContext.pendingInvocations || [];
+
+      this._messageAccumulator = previousAccumulator;
+      this.phaseExecute.setMessageAccumulator(this._messageAccumulator);
+      this.phaseContext = updatePhaseContext(mainContext, {
+        pendingInvocations,
+        pendingExecution,
+        completedQuests: [
+          ...new Set([
+            ...(mainContext.completedQuests || []),
+            ...(pendingContext.completedQuests || [])
+          ])
+        ],
+        changedFiles: [
+          ...new Set([...(mainContext.changedFiles || []), ...(pendingContext.changedFiles || [])])
+        ],
+        executionResults: [
+          ...(mainContext.executionResults || []),
+          ...(pendingContext.executionResults || [])
+        ]
+      });
+    }
+  }
+
+  async _runPhaseExecuteIsolated(methodName, phaseContext, messageAccumulator = null) {
+    const previousFlowEngine = this.phaseExecute.flowEngine;
+    const previousAccumulator = this.phaseExecute.messageAccumulator;
+    const isolatedFlowEngine = this._createIsolatedExecutionFlowEngine();
+
+    this.phaseExecute.flowEngine = isolatedFlowEngine;
+    this.phaseExecute.setMessageAccumulator(messageAccumulator || previousAccumulator || []);
+
+    try {
+      return await this.phaseExecute[methodName](phaseContext);
+    } finally {
+      this.phaseExecute.flowEngine = previousFlowEngine;
+      this.phaseExecute.setMessageAccumulator(previousAccumulator || this._messageAccumulator);
+    }
+  }
+
+  _createIsolatedExecutionFlowEngine() {
+    const flowEngine = new FlowEngine(`${WORKFLOW_ID}-isolated`, { maxRetries: 1 });
+    flowEngine.transition(FLOW_EVENTS.START, { phase: 'isolated-execute' });
+    flowEngine.transition(FLOW_EVENTS.ANALYSIS_DONE, { phase: 'isolated-execute' });
+    flowEngine.transition(FLOW_EVENTS.PLAN_DONE, { phase: 'isolated-execute' });
+    return flowEngine;
+  }
+
+  _advanceMainFlowTo(targetState) {
+    const nextEventByState = {
+      [FLOW_STATES.IDLE]: FLOW_EVENTS.START,
+      [FLOW_STATES.ANALYZING]: FLOW_EVENTS.ANALYSIS_DONE,
+      [FLOW_STATES.PLANNING]: FLOW_EVENTS.PLAN_DONE,
+      [FLOW_STATES.EXECUTING]: FLOW_EVENTS.EXECUTE_DONE,
+      [FLOW_STATES.REVIEWING]: FLOW_EVENTS.REVIEW_DONE,
+      [FLOW_STATES.COMMITTING]: FLOW_EVENTS.COMMIT_DONE
+    };
+
+    const stateOrder = [
+      FLOW_STATES.IDLE,
+      FLOW_STATES.ANALYZING,
+      FLOW_STATES.PLANNING,
+      FLOW_STATES.EXECUTING,
+      FLOW_STATES.REVIEWING,
+      FLOW_STATES.COMMITTING,
+      FLOW_STATES.COMPLETED
+    ];
+
+    while (this.flowEngine.state !== targetState) {
+      const currentIndex = stateOrder.indexOf(this.flowEngine.state);
+      const targetIndex = stateOrder.indexOf(targetState);
+      const nextEvent = nextEventByState[this.flowEngine.state];
+
+      if (
+        nextEvent === undefined ||
+        currentIndex === -1 ||
+        targetIndex === -1 ||
+        currentIndex >= targetIndex
+      ) {
+        return;
+      }
+
+      const transition = this.flowEngine.transition(nextEvent, {
+        phase: 'orchestrator-sync',
+        targetState
+      });
+      if (transition?.success === false) {
+        return;
+      }
+    }
+  }
+
+  _resetMainFlowAfterGateFailure(gateReason) {
+    const failTransition = this.flowEngine.transition(FLOW_EVENTS.FAIL, {
+      phase: 'orchestrator-gate-failed',
+      reason: gateReason
+    });
+
+    if (failTransition?.success === false && this.flowEngine.state === FLOW_STATES.COMPLETED) {
+      this.flowEngine.transition(FLOW_EVENTS.RESET, {
+        phase: 'orchestrator-gate-failed',
+        reason: gateReason
+      });
+      return;
+    }
+
+    if (
+      this.flowEngine.state === FLOW_STATES.FAILED ||
+      this.flowEngine.state === FLOW_STATES.COMPLETED
+    ) {
+      this.flowEngine.transition(FLOW_EVENTS.RESET, {
+        phase: 'orchestrator-gate-failed',
+        reason: gateReason
+      });
     }
   }
 
@@ -259,11 +477,23 @@ export class WorkflowOrchestrator {
 
     const runtime = this.getRuntimeStatus();
     const summary = this.phaseExecute.summarizeStatus(this.getContext());
+    const capabilities = this.getContext().capabilities;
+    let globalInstall = {};
+    try {
+      globalInstall = await checkStatus();
+    } catch {
+      globalInstall = {};
+    }
 
     return {
       runtime,
       summary,
-      capabilities: this.getContext().capabilities,
+      capabilities,
+      capabilitySources: {
+        repo: capabilities,
+        runtime,
+        global: globalInstall
+      },
       doctorResult: this.getContext().doctorResult,
       pendingInvocations: this.getContext().pendingInvocations
     };
@@ -342,6 +572,9 @@ export class WorkflowOrchestrator {
    * @returns {Object} 各模块的初始化状态和健康信息
    */
   getRuntimeStatus() {
+    const activeAgentRegistry =
+      this.phaseExecute._agentRegistry || this.phaseDiscover._agentRegistry;
+
     return Object.freeze({
       flowEngine: {
         state: this.flowEngine.state,
@@ -367,10 +600,8 @@ export class WorkflowOrchestrator {
         healthy: true
       },
       agentRegistry: {
-        initialized: this.phaseExecute._agentRegistry !== null,
-        stats: this.phaseExecute._agentRegistry
-          ? this.phaseExecute._agentRegistry.getStats()
-          : null,
+        initialized: activeAgentRegistry !== null,
+        stats: activeAgentRegistry ? activeAgentRegistry.getStats() : null,
         healthy: true
       },
       canonicalRouter: {
@@ -407,29 +638,52 @@ export class WorkflowOrchestrator {
     const questPlans = this._messageAccumulator
       .filter((m) => m.role === 'quest-plan')
       .map((m) => JSON.parse(m.content));
+    const pendingQuestPlans = this.phaseContext.pendingExecution?.questPlans || [];
+    const allQuestPlans = Object.freeze([...questPlans, ...pendingQuestPlans]);
 
-    const agentInvocations = questPlans
+    const agentInvocations = allQuestPlans
       .filter((p) => p.agentInvocation)
       .map((p) => p.agentInvocation);
     const executionSummary = this.phaseExecute.buildExecutionSummary(this.phaseContext);
+    const allCompletedQuests = Object.freeze([
+      ...new Set([
+        ...(this.phaseContext.completedQuests || []),
+        ...((this.phaseContext.pendingExecution &&
+          this.phaseContext.pendingExecution.completedQuests) ||
+          [])
+      ])
+    ]);
+    const allFailedQuests = Object.freeze([
+      ...(this.phaseContext.failedQuests || []),
+      ...((this.phaseContext.pendingExecution && this.phaseContext.pendingExecution.failedQuests) ||
+        [])
+    ]);
+    const allChangedFiles = Object.freeze([
+      ...new Set([
+        ...(this.phaseContext.changedFiles || []),
+        ...((this.phaseContext.pendingExecution &&
+          this.phaseContext.pendingExecution.changedFiles) ||
+          [])
+      ])
+    ]);
 
-    return {
+    const result = {
       status,
       error,
       mode: this.phaseContext.mode,
       capabilities: this.phaseContext.capabilities,
-      completedQuests: this.phaseContext.completedQuests,
-      failedQuests: this.phaseContext.failedQuests,
+      completedQuests: allCompletedQuests,
+      failedQuests: allFailedQuests,
       verificationActions: this.phaseContext.verificationActions,
       testResult: this.phaseContext.testResult,
       coverageResult: this.phaseContext.coverageResult,
       securityResult: this.phaseContext.securityResult,
       doctorResult: this.phaseContext.doctorResult,
       gitResult: this.phaseContext.gitResult,
-      questPlans,
+      questPlans: allQuestPlans,
       agentInvocations: Object.freeze(agentInvocations),
       executionSummary,
-      changedFiles: this.phaseContext.changedFiles,
+      changedFiles: allChangedFiles,
       insights: this.phaseContext.insights,
       tokenBudget: this.phaseContext.tokenBudget,
       contextStatus: this.phaseContext.contextStatus,
@@ -438,6 +692,17 @@ export class WorkflowOrchestrator {
         ? createResumeDirective(this._pendingSessionSummary)
         : null
     };
+
+    if (this.phaseContext.pendingExecution) {
+      result.pendingExecution = {
+        ...this.phaseContext.pendingExecution,
+        agentInvocations: Object.freeze(
+          pendingQuestPlans.filter((p) => p.agentInvocation).map((p) => p.agentInvocation)
+        )
+      };
+    }
+
+    return result;
   }
 
   /**
