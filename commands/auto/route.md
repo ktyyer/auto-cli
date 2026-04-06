@@ -13,13 +13,12 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 当你不确定应该使用哪个 Agent 时，使用此命令：
 
 ```bash
-# 基本路由
+# Claude Code 中
+/auto:route 编写测试用例
+
+# CLI 等价调用
 auto route "<用户意图>"
-
-# JSON 格式输出
 auto route "<用户意图>" --json
-
-# 调试模式（显示详细决策过程）
 auto route "<用户意图>" --debug
 ```
 

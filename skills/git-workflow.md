@@ -9,7 +9,7 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 # Git Workflow — Git 工作流规范
 
 > 与 PHASE 5 COMMIT 集成，确保提交信息规范、分支策略一致。
-> auto 的每次 Quest 完成都会自动增量提交，参考本规范。
+> auto 在工作流完成并通过验证后统一提交，参考本规范。
 
 ---
 
@@ -69,9 +69,9 @@ git checkout -b fix/hotfix-login-bug
 | `ci` | CI/CD | `ci: 添加 GitHub Actions 构建流程` |
 | `style` | 格式 | `style: 统一使用单引号` |
 
-### 2.3 auto 增量提交规则
+### 2.3 auto 提交规则
 
-PHASE 5 中每完成一个 Quest 自动提交：
+PHASE 5 在当前工作流完成后统一提交：
 
 ```
 feat(<scope>): <Quest 标题>

@@ -86,9 +86,7 @@ describe('doctor.js', () => {
     const result = await runDoctorChecks({ dir: '/tmp/project', fix: false });
 
     expect(mockInstall).not.toHaveBeenCalled();
-    expect(result.issues).toEqual([
-      expect.objectContaining({ component: 'commands' })
-    ]);
+    expect(result.issues).toEqual([expect.objectContaining({ component: 'commands' })]);
     expect(result.recommendedActions).toEqual([
       expect.objectContaining({ action: 'install-component', component: 'commands' })
     ]);
@@ -109,9 +107,7 @@ describe('doctor.js', () => {
         reason: 'permission denied'
       })
     ]);
-    expect(result.issues).toEqual([
-      expect.objectContaining({ component: 'commands' })
-    ]);
+    expect(result.issues).toEqual([expect.objectContaining({ component: 'commands' })]);
   });
 
   it('should render fix details in formatted report', () => {

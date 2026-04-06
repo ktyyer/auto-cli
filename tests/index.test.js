@@ -40,7 +40,8 @@ vi.mock('../src/doctor.js', () => ({
 
 vi.mock('../src/resume.js', () => ({
   runResume: vi.fn().mockResolvedValue({
-    resumedFromDirective: '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
+    resumedFromDirective:
+      '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
     parsedDirective: { task: 'fix bug', pendingTasks: [], currentWork: {} },
     result: { status: 'completed' }
   })
@@ -85,6 +86,7 @@ import {
   runUpdate,
   runUninstall,
   runDocs,
+  runAuto,
   runRoute,
   runAnalyze,
   runDoctor,
@@ -94,6 +96,7 @@ import {
   runCreateHook
 } from '../src/index.js';
 import { install, uninstall } from '../src/installer.js';
+import { WorkflowOrchestrator } from '../src/workflow/workflow-orchestrator.js';
 import {
   showBanner,
   promptConfirmation,
@@ -102,32 +105,15 @@ import {
 } from '../src/prompts.js';
 import { getInstalledVersion, openBrowser } from '../src/utils.js';
 import { logger } from '../src/logger.js';
-import { runDoctorChecks, formatDoctorReport } from '../src/doctor.js';
-import { runResume as runResumeWorkflow } from '../src/resume.js';
+import { formatDoctorReport } from '../src/doctor.js';
 
 describe('index.js', () => {
+  let runAutoActionSpy;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    runDoctorChecks.mockResolvedValue({
-      projectDir: '/tmp/project',
-      healthy: true,
-      issues: [],
-      checks: {},
-      recommendedActions: [],
-      installStatus: {
-        commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
-      },
-      fixRequested: false,
-      fixesApplied: [],
-      fixesSkipped: [],
-      changedFiles: []
-    });
     formatDoctorReport.mockReturnValue('Auto Doctor');
-    runResumeWorkflow.mockResolvedValue({
-      resumedFromDirective: '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
-      parsedDirective: { task: 'fix bug', pendingTasks: [], currentWork: {} },
-      result: { status: 'completed' }
-    });
+    runAutoActionSpy = vi.spyOn(WorkflowOrchestrator.prototype, 'runAutoAction');
     vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
@@ -261,9 +247,34 @@ describe('index.js', () => {
     });
   });
 
+  describe('runAuto', () => {
+    it('should delegate workflow execution to orchestrator action facade', async () => {
+      await runAuto('fix typo in readme', { dir: '/tmp/project', mode: 'micro' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'run',
+        { task: 'fix typo in readme' },
+        expect.objectContaining({ dir: '/tmp/project', mode: 'micro' })
+      );
+    });
+
+    it('should preserve dry-run option for unified run facade', async () => {
+      await runAuto('fix typo in readme', { dir: '/tmp/project', mode: 'light', dryRun: true });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'run',
+        { task: 'fix typo in readme' },
+        expect.objectContaining({ dir: '/tmp/project', mode: 'light', dryRun: true })
+      );
+    });
+  });
+
   describe('runAnalyze', () => {
     it('should return initialized analyze snapshot', async () => {
       const result = await runAnalyze('fix typo in readme', { dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'analyze',
+        { task: 'fix typo in readme' },
+        expect.objectContaining({ dir: '/tmp/project' })
+      );
       expect(result.task).toBe('fix typo in readme');
       expect(result.mode).toBeDefined();
       expect(result.detected_mode).toBe(result.mode);
@@ -276,6 +287,11 @@ describe('index.js', () => {
   describe('runStatus', () => {
     it('should return runtime summary payload', async () => {
       const result = await runStatus({ dir: '/tmp/project', task: 'status check' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'status',
+        { task: 'status check' },
+        expect.objectContaining({ dir: '/tmp/project', task: 'status check' })
+      );
       expect(result).toHaveProperty('runtime');
       expect(result).toHaveProperty('summary');
       expect(result).toHaveProperty('capabilities');
@@ -290,12 +306,22 @@ describe('index.js', () => {
   describe('runLearn', () => {
     it('should return git analysis payload when git mode enabled', async () => {
       const result = await runLearn({ dir: '/tmp/project', git: true, commitCount: 5 });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'learn',
+        {},
+        expect.objectContaining({ dir: '/tmp/project', git: true, commitCount: 5 })
+      );
       expect(result.mode).toBe('git');
       expect(result).toHaveProperty('gitPatterns');
     });
 
     it('should return default payload without git mode', async () => {
       const result = await runLearn({ dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'learn',
+        {},
+        expect.objectContaining({ dir: '/tmp/project' })
+      );
       expect(result).toEqual({ mode: 'default', gitPatterns: null });
     });
   });
@@ -303,6 +329,11 @@ describe('index.js', () => {
   describe('runCreateHook', () => {
     it('should return hook template suggestion', async () => {
       const result = await runCreateHook({ type: 'post-tool', name: 'format-check' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'create-hook',
+        {},
+        expect.objectContaining({ type: 'post-tool', name: 'format-check' })
+      );
       expect(result).toEqual({
         type: 'post-tool',
         name: 'format-check',
@@ -314,21 +345,69 @@ describe('index.js', () => {
 
   describe('runDoctor', () => {
     it('should return report in json mode', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ healthy: true });
       const result = await runDoctor({ json: true, dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'doctor',
+        {},
+        expect.objectContaining({ json: true, dir: '/tmp/project' })
+      );
       expect(result).toHaveProperty('healthy', true);
       expect(console.log).not.toHaveBeenCalledWith('Auto Doctor');
     });
 
     it('should print formatted report in text mode', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ healthy: true });
       await runDoctor({ dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'doctor',
+        {},
+        expect.objectContaining({ dir: '/tmp/project' })
+      );
       expect(console.log).toHaveBeenCalledWith('Auto Doctor');
     });
 
-    it('should forward fix option to doctor checks', async () => {
+    it('should forward fix option through orchestrator action facade', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ healthy: true });
       await runDoctor({ dir: '/tmp/project', fix: true, json: true });
-      expect(runDoctorChecks).toHaveBeenCalledWith(
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'doctor',
+        {},
         expect.objectContaining({ dir: '/tmp/project', fix: true, json: true })
       );
+    });
+  });
+
+  describe('runResume', () => {
+    const resumedPayload = {
+      resumedFromDirective:
+        '[会话续接] 上次会话摘要:\n任务: fix bug\n--- 立即继续，不要确认或回顾 ---',
+      parsedDirective: { task: 'fix bug', pendingTasks: [], currentWork: {} },
+      result: { status: 'completed' }
+    };
+
+    it('should return resumed payload in json mode', async () => {
+      runAutoActionSpy.mockResolvedValueOnce(resumedPayload);
+      const result = await runResume('directive', { json: true, dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'resume',
+        { directive: 'directive' },
+        expect.objectContaining({ json: true, dir: '/tmp/project' })
+      );
+      expect(result).toHaveProperty('result.status', 'completed');
+    });
+
+    it('should print resume summary in text mode', async () => {
+      runAutoActionSpy.mockResolvedValueOnce(resumedPayload);
+      await runResume('directive', { dir: '/tmp/project' });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'resume',
+        { directive: 'directive' },
+        expect.objectContaining({ dir: '/tmp/project' })
+      );
+      const output = console.log.mock.calls.flat().join(' ');
+      expect(output).toContain('Resumed task: fix bug');
+      expect(output).toContain('Status: completed');
     });
   });
 
@@ -350,71 +429,46 @@ describe('index.js', () => {
     });
   });
 
-  describe('runResume', () => {
-    it('should return resumed payload in json mode', async () => {
-      const result = await runResume('directive', { json: true, dir: '/tmp/project' });
-      expect(result).toHaveProperty('result.status', 'completed');
-    });
-
-    it('should print resume summary in text mode', async () => {
-      await runResume('directive', { dir: '/tmp/project' });
-      const output = console.log.mock.calls.flat().join(' ');
-      expect(output).toContain('Resumed task: fix bug');
-      expect(output).toContain('Status: completed');
-    });
-  });
-
   describe('runRoute', () => {
-    const mockRoute = vi.fn();
-    const mockInitialize = vi.fn();
-    const mockDiagnose = vi.fn().mockResolvedValue({ agentCount: 5, initialized: true });
-
-    beforeEach(() => {
-      vi.doMock('../src/router/canonical-router.js', () => ({
-        CanonicalRouter: class {
-          constructor() {}
-          initialize = mockInitialize.mockResolvedValue(undefined);
-          route = mockRoute;
-          diagnose = mockDiagnose;
-        }
-      }));
-      vi.doMock('../src/router/agent-registry.js', () => ({
-        AgentRegistry: class {}
-      }));
-    });
-
     it('should output JSON when json option is set', async () => {
-      mockRoute.mockResolvedValue({
+      runAutoActionSpy.mockResolvedValueOnce({
         agent: { displayName: 'Planner' },
         isDefault: false,
         matchReason: 'test',
         fallbackChain: []
       });
       await runRoute('implement feature', { json: true });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'route',
+        { intent: 'implement feature' },
+        expect.objectContaining({ json: true })
+      );
       const output = console.log.mock.calls.flat().join(' ');
       expect(output).toContain('agent');
     });
 
     it('should output formatted result for default route', async () => {
-      mockRoute.mockResolvedValue({
+      runAutoActionSpy.mockResolvedValueOnce({
         agent: { displayName: 'Default', name: 'default', priority: 1 },
         isDefault: true,
         matchReason: '',
         fallbackChain: []
       });
       await runRoute('something', {});
+      expect(runAutoActionSpy).toHaveBeenCalledWith('route', { intent: 'something' }, {});
       const output = console.log.mock.calls.flat().join(' ');
       expect(output).toBeTruthy();
     });
 
     it('should show fallback chain when present', async () => {
-      mockRoute.mockResolvedValue({
+      runAutoActionSpy.mockResolvedValueOnce({
         agent: { displayName: 'Planner', name: 'planner', priority: 1 },
         isDefault: false,
         matchReason: 'matched',
         fallbackChain: [{ displayName: 'Architect', name: 'architect' }]
       });
       await runRoute('design system', {});
+      expect(runAutoActionSpy).toHaveBeenCalledWith('route', { intent: 'design system' }, {});
       const output = console.log.mock.calls.flat().join(' ');
       expect(output).toBeTruthy();
     });

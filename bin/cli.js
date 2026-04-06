@@ -7,14 +7,14 @@ import {
   runInstall,
   runUpdate,
   runUninstall,
+  runAuto,
   runRoute,
   runAnalyze,
   runDoctor,
   runResume,
   runStatus,
   runLearn,
-  runCreateHook,
-  WorkflowOrchestrator
+  runCreateHook
 } from '../src/index.js';
 import { getPackageVersion, COMPONENTS, openBrowser } from '../src/utils.js';
 import { DOCS_URL } from '../src/config.js';
@@ -233,21 +233,17 @@ program
   .option('--json', '以 JSON 格式输出结果')
   .action(async (task, options) => {
     try {
-      const orchestrator = new WorkflowOrchestrator({
-        projectDir: options.dir
+      const result = await runAuto(task, {
+        mode: options.mode,
+        dir: options.dir,
+        json: options.json,
+        dryRun: options.dryRun
       });
 
       if (options.dryRun) {
-        const result = await runAnalyze(task, {
-          mode: options.mode,
-          dir: options.dir,
-          json: true
-        });
         console.log(JSON.stringify(result, null, 2));
         return;
       }
-
-      const result = await orchestrator.run(task, { mode: options.mode });
 
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));

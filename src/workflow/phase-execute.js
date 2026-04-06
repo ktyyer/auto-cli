@@ -1263,7 +1263,9 @@ export class PhaseExecute {
       try {
         const executeResult = await this._executeQuest(quest, modelRoute, questEngine, ctx);
         if (executeResult.success === false) {
-          throw new Error(executeResult.executionResult?.error || 'Quest execution did not complete');
+          throw new Error(
+            executeResult.executionResult?.error || 'Quest execution did not complete'
+          );
         }
         questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
         // P0-2: 使用真实的 feedbackId 记录成功反馈

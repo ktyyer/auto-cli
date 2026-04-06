@@ -59,7 +59,7 @@ Bash("test -f ~/.claude/hooks/hooks.json && echo EXISTS || echo MISSING")
 ```
 Glob("CLAUDE.md")
   -> 存在 -> PASS
-  -> 不存在 -> WARN: "缺少 CLAUDE.md，建议运行 /auto:init 生成"
+  -> 不存在 -> WARN: "缺少 CLAUDE.md，建议手动创建或由 /auto 在后续工作流中提示补齐"
 
 Glob("REPO_MAP.md")
   -> 存在 -> PASS
@@ -130,12 +130,9 @@ Glob("package.json")
 
 ## /auto 自动编排
 
-`/auto` 的 PHASE 1 DISCOVER 会自动调用同一套安全修复逻辑：
-- 缺失 `REPO_MAP.md` 时自动补生成
-- 缺失 `hooks/hooks.json` 时自动补生成
-- 缺失已安装 Claude 组件时自动尝试补齐
+`/auto` 的 PHASE 1 DISCOVER 会复用同一套诊断结果，并默认保持只读扫描。
 
-自动编排只使用上述安全修复，不会执行依赖安装、删除文件或覆盖用户内容。
+显式修复（例如 `doctor --fix`）只使用上述安全修复能力，不会执行依赖安装、删除文件或覆盖用户内容。
 
 ## 输出
 
@@ -154,7 +151,7 @@ DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
 - 工作流结果会包含 `doctorResult`
 - 自动修复产生的 `changedFiles` 会合并进当前工作流上下文
 
-因此 `doctor` 不只是独立命令，也可以被 `auto` 作为前置健康修复器自动编排和复用。
+因此 `doctor` 不只是独立命令，也可以被 `auto` 作为前置健康诊断能力复用。
 
 ## 不会做的事
 
@@ -168,10 +165,10 @@ DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
 
 ## 适用场景
 
-- 新项目首次运行 `/auto` 前的环境补齐
+- 新项目首次运行 `/auto` 前的环境诊断
 - 安装 Auto CLI 后检查 Claude 组件是否缺失
-- 代码地图和默认 hooks 缺失时的快速自愈
-- 在完整工作流开始前做最小健康修复
+- 显式 `auto doctor --fix` 时补齐代码地图或默认 hooks
+- 在完整工作流开始前做最小健康检查
 
 这使 `doctor` 成为 `/auto` 的前置守门与自愈能力，而不是单独的诊断工具。
 
@@ -183,7 +180,7 @@ auto doctor --fix
 auto doctor --fix --json -d .
 ```
 
-`/auto` 在进入 PHASE 1 时会自动复用相同修复逻辑，无需额外手动调用。
+`/auto` 在进入 PHASE 1 时默认复用同一套诊断逻辑；只有显式 `doctor --fix` 才会执行安全修复。
 
 ## 备注
 
@@ -203,8 +200,8 @@ auto doctor --fix --json -d .
 
 ## 总结
 
-- `doctor` = 健康检查 + 安全修复
-- `auto` = 自动调用 doctor 安全修复并继续后续工作流
+- `doctor` = 健康检查 + 可选安全修复
+- `auto` = 默认复用 doctor 诊断结果，并在显式修复时共享同一套安全修复能力
 - 两者共享同一套最小自愈能力
 - 修复结果结构化可传递、可测试、可扩展
 
@@ -226,8 +223,8 @@ auto doctor --fix -d .
 ## 验收
 
 - `auto doctor --fix` 可运行
-- `/auto` PHASE 1 会自动尝试安全修复
-- 结果中能看到 applied/skipped/changedFiles
+- `/auto` PHASE 1 默认保持只读诊断
+- 显式修复时结果中能看到 applied/skipped/changedFiles
 - 不执行高风险操作
 - 后续 PHASE 可消费 doctorResult
 
@@ -268,7 +265,7 @@ Auto Doctor
 问题数: 1
 
 已应用修复:
-- generate-repo-map: auto-phase-discover 自动生成 REPO_MAP.md
+- generate-repo-map: doctor --fix 显式触发生成 REPO_MAP.md
 
 修复变更文件:
 - /project/REPO_MAP.md

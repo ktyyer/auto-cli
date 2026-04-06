@@ -193,8 +193,8 @@ rules/*.md: 检查文件非空且有实质内容（>100 字节）
 
 根据扫描结果生成建议：
 
-- CLAUDE.md 缺失 → 建议 `/auto:init-project`
-- REPO_MAP.md 缺失 → 建议 `/auto:update-codemaps`
+- CLAUDE.md 缺失 → 建议手动补齐项目上下文文件
+- REPO_MAP.md 缺失 → 建议运行 `auto codemaps -d .`
 - node_modules 缺失 → 建议 `npm install`
 - 能力数量 < 预期 → 建议 `/auto:doctor` 检查安装
 - Agent/Skill 文件不完整 → 建议修复 frontmatter

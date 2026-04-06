@@ -2,7 +2,7 @@
  * Phase Discover — PHASE 1: 扫描 + 能力清单
  *
  * 负责项目上下文发现、Skill/Agent/Command/Hook 统计、
- * Doctor 快检、REPO_MAP 生成
+ * Doctor 快检与只读状态快照
  */
 
 import { FLOW_EVENTS } from '../flow/flow-engine.js';
@@ -72,11 +72,14 @@ export class PhaseDiscover {
     // 统计 Command 数量
     const commandCount = await this._countCommands();
 
-    // 统计 Hook 数量
+    // 统计 Hook 数量（只读，不自动生成）
     const hookCount = await this._countHooks();
 
-    // 确保 REPO_MAP.md 存在且新鲜
-    await this._ensureRepoMap();
+    // 检查 REPO_MAP.md 状态（只读，不自动生成）
+    const repoMapStatus = await this._inspectRepoMap();
+    if (!repoMapStatus.exists) {
+      logger.info('[PHASE 1] REPO_MAP.md 缺失，保持只读扫描');
+    }
 
     // P0-1: 注入 discover 阶段 Skill（PHASE_SKILL_MAP.discover 消费）
     let discoverSkills = await this._injectDiscoverSkills();
@@ -88,12 +91,12 @@ export class PhaseDiscover {
       discoverSkills = [...discoverSkills, ...languageSkills];
     }
 
-    // P0-2: 消费上次 /auto 留下的 pending-invocations
-    const pendingInvocations = await this._consumePendingInvocations();
+    // P0-2: 读取上次 /auto 留下的 pending-invocations 快照（只读，不消费）
+    const pendingInvocations = await this._inspectPendingInvocations();
 
-    // Doctor 快检：项目健康度诊断 + 安全自动修复
+    // Doctor 快检：项目健康度诊断（默认只读，不自动修复）
     const doctorResult = await this._runDoctorCheck({
-      fix: true,
+      fix: false,
       source: 'auto-phase-discover'
     });
     if (doctorResult.issues.length > 0) {
@@ -157,6 +160,7 @@ export class PhaseDiscover {
       projectProfile: detectProjectProfile(this.projectDir),
       projectLanguages,
       discoverSkills,
+      repoMapStatus,
       pendingInvocations
     });
 
@@ -222,19 +226,16 @@ export class PhaseDiscover {
   }
 
   /**
-   * 读取 hooks/hooks.json 统计 hook 数量
-   * 若 hooks.json 不存在，自动生成最小默认配置
+   * 读取 hooks/hooks.json 统计 hook 数量（只读）
    * @returns {Promise<number>}
    * @private
    */
   async _countHooks() {
     try {
-      const hooksDir = path.join(this.projectDir, 'hooks');
-      const hooksPath = path.join(hooksDir, 'hooks.json');
+      const hooksPath = path.join(this.projectDir, 'hooks', 'hooks.json');
 
       if (!(await fs.pathExists(hooksPath))) {
-        await this._ensureDefaultHooks(hooksDir, hooksPath);
-        return this._countHooksFromConfig(hooksPath);
+        return 0;
       }
 
       return this._countHooksFromConfig(hooksPath);
@@ -319,27 +320,63 @@ export class PhaseDiscover {
   }
 
   /**
-   * 确保 REPO_MAP.md 存在且新鲜（<24h），否则生成
+   * 检查 REPO_MAP.md 状态（只读）
+   * @returns {Promise<Readonly<{exists: boolean, stale: boolean, ageMs: number|null}>>}
    * @private
    */
-  async _ensureRepoMap() {
+  async _inspectRepoMap() {
     try {
       const repoMapPath = path.join(this.projectDir, 'REPO_MAP.md');
-
-      if (await fs.pathExists(repoMapPath)) {
-        const stat = await fs.stat(repoMapPath);
-        const age = Date.now() - stat.mtimeMs;
-        if (age < 24 * 60 * 60 * 1000) {
-          logger.debug('[PHASE 1] REPO_MAP.md 新鲜，跳过重新生成');
-          return;
-        }
+      if (!(await fs.pathExists(repoMapPath))) {
+        return Object.freeze({ exists: false, stale: false, ageMs: null });
       }
 
-      const indexer = new RepoIndexer(this.projectDir);
-      await indexer.generateRepoMap();
-      logger.info('[PHASE 1] REPO_MAP.md 已生成');
+      const stat = await fs.stat(repoMapPath);
+      const ageMs = Date.now() - stat.mtimeMs;
+      return Object.freeze({
+        exists: true,
+        stale: ageMs >= 24 * 60 * 60 * 1000,
+        ageMs
+      });
     } catch (e) {
-      logger.warn(`[PHASE 1] RepoIndexer 失败: ${e.message}`);
+      logger.warn(`[PHASE 1] RepoIndexer 检查失败: ${e.message}`);
+      return Object.freeze({ exists: false, stale: false, ageMs: null });
+    }
+  }
+
+  /**
+   * 读取 pending invocation 队列快照（只读）
+   * @returns {Promise<Readonly<Object[]>>}
+   * @private
+   */
+  async _inspectPendingInvocations() {
+    try {
+      const queuePath = path.join(this.projectDir, '.auto', 'pending-invocations.json');
+      if (!(await fs.pathExists(queuePath))) {
+        return Object.freeze([]);
+      }
+
+      const queue = await fs.readJson(queuePath);
+      if (!Array.isArray(queue) || queue.length === 0) {
+        return Object.freeze([]);
+      }
+
+      const pending = queue
+        .filter((item) => item && typeof item === 'object' && item.status === 'pending')
+        .map((item) => Object.freeze({ ...item }));
+
+      if (pending.length > 0) {
+        logger.info(
+          `[PHASE 1] 检测到 ${pending.length} 个待执行调度（只读快照）: ${pending
+            .map((p) => p.subagent_type || p.type || 'unknown')
+            .join(', ')}`
+        );
+      }
+
+      return Object.freeze(pending);
+    } catch (e) {
+      logger.debug(`[PHASE 1] pending-invocations inspect skipped: ${e.message}`);
+      return Object.freeze([]);
     }
   }
 
@@ -392,7 +429,6 @@ export class PhaseDiscover {
       }
     };
 
-    const repoMapPath = path.join(this.projectDir, 'REPO_MAP.md');
     const maybeFixRepoMap = async () => {
       if (!shouldFix) {
         return false;
@@ -728,53 +764,5 @@ export class PhaseDiscover {
     }
 
     return Object.freeze(loaded);
-  }
-
-  /**
-   * P0-2: 消费 .auto/pending-invocations.json 中的待执行调度
-   * 将上次 /auto (PHASE 6) 生成的 doc-updater/refactor-cleaner 调度注入当前工作流
-   * @returns {Promise<Readonly<Object[]>>} 待执行的 invocation 列表
-   * @private
-   */
-  async _consumePendingInvocations() {
-    try {
-      const queuePath = path.join(this.projectDir, '.auto', 'pending-invocations.json');
-      if (!(await fs.pathExists(queuePath))) {
-        return [];
-      }
-
-      const queue = await fs.readJson(queuePath);
-      if (!Array.isArray(queue) || queue.length === 0) {
-        return [];
-      }
-
-      const pending = queue.filter((item) => item.status === 'pending');
-      if (pending.length === 0) {
-        return [];
-      }
-
-      const updated = queue.map((item) =>
-        item.status === 'pending' ? { ...item, status: 'consumed', consumedAt: Date.now() } : item
-      );
-      await fs.writeJson(queuePath, updated, { spaces: 2 });
-
-      logger.info(
-        `[PHASE 1] 消费 ${pending.length} 个待执行调度: ${pending.map((p) => p.subagent_type).join(', ')}`
-      );
-
-      return pending.map((p) =>
-        Object.freeze({
-          subagent_type: p.subagent_type,
-          description: p.description,
-          prompt: p.prompt,
-          model: p.model,
-          trigger: p.trigger,
-          enqueuedAt: p.enqueuedAt
-        })
-      );
-    } catch (e) {
-      logger.debug(`[PHASE 1] pending-invocations consumption skipped: ${e.message}`);
-      return [];
-    }
   }
 }

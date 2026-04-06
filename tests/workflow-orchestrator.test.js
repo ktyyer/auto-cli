@@ -2,7 +2,10 @@
  * Workflow Orchestrator Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import fs from 'fs-extra';
+import path from 'node:path';
+import os from 'node:os';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WorkflowOrchestrator } from '../src/workflow/workflow-orchestrator.js';
 import {
   createPhaseContext,
@@ -31,7 +34,9 @@ async function runExecute(orchestrator) {
 async function runMicroExecute(orchestrator) {
   orchestrator._syncDepsToModules();
   orchestrator.phaseExecute.setMessageAccumulator(orchestrator._messageAccumulator || []);
-  orchestrator.phaseContext = await orchestrator.phaseExecute.runMicroExecute(orchestrator.phaseContext);
+  orchestrator.phaseContext = await orchestrator.phaseExecute.runMicroExecute(
+    orchestrator.phaseContext
+  );
 }
 
 async function runVerify(orchestrator) {
@@ -185,6 +190,49 @@ describe('WorkflowOrchestrator', () => {
       expect(ctx.completedQuests).toHaveLength(1);
       expect(ctx2.completedQuests).toHaveLength(2);
     });
+
+    it('should snapshot pendingInvocations entries in createPhaseContext', () => {
+      const source = [
+        {
+          subagent_type: 'doc-updater',
+          status: 'pending'
+        }
+      ];
+
+      const ctx = createPhaseContext({ pendingInvocations: source });
+      source[0].status = 'completed';
+
+      expect(ctx.pendingInvocations[0].status).toBe('pending');
+    });
+
+    it('should detach nested pendingInvocations payloads in createPhaseContext', () => {
+      const source = [
+        {
+          subagent_type: 'doc-updater',
+          payload: { prompt: 'update docs' }
+        }
+      ];
+
+      const ctx = createPhaseContext({ pendingInvocations: source });
+      source[0].payload.prompt = 'mutated';
+
+      expect(ctx.pendingInvocations[0].payload.prompt).toBe('update docs');
+    });
+
+    it('should detach nested pendingInvocations payloads in updatePhaseContext', () => {
+      const ctx = createPhaseContext();
+      const source = [
+        {
+          subagent_type: 'doc-updater',
+          payload: { prompt: 'update docs' }
+        }
+      ];
+
+      const next = updatePhaseContext(ctx, { pendingInvocations: source });
+      source[0].payload.prompt = 'mutated';
+
+      expect(next.pendingInvocations[0].payload.prompt).toBe('update docs');
+    });
   });
 
   describe('run 方法', () => {
@@ -198,6 +246,147 @@ describe('WorkflowOrchestrator', () => {
     it('should set execution mode based on task', async () => {
       await orchestrator.run('fix typo in readme');
       expect(orchestrator.phaseContext.mode).toBe(EXECUTION_MODES.MICRO);
+    });
+
+    it('should return gate_failed without triggering destructive rollback', async () => {
+      vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runExecute').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, { changedFiles: ['src/safe.js'] })
+      );
+      vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, {
+          gateFailed: true,
+          gateReason: 'verification failed',
+          changedFiles: ['src/safe.js']
+        })
+      );
+      const commitSpy = vi.spyOn(orchestrator.phaseCommit, 'run');
+      const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+      const result = await orchestrator.run('refactor authentication system');
+
+      expect(result.status).toBe('gate_failed');
+      expect(commitSpy).not.toHaveBeenCalled();
+      expect(learnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runAutoAction', () => {
+    it('should delegate run action to run()', async () => {
+      const runSpy = vi.spyOn(orchestrator, 'run').mockResolvedValue({ status: 'completed' });
+      const result = await orchestrator.runAutoAction(
+        'run',
+        { task: 'ship feature' },
+        { mode: 'full' }
+      );
+      expect(runSpy).toHaveBeenCalledWith('ship feature', { mode: 'full' });
+      expect(result).toEqual({ status: 'completed' });
+    });
+
+    it('should route dry-run run action to analyze flow', async () => {
+      const runSpy = vi.spyOn(orchestrator, 'run').mockResolvedValue({ status: 'completed' });
+      const analyzeSpy = vi
+        .spyOn(orchestrator, '_runAnalyzeAction')
+        .mockResolvedValue({ task: 'ship feature', mode: 'full' });
+      const result = await orchestrator.runAutoAction(
+        'run',
+        { task: 'ship feature' },
+        { mode: 'full', dryRun: true }
+      );
+      expect(runSpy).not.toHaveBeenCalled();
+      expect(analyzeSpy).toHaveBeenCalledWith('ship feature', { mode: 'full', dryRun: true });
+      expect(result).toEqual({ task: 'ship feature', mode: 'full' });
+    });
+
+    it('should dispatch analyze action', async () => {
+      const analyzeSpy = vi
+        .spyOn(orchestrator, '_runAnalyzeAction')
+        .mockResolvedValue({ task: 'analyze me' });
+      const result = await orchestrator.runAutoAction(
+        'analyze',
+        { task: 'analyze me' },
+        { mode: 'light' }
+      );
+      expect(analyzeSpy).toHaveBeenCalledWith('analyze me', { mode: 'light' });
+      expect(result).toEqual({ task: 'analyze me' });
+    });
+
+    it('should dispatch status action', async () => {
+      const statusSpy = vi
+        .spyOn(orchestrator, '_runStatusAction')
+        .mockResolvedValue({ runtime: {}, summary: {} });
+      const result = await orchestrator.runAutoAction(
+        'status',
+        { task: 'status check' },
+        { dir: '/tmp/test-project' }
+      );
+      expect(statusSpy).toHaveBeenCalledWith(
+        { task: 'status check' },
+        { dir: '/tmp/test-project' }
+      );
+      expect(result).toEqual({ runtime: {}, summary: {} });
+    });
+
+    it('should dispatch route action', async () => {
+      const routeSpy = vi
+        .spyOn(orchestrator, '_runRouteAction')
+        .mockResolvedValue({ agent: { name: 'planner' } });
+      const result = await orchestrator.runAutoAction(
+        'route',
+        { intent: 'design system' },
+        { debug: true }
+      );
+      expect(routeSpy).toHaveBeenCalledWith({ intent: 'design system' }, { debug: true });
+      expect(result).toEqual({ agent: { name: 'planner' } });
+    });
+
+    it('should dispatch doctor action', async () => {
+      const doctorSpy = vi
+        .spyOn(orchestrator, '_runDoctorAction')
+        .mockResolvedValue({ healthy: true });
+      const result = await orchestrator.runAutoAction('doctor', {}, { fix: true });
+      expect(doctorSpy).toHaveBeenCalledWith({}, { fix: true });
+      expect(result).toEqual({ healthy: true });
+    });
+
+    it('should dispatch learn action', async () => {
+      const learnSpy = vi.spyOn(orchestrator, '_runLearnAction').mockResolvedValue({ mode: 'git' });
+      const result = await orchestrator.runAutoAction('learn', {}, { git: true, commitCount: 5 });
+      expect(learnSpy).toHaveBeenCalledWith({}, { git: true, commitCount: 5 });
+      expect(result).toEqual({ mode: 'git' });
+    });
+
+    it('should dispatch create-hook action', async () => {
+      const createHookSpy = vi
+        .spyOn(orchestrator, '_runCreateHookAction')
+        .mockResolvedValue({ template: 'post-tool:format-check' });
+      const result = await orchestrator.runAutoAction(
+        'create-hook',
+        {},
+        { type: 'post-tool', name: 'format-check' }
+      );
+      expect(createHookSpy).toHaveBeenCalledWith({}, { type: 'post-tool', name: 'format-check' });
+      expect(result).toEqual({ template: 'post-tool:format-check' });
+    });
+
+    it('should dispatch resume action', async () => {
+      const resumeSpy = vi
+        .spyOn(orchestrator, '_runResumeAction')
+        .mockResolvedValue({ result: { status: 'completed' } });
+      const result = await orchestrator.runAutoAction(
+        'resume',
+        { directive: 'resume work' },
+        { json: true }
+      );
+      expect(resumeSpy).toHaveBeenCalledWith({ directive: 'resume work' }, { json: true });
+      expect(result).toEqual({ result: { status: 'completed' } });
+    });
+
+    it('should throw on unsupported action', async () => {
+      await expect(orchestrator.runAutoAction('unknown-action')).rejects.toThrow(
+        'Unsupported auto action: unknown-action'
+      );
     });
   });
 
@@ -389,7 +578,9 @@ describe('PhaseExecute - _extractKeywords with edge cases', () => {
   });
 
   it('should handle mixed Chinese and English text', () => {
-    const keywords = orchestrator.phaseExecute._extractKeywords('refactor authentication refactor-clean module');
+    const keywords = orchestrator.phaseExecute._extractKeywords(
+      'refactor authentication refactor-clean module'
+    );
     expect(keywords).toContain('refactor');
     expect(keywords).toContain('authentication');
     expect(keywords).toContain('module');
@@ -420,7 +611,9 @@ describe('PhaseExecute - _extractKeywords with edge cases', () => {
   });
 
   it('should treat dot-connected terms as single keywords', () => {
-    const keywords = orchestrator.phaseExecute._extractKeywords('fix.error,handling the authentication');
+    const keywords = orchestrator.phaseExecute._extractKeywords(
+      'fix.error,handling the authentication'
+    );
     expect(keywords).toContain('fix.error');
     expect(keywords).toContain('handling');
     expect(keywords).not.toContain('the');
@@ -1221,12 +1414,20 @@ Lines        : 88% ( 170/194 )
 
 describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
   let orchestrator;
+  let tempDir;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auto-cli-discover-'));
     orchestrator = new WorkflowOrchestrator({
-      projectDir: '/tmp/test-project',
+      projectDir: tempDir,
       skillsDir: '/tmp/test-skills'
     });
+  });
+
+  afterEach(async () => {
+    if (tempDir) {
+      await fs.remove(tempDir);
+    }
   });
 
   describe('_runDoctorCheck', () => {
@@ -1267,24 +1468,343 @@ describe('WorkflowOrchestrator - PHASE 1 Doctor Check', () => {
       expect(Array.isArray(result.changedFiles)).toBe(true);
     });
 
-    it('should merge doctor changed files into phase context during discover', async () => {
+    it('should keep discover doctor check read-only by default', async () => {
+      const doctorSpy = vi.spyOn(orchestrator.phaseDiscover, '_runDoctorCheck');
+
+      await runDiscover(orchestrator);
+
+      expect(doctorSpy).toHaveBeenCalledWith({
+        fix: false,
+        source: 'auto-phase-discover'
+      });
+      expect(orchestrator.phaseContext.changedFiles).toEqual([]);
+      expect(await fs.pathExists(path.join(tempDir, 'REPO_MAP.md'))).toBe(false);
+      expect(await fs.pathExists(path.join(tempDir, 'hooks', 'hooks.json'))).toBe(false);
+    });
+
+    it('should inspect pending invocations without consuming queue state', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      const queue = [
+        {
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending'
+        }
+      ];
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(queuePath, queue, { spaces: 2 });
+      const before = await fs.readFile(queuePath, 'utf8');
+
+      await runDiscover(orchestrator);
+
+      const after = await fs.readFile(queuePath, 'utf8');
+      expect(after).toBe(before);
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([
+        expect.objectContaining({
+          subagent_type: 'doc-updater',
+          status: 'pending'
+        })
+      ]);
+    });
+
+    it('should not generate repo map during discover read-only scan', async () => {
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext.repoMapStatus).toEqual({
+        exists: false,
+        stale: false,
+        ageMs: null
+      });
+      expect(await fs.pathExists(path.join(tempDir, 'REPO_MAP.md'))).toBe(false);
+    });
+
+    it('should not generate hooks config during discover read-only scan', async () => {
+      await runDiscover(orchestrator);
+
+      expect(await fs.pathExists(path.join(tempDir, 'hooks', 'hooks.json'))).toBe(false);
+    });
+
+    it('should generate hooks config when doctor fix mode is enabled', async () => {
+      const result = await runDoctorCheck(orchestrator, { fix: true, source: 'test' });
+
+      expect(await fs.pathExists(path.join(tempDir, 'hooks', 'hooks.json'))).toBe(true);
+      expect(result.fixesApplied).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: 'generate-hooks-config'
+          })
+        ])
+      );
+    });
+
+    it('should generate repo map when doctor fix mode is enabled', async () => {
+      const result = await runDoctorCheck(orchestrator, { fix: true, source: 'test' });
+
+      expect(await fs.pathExists(path.join(tempDir, 'REPO_MAP.md'))).toBe(true);
+      expect(result.fixesApplied).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: 'generate-repo-map'
+          })
+        ])
+      );
+    });
+
+    it('should preserve repo map snapshot when repo map already exists', async () => {
+      const repoMapPath = path.join(tempDir, 'REPO_MAP.md');
+      await fs.writeFile(repoMapPath, '# repo map\n');
+      const beforeStat = await fs.stat(repoMapPath);
+
+      await runDiscover(orchestrator);
+
+      const afterStat = await fs.stat(repoMapPath);
+      expect(orchestrator.phaseContext.repoMapStatus).toEqual(
+        expect.objectContaining({
+          exists: true,
+          stale: false
+        })
+      );
+      expect(afterStat.mtimeMs).toBe(beforeStat.mtimeMs);
+    });
+
+    it('should mark repo map snapshot as stale for old file', async () => {
+      const repoMapPath = path.join(tempDir, 'REPO_MAP.md');
+      await fs.writeFile(repoMapPath, '# stale repo map\n');
+      const oldTime = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      await fs.utimes(repoMapPath, oldTime, oldTime);
+
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext.repoMapStatus).toEqual(
+        expect.objectContaining({
+          exists: true,
+          stale: true
+        })
+      );
+    });
+
+    it('should filter pending snapshot to pending items only', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending'
+          },
+          {
+            subagent_type: 'refactor-cleaner',
+            description: 'clean code',
+            prompt: 'clean code',
+            status: 'completed'
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext.pendingInvocations).toHaveLength(1);
+      expect(orchestrator.phaseContext.pendingInvocations[0]).toEqual(
+        expect.objectContaining({
+          subagent_type: 'doc-updater',
+          status: 'pending'
+        })
+      );
+    });
+
+    it('should return empty pending snapshot for invalid queue file', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeFile(queuePath, '{not-json');
+
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([]);
+    });
+
+    it('should expose repoMapStatus in status-style discover context', async () => {
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext).toHaveProperty('repoMapStatus');
+      expect(orchestrator.phaseContext.repoMapStatus).toEqual({
+        exists: false,
+        stale: false,
+        ageMs: null
+      });
+    });
+
+    it('should expose pendingInvocations snapshot in discover context', async () => {
+      await runDiscover(orchestrator);
+
+      expect(orchestrator.phaseContext).toHaveProperty('pendingInvocations');
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([]);
+    });
+
+    it('should keep repoMapStatus immutable in context updates', async () => {
+      await runDiscover(orchestrator);
+
+      expect(Object.isFrozen(orchestrator.phaseContext.repoMapStatus)).toBe(true);
+    });
+
+    it('should keep pendingInvocations immutable in context updates', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending'
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await runDiscover(orchestrator);
+
+      expect(Object.isFrozen(orchestrator.phaseContext.pendingInvocations)).toBe(true);
+      expect(Object.isFrozen(orchestrator.phaseContext.pendingInvocations[0])).toBe(true);
+    });
+
+    it('should not generate repo map during doctor read-only check', async () => {
+      const result = await runDoctorCheck(orchestrator, { fix: false, source: 'test' });
+
+      expect(await fs.pathExists(path.join(tempDir, 'REPO_MAP.md'))).toBe(false);
+      expect(result.fixesApplied).toEqual([]);
+    });
+
+    it('should not generate hooks during doctor read-only check', async () => {
+      const result = await runDoctorCheck(orchestrator, { fix: false, source: 'test' });
+
+      expect(await fs.pathExists(path.join(tempDir, 'hooks', 'hooks.json'))).toBe(false);
+      expect(result.fixesApplied).toEqual([]);
+    });
+
+    it('should preserve queue file mtime and content during discover snapshot', async () => {
+      const queue = [
+        {
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          trigger: 'learn',
+          enqueuedAt: 123
+        }
+      ];
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(queuePath, queue, { spaces: 2 });
+      const before = await fs.readFile(queuePath, 'utf8');
+      const beforeStat = await fs.stat(queuePath);
+
+      await runDiscover(orchestrator);
+
+      const after = await fs.readFile(queuePath, 'utf8');
+      const afterStat = await fs.stat(queuePath);
+      expect(after).toBe(before);
+      expect(afterStat.mtimeMs).toBe(beforeStat.mtimeMs);
+    });
+
+    it('should keep discover snapshot independent from later queue mutations', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending'
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await runDiscover(orchestrator);
+      await fs.writeJson(queuePath, [], { spaces: 2 });
+
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([
+        expect.objectContaining({
+          subagent_type: 'doc-updater',
+          status: 'pending'
+        })
+      ]);
+    });
+
+    it('should keep pending snapshot entries immutable after discover', async () => {
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(
+        queuePath,
+        [
+          {
+            subagent_type: 'doc-updater',
+            description: 'refresh docs',
+            prompt: 'update docs',
+            status: 'pending'
+          }
+        ],
+        { spaces: 2 }
+      );
+
+      await runDiscover(orchestrator);
+
+      expect(() => {
+        orchestrator.phaseContext.pendingInvocations[0].status = 'consumed';
+      }).toThrow();
+    });
+
+    it('should keep repoMapStatus immutable after discover', async () => {
+      await runDiscover(orchestrator);
+
+      expect(() => {
+        orchestrator.phaseContext.repoMapStatus.exists = true;
+      }).toThrow();
+    });
+
+    it('should not mutate pending-invocations queue during discover snapshot', async () => {
+      const queue = [
+        {
+          subagent_type: 'doc-updater',
+          description: 'refresh docs',
+          prompt: 'update docs',
+          status: 'pending',
+          trigger: 'learn',
+          enqueuedAt: 123
+        }
+      ];
+      const queuePath = path.join(tempDir, '.auto', 'pending-invocations.json');
+      await fs.ensureDir(path.dirname(queuePath));
+      await fs.writeJson(queuePath, queue, { spaces: 2 });
       orchestrator.phaseDiscover._runDoctorCheck = vi.fn().mockResolvedValue({
         healthy: true,
         issues: [],
         checks: {},
         recommendedActions: [],
-        fixesApplied: [{ action: 'generate-repo-map' }],
+        fixesApplied: [],
         fixesSkipped: [],
-        changedFiles: ['/tmp/test-project/REPO_MAP.md']
+        changedFiles: []
       });
 
       await runDiscover(orchestrator);
 
-      expect(orchestrator.phaseDiscover._runDoctorCheck).toHaveBeenCalledWith({
-        fix: true,
-        source: 'auto-phase-discover'
-      });
-      expect(orchestrator.phaseContext.changedFiles).toContain('/tmp/test-project/REPO_MAP.md');
+      const after = await fs.readJson(queuePath);
+      expect(after).toEqual(queue);
+      expect(orchestrator.phaseContext.pendingInvocations).toEqual([
+        expect.objectContaining({
+          subagent_type: 'doc-updater',
+          status: 'pending',
+          trigger: 'learn'
+        })
+      ]);
     });
   });
 });

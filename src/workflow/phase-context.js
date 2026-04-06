@@ -40,6 +40,26 @@ export const EXECUTION_MODES = Object.freeze({
  * @param {Object} options
  * @returns {Readonly<Object>} 不可变的上下文对象
  */
+function freezeSnapshot(value) {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map((item) => freezeSnapshot(item)));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, nested]) => [key, freezeSnapshot(nested)])
+      )
+    );
+  }
+
+  return value;
+}
+
+function freezeObjectArray(items = []) {
+  return Object.freeze(items.map((item) => freezeSnapshot(item)));
+}
+
 export function createPhaseContext(options = {}) {
   return Object.freeze({
     // 执行模式
@@ -68,8 +88,11 @@ export function createPhaseContext(options = {}) {
     // P0-1: discover 阶段已加载的 Skill 内容
     discoverSkills: Object.freeze(options.discoverSkills || []),
 
-    // P0-2: 从上次 /auto 消费的待执行调度
-    pendingInvocations: Object.freeze(options.pendingInvocations || []),
+    // REPO_MAP 检查快照（只读）
+    repoMapStatus: Object.freeze(options.repoMapStatus || null),
+
+    // P0-2: 从上次 /auto 读取的待执行调度快照（只读）
+    pendingInvocations: freezeObjectArray(options.pendingInvocations || []),
 
     // Quest 地图
     questMap: options.questMap ? Object.freeze(options.questMap) : null,
@@ -208,6 +231,14 @@ export function updatePhaseContext(ctx, updates) {
 
   if (updates.questMap) {
     processedUpdates.questMap = Object.freeze(updates.questMap.map((q) => Object.freeze({ ...q })));
+  }
+
+  if (updates.repoMapStatus) {
+    processedUpdates.repoMapStatus = Object.freeze({ ...updates.repoMapStatus });
+  }
+
+  if (updates.pendingInvocations) {
+    processedUpdates.pendingInvocations = freezeObjectArray(updates.pendingInvocations);
   }
 
   return Object.freeze({

@@ -1,175 +1,51 @@
 ---
 name: learn
-description: 从当前会话或 Git 历史提取可复用的编码模式并保存为 Skill（双模式：会话级 + 历史级）
+description: 分析 Git 历史中的可复用模式，输出提交约定、热点文件和文件联动等结构化结果
 allowed_tools: ["Bash", "Read", "Write", "Grep", "Glob"]
 ---
 
-# /learn — 双模式提取
+# /auto:learn — Git 历史模式分析
 
-> **模式 1**：分析当前会话，将有价值的编码模式、调试技巧或解决方案提取为可复用的 Skill。
-> **模式 2**：分析项目 Git 历史，自动提取编码模式、工作流程和团队约定。
-> 来自 everything-claude-code 的完整知识沉淀能力。
+> 当前版本聚焦 Git 历史分析，提取提交约定、热点文件与文件联动模式。
+> 输出以终端文本或 JSON 结构为主，不会自动生成 Skill 文件或 Instinct 文件。
 
 ---
 
 ## 使用方式
 
 ```bash
-/learn                              # 模式 1: 从当前会话提取（默认）
-/learn --git                        # 模式 2: 从 Git 历史分析（默认最近 200 次提交）
-/learn --git --commits 100          # 分析最近 100 次提交
-/learn --git --output ./skills      # 自定义输出目录
-/learn --git --instincts            # 同时生成 Instinct 格式（用于 continuous-learning）
+/auto:learn                    # 在 Claude Code 中触发 learn 命令
+/auto:learn --git              # 基于 Git 历史分析模式
+auto learn --git               # CLI：分析最近默认数量的提交
+auto learn --git --commit-count 100
+auto learn --git --json
+auto learn --git --json -d .
 ```
 
 ---
 
-## 模式 1：会话提取
+## 当前支持范围
 
-### 使用时机
+- 分析最近若干次 Git 提交
+- 识别约定式提交占比
+- 统计热点文件
+- 发现常见文件联动关系
+- 支持 JSON 输出供后续流程消费
 
-在会话中任何时候运行 `/learn`，当你解决了一个非平凡问题时。
-
-### 提取内容类型
-
-#### 1. 错误解决模式
-- 发生了什么错误？
-- 根本原因是什么？
-- 如何修复的？
-- 是否可复用于类似错误？
-
-#### 2. 调试技巧
-- 不明显的调试步骤
-- 有效的工具组合
-- 诊断模式
-
-#### 3. 变通方案
-- 库的怪癖
-- API 限制
-- 特定版本修复
-
-#### 4. 项目特定模式
-- 发现的代码库约定
-- 架构决策
-- 集成模式
-
-### 输出格式
-
-创建 Skill 文件于 `~/.claude/skills/learned/[pattern-name].md`：
-
-```markdown
----
-name: [descriptive-pattern-name]
-description: Brief description of when this applies
-version: 1.0.0
-source: session-extraction
-extracted_at: [ISO-date]
----
-
-# [描述性模式名称]
-
-**提取时间：** [Date]
-**适用场景：** [Brief description of when this applies]
-
-## 问题
-
-[What problem this solves - be specific]
-
-## 解决方案
-
-[The pattern/technique/workaround]
-
-## 示例
-
-[Code example if applicable]
-
-## 使用时机
-
-[Trigger conditions - what should activate this skill]
-```
-
-### 工作流程（模式 1）
-
-1. **收集变更锚点** — 运行 `git diff HEAD~1 --stat` 获取精确变更文件列表
-2. **审查会话** — 结合 git diff 锚点和会话内容，查找可提取的模式
-3. **识别最有价值的洞察** — 专注于可复用的内容，优先提取涉及变更文件的模式
-4. **起草 Skill 文件** — 按标准格式组织，包含 `source_files` 字段记录锚定文件
-5. **请求用户确认** — 展示草稿等待批准
-6. **保存到 learned 目录** — 持久化存储
-
-### 不提取的内容
-
-- ❌ 平凡修复（拼写错误、简单语法错误）
-- ❌ 一次性问题（特定 API 中断等）
-- ❌ 过于具体的内容（特定日期的故障）
-
-### 专注提取
-
-- ✅ 可复用的模式
-- ✅ 跨项目适用的经验
-- ✅ 节省未来时间的洞察
-
-### 示例（模式 1）
-
-解决了一个 TypeScript 泛型问题后，运行 `/learn` 可能生成：
-
-```markdown
----
-name: typescript-generic-inference
-description: 处理 TypeScript 泛型推断边缘情况
-version: 1.0.0
-source: session-extraction
-extracted_at: 2026-03-29
----
-
-# TypeScript 泛型推断边缘情况
-
-**提取时间：** 2026-03-29
-**适用场景：** 当泛型类型推断失败时，特别是在条件类型中
-
-## 问题
-
-TypeScript 无法正确推断嵌套条件类型中的泛型参数，导致 `Type 'X' is not assignable to type 'Y'` 错误。
-
-## 解决方案
-
-使用中间类型别名和 `extends` 约束：
-
-```typescript
-// 不要这样
-function parse<T>(input: string): T {
-  return JSON.parse(input) as T;
-}
-
-// 使用类型推断辅助
-type InferJSON<T> = T extends string
-  ? JSON.parse(T)
-  : never;
-
-function parse<T extends string>(input: T): InferJSON<T> {
-  return JSON.parse(input);
-}
-```
-
-## 使用时机
-
-- 泛型推断包含联合类型时
-- 条件类型嵌套超过 2 层
-- 出现 "Type instantiation is excessively deep" 错误
-```
+> 当前版本不支持会话级提取、Skill 落盘、`--output` 或 `--instincts`。
 
 ---
 
-## 模式 2：Git 历史分析
+## Git 历史分析
 
 ### 使用场景
 
-- 新团队成员快速了解项目规范
-- 自动化项目文档生成
-- 提取团队最佳实践
-- 遗留代码库的架构理解
+- 新团队成员快速了解仓库提交习惯
+- 回顾团队常见改动热点
+- 为后续文档或流程优化提供依据
+- 在 `/auto` 工作流后补充 Git 经验分析
 
-### 工作流程（模式 2）
+### 工作流程
 
 #### 第一步：收集 Git 数据
 
@@ -178,7 +54,6 @@ function parse<T extends string>(input: T): InferJSON<T> {
 git log --oneline -n 200 --name-only --pretty=format:"%H|%s|%ad" --date=short
 
 # 获取文件变更频率（哪些文件最常被修改）
-# 注意: 此命令在 Windows Git Bash 和 Unix 上均可运行
 git log --oneline -n 200 --name-only | grep -v "^$" | grep -v "^[a-f0-9]" | sort | uniq -c | sort -rn | head -20
 
 # 获取提交消息模式
@@ -191,130 +66,74 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 |---------|---------|
 | **提交约定** | 正则匹配提交消息（feat:, fix:, chore:, docs: 等） |
 | **文件联动** | 总是一起变更的文件组合 |
-| **工作流序列** | 重复出现的文件变更模式 |
-| **架构规范** | 目录结构和命名约定 |
-| **测试模式** | 测试文件位置、命名、覆盖率要求 |
+| **热点文件** | 最近提交中被频繁修改的文件 |
+| **工作流线索** | 重复出现的文件变更模式 |
 
-#### 第三步：生成 SKILL.md
+#### 第三步：输出结果
 
-输出格式：
+命令返回结构化结果，包含：
 
-```markdown
----
-name: {repo-name}-patterns
-description: 从 {repo-name} 提取的编码模式
-version: 1.0.0
-source: local-git-analysis
-analyzed_commits: {count}
----
+- `mode`
+- `gitPatterns.analyzedCommits`
+- `gitPatterns.commitConventions`
+- `gitPatterns.fileCochanges`
+- `gitPatterns.hotFiles`
+- `gitPatterns.analyzedAt`
 
-# {项目名称} 编码模式
+### 示例输出
 
-## 提交约定
-{检测到的提交消息模式}
-
-## 代码架构
-{检测到的目录结构和组织方式}
-
-## 工作流程
-{检测到的重复文件变更模式}
-
-## 测试模式
-{检测到的测试约定}
+```json
+{
+  "mode": "git",
+  "gitPatterns": {
+    "analyzedCommits": 50,
+    "commitConventions": [
+      {
+        "name": "conventional-commits",
+        "ratio": 98,
+        "sampleCount": 49
+      }
+    ],
+    "fileCochanges": [
+      {
+        "pair": "README.md <-> bin/cli.js",
+        "count": 2
+      }
+    ],
+    "hotFiles": [
+      {
+        "file": "commands/auto.md",
+        "changes": 14
+      }
+    ],
+    "analyzedAt": 1775455817119
+  }
+}
 ```
 
-#### 第四步：生成 Instinct（可选）
-
-如果使用 `--instincts` 标志，同时生成 continuous-learning-v2 兼容格式：
-
-```yaml
----
-id: {repo}-commit-convention
-trigger: "when writing a commit message"
-confidence: 0.8
-domain: git
-source: local-repo-analysis
 ---
 
-# 使用约定式提交
+## 参数说明
 
-## Action
-提交前缀使用：feat:, fix:, chore:, docs:, test:, refactor:
-
-## Evidence
-- 分析了 {n} 次提交
-- {percentage}% 遵循约定式提交格式
-```
-
-### 示例输出（模式 2）
-
-在 TypeScript 项目上运行 `/learn --git` 可能产生：
-
-```markdown
----
-name: my-app-patterns
-description: 从 my-app 仓库提取的编码模式
-version: 1.0.0
-source: local-git-analysis
-analyzed_commits: 150
----
-
-# My App 编码模式
-
-## 提交约定
-本项目使用 **约定式提交**：
-- `feat:` - 新功能
-- `fix:` - Bug 修复
-- `chore:` - 维护任务
-- `docs:` - 文档更新
-
-## 代码架构
-```
-src/
-├── components/    # React 组件（PascalCase.tsx）
-├── hooks/         # 自定义 hooks（use*.ts）
-├── utils/         # 工具函数
-├── types/         # TypeScript 类型定义
-└── services/      # API 和外部服务
-```
-
-## 工作流程
-
-### 添加新组件
-1. 创建 `src/components/ComponentName.tsx`
-2. 在 `src/components/__tests__/ComponentName.test.tsx` 添加测试
-3. 从 `src/components/index.ts` 导出
-
-### 数据库迁移
-1. 修改 `src/db/schema.ts`
-2. 运行 `pnpm db:generate`
-3. 运行 `pnpm db:migrate`
-
-## 测试模式
-- 测试文件：`__tests__/` 目录或 `.test.ts` 后缀
-- 覆盖率目标：80%+
-- 框架：Vitest
-```
-
-### 高级用法：GitHub App
-
-对于大型项目（10k+ 提交）或团队协作，使用 [Skill Creator GitHub App](https://github.com/apps/skill-creator)：
-- 在 Issue 评论 `/skill-creator analyze`
-- 自动生成 PR 包含技能文件
-- 支持团队共享和版本控制
-
----
-
-## 与 Auto CLI 集成
-
-- 提取的 Skill 会被 quest-designer v4 在 PHASE 2 发现
-- 补充 `unified-memory-system` 的知识沉淀能力
-- 双模式配合：会话级快速捕获 + 历史级深度分析
+| 参数 | 说明 |
+|------|------|
+| `--git` | 启用 Git 历史分析 |
+| `--commit-count <n>` | 指定分析的提交数量 |
+| `--json` | 输出 JSON 结构 |
+| `-d, --dir <path>` | 指定分析目录 |
 
 ---
 
 ## 相关命令
 
-- `auto save insight -c "..."` - 快速保存单条知识
-- `/auto:update-codemaps` - 更新代码架构地图
-- `/auto:doctor` - 检查项目健康状态
+- `/auto`：在完整工作流后统一汇总执行结果
+- `auto status --json -d .`：查看当前 runtime 与能力状态
+- `auto codemaps -d .`：生成代码地图
+
+---
+
+## 说明
+
+`/auto:learn` 与 `auto learn` 使用同一套底层分析逻辑；当前能力以 Git 历史模式分析为准。
+
+如果后续扩展会话提取或 Skill 落盘，应以真实 CLI 参数与运行时输出为准再更新文档。

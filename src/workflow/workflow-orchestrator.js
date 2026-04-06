@@ -33,6 +33,8 @@ import {
   EXECUTION_MODES
 } from './phase-context.js';
 import { logger } from '../logger.js';
+import { runDoctorChecks } from '../doctor.js';
+import { runResume as runResumeWorkflow } from '../resume.js';
 
 // Phase 子模块
 import { PhaseDiscover } from './phase-discover.js';
@@ -176,15 +178,9 @@ export class WorkflowOrchestrator {
       // 5. PHASE 4: VERIFY
       this.phaseContext = await this.phaseVerify.run(this.phaseContext);
 
-      // P1-1: 门禁失败时回滚
+      // P1-1: 门禁失败时停止工作流，避免误回滚用户的无关改动
       if (this.phaseContext.gateFailed) {
-        logger.error(`[Orchestrator] 门禁失败: ${this.phaseContext.gateReason}，回滚变更`);
-        try {
-          const { execSync } = await import('node:child_process');
-          execSync('git checkout -- .', { cwd: this.projectDir, stdio: 'pipe' });
-        } catch (rollbackError) {
-          logger.warn(`[Orchestrator] 回滚失败: ${rollbackError.message}`);
-        }
+        logger.error(`[Orchestrator] 门禁失败: ${this.phaseContext.gateReason}`);
         return this._buildResult('gate_failed', new Error(this.phaseContext.gateReason));
       }
 
@@ -205,6 +201,138 @@ export class WorkflowOrchestrator {
 
       return this._buildResult('failed', error);
     }
+  }
+
+  async runAutoAction(action, payload = {}, options = {}) {
+    const normalizedAction = action || 'run';
+
+    switch (normalizedAction) {
+      case 'run':
+        if (options.dryRun) {
+          return this._runAnalyzeAction(payload.task || '', options);
+        }
+        return this.run(payload.task || '', options);
+      case 'analyze':
+        return this._runAnalyzeAction(payload.task || '', options);
+      case 'status':
+        return this._runStatusAction(payload, options);
+      case 'route':
+        return this._runRouteAction(payload, options);
+      case 'doctor':
+        return this._runDoctorAction(payload, options);
+      case 'learn':
+        return this._runLearnAction(payload, options);
+      case 'create-hook':
+        return this._runCreateHookAction(payload, options);
+      case 'resume':
+        return this._runResumeAction(payload, options);
+      default:
+        throw new Error(`Unsupported auto action: ${normalizedAction}`);
+    }
+  }
+
+  async _runAnalyzeAction(task, options = {}) {
+    const mode = detectExecutionMode(task, options);
+    this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, task, {
+      ...options,
+      mode
+    });
+
+    this._syncDepsToModules();
+    this.phaseContext = await this.phaseDiscover.run(this.phaseContext);
+    this.phaseContext = await this.phaseExecute.runReason(this.phaseContext);
+
+    return this.phaseExecute.buildAnalyzeSnapshot(this.getContext());
+  }
+
+  async _runStatusAction(payload = {}, options = {}) {
+    const task = payload.task || options.task || 'status';
+    const mode = detectExecutionMode(task, options);
+
+    this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, task, {
+      ...options,
+      mode
+    });
+
+    this._syncDepsToModules();
+    this.phaseContext = await this.phaseDiscover.run(this.phaseContext);
+
+    const runtime = this.getRuntimeStatus();
+    const summary = this.phaseExecute.summarizeStatus(this.getContext());
+
+    return {
+      runtime,
+      summary,
+      capabilities: this.getContext().capabilities,
+      doctorResult: this.getContext().doctorResult,
+      pendingInvocations: this.getContext().pendingInvocations
+    };
+  }
+
+  async _runRouteAction(payload = {}, options = {}) {
+    const { CanonicalRouter } = await import('../router/canonical-router.js');
+    const { AgentRegistry } = await import('../router/agent-registry.js');
+
+    const registry = new AgentRegistry(this.projectDir);
+    const router = new CanonicalRouter(registry);
+    await router.initialize();
+
+    const result = await router.route(payload.intent || payload.task || '', {
+      scope: 'on-demand'
+    });
+
+    if (!options.debug) {
+      return result;
+    }
+
+    return {
+      ...result,
+      diagnose: await router.diagnose()
+    };
+  }
+
+  async _runDoctorAction(payload = {}, options = {}) {
+    return runDoctorChecks({
+      ...options,
+      ...payload,
+      dir: payload.dir || options.dir || this.projectDir
+    });
+  }
+
+  async _runLearnAction(payload = {}, options = {}) {
+    if (payload.git || options.git) {
+      const gitPatterns = await this.phaseLearn._analyzeGitPatterns(
+        payload.commitCount || options.commitCount || 50
+      );
+      return {
+        mode: 'git',
+        gitPatterns
+      };
+    }
+
+    return {
+      mode: 'default',
+      gitPatterns: null
+    };
+  }
+
+  async _runCreateHookAction(payload = {}, options = {}) {
+    const hookType = payload.type || options.type || 'template';
+    const hookName = payload.name || options.name || 'custom-hook';
+    return {
+      type: hookType,
+      name: hookName,
+      template: `${hookType}:${hookName}`,
+      recommendedLocation: '.claude/settings.json'
+    };
+  }
+
+  async _runResumeAction(payload = {}, options = {}) {
+    return runResumeWorkflow(payload.directive || '', {
+      ...options,
+      dir: payload.dir || options.dir || this.projectDir,
+      mode: payload.mode || options.mode
+    });
   }
 
   // --- 结果聚合方法（保留在协调器） ---

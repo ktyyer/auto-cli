@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { install, uninstall } from './installer.js';
-import { runDoctorChecks, formatDoctorReport } from './doctor.js';
-import { runResume as runResumeWorkflow } from './resume.js';
+import { formatDoctorReport } from './doctor.js';
 import {
   showBanner,
   promptConfirmation,
@@ -13,7 +12,6 @@ import { getInstalledVersion, COMPONENTS, openBrowser } from './utils.js';
 import { logger } from './logger.js';
 import { DOCS_URL } from './config.js';
 import { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
-import { detectExecutionMode } from './workflow/phase-context.js';
 
 /**
  * 交互模式 - 主菜单
@@ -152,27 +150,28 @@ export async function runDocs() {
   }
 }
 
+function createOrchestrator(options = {}) {
+  return new WorkflowOrchestrator({
+    projectDir: options.dir || process.cwd()
+  });
+}
+
+export async function runAuto(task, options = {}) {
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction('run', { task }, options);
+}
+
 /**
- * 智能路由 - 使用 Canonical Router 推荐合适的 Agent
+ * 智能路由 - 使用统一 /auto orchestrator action
  */
 export async function runRoute(userIntent, options = {}) {
-  const { CanonicalRouter } = await import('./router/canonical-router.js');
-  const { AgentRegistry } = await import('./router/agent-registry.js');
-
-  // 初始化 Router
-  const registry = new AgentRegistry();
-  const router = new CanonicalRouter(registry);
-  await router.initialize();
-
-  // 执行路由
-  const result = await router.route(userIntent, {
-    scope: 'on-demand'
-  });
+  const orchestrator = createOrchestrator(options);
+  const result = await orchestrator.runAutoAction('route', { intent: userIntent }, options);
 
   // 输出结果
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
-    return;
+    return result;
   }
 
   console.log('');
@@ -207,18 +206,17 @@ export async function runRoute(userIntent, options = {}) {
     });
   }
 
-  // Debug 模式：显示详细的路由决策过程
-  if (options.debug) {
+  if (options.debug && result.diagnose) {
     console.log('');
     console.log(chalk.white.bold('🔍 调试信息：'));
-    const diagnose = await router.diagnose();
-    console.log(`  ${chalk.gray(`Agent 总数：${diagnose.agentCount}`)}`);
-    console.log(`  ${chalk.gray(`初始化状态：${diagnose.initialized}`)}`);
+    console.log(`  ${chalk.gray(`Agent 总数：${result.diagnose.agentCount}`)}`);
+    console.log(`  ${chalk.gray(`初始化状态：${result.diagnose.initialized}`)}`);
   }
 
   console.log('');
   console.log(chalk.gray('━'.repeat(50)));
   console.log('');
+  return result;
 }
 
 /**
@@ -232,92 +230,28 @@ export async function runRoute(userIntent, options = {}) {
  * @returns {Promise<Object>} 分析结果
  */
 export async function runAnalyze(task, options = {}) {
-  const orchestrator = new WorkflowOrchestrator({
-    projectDir: options.dir || process.cwd()
-  });
-
-  const mode = detectExecutionMode(task, options);
-  orchestrator.phaseContext = orchestrator.phaseExecute.initializeWorkflowContext(
-    orchestrator.phaseContext,
-    task,
-    {
-      ...options,
-      mode
-    }
-  );
-
-  // PHASE 1: Discover
-  orchestrator._syncDepsToModules();
-  orchestrator.phaseContext = await orchestrator.phaseDiscover.run(orchestrator.phaseContext);
-
-  // PHASE 2: Reason
-  orchestrator.phaseContext = await orchestrator.phaseExecute.runReason(orchestrator.phaseContext);
-
-  return orchestrator.phaseExecute.buildAnalyzeSnapshot(orchestrator.getContext());
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction('analyze', { task }, options);
 }
 
 export async function runStatus(options = {}) {
-  const orchestrator = new WorkflowOrchestrator({
-    projectDir: options.dir || process.cwd()
-  });
-
-  const mode = detectExecutionMode(options.task || 'status', options);
-  orchestrator.phaseContext = orchestrator.phaseExecute.initializeWorkflowContext(
-    orchestrator.phaseContext,
-    options.task || 'status',
-    {
-      ...options,
-      mode
-    }
-  );
-
-  orchestrator._syncDepsToModules();
-  orchestrator.phaseContext = await orchestrator.phaseDiscover.run(orchestrator.phaseContext);
-
-  const runtime = orchestrator.getRuntimeStatus();
-  const summary = orchestrator.phaseExecute.summarizeStatus(orchestrator.getContext());
-
-  return {
-    runtime,
-    summary,
-    capabilities: orchestrator.getContext().capabilities,
-    doctorResult: orchestrator.getContext().doctorResult,
-    pendingInvocations: orchestrator.getContext().pendingInvocations
-  };
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction('status', { task: options.task }, options);
 }
 
 export async function runLearn(options = {}) {
-  const orchestrator = new WorkflowOrchestrator({
-    projectDir: options.dir || process.cwd()
-  });
-
-  if (options.git) {
-    const gitPatterns = await orchestrator.phaseLearn._analyzeGitPatterns(options.commitCount || 50);
-    return {
-      mode: 'git',
-      gitPatterns
-    };
-  }
-
-  return {
-    mode: 'default',
-    gitPatterns: null
-  };
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction('learn', {}, options);
 }
 
 export async function runCreateHook(options = {}) {
-  const hookType = options.type || 'template';
-  const hookName = options.name || 'custom-hook';
-  return {
-    type: hookType,
-    name: hookName,
-    template: `${hookType}:${hookName}`,
-    recommendedLocation: '.claude/settings.json'
-  };
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction('create-hook', {}, options);
 }
 
 export async function runDoctor(options = {}) {
-  const report = await runDoctorChecks(options);
+  const orchestrator = createOrchestrator(options);
+  const report = await orchestrator.runAutoAction('doctor', {}, options);
 
   if (options.json) {
     return report;
@@ -332,7 +266,8 @@ export async function runDoctorFix(options = {}) {
 }
 
 export async function runResume(directive, options = {}) {
-  const resumed = await runResumeWorkflow(directive, options);
+  const orchestrator = createOrchestrator(options);
+  const resumed = await orchestrator.runAutoAction('resume', { directive }, options);
 
   if (options.json) {
     return resumed;
@@ -346,5 +281,21 @@ export async function runResume(directive, options = {}) {
   return resumed;
 }
 
+/**
+ * 分析任务 - 仅执行 PHASE 1 + PHASE 2，输出结构化分析 JSON
+ *
+ * @param {string} task - 任务描述
+ * @param {Object} options
+ * @param {string} [options.mode] - 执行模式 (micro|light|full)
+ * @param {string} [options.dir] - 项目目录
+ * @param {boolean} [options.json] - JSON 输出
+ * @returns {Promise<Object>} 分析结果
+ */
+export async function runAutoAction(action, payload = {}, options = {}) {
+  const orchestrator = createOrchestrator(options);
+  return orchestrator.runAutoAction(action, payload, options);
+}
+
+export { createOrchestrator };
 export { WorkflowOrchestrator };
 export { RepoIndexer } from './indexer/repo-indexer.js';
