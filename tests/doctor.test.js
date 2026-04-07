@@ -67,7 +67,11 @@ describe('doctor.js', () => {
     const result = await runDoctorChecks({ dir: '/tmp/project', fix: true });
 
     expect(mockRunDoctorCheck).toHaveBeenCalledWith({ fix: true, source: 'cli' });
-    expect(mockInstall).toHaveBeenCalledWith(['commands'], { backup: false, force: false });
+    expect(mockInstall).toHaveBeenCalledWith(['commands'], {
+      backup: false,
+      force: false,
+      cleanupLegacy: false
+    });
     expect(result.fixRequested).toBe(true);
     expect(result.fixesApplied).toEqual([
       expect.objectContaining({

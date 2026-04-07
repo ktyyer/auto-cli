@@ -59,7 +59,7 @@ install-auto-cli.bat
 
 这个脚本会自动：
 - 按修改时间选择同目录最近生成的 `auto-cli-*.tgz`
-- 如检测到旧版 `auto-cli`，优先执行 `auto uninstall -y` 清理旧的 Claude 资源；如果旧 `auto` 命令不可用，则直接删除已知旧版 slash-command 残留路径
+- 如检测到旧版 `auto-cli`，优先执行 `auto uninstall -y` 清理旧的 Claude 资源；如果旧 `auto` 命令不可用，则只直接删除可确定的旧 `/auto` 命名空间残留路径，其余共享命令名交给新版安装逻辑按内容安全清理
 - 卸载旧版全局 `auto-cli`
 - 安装新版包
 - 执行 `auto install -y -f` 强制覆盖 Claude 资源

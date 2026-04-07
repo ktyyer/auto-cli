@@ -52,7 +52,8 @@ async function applyInstallFixes(installStatus = {}) {
   try {
     const result = await install([...diagnostics.missingComponents], {
       backup: false,
-      force: false
+      force: false,
+      cleanupLegacy: false
     });
 
     return Object.freeze({

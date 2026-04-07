@@ -64,11 +64,7 @@ if exist "%NPM_ROOT%\auto-cli" (
       )
     ) else (
       echo [WARN] Existing auto-cli package found, but auto command is unavailable.
-      echo [INFO] Removing known legacy slash-command paths directly...
-      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\create-hook.md"
-      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\doctor.md"
-      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\learn.md"
-      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\status.md"
+      echo [INFO] Removing deterministic legacy /auto namespace paths directly...
       call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\auto\auto.md"
       call :remove_dir_if_exists "%CLAUDE_COMMANDS_DIR%\auto\auto"
     )

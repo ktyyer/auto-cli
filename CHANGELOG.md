@@ -234,7 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **project-init skill** -- 项目初始化工具 + 费用追踪工具
 
-- **npm sync script** -- `npm run sync` 一键同步 commands/ 到 .claude/commands/auto/
+- **npm sync script** -- `npm run sync` 仅在全局 `~/.claude/commands` 与当前仓库命令内容一致时跳过本地同步，并只清理可确认的旧 `/auto` 残留路径
 
 ### Changed
 

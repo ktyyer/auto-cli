@@ -34,6 +34,37 @@ async function listRelativeFiles(baseDir) {
   return files.sort();
 }
 
+async function runSyncScript(testProjectDir, homeDir) {
+  const packageJson = await fs.readJson(path.resolve(process.cwd(), 'package.json'));
+  const syncScript = packageJson.scripts.sync;
+  const match = syncScript.match(/^node -e "([\s\S]*)"$/);
+
+  if (!match) {
+    throw new Error('Unable to extract sync script from package.json');
+  }
+
+  const script = match[1].replace(/\\"/g, '"');
+  const env = {
+    ...process.env,
+    HOME: homeDir,
+    USERPROFILE: homeDir
+  };
+
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd: testProjectDir,
+    encoding: 'utf8',
+    env
+  });
+
+  if (result.status !== 0) {
+    throw new Error(
+      `sync script failed\nstdout:\n${result.stdout ?? ''}\nstderr:\n${result.stderr ?? ''}`
+    );
+  }
+
+  return result.stdout ?? '';
+}
+
 // Mock ora spinner
 vi.mock('ora', () => {
   return {
@@ -192,38 +223,31 @@ describe('installer.js', () => {
       ]);
     });
 
-    it('should remove legacy duplicated auto namespaces and stale top-level command files', async () => {
-      await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
+    it('should remove only auto-managed legacy command aliases during install', async () => {
+      await fs.ensureDir(path.join(testClaudeDir, 'commands'));
       await fs.writeFile(
         path.join(testClaudeDir, 'commands', 'doctor.md'),
-        '# /auto:doctor -- Legacy'
+        '# /auto:doctor -- Test'
       );
       await fs.writeFile(
         path.join(testClaudeDir, 'commands', 'status.md'),
-        '# /auto:status -- Legacy'
+        '# /auto:status -- Test'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'custom.md'),
+        '# Custom Root Command'
       );
       await fs.writeFile(
         path.join(testClaudeDir, 'commands', 'learn.md'),
-        '# /auto:learn -- Legacy'
+        '# User Learn Command Override'
       );
-      await fs.writeFile(
-        path.join(testClaudeDir, 'commands', 'create-hook.md'),
-        '# /auto:create-hook -- Legacy'
-      );
-      await fs.writeFile(
-        path.join(testClaudeDir, 'commands', 'auto', 'auto.md'),
-        '# /auto -- Legacy'
-      );
+      await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
       await fs.writeFile(
         path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'),
-        '# /auto:doctor -- Legacy nested'
-      );
-      await fs.writeFile(
-        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md'),
-        '# /auto:route -- Legacy nested'
+        '# Legacy Nested Doctor'
       );
 
-      await install(['commands'], { backup: false, force: false });
+      await install(['commands'], { backup: false });
 
       const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
 
@@ -233,18 +257,40 @@ describe('installer.js', () => {
         path.join('auto', 'doctor.md'),
         path.join('auto', 'learn.md'),
         path.join('auto', 'route.md'),
-        path.join('auto', 'status.md')
+        path.join('auto', 'status.md'),
+        'custom.md',
+        'learn.md'
       ]);
+    });
 
-      await expect(fs.pathExists(path.join(testClaudeDir, 'commands', 'doctor.md'))).resolves.toBe(
+    it('should keep user-defined shared command names during compatibility uninstall', async () => {
+      await install(['commands'], { backup: false });
+      await fs.writeFile(path.join(testClaudeDir, 'commands', 'custom.md'), '# Custom Command');
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'doctor.md'),
+        '# User Doctor Command Override'
+      );
+      await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'),
+        '# Legacy Nested Doctor'
+      );
+
+      const removedFiles = await uninstall(['commands']);
+      const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
+
+      expect(files).toEqual(['custom.md', 'doctor.md']);
+      expect(removedFiles).toEqual(
+        expect.arrayContaining([
+          path.join(testClaudeDir, 'commands', 'auto.md'),
+          path.join(testClaudeDir, 'commands', 'auto', 'doctor.md'),
+          path.join(testClaudeDir, 'commands', 'auto', 'auto')
+        ])
+      );
+      expect(removedFiles).not.toContain(path.join(testClaudeDir, 'commands', 'doctor.md'));
+      await expect(fs.pathExists(path.join(testClaudeDir, 'commands', 'auto'))).resolves.toBe(
         false
       );
-      await expect(
-        fs.pathExists(path.join(testClaudeDir, 'commands', 'auto', 'auto.md'))
-      ).resolves.toBe(false);
-      await expect(
-        fs.pathExists(path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'))
-      ).resolves.toBe(false);
     });
 
     it('should skip existing root command file when force=false and still install missing nested files', async () => {
@@ -331,10 +377,13 @@ describe('installer.js', () => {
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it('should remove only auto command files in compatibility mode', async () => {
+    it('should keep user-defined shared command names during compatibility uninstall', async () => {
       await install(['commands'], { backup: false });
       await fs.writeFile(path.join(testClaudeDir, 'commands', 'custom.md'), '# Custom Command');
-      await fs.writeFile(path.join(testClaudeDir, 'commands', 'doctor.md'), '# Legacy Doctor');
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'doctor.md'),
+        '# User Doctor Command Override'
+      );
       await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
       await fs.writeFile(
         path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'),
@@ -344,18 +393,216 @@ describe('installer.js', () => {
       const removedFiles = await uninstall(['commands']);
       const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
 
-      expect(files).toEqual(['custom.md']);
+      expect(files).toEqual(['custom.md', 'doctor.md']);
       expect(removedFiles).toEqual(
         expect.arrayContaining([
           path.join(testClaudeDir, 'commands', 'auto.md'),
           path.join(testClaudeDir, 'commands', 'auto', 'doctor.md'),
-          path.join(testClaudeDir, 'commands', 'doctor.md'),
           path.join(testClaudeDir, 'commands', 'auto', 'auto')
         ])
       );
+      expect(removedFiles).not.toContain(path.join(testClaudeDir, 'commands', 'doctor.md'));
       await expect(fs.pathExists(path.join(testClaudeDir, 'commands', 'auto'))).resolves.toBe(
         false
       );
+    });
+  });
+
+  describe('npm run sync', () => {
+    it('should preserve project custom commands under the auto namespace', async () => {
+      const syncProjectDir = path.join(testDir, 'sync-custom');
+      const syncHomeDir = path.join(testDir, 'sync-custom-home');
+      const localCommandsDir = path.join(syncProjectDir, '.claude', 'commands');
+
+      await fs.ensureDir(path.join(syncProjectDir, 'commands', 'auto'));
+      await fs.writeFile(path.join(syncProjectDir, 'commands', 'auto.md'), '# Auto Command v2');
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'route.md'),
+        '# Auto Route v2'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'doctor.md'),
+        '# /auto:doctor -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'status.md'),
+        '# /auto:status -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'learn.md'),
+        '# /auto:learn -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'create-hook.md'),
+        '# /auto:create-hook -- Test'
+      );
+
+      await fs.ensureDir(path.join(syncHomeDir, '.claude', 'commands', 'auto'));
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto.md'),
+        '# Auto Command v2'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'route.md'),
+        '# Auto Route v2'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'doctor.md'),
+        '# /auto:doctor -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'status.md'),
+        '# /auto:status -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'learn.md'),
+        '# /auto:learn -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'create-hook.md'),
+        '# /auto:create-hook -- Test'
+      );
+
+      await fs.ensureDir(path.join(localCommandsDir, 'auto'));
+      await fs.writeFile(
+        path.join(localCommandsDir, 'auto', 'custom.md'),
+        '# Custom Nested Command'
+      );
+      await fs.writeFile(path.join(localCommandsDir, 'custom.md'), '# Custom Root Command');
+      await fs.writeFile(path.join(localCommandsDir, 'doctor.md'), '# Legacy Doctor');
+      await fs.writeFile(path.join(localCommandsDir, 'auto.md'), '# Local Auto');
+      await fs.writeFile(path.join(localCommandsDir, 'auto', 'doctor.md'), '# Local Doctor');
+
+      const output = await runSyncScript(syncProjectDir, syncHomeDir);
+      const files = await listRelativeFiles(localCommandsDir);
+
+      expect(output).toContain(
+        'Skipped local sync: global ~/.claude/commands already matches current repo.'
+      );
+      expect(files).toEqual([path.join('auto', 'custom.md'), 'custom.md', 'doctor.md']);
+    });
+
+    it('should sync locally when the global command tree is stale', async () => {
+      const syncProjectDir = path.join(testDir, 'sync-stale-global');
+      const syncHomeDir = path.join(testDir, 'sync-stale-global-home');
+      const localCommandsDir = path.join(syncProjectDir, '.claude', 'commands');
+
+      await fs.ensureDir(path.join(syncProjectDir, 'commands', 'auto'));
+      await fs.writeFile(path.join(syncProjectDir, 'commands', 'auto.md'), '# Auto Command v2');
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'route.md'),
+        '# Auto Route v2'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'doctor.md'),
+        '# /auto:doctor -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'status.md'),
+        '# /auto:status -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'learn.md'),
+        '# /auto:learn -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'create-hook.md'),
+        '# /auto:create-hook -- Test'
+      );
+
+      await fs.ensureDir(path.join(syncHomeDir, '.claude', 'commands', 'auto'));
+      await fs.writeFile(path.join(syncHomeDir, '.claude', 'commands', 'auto.md'), '# Global Auto');
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'route.md'),
+        '# Global Route'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'doctor.md'),
+        '# Stale Global Doctor'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'status.md'),
+        '# Global Status'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'learn.md'),
+        '# Global Learn'
+      );
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'create-hook.md'),
+        '# Global Create Hook'
+      );
+
+      const output = await runSyncScript(syncProjectDir, syncHomeDir);
+      const files = await listRelativeFiles(localCommandsDir);
+      const doctorContent = await fs.readFile(
+        path.join(localCommandsDir, 'auto', 'doctor.md'),
+        'utf-8'
+      );
+
+      expect(output).toContain('Synced commands/ -> .claude/commands/');
+      expect(files).toEqual([
+        'auto.md',
+        path.join('auto', 'create-hook.md'),
+        path.join('auto', 'doctor.md'),
+        path.join('auto', 'learn.md'),
+        path.join('auto', 'route.md'),
+        path.join('auto', 'status.md')
+      ]);
+      expect(doctorContent).toBe('# /auto:doctor -- Test');
+    });
+
+    it('should sync locally when the global command tree is incomplete', async () => {
+      const syncProjectDir = path.join(testDir, 'sync-incomplete');
+      const syncHomeDir = path.join(testDir, 'sync-incomplete-home');
+      const localCommandsDir = path.join(syncProjectDir, '.claude', 'commands');
+
+      await fs.ensureDir(path.join(syncProjectDir, 'commands', 'auto'));
+      await fs.writeFile(path.join(syncProjectDir, 'commands', 'auto.md'), '# Auto Command v2');
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'route.md'),
+        '# Auto Route v2'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'doctor.md'),
+        '# /auto:doctor -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'status.md'),
+        '# /auto:status -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'learn.md'),
+        '# /auto:learn -- Test'
+      );
+      await fs.writeFile(
+        path.join(syncProjectDir, 'commands', 'auto', 'create-hook.md'),
+        '# /auto:create-hook -- Test'
+      );
+
+      await fs.ensureDir(path.join(syncHomeDir, '.claude', 'commands', 'auto'));
+      await fs.writeFile(path.join(syncHomeDir, '.claude', 'commands', 'auto.md'), '# Global Auto');
+      await fs.writeFile(
+        path.join(syncHomeDir, '.claude', 'commands', 'auto', 'route.md'),
+        '# Global Route'
+      );
+
+      await fs.ensureDir(path.join(localCommandsDir, 'auto'));
+      await fs.writeFile(path.join(localCommandsDir, 'doctor.md'), '# Legacy Doctor');
+
+      const output = await runSyncScript(syncProjectDir, syncHomeDir);
+      const files = await listRelativeFiles(localCommandsDir);
+
+      expect(output).toContain('Synced commands/ -> .claude/commands/');
+      expect(files).toEqual([
+        'auto.md',
+        path.join('auto', 'create-hook.md'),
+        path.join('auto', 'doctor.md'),
+        path.join('auto', 'learn.md'),
+        path.join('auto', 'route.md'),
+        path.join('auto', 'status.md'),
+        'doctor.md'
+      ]);
     });
   });
 
@@ -363,7 +610,7 @@ describe('installer.js', () => {
     const itIfWindows = process.platform === 'win32' ? it : it.skip;
 
     itIfWindows(
-      'should remove legacy slash-command paths when auto is unavailable during reinstall',
+      'should remove only deterministic legacy /auto paths when auto is unavailable during reinstall',
       async () => {
         const sandboxDir = path.join(testDir, 'batch-installer');
         const scriptDir = path.join(sandboxDir, 'script');
@@ -379,11 +626,8 @@ describe('installer.js', () => {
         const fakeNpmScriptPath = path.join(sandboxDir, 'fake-npm.js');
         const customRootCommand = path.join(commandsDir, 'custom.md');
         const customNestedCommand = path.join(commandsDir, 'auto', 'custom.md');
+        const sharedDoctorCommand = path.join(commandsDir, 'doctor.md');
         const legacyPaths = [
-          path.join(commandsDir, 'create-hook.md'),
-          path.join(commandsDir, 'doctor.md'),
-          path.join(commandsDir, 'learn.md'),
-          path.join(commandsDir, 'status.md'),
           path.join(commandsDir, 'auto', 'auto.md'),
           path.join(commandsDir, 'auto', 'auto')
         ];
@@ -403,12 +647,9 @@ describe('installer.js', () => {
         await fs.writeFile(packagePath, 'dummy tgz');
         await fs.writeFile(customRootCommand, '# Custom Root Command');
         await fs.writeFile(customNestedCommand, '# Custom Nested Command');
-        await fs.writeFile(legacyPaths[0], '# Legacy Create Hook');
-        await fs.writeFile(legacyPaths[1], '# Legacy Doctor');
-        await fs.writeFile(legacyPaths[2], '# Legacy Learn');
-        await fs.writeFile(legacyPaths[3], '# Legacy Status');
-        await fs.writeFile(legacyPaths[4], '# Legacy Auto');
-        await fs.writeFile(path.join(legacyPaths[5], 'doctor.md'), '# Legacy Nested Doctor');
+        await fs.writeFile(sharedDoctorCommand, '# User Doctor Command Override');
+        await fs.writeFile(legacyPaths[0], '# Legacy Auto');
+        await fs.writeFile(path.join(legacyPaths[1], 'doctor.md'), '# Legacy Nested Doctor');
 
         await fs.writeFile(
           fakeNpmScriptPath,
@@ -442,10 +683,6 @@ describe('installer.js', () => {
             "if (args[0] === 'install' && args[1] === '-g') {",
             "  const commandsDir = path.join(process.env.USERPROFILE, '.claude', 'commands');",
             '  const legacyRelativePaths = [',
-            "    'create-hook.md',",
-            "    'doctor.md',",
-            "    'learn.md',",
-            "    'status.md',",
             "    path.join('auto', 'auto.md'),",
             "    path.join('auto', 'auto')",
             '  ];',
@@ -523,7 +760,7 @@ describe('installer.js', () => {
         expect(stdout).toContain(
           'Existing auto-cli package found, but auto command is unavailable.'
         );
-        expect(stdout).toContain('Removing known legacy slash-command paths directly...');
+        expect(stdout).toContain('Removing deterministic legacy /auto namespace paths directly...');
 
         const legacyCheck = await fs.readJson(legacyCheckFile);
         const npmCallLog = await fs.readFile(logFile, 'utf-8');
@@ -539,8 +776,7 @@ describe('installer.js', () => {
           await expect(fs.pathExists(legacyPath)).resolves.toBe(false);
         }
 
-        await expect(fs.pathExists(customRootCommand)).resolves.toBe(true);
-        await expect(fs.pathExists(customNestedCommand)).resolves.toBe(true);
+        await expect(fs.pathExists(sharedDoctorCommand)).resolves.toBe(true);
       }
     );
   });

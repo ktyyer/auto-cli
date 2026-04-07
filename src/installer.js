@@ -11,13 +11,34 @@ import {
   getInstalledVersion
 } from './utils.js';
 
+const LEGACY_COMMAND_NAMESPACE_PATHS = ['commands/auto/auto.md', 'commands/auto/auto'];
+
+const LEGACY_COMMAND_FILE_ALIASES = Object.freeze([
+  Object.freeze({
+    legacyPath: path.join('commands', 'create-hook.md'),
+    canonicalPath: path.join('commands', 'auto', 'create-hook.md')
+  }),
+  Object.freeze({
+    legacyPath: path.join('commands', 'doctor.md'),
+    canonicalPath: path.join('commands', 'auto', 'doctor.md')
+  }),
+  Object.freeze({
+    legacyPath: path.join('commands', 'learn.md'),
+    canonicalPath: path.join('commands', 'auto', 'learn.md')
+  }),
+  Object.freeze({
+    legacyPath: path.join('commands', 'status.md'),
+    canonicalPath: path.join('commands', 'auto', 'status.md')
+  })
+]);
+
 /**
  * 安装选中的组件
  */
 export async function install(selectedComponents, options = {}) {
   const claudeDir = getClaudeDir();
   const sourceDir = getSourceDir();
-  const { backup = true, force = false } = options;
+  const { backup = true, force = false, cleanupLegacy = true } = options;
 
   const spinner = ora('正在准备安装...').start();
 
@@ -70,6 +91,10 @@ export async function install(selectedComponents, options = {}) {
           }
         }
       }
+
+      if (componentKey === 'commands' && cleanupLegacy) {
+        await cleanupLegacyCommandPaths(claudeDir, sourceDir, { backup });
+      }
     }
 
     // 保存版本信息（包括安装的文件列表）
@@ -100,6 +125,69 @@ export async function install(selectedComponents, options = {}) {
 async function backupFile(filePath) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   await fs.copy(filePath, `${filePath}.backup.${timestamp}`);
+}
+
+async function removeRelativePaths(rootDir, relativePaths, options = {}) {
+  const { backup = false } = options;
+  const removedPaths = [];
+
+  for (const relativePath of relativePaths) {
+    const targetPath = path.join(rootDir, relativePath);
+    if (await fs.pathExists(targetPath)) {
+      const stats = await fs.stat(targetPath);
+      if (backup && stats.isFile()) {
+        await backupFile(targetPath);
+      }
+      await fs.remove(targetPath);
+      removedPaths.push(targetPath);
+    }
+  }
+
+  return removedPaths;
+}
+
+function normalizeFileContent(content) {
+  return content.replace(/\r\n/g, '\n').trimEnd();
+}
+
+async function shouldRemoveLegacyCommandAlias(claudeDir, sourceDir, alias) {
+  const legacyFilePath = path.join(claudeDir, alias.legacyPath);
+  const canonicalFilePath = path.join(sourceDir, alias.canonicalPath);
+
+  if (!(await fs.pathExists(legacyFilePath)) || !(await fs.pathExists(canonicalFilePath))) {
+    return false;
+  }
+
+  const legacyStats = await fs.stat(legacyFilePath);
+  const canonicalStats = await fs.stat(canonicalFilePath);
+  if (!legacyStats.isFile() || !canonicalStats.isFile()) {
+    return false;
+  }
+
+  const [legacyContent, canonicalContent] = await Promise.all([
+    fs.readFile(legacyFilePath, 'utf-8'),
+    fs.readFile(canonicalFilePath, 'utf-8')
+  ]);
+
+  return normalizeFileContent(legacyContent) === normalizeFileContent(canonicalContent);
+}
+
+async function cleanupLegacyCommandPaths(claudeDir, sourceDir, options = {}) {
+  const removedPaths = await removeRelativePaths(
+    claudeDir,
+    LEGACY_COMMAND_NAMESPACE_PATHS,
+    options
+  );
+
+  for (const alias of LEGACY_COMMAND_FILE_ALIASES) {
+    if (!(await shouldRemoveLegacyCommandAlias(claudeDir, sourceDir, alias))) {
+      continue;
+    }
+
+    removedPaths.push(...(await removeRelativePaths(claudeDir, [alias.legacyPath], options)));
+  }
+
+  return removedPaths;
 }
 
 const MAX_RECURSION_DEPTH = 20;
@@ -191,10 +279,24 @@ export async function uninstall(selectedComponents) {
         const targetPath = path.join(claudeDir, component.target);
 
         if (await fs.pathExists(targetPath)) {
-          // 只有 commands/auto 目录可以整体删除（这是 Auto CLI 独占的）
           if (componentKey === 'commands') {
-            await fs.remove(targetPath);
-            removedFiles.push(targetPath);
+            const sourceDir = getSourceDir();
+            const sourcePath = path.join(sourceDir, component.source);
+
+            if (await fs.pathExists(sourcePath)) {
+              const sourceFiles = await getSourceFilesList(sourcePath, component.recursive);
+              removedFiles.push(...(await removeRelativePaths(targetPath, sourceFiles)));
+            }
+
+            removedFiles.push(...(await cleanupLegacyCommandPaths(claudeDir, sourceDir)));
+            await cleanupEmptySubDirs(targetPath);
+
+            if (await fs.pathExists(targetPath)) {
+              const remainingItems = await fs.readdir(targetPath);
+              if (remainingItems.length === 0) {
+                await fs.remove(targetPath);
+              }
+            }
           } else {
             // 对于共享目录（agents、rules、skills），需要根据源文件匹配删除
             const sourceDir = getSourceDir();
@@ -298,7 +400,7 @@ async function cleanupEmptyDirs(claudeDir, selectedComponents) {
 
     const targetPath = path.join(claudeDir, component.target);
 
-    // 对于 commands/auto，如果目录为空则删除
+    // 对于 commands，如果目录为空则删除
     if (componentKey === 'commands' && (await fs.pathExists(targetPath))) {
       try {
         const items = await fs.readdir(targetPath);
