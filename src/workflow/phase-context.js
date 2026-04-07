@@ -103,6 +103,11 @@ export function createPhaseContext(options = {}) {
     // PHASE 2 匹配的 Skills
     matchedSkills: Object.freeze(options.matchedSkills || []),
 
+    // PHASE 2 推荐的 Agent 路由结果
+    agentRecommendation: options.agentRecommendation
+      ? freezeSnapshot(options.agentRecommendation)
+      : null,
+
     // 当前执行的 Quest
     currentQuest: options.currentQuest || null,
 
@@ -135,6 +140,11 @@ export function createPhaseContext(options = {}) {
 
     // 模型推荐
     modelRecommendations: Object.freeze(options.modelRecommendations || {}),
+
+    // 执行前思考摘要与 Quest 展示
+    preExecutionSummary: options.preExecutionSummary
+      ? freezeSnapshot(options.preExecutionSummary)
+      : null,
 
     // Token 预算状态
     tokenBudget: Object.freeze(
@@ -232,6 +242,11 @@ export function updatePhaseContext(ctx, updates) {
     processedUpdates.matchedSkills = Object.freeze([...updates.matchedSkills]);
   }
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'agentRecommendation')) {
+    processedUpdates.agentRecommendation =
+      updates.agentRecommendation === null ? null : freezeSnapshot(updates.agentRecommendation);
+  }
+
   if (updates.questMap) {
     processedUpdates.questMap = Object.freeze(updates.questMap.map((q) => Object.freeze({ ...q })));
   }
@@ -247,6 +262,11 @@ export function updatePhaseContext(ctx, updates) {
   if (Object.prototype.hasOwnProperty.call(updates, 'pendingExecution')) {
     processedUpdates.pendingExecution =
       updates.pendingExecution === null ? null : freezeSnapshot(updates.pendingExecution);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'preExecutionSummary')) {
+    processedUpdates.preExecutionSummary =
+      updates.preExecutionSummary === null ? null : freezeSnapshot(updates.preExecutionSummary);
   }
 
   return Object.freeze({

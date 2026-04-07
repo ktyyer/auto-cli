@@ -60,6 +60,8 @@ export class WorkflowOrchestrator {
     this.projectDir = options.projectDir || process.cwd();
     this.skillsDir = options.skillsDir || 'skills';
     this.dryRun = options.dryRun ?? false;
+    this.onPreExecutionSummary =
+      typeof options.onPreExecutionSummary === 'function' ? options.onPreExecutionSummary : null;
 
     // 初始化核心模块
     this.flowEngine = new FlowEngine(WORKFLOW_ID, { maxRetries: 3 });
@@ -161,8 +163,10 @@ export class WorkflowOrchestrator {
 
       const hasPendingInvocations = (this.phaseContext.pendingInvocations?.length || 0) > 0;
 
-      // 微型模式：DISCOVER → MICRO_EXECUTE → VERIFY → LEARN
+      // 微型模式：DISCOVER → REASON → MICRO_EXECUTE → VERIFY → LEARN
       if (mode === EXECUTION_MODES.MICRO) {
+        this.phaseContext = await this.phaseExecute.runReason(this.phaseContext);
+        this._emitPreExecutionSummary(this.phaseContext.preExecutionSummary);
         this.phaseContext = await this._runPhaseExecuteIsolated(
           'runMicroExecute',
           this.phaseContext
@@ -177,9 +181,13 @@ export class WorkflowOrchestrator {
         this.phaseContext = await this.phaseVerify.run(this.phaseContext);
 
         const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
-        if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+        const mainFailureCount = this.phaseContext.failedQuests?.length || 0;
+        if (this.phaseContext.gateFailed || mainFailureCount > 0 || pendingFailureCount > 0) {
           const gateReason =
-            this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+            this.phaseContext.gateReason ||
+            (mainFailureCount > 0
+              ? `${mainFailureCount} main quest(s) failed`
+              : `${pendingFailureCount} pending invocation(s) failed`);
           logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
           this._resetMainFlowAfterGateFailure(gateReason);
           return this._buildResult('gate_failed', new Error(gateReason));
@@ -197,21 +205,24 @@ export class WorkflowOrchestrator {
 
       // 3. PHASE 2: REASON
       this.phaseContext = await this.phaseExecute.runReason(this.phaseContext);
+      this._emitPreExecutionSummary(this.phaseContext.preExecutionSummary);
 
-      // 轻量模式：REASON → VERIFY → LEARN
+      // 4. PHASE 3: EXECUTE
+      this.phaseContext = await this.phaseExecute.runExecute(this.phaseContext);
+      this._checkContextOverflow(this.contextMonitor.getStatus());
+
       if (mode === EXECUTION_MODES.LIGHT) {
-        if (hasPendingInvocations) {
-          await this._executePendingInvocationsOnly();
-          this._checkContextOverflow(this.contextMonitor.getStatus());
-        }
-
         this._advanceMainFlowTo(FLOW_STATES.REVIEWING);
         this.phaseContext = await this.phaseVerify.run(this.phaseContext);
 
         const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
-        if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+        const mainFailureCount = this.phaseContext.failedQuests?.length || 0;
+        if (this.phaseContext.gateFailed || mainFailureCount > 0 || pendingFailureCount > 0) {
           const gateReason =
-            this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+            this.phaseContext.gateReason ||
+            (mainFailureCount > 0
+              ? `${mainFailureCount} main quest(s) failed`
+              : `${pendingFailureCount} pending invocation(s) failed`);
           logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
           this._resetMainFlowAfterGateFailure(gateReason);
           return this._buildResult('gate_failed', new Error(gateReason));
@@ -227,18 +238,18 @@ export class WorkflowOrchestrator {
         return this._buildResult('completed');
       }
 
-      // 4. PHASE 3: EXECUTE
-      this.phaseContext = await this.phaseExecute.runExecute(this.phaseContext);
-      this._checkContextOverflow(this.contextMonitor.getStatus());
-
       // 5. PHASE 4: VERIFY
       this.phaseContext = await this.phaseVerify.run(this.phaseContext);
 
       // P1-1: 门禁失败时停止工作流，避免误回滚用户的无关改动
       const pendingFailureCount = this.phaseContext.pendingExecution?.failedQuests?.length || 0;
-      if (this.phaseContext.gateFailed || pendingFailureCount > 0) {
+      const mainFailureCount = this.phaseContext.failedQuests?.length || 0;
+      if (this.phaseContext.gateFailed || mainFailureCount > 0 || pendingFailureCount > 0) {
         const gateReason =
-          this.phaseContext.gateReason || `${pendingFailureCount} pending invocation(s) failed`;
+          this.phaseContext.gateReason ||
+          (mainFailureCount > 0
+            ? `${mainFailureCount} main quest(s) failed`
+            : `${pendingFailureCount} pending invocation(s) failed`);
         logger.error(`[Orchestrator] 门禁失败: ${gateReason}`);
         this._resetMainFlowAfterGateFailure(gateReason);
         return this._buildResult('gate_failed', new Error(gateReason));
@@ -295,35 +306,24 @@ export class WorkflowOrchestrator {
       );
     } finally {
       const pendingContext = this.phaseContext;
-      const pendingExecution = Object.freeze({
-        completedQuests: Object.freeze([...(pendingContext.completedQuests || [])]),
-        failedQuests: Object.freeze([...(pendingContext.failedQuests || [])]),
-        changedFiles: Object.freeze([...(pendingContext.changedFiles || [])]),
-        executionSummary: this.phaseExecute.buildExecutionSummary(pendingContext),
-        questPlans: Object.freeze(
-          pendingMessages.filter((m) => m.role === 'quest-plan').map((m) => JSON.parse(m.content))
-        )
-      });
+      const pendingExecution =
+        pendingContext.pendingExecution ||
+        Object.freeze({
+          completedQuests: Object.freeze([...(pendingContext.completedQuests || [])]),
+          failedQuests: Object.freeze([...(pendingContext.failedQuests || [])]),
+          changedFiles: Object.freeze([...(pendingContext.changedFiles || [])]),
+          executionSummary: this.phaseExecute.buildExecutionSummary(pendingContext),
+          questPlans: Object.freeze(
+            pendingMessages.filter((m) => m.role === 'quest-plan').map((m) => JSON.parse(m.content))
+          )
+        });
       const pendingInvocations = pendingContext.pendingInvocations || [];
 
       this._messageAccumulator = previousAccumulator;
       this.phaseExecute.setMessageAccumulator(this._messageAccumulator);
       this.phaseContext = updatePhaseContext(mainContext, {
         pendingInvocations,
-        pendingExecution,
-        completedQuests: [
-          ...new Set([
-            ...(mainContext.completedQuests || []),
-            ...(pendingContext.completedQuests || [])
-          ])
-        ],
-        changedFiles: [
-          ...new Set([...(mainContext.changedFiles || []), ...(pendingContext.changedFiles || [])])
-        ],
-        executionResults: [
-          ...(mainContext.executionResults || []),
-          ...(pendingContext.executionResults || [])
-        ]
+        pendingExecution
       });
     }
   }
@@ -421,7 +421,18 @@ export class WorkflowOrchestrator {
     }
   }
 
+  _emitPreExecutionSummary(preExecutionSummary) {
+    if (!preExecutionSummary || !this.onPreExecutionSummary) {
+      return;
+    }
+
+    this.onPreExecutionSummary(preExecutionSummary, this.phaseContext);
+  }
+
   _resetForReadOnlyAction(task, options = {}) {
+    this.onPreExecutionSummary =
+      typeof options.onPreExecutionSummary === 'function' ? options.onPreExecutionSummary : null;
+    this.dryRun = options.dryRun ?? this.dryRun;
     this.phaseContext = createPhaseContext();
     this._messageAccumulator = [{ role: 'user', content: task }];
     this._pendingSessionSummary = null;
@@ -434,12 +445,28 @@ export class WorkflowOrchestrator {
     if (state === FLOW_STATES.IDLE) {
       return;
     }
-    if (state === FLOW_STATES.FAILED || state === FLOW_STATES.COMPLETED || state === FLOW_STATES.PAUSED) {
-      try { this.flowEngine.transition(FLOW_EVENTS.RESET, meta); } catch { /* ignore */ }
+    if (
+      state === FLOW_STATES.FAILED ||
+      state === FLOW_STATES.COMPLETED ||
+      state === FLOW_STATES.PAUSED
+    ) {
+      try {
+        this.flowEngine.transition(FLOW_EVENTS.RESET, meta);
+      } catch {
+        /* ignore */
+      }
       return;
     }
-    try { this.flowEngine.transition(FLOW_EVENTS.FAIL, meta); } catch { /* ignore */ }
-    try { this.flowEngine.transition(FLOW_EVENTS.RESET, meta); } catch { /* ignore */ }
+    try {
+      this.flowEngine.transition(FLOW_EVENTS.FAIL, meta);
+    } catch {
+      /* ignore */
+    }
+    try {
+      this.flowEngine.transition(FLOW_EVENTS.RESET, meta);
+    } catch {
+      /* ignore */
+    }
   }
 
   async runAutoAction(action, payload = {}, options = {}) {
@@ -486,10 +513,14 @@ export class WorkflowOrchestrator {
 
   async _runStatusAction(payload = {}, options = {}) {
     this._resetForReadOnlyAction(payload.task || 'status', options);
-    this.phaseContext = this.phaseExecute.initializeWorkflowContext(this.phaseContext, payload.task || 'status', {
-      ...options,
-      mode: detectExecutionMode(payload.task || 'status', options)
-    });
+    this.phaseContext = this.phaseExecute.initializeWorkflowContext(
+      this.phaseContext,
+      payload.task || 'status',
+      {
+        ...options,
+        mode: detectExecutionMode(payload.task || 'status', options)
+      }
+    );
 
     this._syncDepsToModules();
     this.phaseContext = await this.phaseDiscover.run(this.phaseContext);
@@ -658,12 +689,25 @@ export class WorkflowOrchestrator {
       .filter((m) => m.role === 'quest-plan')
       .map((m) => JSON.parse(m.content));
     const pendingQuestPlans = this.phaseContext.pendingExecution?.questPlans || [];
-    const allQuestPlans = Object.freeze([...questPlans, ...pendingQuestPlans]);
+    const allQuestPlans = Object.freeze(
+      [...questPlans, ...pendingQuestPlans].filter(
+        (plan, index, plans) =>
+          index ===
+          plans.findIndex(
+            (candidate) => candidate.questId === plan.questId && candidate.questId !== undefined
+          )
+      )
+    );
 
     const agentInvocations = allQuestPlans
       .filter((p) => p.agentInvocation)
       .map((p) => p.agentInvocation);
-    const executionSummary = this.phaseExecute.buildExecutionSummary(this.phaseContext);
+    const executionSummary = Object.freeze([
+      ...this.phaseExecute.buildExecutionSummary(this.phaseContext),
+      ...((this.phaseContext.pendingExecution &&
+        this.phaseContext.pendingExecution.executionSummary) ||
+        [])
+    ]);
     const allCompletedQuests = Object.freeze([
       ...new Set([
         ...(this.phaseContext.completedQuests || []),
@@ -691,6 +735,7 @@ export class WorkflowOrchestrator {
       error,
       mode: this.phaseContext.mode,
       capabilities: this.phaseContext.capabilities,
+      preExecutionSummary: this.phaseContext.preExecutionSummary,
       completedQuests: allCompletedQuests,
       failedQuests: allFailedQuests,
       verificationActions: this.phaseContext.verificationActions,

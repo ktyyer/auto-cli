@@ -73,6 +73,18 @@ describe('auto.md integration', () => {
     });
   });
 
+  describe('PHASE 2 契约', () => {
+    it('should require all modes to show reasoning and quest info before execution', () => {
+      expect(content).toContain(
+        '所有模式都必须先展示结构化思考摘要与 Quest 信息，再自动进入下一阶段，不等待用户确认。'
+      );
+      expect(content).toContain('微型模式');
+      expect(content).toContain('单关 Quest');
+      expect(content).toContain('轻量模式');
+      expect(content).toContain('完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行');
+    });
+  });
+
   describe('PHASE 4 门禁', () => {
     it('should have tiered verification by mode', () => {
       expect(content).toContain('微型');

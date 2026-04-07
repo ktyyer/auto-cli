@@ -22,6 +22,144 @@ import { KnowledgeSteward } from '../src/knowledge/knowledge-steward.js';
 
 const program = new Command();
 
+function printPreExecutionSummary(summary) {
+  if (!summary) {
+    return;
+  }
+
+  const reasoning = summary.reasoning || {};
+  const quests = summary.quests || [];
+  const team = reasoning.team || {};
+
+  console.log('');
+  console.log(chalk.cyan.bold('执行前摘要'));
+  console.log(chalk.gray('━'.repeat(50)));
+  console.log('');
+
+  console.log(chalk.white.bold('任务理解:'));
+  console.log(`  ${chalk.gray(reasoning.taskUnderstanding || summary.task || '')}`);
+  console.log('');
+
+  console.log(chalk.white.bold('模式判定:'));
+  console.log(`  ${chalk.green(summary.mode || 'unknown')}`);
+  if (reasoning.modeReason) {
+    console.log(`  ${chalk.gray(reasoning.modeReason)}`);
+  }
+  console.log('');
+
+  if (reasoning.model) {
+    console.log(chalk.white.bold('模型路由:'));
+    console.log(`  ${chalk.yellow(reasoning.model.tier)} — ${chalk.gray(reasoning.model.id)}`);
+    console.log(`  ${chalk.gray(reasoning.model.reason)}`);
+    console.log('');
+  }
+
+  if (reasoning.agent) {
+    console.log(chalk.white.bold('Agent 路由:'));
+    console.log(`  ${chalk.green(reasoning.agent.name)} (${reasoning.agent.displayName})`);
+    console.log(
+      `  ${chalk.gray(`score=${reasoning.agent.score}, reason=${reasoning.agent.reason}`)}`
+    );
+    console.log('');
+  }
+
+  if (team.lead) {
+    console.log(chalk.white.bold('Team Lead:'));
+    console.log(
+      `  ${chalk.green(team.lead.name)} — ${chalk.gray((team.lead.capabilities || []).join(', '))}`
+    );
+    console.log('');
+  }
+
+  if ((team.members || []).length > 0) {
+    console.log(chalk.white.bold('Team Members:'));
+    for (const member of team.members) {
+      console.log(
+        `  ${chalk.cyan(member.name)} — ${chalk.gray((member.capabilities || []).join(', '))}`
+      );
+    }
+    console.log('');
+  }
+
+  if ((reasoning.matchedSkills || []).length > 0) {
+    console.log(chalk.white.bold('Skills:'));
+    console.log(`  ${chalk.gray(reasoning.matchedSkills.join(', '))}`);
+    console.log('');
+  }
+
+  if ((reasoning.risks || []).length > 0) {
+    console.log(chalk.white.bold('风险:'));
+    for (const risk of reasoning.risks) {
+      console.log(`  ${chalk.gray(`- ${risk}`)}`);
+    }
+    console.log('');
+  }
+
+  if ((reasoning.boundaries || []).length > 0) {
+    console.log(chalk.white.bold('边界:'));
+    for (const boundary of reasoning.boundaries) {
+      console.log(`  ${chalk.gray(`- ${boundary}`)}`);
+    }
+    console.log('');
+  }
+
+  if (quests.length > 0) {
+    console.log(chalk.white.bold('Quest Map:'));
+    for (const quest of quests) {
+      console.log(
+        `  ${chalk.yellow(`[${quest.complexity || 'unknown'}]`)} ${quest.id}: ${quest.title}`
+      );
+      if (quest.description) {
+        console.log(`    ${chalk.gray(quest.description)}`);
+      }
+      if (quest.agent) {
+        console.log(`    ${chalk.gray(`agent=${quest.agent.name} (${quest.agent.displayName})`)}`);
+      }
+      if ((quest.changedFiles || []).length > 0) {
+        console.log(`    ${chalk.gray(`files=${quest.changedFiles.join(', ')}`)}`);
+      }
+      if ((quest.acceptanceCriteria || []).length > 0) {
+        console.log(`    ${chalk.gray(`accept=${quest.acceptanceCriteria.join(' | ')}`)}`);
+      }
+      if ((quest.decisionNotes || []).length > 0) {
+        console.log(`    ${chalk.gray(`notes=${quest.decisionNotes.join(' | ')}`)}`);
+      }
+    }
+    console.log('');
+  }
+
+  console.log(chalk.gray('━'.repeat(50)));
+  console.log('');
+}
+
+function createPreExecutionPrinter(options = {}) {
+  if (options.json || options.dryRun) {
+    return null;
+  }
+
+  let printed = false;
+  return (summary) => {
+    if (printed || !summary) {
+      return;
+    }
+    printed = true;
+    printPreExecutionSummary(summary);
+  };
+}
+
+function printAnalyzeResult(result) {
+  console.log('');
+  console.log(chalk.cyan.bold('auto analyze'));
+  console.log(chalk.gray('━'.repeat(50)));
+  console.log('');
+
+  console.log(chalk.white.bold('Task:'));
+  console.log(`  ${chalk.gray(result.task)}`);
+  console.log('');
+
+  printPreExecutionSummary(result.preExecutionSummary);
+}
+
 program
   .name('auto')
   .description('Auto CLI - Claude Code 能力增强 CLI 工具')
@@ -233,11 +371,13 @@ program
   .option('--json', '以 JSON 格式输出结果')
   .action(async (task, options) => {
     try {
+      const onPreExecutionSummary = createPreExecutionPrinter(options);
       const result = await runAuto(task, {
         mode: options.mode,
         dir: options.dir,
         json: options.json,
-        dryRun: options.dryRun
+        dryRun: options.dryRun,
+        onPreExecutionSummary
       });
 
       if (options.dryRun) {
@@ -527,71 +667,11 @@ program
         return;
       }
 
-      // Human-readable output
       if (!options.color) {
         chalk.level = 0;
       }
 
-      console.log('');
-      console.log(chalk.cyan.bold('auto analyze'));
-      console.log(chalk.gray('━'.repeat(50)));
-      console.log('');
-
-      console.log(chalk.white.bold('Task:'));
-      console.log(`  ${chalk.gray(result.task)}`);
-      console.log('');
-
-      console.log(chalk.white.bold('Mode:'));
-      console.log(`  ${chalk.green(result.detected_mode)}`);
-      console.log('');
-
-      if (result.routing.model) {
-        console.log(chalk.white.bold('Model:'));
-        console.log(
-          `  ${chalk.yellow(result.routing.model.tier)} — ${chalk.gray(result.routing.model.id)}`
-        );
-        console.log(`  ${chalk.gray(result.routing.model.reason)}`);
-        console.log('');
-      }
-
-      if (result.routing.agent) {
-        console.log(chalk.white.bold('Agent:'));
-        console.log(
-          `  ${chalk.green(result.routing.agent.name)} (${result.routing.agent.displayName})`
-        );
-        console.log(
-          `  ${chalk.gray(`score=${result.routing.agent.score}, reason=${result.routing.agent.matchReason}`)}`
-        );
-        console.log('');
-      }
-
-      if (result.team.lead) {
-        console.log(chalk.white.bold('Team Lead:'));
-        console.log(
-          `  ${chalk.green(result.team.lead.name)} — ${chalk.gray(result.team.lead.capabilities.join(', '))}`
-        );
-        console.log('');
-      }
-
-      if (result.team.members.length > 0) {
-        console.log(chalk.white.bold('Team Members:'));
-        for (const m of result.team.members) {
-          console.log(`  ${chalk.cyan(m.name)} — ${chalk.gray(m.capabilities.join(', '))}`);
-        }
-        console.log('');
-      }
-
-      if (result.quests.length > 0) {
-        console.log(chalk.white.bold('Quests:'));
-        for (const q of result.quests) {
-          console.log(`  ${chalk.yellow(`[${q.priority}]`)} ${q.id}: ${q.title}`);
-          console.log(`    ${chalk.gray(`type=${q.type}, agent=${q.agent}`)}`);
-        }
-        console.log('');
-      }
-
-      console.log(chalk.gray('━'.repeat(50)));
-      console.log('');
+      printAnalyzeResult(result);
     } catch (error) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);

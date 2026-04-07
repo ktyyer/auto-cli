@@ -152,7 +152,9 @@ export async function runDocs() {
 
 function createOrchestrator(options = {}) {
   return new WorkflowOrchestrator({
-    projectDir: options.dir || process.cwd()
+    projectDir: options.dir || process.cwd(),
+    onPreExecutionSummary: options.onPreExecutionSummary,
+    dryRun: options.dryRun
   });
 }
 

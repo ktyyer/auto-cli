@@ -12,11 +12,11 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 
 根据任务复杂度自动选择：
 
-| 条件 | 模式 | 执行路径 |
-|------|------|----------|
-| 1文件 且 <=10行变更 | **微型模式** | 直接执行任务 → 相关测试 → 知识沉淀 → 结束 |
-| <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → 简化 Quest Map → 直接执行 → PHASE 4(简化) → PHASE 6 |
-| >3文件 或 有架构变更 | **完整模式** | 完整 6 PHASE |
+| 条件                  | 模式         | 执行路径                                                                                  |
+| --------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| 1文件 且 <=10行变更   | **微型模式** | PHASE 1 → PHASE 2（完整思考摘要 + 单关 Quest）→ 微型执行 → PHASE 4 → PHASE 6              |
+| <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → PHASE 2（完整思考摘要 + 精简 Quest）→ 直接执行 → PHASE 4 → PHASE 6              |
+| >3文件 或 有架构变更  | **完整模式** | PHASE 1 → PHASE 2（完整思考摘要 + 完整 Quest Map）→ PHASE 3 → PHASE 4 → PHASE 5 → PHASE 6 |
 
 ---
 
@@ -44,30 +44,31 @@ TodoWrite([
 
 ## PHASE 2: REASON — Quest 设计 + Skill 注入
 
-- **微型模式**: `_runMicroExecute()` 直接执行任务，跳过 Quest Map 设计。
-- **轻量模式**: `_generateQuestMap()` 生成简化 Quest（1关：影响文件 + 执行顺序 + 风险评估）。
-- **完整模式**: `_generateQuestMap()` 生成完整 Quest Map（分析/设计 → 核心实现 → 验证测试）。
+- **微型模式**: 先生成完整思考摘要与单关 Quest，再自动进入 `_runMicroExecute()`。
+- **轻量模式**: `_generateQuestMap()` 生成精简 Quest，但仍完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行。
+- **完整模式**: `_generateQuestMap()` 生成完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
+
+所有模式都必须先展示结构化思考摘要与 Quest 信息，再自动进入下一阶段，不等待用户确认。
 
 每个 Quest 包含：`id, title, description, keywords, complexity, changedFiles, acceptanceCriteria, decisionNotes, skills, agent`。
 
 **Skill 注入**: `_extractKeywords()` 提取任务关键词 → `skillIndexer.search()` 匹配 → 匹配的 Skill 名称注入 Quest 的 `skills` 字段。
 
-等待用户确认后进入下一阶段。
-
 ---
 
 ## PHASE 3: EXECUTE — 逐关执行
 
-| 规模 | 模式 | Token 成本 |
-|------|------|-----------|
-| 1-5 关 | 单 Agent 串行 | 1x |
-| 6-15 关 | Subagent 并行 | 2-3x |
-| 15+ 关 | Agent Teams | 3-10x |
+| 规模    | 模式          | Token 成本 |
+| ------- | ------------- | ---------- |
+| 1-5 关  | 单 Agent 串行 | 1x         |
+| 6-15 关 | Subagent 并行 | 2-3x       |
+| 15+ 关  | Agent Teams   | 3-10x      |
 
 每关流程：Read 代码 → Write/Edit → 补 import → 编译验证 → 增量提交。
 失败：回滚 → 修复 → 重试（最多 2 次）。
 Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 每关完成后：
+
 - 记录合成消息到 `_messageAccumulator`（上限 50 条）
 - **Agent 结果持久化**: `_persistAgentResult()` 记录到 MemoryManager（后续会话可查询）
 - **RepoIndexer 搜索**: architect 等 Agent 使用 `_searchRepoIndex()` 替代手动 Glob/Read
@@ -76,10 +77,10 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 ## PHASE 4: VERIFY — 门禁
 
-| 模式 | 要求 |
-|------|------|
-| 微型 | 编译通过 + 相关测试通过 |
-| 轻量 | 编译通过 + 相关测试通过 + lint 无错 |
+| 模式 | 要求                                            |
+| ---- | ----------------------------------------------- |
+| 微型 | 编译通过 + 相关测试通过                         |
+| 轻量 | 编译通过 + 相关测试通过 + lint 无错             |
 | 完整 | 编译/构建 → 全量测试 → 覆盖率 >= 80% → 安全扫描 |
 
 失败自动路由: 每个失败 Quest 自动路由到 `build-error-resolver` agent，存储到 `verificationActions` 供 Claude Code 参考。
@@ -116,6 +117,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 ## Session Continuity（会话续接）
 
 当上下文窗口溢出时自动触发：
+
 1. `createSessionSummary()` 捕获: 任务 + 待办 + 错误 + 当前工作状态
 2. `createResumeDirective()` 生成续接指令
 3. 新会话使用 `resumeDirective` 自动继续工作（不确认/不回顾/不提问）

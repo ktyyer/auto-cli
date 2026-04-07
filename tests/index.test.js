@@ -269,6 +269,26 @@ describe('index.js', () => {
         expect.objectContaining({ dir: '/tmp/project', mode: 'light', dryRun: true })
       );
     });
+
+    it('should forward pre-execution summary callback to orchestrator facade', async () => {
+      runAutoActionSpy.mockResolvedValueOnce({ status: 'completed' });
+      const onPreExecutionSummary = vi.fn();
+
+      await runAuto('fix typo in readme', {
+        dir: '/tmp/project',
+        mode: 'micro',
+        onPreExecutionSummary
+      });
+      expect(runAutoActionSpy).toHaveBeenCalledWith(
+        'run',
+        { task: 'fix typo in readme' },
+        expect.objectContaining({
+          dir: '/tmp/project',
+          mode: 'micro',
+          onPreExecutionSummary
+        })
+      );
+    });
   });
 
   describe('runAnalyze', () => {
@@ -285,6 +305,7 @@ describe('index.js', () => {
       expect(result).toHaveProperty('routing');
       expect(result).toHaveProperty('team');
       expect(result).toHaveProperty('quests');
+      expect(result).toHaveProperty('preExecutionSummary');
     });
   });
 
@@ -430,6 +451,24 @@ describe('index.js', () => {
       expect(cliSource).toContain(".command('status')");
       expect(cliSource).toContain(".command('learn')");
       expect(cliSource).toContain(".command('create-hook')");
+    });
+
+    it('should wire run command pre-execution summary printer', async () => {
+      const cliSource = await import('node:fs/promises').then((fs) =>
+        fs.readFile(new URL('../bin/cli.js', import.meta.url), 'utf-8')
+      );
+      expect(cliSource).toContain(
+        'const onPreExecutionSummary = createPreExecutionPrinter(options);'
+      );
+      expect(cliSource).toContain('onPreExecutionSummary');
+    });
+
+    it('should render analyze command with unified pre-execution summary printer', async () => {
+      const cliSource = await import('node:fs/promises').then((fs) =>
+        fs.readFile(new URL('../bin/cli.js', import.meta.url), 'utf-8')
+      );
+      expect(cliSource).toContain('printAnalyzeResult(result);');
+      expect(cliSource).toContain('printPreExecutionSummary(result.preExecutionSummary);');
     });
   });
 

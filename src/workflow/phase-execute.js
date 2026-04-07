@@ -65,6 +65,111 @@ function _generateQuestInstructions(quest, modelRoute, team) {
   return lines.join('\n');
 }
 
+function _summarizeInsightContent(insightContents = []) {
+  return insightContents
+    .map((entry) => entry.content)
+    .filter(Boolean)
+    .map((content) => String(content).split('\n')[0].trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function _createQuestSummary(quest, mode) {
+  return Object.freeze({
+    id: quest.id,
+    title: quest.title,
+    description: quest.description,
+    complexity: quest.complexity || (mode === EXECUTION_MODES.MICRO ? 'low' : 'medium'),
+    keywords: Object.freeze([...(quest.keywords || [])]),
+    agent: quest.agent
+      ? Object.freeze({
+          name: quest.agent,
+          displayName: quest.agentDisplayName || quest.agent
+        })
+      : null,
+    changedFiles: Object.freeze([...(quest.changedFiles || [])]),
+    acceptanceCriteria: Object.freeze([...(quest.acceptanceCriteria || [])]),
+    decisionNotes: Object.freeze([...(quest.decisionNotes || [])]),
+    skills: Object.freeze([...(quest.skills || [])]),
+    reasoningSummary: Object.freeze({
+      objective: quest.description || quest.title,
+      boundaries: Object.freeze([...(quest.boundaries || [])]),
+      risks: Object.freeze([...(quest.risks || [])]),
+      insights: Object.freeze(_summarizeInsightContent(quest.insightContents || []))
+    })
+  });
+}
+
+function _buildPreExecutionSummary(ctx, questMap, teamResult) {
+  const modelResult = ctx.modelRecommendations;
+  const agentResult = ctx.agentRecommendation;
+  const mode = ctx.mode || EXECUTION_MODES.FULL;
+  const keywords = Array.isArray(ctx.task) ? ctx.task : extractKeywords(ctx.task || '');
+  const matchedSkills = (ctx.matchedSkills || []).map((skill) => skill.name || skill);
+
+  return Object.freeze({
+    task: (ctx.task || '').slice(0, 200),
+    mode,
+    reasoning: Object.freeze({
+      taskUnderstanding: ctx.task || '',
+      modeReason:
+        mode === EXECUTION_MODES.MICRO
+          ? '任务被判定为微型模式，但仍先展示完整思考摘要与单关 Quest。'
+          : mode === EXECUTION_MODES.LIGHT
+            ? '任务被判定为轻量模式，先展示完整思考摘要与精简 Quest，再自动执行。'
+            : '任务被判定为完整模式，先展示完整思考摘要与多关 Quest，再自动执行。',
+      keywords: Object.freeze(keywords),
+      model: modelResult
+        ? Object.freeze({
+            id: modelResult.model,
+            tier: modelResult.tier,
+            reason: modelResult.reason
+          })
+        : null,
+      agent: agentResult
+        ? Object.freeze({
+            name: agentResult.agent.name,
+            displayName: agentResult.agent.displayName,
+            score: agentResult.score,
+            reason: agentResult.matchReason
+          })
+        : null,
+      team: Object.freeze({
+        lead: teamResult.lead
+          ? Object.freeze({
+              name: teamResult.lead.name,
+              displayName: teamResult.lead.displayName,
+              capabilities: Object.freeze([...(teamResult.lead.capabilities || [])])
+            })
+          : null,
+        members: Object.freeze(
+          (teamResult.members || []).map((member) =>
+            Object.freeze({
+              name: member.name,
+              displayName: member.displayName,
+              capabilities: Object.freeze([...(member.capabilities || [])])
+            })
+          )
+        )
+      }),
+      matchedSkills: Object.freeze(matchedSkills),
+      risks: Object.freeze(
+        questMap
+          .flatMap((quest) => quest.risks || [])
+          .filter(Boolean)
+          .slice(0, 8)
+      ),
+      boundaries: Object.freeze(
+        questMap
+          .flatMap((quest) => quest.boundaries || [])
+          .filter(Boolean)
+          .slice(0, 8)
+      )
+    }),
+    quests: Object.freeze(questMap.map((quest) => _createQuestSummary(quest, mode)))
+  });
+}
+
 /**
  * 生成 Agent 执行语义说明
  * @param {Object} agent - Agent 清单
@@ -323,6 +428,12 @@ export class PhaseExecute {
 
     logger.info(`[PHASE 2] Quest Map 生成: ${questMap.length} 个 Quest`);
 
+    const registry = await this._ensureAgentRegistry();
+    const teamResult = registry.resolveTeam({
+      keywords: this._extractKeywords(ctx.task),
+      maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
+    });
+
     // 存储 Quest 设计结果
     await this.memory.set(
       'last_quest_design',
@@ -353,7 +464,17 @@ export class PhaseExecute {
       modelRecommendations: modelRoute,
       agentRecommendation: agentRecommendation,
       matchedSkills: Object.freeze(matchedSkills),
-      questMap: Object.freeze(questMap)
+      questMap: Object.freeze(questMap),
+      preExecutionSummary: _buildPreExecutionSummary(
+        {
+          ...ctx,
+          modelRecommendations: modelRoute,
+          agentRecommendation,
+          matchedSkills: Object.freeze(matchedSkills)
+        },
+        questMap,
+        teamResult
+      )
     });
 
     return ctx;
@@ -374,11 +495,12 @@ export class PhaseExecute {
     }
 
     // P0-1 fix: 将 pendingInvocations 转换为额外 Quest 并注入 Quest Map
-    const questMap = ctx.questMap ? [...ctx.questMap] : [];
+    const mainQuestMap = ctx.questMap ? [...ctx.questMap] : [];
+    const pendingQuestMap = [];
     if (ctx.pendingInvocations?.length > 0) {
       for (const inv of ctx.pendingInvocations) {
         const agentType = inv.subagent_type || inv.type || 'general-purpose';
-        questMap.push(
+        pendingQuestMap.push(
           Object.freeze({
             id: `pending-${inv.id || Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             title: inv.description || `待执行调度: ${agentType}`,
@@ -416,6 +538,9 @@ export class PhaseExecute {
       );
     }
 
+    const questMap = [...mainQuestMap, ...pendingQuestMap];
+    const hasMainQuests = mainQuestMap.length > 0;
+
     if (questMap.length === 0) {
       logger.warn('[PHASE 3] 无 Quest 地图，跳过执行');
       this.flowEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
@@ -424,6 +549,9 @@ export class PhaseExecute {
 
     const completedQuests = [];
     const failedQuests = [];
+    const pendingQuestIds = new Set(pendingQuestMap.map((quest) => quest.id));
+
+    const questPlanMessagesBefore = this.messageAccumulator ? this.messageAccumulator.length : 0;
 
     // P0-2: 按规模选择执行策略
     const questCount = questMap.length;
@@ -453,6 +581,9 @@ export class PhaseExecute {
           }
         } else {
           failedQuests.push({ questId: result.questId, error: result.error });
+          if (result.executionResult) {
+            ctx = this.mergeExecutionResult(ctx, quest, result.executionResult);
+          }
         }
       }
     }
@@ -469,11 +600,71 @@ export class PhaseExecute {
       pendingInvocations = await this.pendingInvocationInspector();
     }
 
+    const executionResults = ctx.executionResults || [];
+    const mainCompletedQuests = completedQuests.filter((questId) => !pendingQuestIds.has(questId));
+    const pendingCompletedQuests = completedQuests.filter((questId) =>
+      pendingQuestIds.has(questId)
+    );
+    const mainFailedQuests = failedQuests.filter((item) => !pendingQuestIds.has(item.questId));
+    const pendingFailedQuests = failedQuests.filter((item) => pendingQuestIds.has(item.questId));
+    const pendingChangedFiles = [
+      ...new Set(
+        executionResults
+          .filter((result) => pendingQuestIds.has(result.questId))
+          .flatMap((result) => result.changedFiles || [])
+      )
+    ];
+    const mainChangedFiles = [
+      ...new Set(
+        executionResults
+          .filter((result) => !pendingQuestIds.has(result.questId))
+          .flatMap((result) => result.changedFiles || [])
+      )
+    ];
+    const questPlanMessages = (this.messageAccumulator || []).slice(questPlanMessagesBefore);
+    const pendingQuestPlans = Object.freeze(
+      questPlanMessages
+        .filter((message) => message.role === 'quest-plan')
+        .map((message) => JSON.parse(message.content))
+        .filter((plan) => pendingQuestIds.has(plan.questId))
+    );
+    const pendingExecutionResults = Object.freeze(
+      executionResults.filter((result) => pendingQuestIds.has(result.questId))
+    );
+    const pendingExecution =
+      pendingQuestIds.size > 0
+        ? Object.freeze({
+            completedQuests: Object.freeze([...pendingCompletedQuests]),
+            failedQuests: Object.freeze([...pendingFailedQuests]),
+            changedFiles: Object.freeze([...pendingChangedFiles]),
+            executionSummary: Object.freeze(
+              pendingExecutionResults.map((result) => ({
+                questId: result.questId,
+                success: result.success,
+                summary: result.summary,
+                changedFiles: result.changedFiles || [],
+                error: result.error || null
+              }))
+            ),
+            questPlans: pendingQuestPlans
+          })
+        : null;
+
     ctx = updatePhaseContext(ctx, {
-      completedQuests,
-      failedQuests,
-      changedFiles: [...new Set([...executionChangedFiles, ...changedFiles])],
-      pendingInvocations
+      completedQuests: hasMainQuests ? mainCompletedQuests : completedQuests,
+      failedQuests: hasMainQuests ? mainFailedQuests : failedQuests,
+      changedFiles: [
+        ...new Set([
+          ...executionChangedFiles,
+          ...(hasMainQuests ? mainChangedFiles : pendingChangedFiles),
+          ...changedFiles
+        ])
+      ],
+      executionResults: hasMainQuests
+        ? executionResults.filter((result) => !pendingQuestIds.has(result.questId))
+        : executionResults,
+      pendingInvocations,
+      pendingExecution
     });
 
     logger.info(
@@ -489,74 +680,26 @@ export class PhaseExecute {
    * @returns {Promise<Object>} 更新后的 phaseContext
    */
   async runMicroExecute(phaseContext) {
-    logger.info('[MICRO] 直接执行微型任务');
+    logger.info('[MICRO] 执行微型任务');
 
     let ctx = updatePhaseContext(phaseContext, { currentPhase: 3 });
 
-    // 模型路由
-    const modelRoute = routeModel({
-      keywords: this._extractKeywords(ctx.task)
-    });
-
-    // P1-5: 微型模式 Skill 注入（搜索 top 1 匹配 Skill）
-    const microSkills = [];
-    const microSkillContents = [];
-    try {
-      const keywords = this._extractKeywords(ctx.task);
-      const searchResult = await this._skillIndexer.search(keywords);
-      const topSkill = Array.isArray(searchResult) ? searchResult.slice(0, 1) : [];
-      for (const skill of topSkill) {
-        const loaded = await this._skillIndexer.loadContent(skill.relativePath);
-        if (loaded) {
-          microSkills.push(skill.name);
-          microSkillContents.push({
-            name: skill.name,
-            relativePath: skill.relativePath,
-            content: loaded.content
-          });
-        }
-      }
-      if (microSkills.length > 0) {
-        logger.info(`[MICRO] Skill 注入: ${microSkills.join(', ')}`);
-      }
-    } catch (skillErr) {
-      logger.debug(`[MICRO] Skill 搜索跳过: ${skillErr.message}`);
+    let microQuest = ctx.questMap?.[0] || null;
+    if (!microQuest) {
+      ctx = await this.runReason(updatePhaseContext(ctx, { currentPhase: 2 }));
+      ctx = updatePhaseContext(ctx, { currentPhase: 3 });
+      microQuest = ctx.questMap?.[0] || null;
     }
 
-    // P3-1: MICRO 模式也注入历史经验
-    let microInsightContents = [];
-    try {
-      const steward = new KnowledgeSteward(this.projectDir);
-      const insightKeywords = this._extractKeywords(ctx.task).filter((kw) => kw.length > 1);
-      if (insightKeywords.length > 0) {
-        const insightResults = await steward.search(insightKeywords.slice(0, 3).join(' '), {
-          limit: 2
-        });
-        microInsightContents = insightResults.flatMap((r) =>
-          r.matches.slice(0, 1).map((m) => ({ category: r.category, content: m }))
-        );
-      }
-    } catch {
-      // MICRO 模式不因经验搜索失败而中断
+    if (!microQuest) {
+      throw new Error('MICRO 模式未生成 Quest');
     }
 
-    // 创建单 Quest 并执行（P1-5: 附带 Skill）
-    const microQuest = Object.freeze({
-      id: 'micro-1',
-      title: ctx.task.slice(0, 80),
-      description: ctx.task,
-      keywords: Object.freeze(this._extractKeywords(ctx.task)),
-      complexity: 'low',
-      changedFiles: Object.freeze([]),
-      acceptanceCriteria: Object.freeze(['编译通过', '相关测试通过']),
-      decisionNotes: Object.freeze(
-        microSkills.length > 0 ? [`参考 Skill: ${microSkills.join(', ')}`] : []
-      ),
-      skills: Object.freeze(microSkills),
-      skillContents: Object.freeze(microSkillContents),
-      insightContents: Object.freeze(microInsightContents),
-      agent: null
-    });
+    const modelRoute =
+      ctx.modelRecommendations ||
+      routeModel({
+        keywords: this._extractKeywords(ctx.task)
+      });
 
     const questEngine = new FlowEngine('quest-micro-1', { maxRetries: 1 });
     questEngine.transition(FLOW_EVENTS.START, { questId: microQuest.id });
@@ -571,6 +714,11 @@ export class PhaseExecute {
       // P0-1: MICRO 模式也收集变更文件（含 unstaged / staged / untracked）
       const microChangedFiles = await this._collectChangedFiles('MICRO');
 
+      ctx = this.mergeExecutionResult(ctx, microQuest, {
+        ...(executeResult.executionResult || {}),
+        changedFiles: microChangedFiles
+      });
+
       ctx = updatePhaseContext(ctx, {
         completedQuests: [microQuest.id],
         failedQuests: [],
@@ -582,6 +730,15 @@ export class PhaseExecute {
     } catch (error) {
       const compacted = compactTrace(error);
       logger.error(`[MICRO] 微型任务执行失败: ${compacted.compacted}`);
+
+      ctx = this.mergeExecutionResult(ctx, microQuest, {
+        success: false,
+        status: 'failed',
+        summary: compacted.compacted,
+        changedFiles: [],
+        artifacts: null,
+        error: compacted.compacted
+      });
 
       ctx = updatePhaseContext(ctx, {
         completedQuests: [],
@@ -942,8 +1099,6 @@ export class PhaseExecute {
    */
   async buildAnalyzeSnapshot(phaseContext) {
     const ctx = phaseContext || this.initializeWorkflowContext({}, '', {});
-    const modelResult = ctx.modelRecommendations;
-    const agentResult = ctx.agentRecommendation;
     const questMap = ctx.questMap || [];
 
     const registry = await this._ensureAgentRegistry();
@@ -952,50 +1107,17 @@ export class PhaseExecute {
       maxSize: ctx.mode === 'micro' ? 1 : ctx.mode === 'light' ? 2 : 4
     });
 
+    const preExecutionSummary =
+      ctx.preExecutionSummary || _buildPreExecutionSummary(ctx, questMap, teamResult);
+
     return {
       task: (ctx.task || '').slice(0, 80),
       mode: ctx.mode,
       detected_mode: ctx.mode,
-      routing: {
-        model: modelResult
-          ? {
-              id: modelResult.model,
-              tier: modelResult.tier,
-              reason: modelResult.reason
-            }
-          : null,
-        agent: agentResult
-          ? {
-              name: agentResult.agent.name,
-              displayName: agentResult.agent.displayName,
-              score: agentResult.score,
-              matchReason: agentResult.matchReason
-            }
-          : null
-      },
-      team: {
-        lead: teamResult.lead
-          ? {
-              name: teamResult.lead.name,
-              displayName: teamResult.lead.displayName,
-              capabilities: teamResult.lead.capabilities
-            }
-          : null,
-        members: teamResult.members.map((m) => ({
-          name: m.name,
-          displayName: m.displayName,
-          capabilities: m.capabilities
-        }))
-      },
-      quests: questMap.map((q) => ({
-        id: q.id,
-        title: q.title,
-        type: q.type,
-        keywords: q.keywords,
-        agent: q.agent,
-        priority: q.priority,
-        files: q.files
-      }))
+      routing: preExecutionSummary.reasoning,
+      team: preExecutionSummary.reasoning.team,
+      preExecutionSummary,
+      quests: preExecutionSummary.quests
     };
   }
 
@@ -1146,8 +1268,32 @@ export class PhaseExecute {
     const skillNames = matchedSkills.map((s) => s.name);
     const skillData = skillContents || [];
     const insightData = insightContents || [];
+    const recommendedAgent = agentRecommendation ? agentRecommendation.agent : null;
 
-    // 轻量模式：生成简化 Quest Map
+    if (mode === EXECUTION_MODES.MICRO) {
+      return Object.freeze([
+        Object.freeze({
+          id: 'micro-1',
+          title: task.slice(0, 80),
+          description: task,
+          keywords: Object.freeze(keywords),
+          complexity: 'low',
+          changedFiles: Object.freeze([]),
+          acceptanceCriteria: Object.freeze(['编译通过', '相关测试通过']),
+          decisionNotes: Object.freeze(
+            skillNames.length > 0 ? [`参考 Skill: ${skillNames.join(', ')}`] : []
+          ),
+          skills: Object.freeze(skillNames),
+          skillContents: Object.freeze(skillData),
+          insightContents: Object.freeze(insightData),
+          risks: Object.freeze(['只允许进行与当前任务直接相关的最小修改']),
+          boundaries: Object.freeze(['不扩展范围', '不修改无关文件']),
+          agent: recommendedAgent ? recommendedAgent.name : null,
+          agentDisplayName: recommendedAgent ? recommendedAgent.displayName : null
+        })
+      ]);
+    }
+
     if (mode === EXECUTION_MODES.LIGHT) {
       return Object.freeze([
         Object.freeze({
@@ -1158,20 +1304,22 @@ export class PhaseExecute {
           complexity: 'medium',
           changedFiles: Object.freeze([]),
           acceptanceCriteria: Object.freeze(['编译通过', '相关测试通过']),
-          decisionNotes: Object.freeze([]),
+          decisionNotes: Object.freeze(
+            skillNames.length > 0 ? [`参考 Skill: ${skillNames.join(', ')}`] : []
+          ),
           skills: Object.freeze(skillNames),
           skillContents: Object.freeze(skillData),
           insightContents: Object.freeze(insightData),
-          agent: agentRecommendation ? agentRecommendation.agent.name : null
+          risks: Object.freeze(['控制改动范围在少量文件内', '保持现有行为不回归']),
+          boundaries: Object.freeze(['不做架构级重构', '不引入与任务无关的新能力']),
+          agent: recommendedAgent ? recommendedAgent.name : null,
+          agentDisplayName: recommendedAgent ? recommendedAgent.displayName : null
         })
       ]);
     }
 
-    // 完整模式：基于 Agent 能力生成多 Quest
     const quests = [];
-
-    // Quest 1: 分析和设计
-    const analysisAgent = agentRecommendation ? agentRecommendation.agent : null;
+    const analysisAgent = recommendedAgent;
     const hasPlanning = analysisAgent?.capabilities?.some((c) =>
       ['planning', 'design', 'architecture'].includes(c)
     );
@@ -1190,7 +1338,10 @@ export class PhaseExecute {
           skills: Object.freeze(skillNames),
           skillContents: Object.freeze(skillData),
           insightContents: Object.freeze(insightData),
+          risks: Object.freeze(['需求理解偏差会影响后续实现质量']),
+          boundaries: Object.freeze(['仅产出分析和方案，不在本关直接修改业务文件']),
           agent: analysisAgent.name,
+          agentDisplayName: analysisAgent.displayName,
           agentInvocation: Object.freeze({
             subagent_type: analysisAgent.name,
             description: `分析设计: ${task.slice(0, 50)}`,
@@ -1201,8 +1352,7 @@ export class PhaseExecute {
       );
     }
 
-    // Quest 2: 核心实现
-    const implAgent = agentRecommendation ? agentRecommendation.agent.name : null;
+    const implAgent = recommendedAgent ? recommendedAgent.name : null;
     quests.push(
       Object.freeze({
         id: `quest-${quests.length + 1}`,
@@ -1218,7 +1368,10 @@ export class PhaseExecute {
         skills: Object.freeze(skillNames),
         skillContents: Object.freeze(skillData),
         insightContents: Object.freeze(insightData),
+        risks: Object.freeze(['实现偏差可能导致回归', '需要在验证阶段确认边界条件']),
+        boundaries: Object.freeze(['仅实现当前任务，不扩展无关能力']),
         agent: implAgent,
+        agentDisplayName: recommendedAgent ? recommendedAgent.displayName : null,
         agentInvocation: Object.freeze({
           subagent_type: implAgent || 'general-purpose',
           description: `核心实现: ${task.slice(0, 50)}`,
@@ -1228,11 +1381,8 @@ export class PhaseExecute {
       })
     );
 
-    // Quest 3: 代码审查 (P1-4: 自动附带 performance-patterns Skill)
     if (mode === EXECUTION_MODES.FULL) {
-      // P2-1: 动态路由 code-reviewer
       const reviewAgent = await this._resolveDynamicAgent(['review', 'quality'], 'code-reviewer');
-      // P1-4: 注入 performance-patterns 到审查 Skill
       const perfSkill = skillData.find((s) => s.name === 'performance-patterns');
       const reviewSkillContents = perfSkill ? [perfSkill] : [];
       const reviewSkills = perfSkill ? ['performance-patterns'] : [];
@@ -1249,7 +1399,10 @@ export class PhaseExecute {
           decisionNotes: Object.freeze([]),
           skills: Object.freeze(reviewSkills),
           skillContents: Object.freeze(reviewSkillContents),
+          risks: Object.freeze(['遗漏关键问题会导致缺陷进入验证阶段']),
+          boundaries: Object.freeze(['聚焦审查和反馈，不做范围外重构']),
           agent: reviewAgent,
+          agentDisplayName: reviewAgent,
           agentInvocation: Object.freeze({
             subagent_type: reviewAgent,
             description: '代码审查',
@@ -1259,7 +1412,6 @@ export class PhaseExecute {
         })
       );
 
-      // Quest 4: 对抗性验证 (P2-1: 动态路由)
       const verifyAgent = await this._resolveDynamicAgent(
         ['verify', 'adversarial'],
         'verification'
@@ -1276,7 +1428,10 @@ export class PhaseExecute {
           decisionNotes: Object.freeze([]),
           skills: Object.freeze([]),
           skillContents: Object.freeze([]),
+          risks: Object.freeze(['边界问题可能在常规测试中遗漏']),
+          boundaries: Object.freeze(['聚焦验证，不扩展实现范围']),
           agent: verifyAgent,
+          agentDisplayName: verifyAgent,
           agentInvocation: Object.freeze({
             subagent_type: verifyAgent,
             description: '对抗性验证',
@@ -1287,7 +1442,6 @@ export class PhaseExecute {
         })
       );
 
-      // Quest 5 (条件): E2E 测试
       const hasE2E = this._detectE2ECapability();
       if (hasE2E) {
         quests.push(
@@ -1302,7 +1456,10 @@ export class PhaseExecute {
             decisionNotes: Object.freeze([]),
             skills: Object.freeze([]),
             skillContents: Object.freeze([]),
+            risks: Object.freeze(['关键流程缺少覆盖会降低交付可信度']),
+            boundaries: Object.freeze(['仅覆盖核心用户路径']),
             agent: 'e2e-runner',
+            agentDisplayName: 'e2e-runner',
             agentInvocation: Object.freeze({
               subagent_type: 'e2e-runner',
               description: 'E2E 测试',
@@ -1314,7 +1471,6 @@ export class PhaseExecute {
         );
       }
 
-      // P1-3: Quest (条件): 死代码清理（refactor/clean/dead-code 关键词触发）
       const hasRefactor = keywords.some((k) =>
         /refactor|clean|dead.?code|unused|冗余|清理|重构/i.test(k)
       );
@@ -1331,7 +1487,10 @@ export class PhaseExecute {
             decisionNotes: Object.freeze([]),
             skills: Object.freeze([]),
             skillContents: Object.freeze([]),
+            risks: Object.freeze(['误删仍被间接依赖的代码会引发回归']),
+            boundaries: Object.freeze(['仅移除确认安全的死代码']),
             agent: 'refactor-cleaner',
+            agentDisplayName: 'refactor-cleaner',
             agentInvocation: Object.freeze({
               subagent_type: 'refactor-cleaner',
               description: '死代码清理',
@@ -1411,6 +1570,9 @@ export class PhaseExecute {
             ? r.reason?.message || String(r.reason)
             : r.value.error || 'Unknown error';
         failed.push({ questId: batch[i].id, error: errMsg });
+        if (r.status === 'fulfilled' && r.value.executionResult) {
+          executionResults.push({ quest: batch[i], executionResult: r.value.executionResult });
+        }
       }
     }
     return { completed, failed, executionResults };
@@ -1457,12 +1619,23 @@ export class PhaseExecute {
     }
 
     let lastError = null;
+    let lastExecutionResult = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const executeResult = await this._executeQuest(quest, modelRoute, questEngine, ctx);
         if (executeResult.success === false) {
+          lastExecutionResult = executeResult.executionResult || {
+            success: false,
+            status: 'failed',
+            summary: 'Quest execution did not complete',
+            changedFiles: [],
+            artifacts: null,
+            error: 'Quest execution did not complete'
+          };
           throw new Error(
-            executeResult.executionResult?.error || 'Quest execution did not complete'
+            lastExecutionResult.error ||
+              lastExecutionResult.summary ||
+              'Quest execution did not complete'
           );
         }
         questEngine.transition(FLOW_EVENTS.EXECUTE_DONE);
@@ -1497,7 +1670,15 @@ export class PhaseExecute {
     return {
       success: false,
       questId: quest.id,
-      error: lastError?.message || 'All retries exhausted'
+      error: lastError?.message || 'All retries exhausted',
+      executionResult: lastExecutionResult || {
+        success: false,
+        status: 'failed',
+        summary: lastError?.message || 'All retries exhausted',
+        changedFiles: [],
+        artifacts: null,
+        error: lastError?.message || 'All retries exhausted'
+      }
     };
   }
 

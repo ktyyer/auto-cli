@@ -264,6 +264,7 @@ describe('WorkflowOrchestrator', () => {
 
     it('should set execution mode based on task', async () => {
       vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
       vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
       vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
       vi.spyOn(orchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
@@ -274,6 +275,7 @@ describe('WorkflowOrchestrator', () => {
 
     it('should return gate_failed for micro mode without triggering learn', async () => {
       vi.spyOn(orchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(orchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) => ctx);
       vi.spyOn(orchestrator.phaseExecute, 'runMicroExecute').mockImplementation(async (ctx) => ctx);
       vi.spyOn(orchestrator.phaseVerify, 'run').mockImplementation(async (ctx) =>
         updatePhaseContext(ctx, {
@@ -288,6 +290,49 @@ describe('WorkflowOrchestrator', () => {
       expect(result.status).toBe('gate_failed');
       expect(learnSpy).not.toHaveBeenCalled();
       expect(orchestrator.getFlowState()).toBe('idle');
+    });
+
+    it('should emit pre-execution summary before micro execution starts', async () => {
+      const events = [];
+      const summary = Object.freeze({
+        task: 'fix typo in readme',
+        mode: 'micro',
+        reasoning: Object.freeze({
+          taskUnderstanding: 'fix typo in readme'
+        }),
+        quests: Object.freeze([
+          Object.freeze({ id: 'micro-1', title: 'Fix typo', complexity: 'low' })
+        ])
+      });
+      const onPreExecutionSummary = vi.fn((emittedSummary, ctx) => {
+        events.push('summary');
+        expect(emittedSummary).toStrictEqual(summary);
+        expect(ctx.preExecutionSummary).toStrictEqual(summary);
+      });
+      const callbackOrchestrator = new WorkflowOrchestrator({
+        projectDir: '/tmp/test-project',
+        skillsDir: '/tmp/test-skills',
+        onPreExecutionSummary
+      });
+
+      vi.spyOn(callbackOrchestrator.phaseDiscover, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(callbackOrchestrator.phaseExecute, 'runReason').mockImplementation(async (ctx) =>
+        updatePhaseContext(ctx, { preExecutionSummary: summary })
+      );
+      vi.spyOn(callbackOrchestrator.phaseExecute, 'runMicroExecute').mockImplementation(
+        async (ctx) => {
+          events.push('execute');
+          return ctx;
+        }
+      );
+      vi.spyOn(callbackOrchestrator.phaseVerify, 'run').mockImplementation(async (ctx) => ctx);
+      vi.spyOn(callbackOrchestrator.phaseLearn, 'run').mockImplementation(async (ctx) => ctx);
+
+      const result = await callbackOrchestrator.run('fix typo in readme');
+
+      expect(onPreExecutionSummary).toHaveBeenCalledTimes(1);
+      expect(events).toEqual(['summary', 'execute']);
+      expect(result.preExecutionSummary).toStrictEqual(summary);
     });
 
     it('should return gate_failed for light mode without triggering learn', async () => {
@@ -501,7 +546,11 @@ describe('WorkflowOrchestrator', () => {
 
       await orchestrator.run('fix typo');
 
-      const statusResult = await orchestrator.runAutoAction('status', {}, { dir: '/tmp/test-project' });
+      const statusResult = await orchestrator.runAutoAction(
+        'status',
+        {},
+        { dir: '/tmp/test-project' }
+      );
 
       expect(statusResult.runtime.flowEngine.state).toBe('idle');
       expect(statusResult.summary.completedQuestsCount).toBe(0);
@@ -1130,6 +1179,15 @@ describe('WorkflowOrchestrator - _executeQuest builds executionPlan', () => {
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
     expect(orchestrator.phaseContext.failedQuests[0].questId).toBe('q_failed_queue');
     expect(orchestrator.phaseContext.failedQuests[0].error).toBe('Executor returned failed status');
+    expect(orchestrator.phaseExecute.buildExecutionSummary(orchestrator.phaseContext)).toEqual([
+      {
+        questId: 'q_failed_queue',
+        success: false,
+        summary: 'Executor returned failed status',
+        changedFiles: [],
+        error: 'Executor returned failed status'
+      }
+    ]);
   });
 
   it('should respect 50 message limit in accumulator', async () => {
@@ -1321,7 +1379,7 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
     expect(result.insights).toBeDefined();
   });
 
-  it('should complete micro mode workflow (PHASE 1 + micro execute + verify + learn)', async () => {
+  it('should complete micro mode workflow after reason summary and verify + learn', async () => {
     orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
       success: true,
       executionPlan: {},
@@ -1329,15 +1387,152 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
       executionResult: { success: true, changedFiles: [], summary: 'ok', error: null }
     });
 
+    const reasonSpy = vi.spyOn(orchestrator.phaseExecute, 'runReason');
+    const summarySpy = vi.spyOn(orchestrator, '_emitPreExecutionSummary');
     const result = await orchestrator.run('fix typo in readme');
 
     expect(result.status).toBe('completed');
     expect(result.mode).toBe('micro');
-    // P0-2: Micro mode now executes tasks directly
+    expect(reasonSpy).toHaveBeenCalledTimes(1);
+    expect(summarySpy).toHaveBeenCalledTimes(1);
+    expect(result.preExecutionSummary).toBeTruthy();
+    expect(result.preExecutionSummary.mode).toBe('micro');
+    expect(result.preExecutionSummary.quests).toHaveLength(1);
+    expect(result.executionSummary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          questId: 'micro-1',
+          success: true,
+          summary: 'ok',
+          changedFiles: [],
+          error: null
+        })
+      ])
+    );
     expect(result.insights).toBeDefined();
   });
 
-  it('should complete light mode workflow (PHASE 1, 2, 4, 6)', async () => {
+  it('should return gate_failed when the main micro quest fails', async () => {
+    orchestrator.phaseExecute._executeQuest = vi.fn().mockResolvedValue({
+      success: false,
+      executionPlan: {},
+      agentInvocation: {},
+      executionResult: {
+        success: false,
+        status: 'failed',
+        summary: 'Micro execution failed',
+        changedFiles: [],
+        error: 'Micro execution failed'
+      }
+    });
+    const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+    const result = await orchestrator.run('fix typo in readme');
+
+    expect(result.status).toBe('gate_failed');
+    expect(result.failedQuests).toHaveLength(1);
+    expect(result.failedQuests[0].questId).toBe('micro-1');
+    expect(result.failedQuests[0].error).toContain('Micro execution failed');
+    expect(result.executionSummary).toHaveLength(1);
+    expect(result.executionSummary[0]).toEqual(
+      expect.objectContaining({
+        questId: 'micro-1',
+        success: false,
+        changedFiles: []
+      })
+    );
+    expect(result.executionSummary[0].summary).toContain('Micro execution failed');
+    expect(result.executionSummary[0].error).toContain('Micro execution failed');
+    expect(learnSpy).not.toHaveBeenCalled();
+  });
+
+  it('should return gate_failed when the main light quest fails', async () => {
+    mockAgentExecution(orchestrator, {
+      success: false,
+      status: 'failed',
+      summary: 'Light execution failed',
+      error: 'Light execution failed'
+    });
+    const learnSpy = vi.spyOn(orchestrator.phaseLearn, 'run');
+
+    const result = await orchestrator.run('add error handling to auth.js');
+
+    expect(result.status).toBe('gate_failed');
+    expect(result.failedQuests).toEqual([
+      {
+        questId: 'light-1',
+        error: 'Light execution failed'
+      }
+    ]);
+    expect(result.executionSummary).toEqual([
+      {
+        questId: 'light-1',
+        success: false,
+        summary: 'Light execution failed',
+        changedFiles: [],
+        error: 'Light execution failed'
+      }
+    ]);
+    expect(learnSpy).not.toHaveBeenCalled();
+  });
+
+  it('should return gate_failed when a full workflow main quest fails', async () => {
+    orchestrator.phaseExecute._executeSingleQuest = vi.fn().mockImplementation(async (quest) => {
+      if (quest.id === 'quest-1') {
+        return {
+          success: false,
+          questId: 'quest-1',
+          error: 'Full execution failed',
+          executionResult: {
+            success: false,
+            status: 'failed',
+            summary: 'Full execution failed',
+            changedFiles: [],
+            artifacts: null,
+            error: 'Full execution failed'
+          }
+        };
+      }
+
+      return {
+        success: true,
+        questId: quest.id,
+        executionResult: {
+          success: true,
+          status: 'completed',
+          summary: `${quest.id} completed`,
+          changedFiles: [],
+          artifacts: null,
+          error: null
+        }
+      };
+    });
+
+    const result = await orchestrator.run('refactor authentication system');
+
+    expect(result.status).toBe('gate_failed');
+    expect(result.failedQuests).toEqual([
+      {
+        questId: 'quest-1',
+        error: 'Full execution failed'
+      }
+    ]);
+    expect(result.executionSummary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          questId: 'quest-1',
+          success: false,
+          summary: 'Full execution failed',
+          changedFiles: [],
+          error: 'Full execution failed'
+        })
+      ])
+    );
+  });
+
+  it('should complete light mode workflow (PHASE 1, 2, 3, 4, 6)', async () => {
+    mockAgentExecution(orchestrator);
+
     const result = await orchestrator.run('add error handling to auth.js');
 
     expect(result.status).toBe('completed');
@@ -1411,13 +1606,37 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
           failedQuests: [],
           questPlans: expect.any(Array),
           agentInvocations: expect.any(Array),
-          executionSummary: expect.any(Array)
+          executionSummary: [
+            expect.objectContaining({
+              questId: expect.stringMatching(/^pending-/),
+              success: true,
+              summary: 'Executed mock agent',
+              changedFiles: ['docs/CODEMAPS/auth.md'],
+              error: null
+            })
+          ]
         })
       );
+      expect(result.executionSummary).toEqual([
+        {
+          questId: 'micro-1',
+          success: true,
+          summary: 'Executed mock agent',
+          changedFiles: ['README.md'],
+          error: null
+        },
+        {
+          questId: expect.stringMatching(/^pending-/),
+          success: true,
+          summary: 'Executed mock agent',
+          changedFiles: ['docs/CODEMAPS/auth.md'],
+          error: null
+        }
+      ]);
       expect(result.pendingExecution.questPlans).toHaveLength(1);
       expect(result.pendingExecution.agentInvocations).toHaveLength(1);
       expect(microExecuteSpy).toHaveBeenCalledTimes(1);
-      expect(reasonSpy).not.toHaveBeenCalled();
+      expect(reasonSpy).toHaveBeenCalledTimes(1);
       expect(executeSpy).toHaveBeenCalledTimes(1);
       expect(commitSpy).not.toHaveBeenCalled();
       expect(pendingOrchestrator.phaseContext.pendingInvocations).toEqual([]);
@@ -1478,16 +1697,41 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
         expect.arrayContaining([expect.stringMatching(/^pending-/)])
       );
       expect(result.failedQuests).toEqual([]);
-      expect(result.questPlans).toHaveLength(1);
-      expect(result.agentInvocations).toHaveLength(1);
+      expect(result.questPlans).toHaveLength(2);
+      expect(result.agentInvocations).toHaveLength(2);
       expect(result.pendingExecution).toEqual(
         expect.objectContaining({
           completedQuests: expect.arrayContaining([expect.stringMatching(/^pending-/)]),
           failedQuests: [],
           questPlans: expect.any(Array),
-          agentInvocations: expect.any(Array)
+          agentInvocations: expect.any(Array),
+          executionSummary: [
+            expect.objectContaining({
+              questId: expect.stringMatching(/^pending-/),
+              success: true,
+              summary: 'Executed mock agent',
+              changedFiles: [],
+              error: null
+            })
+          ]
         })
       );
+      expect(result.executionSummary).toEqual([
+        {
+          questId: 'light-1',
+          success: true,
+          summary: 'Executed mock agent',
+          changedFiles: [],
+          error: null
+        },
+        {
+          questId: expect.stringMatching(/^pending-/),
+          success: true,
+          summary: 'Executed mock agent',
+          changedFiles: [],
+          error: null
+        }
+      ]);
       expect(result.pendingExecution.questPlans).toHaveLength(1);
       expect(result.pendingExecution.agentInvocations).toHaveLength(1);
       expect(microExecuteSpy).not.toHaveBeenCalled();
@@ -1558,6 +1802,7 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
     );
 
     try {
+      const learnSpy = vi.spyOn(pendingOrchestrator.phaseLearn, 'run');
       const result = await pendingOrchestrator.run('fix typo in readme');
 
       expect(result.status).toBe('gate_failed');
@@ -1574,10 +1819,36 @@ describe('WorkflowOrchestrator - full workflow execution', () => {
             expect.objectContaining({
               error: 'Pending invocation failed'
             })
+          ],
+          executionSummary: [
+            expect.objectContaining({
+              questId: expect.stringMatching(/^pending-/),
+              success: false,
+              summary: 'Pending invocation failed',
+              changedFiles: [],
+              error: 'Pending invocation failed'
+            })
           ]
         })
       );
+      expect(result.executionSummary).toEqual([
+        {
+          questId: 'micro-1',
+          success: true,
+          summary: 'Executed mock agent',
+          changedFiles: [],
+          error: null
+        },
+        {
+          questId: expect.stringMatching(/^pending-/),
+          success: false,
+          summary: 'Pending invocation failed',
+          changedFiles: [],
+          error: 'Pending invocation failed'
+        }
+      ]);
       expect(result.verificationActions).toHaveLength(1);
+      expect(learnSpy).not.toHaveBeenCalled();
       expect(result.error).toBeInstanceOf(Error);
       expect(String(result.error.message)).toContain('1 pending invocation(s) failed');
     } finally {
@@ -1883,6 +2154,7 @@ describe('WorkflowOrchestrator - _buildResult edge cases', () => {
       insights: [{ task: 'test' }],
       tokenBudget: orchestrator.phaseContext.tokenBudget,
       contextStatus: 'ok',
+      preExecutionSummary: null,
       sessionSummary: null,
       resumeDirective: null
     });
@@ -3236,6 +3508,15 @@ describe('WorkflowOrchestrator - _runMicroExecute (P0-2)', () => {
 
     expect(orchestrator.phaseContext.completedQuests).toContain('micro-1');
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(0);
+    expect(orchestrator.phaseExecute.buildExecutionSummary(orchestrator.phaseContext)).toEqual([
+      {
+        questId: 'micro-1',
+        success: true,
+        summary: 'ok',
+        changedFiles: [],
+        error: null
+      }
+    ]);
   });
 
   it('should record failed quest on execution error', async () => {
@@ -3248,6 +3529,17 @@ describe('WorkflowOrchestrator - _runMicroExecute (P0-2)', () => {
     expect(orchestrator.phaseContext.completedQuests).toHaveLength(0);
     expect(orchestrator.phaseContext.failedQuests).toHaveLength(1);
     expect(orchestrator.phaseContext.failedQuests[0].questId).toBe('micro-1');
+    const summary = orchestrator.phaseExecute.buildExecutionSummary(orchestrator.phaseContext);
+    expect(summary).toHaveLength(1);
+    expect(summary[0]).toEqual(
+      expect.objectContaining({
+        questId: 'micro-1',
+        success: false,
+        changedFiles: []
+      })
+    );
+    expect(summary[0].summary).toContain('Execution failed');
+    expect(summary[0].error).toContain('Execution failed');
   });
 
   it('should consume tokens and record context', async () => {
