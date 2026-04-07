@@ -1,10 +1,10 @@
 ---
-description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 + 验证 + 提交 + 知识沉淀
+description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 + 验证 + 总结 + 知识沉淀
 ---
 
 # /auto — 智能超级命令
 
-> 上下文扫描 → Quest设计 → 逐关执行 + 验证 + 提交 + 知识沉淀
+> 上下文扫描 → Quest设计 → 逐关执行 + 验证 + 总结 + 知识沉淀
 
 ---
 
@@ -12,27 +12,78 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 
 根据任务复杂度自动选择：
 
-| 条件                  | 模式         | 执行路径                                                                                  |
-| --------------------- | ------------ | ----------------------------------------------------------------------------------------- |
-| 0文件变更（纯探索）   | **探索模式** | PHASE 1 → PHASE 2（思考摘要 + 单关探索 Quest，0 changedFiles）→ 直接回答 → PHASE 6        |
-| 1文件 且 <=10行变更   | **微型模式** | PHASE 1 → PHASE 2（完整思考摘要 + 单关 Quest）→ 微型执行 → PHASE 4 → PHASE 6              |
-| <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → PHASE 2（完整思考摘要 + 精简 Quest）→ 直接执行 → PHASE 4 → PHASE 6              |
-| >3文件 或 有架构变更  | **完整模式** | PHASE 1 → PHASE 2（完整思考摘要 + 完整 Quest Map）→ PHASE 3 → PHASE 4 → PHASE 5 → PHASE 6 |
+| 条件                  | 模式         | 执行路径                                                                                     |
+| --------------------- | ------------ | -------------------------------------------------------------------------------------------- |
+| 0文件变更（纯探索）   | **探索模式** | PHASE 1 → PHASE 2（思考摘要 + 单关探索 Quest）→ 展示 Quest → 回答 → PHASE 5（总结）→ PHASE 6 |
+| 1文件 且 <=10行变更   | **微型模式** | PHASE 1 → PHASE 2（完整思考摘要 + 单关 Quest）→ 微型执行 → PHASE 4 → PHASE 5 → PHASE 6       |
+| <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → PHASE 2（完整思考摘要 + 精简 Quest）→ 直接执行 → PHASE 4 → PHASE 5 → PHASE 6       |
+| >3文件 或 有架构变更  | **完整模式** | PHASE 1 → PHASE 2（完整思考摘要 + 完整 Quest Map）→ PHASE 3 → PHASE 4 → PHASE 5 → PHASE 6    |
+
+---
+
+## 自检机制
+
+每个 PHASE 开始前，必须确认上一 PHASE 的产出存在。不存在则回退执行上一 PHASE。
+
+| PHASE   | 前置产出检查                           |
+| ------- | -------------------------------------- |
+| PHASE 2 | TodoWrite 已创建 + DISCOVER 报告已输出 |
+| PHASE 3 | Quest 卡片已向用户展示                 |
+| PHASE 4 | 代码变更已写入（探索模式除外）         |
+| PHASE 5 | 验证报告已输出（探索模式除外）         |
+| PHASE 6 | 完成总结已输出                         |
 
 ---
 
 ## PHASE 1: DISCOVER — 扫描 + 能力清单
 
-1. 检测技术栈（package.json / pom.xml / go.mod 等）
-2. 列出可用能力（commands, agents, skills, hooks 元数据）
-3. 收集源码结构（优先读 REPO_MAP.md）
-4. Agent 匹配：使用 `/auto:route` 路由到合适的 Agent
-5. 上下文窗口检测 → 若 OVERFLOW 则生成会话摘要 + 续接指令
-6. **Hook 缺失检测**: 检查 hooks.json 配置并记录状态；默认只读扫描，不隐式写入项目文件
-7. **环境快检**: 调用 `_runDoctorCheck()` 检查 Node.js 版本、依赖安装、Git 状态。结果记录到 `doctorResult`，不自动执行 `npm install`
-8. **CLAUDE.md 检测**: 检查项目根目录是否有 CLAUDE.md。缺失时记录到 doctor issues，并在后续工作流中给出补齐建议
+### 1.1 缓存检查
 
-**门禁**：输出能力健康检查报告后 → 进入 PHASE 2。禁止跳过 PHASE 2 直接编辑代码。
+```bash
+# 检查能力快照缓存是否存在且在 24h 内
+test -f .auto/cache/capability-snapshot.json && \
+  find .auto/cache/capability-snapshot.json -mtime -1 -exec echo "CACHE_HIT" \;
+```
+
+命中缓存 → 读取快照，跳到 1.4 输出报告。
+未命中 → 执行 1.2-1.3 完整扫描。
+
+### 1.2 技术栈 + 能力清单（并行扫描）
+
+```
+Glob("REPO_MAP.md") → 如存在则 Read（跳过源码扫描）
+Glob("package.json") / Glob("pom.xml") / Glob("go.mod") / Glob("requirements.txt") / Glob("Cargo.toml")
+  → 匹配任一即确定技术栈 → Read 获取依赖和 scripts
+Glob("CLAUDE.md") → Read（如存在）
+
+Glob("~/.claude/commands/auto/*.md") → 提取子命令列表
+Glob("~/.claude/agents/*.md") → Grep 提取 frontmatter 元数据（name, description）
+Glob("~/.claude/skills/*.md") → Grep 提取标题和描述
+Read("~/.claude/hooks/hooks.json") → 统计 hook 类型数量
+```
+
+### 1.3 环境快检
+
+```bash
+node --version 2>/dev/null || echo "Node.js: NOT_FOUND"
+git status --porcelain 2>/dev/null | head -5 || echo "Git: NOT_REPO"
+test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
+test -d node_modules && echo "deps: INSTALLED" || echo "deps: MISSING"
+```
+
+### 1.4 Agent 路由
+
+使用 `/auto:route` 路由到合适的 Agent，输出推荐 Agent + 回退链。
+
+### 1.5 写入能力快照
+
+```bash
+mkdir -p .auto/cache
+# 将扫描结果写入 .auto/cache/capability-snapshot.json
+# 包含: tech_stack, capabilities, environment, timestamp
+```
+
+**门禁**：必须向用户输出 DISCOVER 报告后 → 进入 PHASE 2。禁止跳过 PHASE 2 直接编辑代码。
 
 ```
 TodoWrite([
@@ -43,22 +94,154 @@ TodoWrite([
 ])
 ```
 
+### DISCOVER 输出模板（必须输出，不可省略）
+
+```markdown
+## DISCOVER 扫描结果
+
+### 技术栈检测
+
+- 语言/框架：[检测结果]
+- 构建工具：[检测结果]
+
+### 能力清单
+
+| 类型     | 数量 | 列表            |
+| -------- | ---- | --------------- |
+| Commands | {n}  | [command names] |
+| Agents   | {n}  | [agent names]   |
+| Skills   | {n}  | [skill names]   |
+| Hooks    | {n}  | [hook types]    |
+
+### 环境快检
+
+| 检查项    | 状态                 |
+| --------- | -------------------- |
+| Node.js   | v{version} PASS/FAIL |
+| 依赖安装  | INSTALLED/MISSING    |
+| Git 状态  | CLEAN/DIRTY          |
+| CLAUDE.md | EXISTS/MISSING       |
+
+### 执行模式判定
+
+**模式**：[探索/微型/轻量/完整]
+**理由**：[判定依据]
+```
+
 ---
 
-## PHASE 2: REASON — Quest 设计 + Skill 注入
+## PHASE 2: REASON — Quest 设计 + Skill 注入 + 知识检索
 
-调用 quest-designer Agent，传递：用户需求、执行模式、技术栈、能力清单、源码路径。
+### 2.1 知识检索（读回历史经验）
 
-- **探索模式**：跳过 quest-designer，生成思考摘要与单关探索 Quest（0 changedFiles，acceptanceCriteria 为回答完整性），直接回答用户问题，不进入执行/验证/提交阶段。
-- **微型模式**：跳过 quest-designer，先生成完整思考摘要与单关 Quest，再自动进入执行。
-- **轻量模式**：quest-designer 输出精简版（影响文件 + 执行顺序 + 风险评估），仍完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行。
-- **完整模式**：quest-designer 输出完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
+在分析前先搜索相关历史知识，实现闭环：
 
-所有模式都必须先展示结构化思考摘要与 Quest 信息，再自动进入下一阶段，不等待用户确认。
+```bash
+# 搜索历史经验（每个分类最多 3 条）
+grep -r -l "[用户需求关键词]" .auto/insights/ 2>/dev/null | head -5
+# 对匹配文件 Read 前 50 行，提取相关经验摘要
+```
+
+将搜索到的历史经验注入 quest-designer 的上下文。
+
+### 2.2 Skill 匹配
+
+```bash
+# 关键词匹配可用 Skill
+grep -l "[任务关键词]" ~/.claude/skills/*.md 2>/dev/null
+```
+
+匹配的 Skill 名称注入 Quest 的 `skills` 字段。
+
+### 2.3 按模式生成 Quest
+
+- **探索模式**：跳过 quest-designer Agent 调用，自行生成思考摘要与单关探索 Quest（0 changedFiles，acceptanceCriteria 为回答完整性），按下方模板展示分析结果后回答用户问题，不进入执行/验证阶段。
+- **微型模式**：跳过 quest-designer Agent 调用，自行生成完整思考摘要与单关 Quest，再自动进入执行。
+- **轻量模式**：调用 quest-designer Agent 输出精简版（影响文件 + 执行顺序 + 风险评估），完整展示后再执行。
+- **完整模式**：调用 quest-designer Agent 输出完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
+
+### 2.4 quest-designer 调用上下文模板
+
+轻量/完整模式调用 quest-designer Agent 时，必须组装以下上下文：
+
+```
+Agent({
+  subagent_type: "quest-designer",
+  prompt: "
+【用户需求】[原始需求描述]
+【技术栈】[语言+框架]
+【项目规范】[CLAUDE.md 存在/缺失]
+【能力清单】
+  Commands: [name + description]
+  Agents: [name + description]
+  Skills: [name + description]
+  Hooks: [类型数量]
+【现有代码文件】[源码路径列表]
+【历史经验】（来自 .auto/insights/）
+  [匹配的历史经验摘要，每条最多 200 字]
+【Router 推荐】主 Agent：<name> | 回退链：<fallbacks>
+  "
+})
+```
+
+**门禁**：必须向用户输出 Quest 卡片后 → 进入下一阶段。禁止在 PHASE 2 内部消化 Quest 后直接回答或编辑代码。Quest 卡片是面向用户的输出，不是内部推理步骤。
 
 每个 Quest 包含：`id, title, description, keywords, complexity, changedFiles, acceptanceCriteria, decisionNotes, skills, agent`。
 
-**Skill 注入**: `_extractKeywords()` 提取任务关键词 → `skillIndexer.search()` 匹配 → 匹配的 Skill 名称注入 Quest 的 `skills` 字段。
+### 探索模式输出模板（必须输出，不可省略）
+
+```markdown
+## 探索分析
+
+### 任务理解
+
+[一句话说明任务目标]
+
+### 分析路径
+
+- [扫描了哪些文件/目录]
+- [关注了哪些关键代码段]
+
+### 历史经验（如有）
+
+- [来自 .auto/insights/ 的相关经验摘要]
+
+### Quest explore-1：[探索目标]
+
+- 描述：[具体探索动作]
+- 关注文件：[文件路径列表]
+- 验收标准：回答完整覆盖用户问题
+```
+
+### 微型/轻量模式输出模板（必须输出，不可省略）
+
+```markdown
+## 执行前摘要：[需求摘要]
+
+### 任务理解
+
+[一句话说明任务目标]
+
+### 模式判定理由
+
+[为什么是微型/轻量模式]
+
+### 风险与边界
+
+- [关键风险]
+- [不可越界范围]
+
+### Quest light-1：[目标]
+
+- 描述：[具体动作]
+- 影响文件：[文件路径列表]
+- 验收标准：[可验证结果]
+- 决策笔记：[为什么这样做]
+- 预判坑点：
+  1. [基于代码分析的具体坑点]
+```
+
+微型模式至少输出一关 Quest，不能跳过 Quest 展示。
 
 ---
 
@@ -70,14 +253,50 @@ TodoWrite([
 | 6-15 关 | Subagent 并行 | 2-3x       |
 | 15+ 关  | Agent Teams   | 3-10x      |
 
-每关流程：Read 代码 → Write/Edit → 补 import → 编译验证 → 增量提交。
+每关流程：Read 代码 → Write/Edit → 补 import → 编译验证。
 失败：回滚 → 修复 → 重试（最多 2 次）。
-Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
+Quest 间检查上下文窗口 → 若接近溢出则生成会话摘要 + 续接指令。
 每关完成后：
 
-- 记录合成消息到 `_messageAccumulator`（上限 50 条）
-- **Agent 结果持久化**: `_persistAgentResult()` 记录到 MemoryManager（后续会话可查询）
-- **RepoIndexer 搜索**: architect 等 Agent 使用 `_searchRepoIndex()` 替代手动 Glob/Read
+- 将执行结果记录到 `.auto/memory/quest-{id}.json`（后续会话可查询）
+- 使用 `Grep` / `Glob` 替代手动搜索相关代码
+
+### 逐关执行输出要求（强制，不可省略）
+
+每关完成后 **必须** 向用户输出进度卡片：
+
+```markdown
+## Quest [id]：[title] — [PASS/FAIL]
+
+### 执行结果
+
+| 操作          | 文件       | 状态      |
+| ------------- | ---------- | --------- |
+| CREATE/MODIFY | [文件路径] | OK/FAILED |
+
+### 验证结果
+
+| #   | 验证点     | 命令   | 结果      |
+| --- | ---------- | ------ | --------- |
+| 1   | [验收标准] | [命令] | PASS/FAIL |
+
+### 进度
+
+已完成：[n]/[total] 关 | 成功：[n] | 失败：[n]
+```
+
+**失败/重试时额外输出**：
+
+```markdown
+### Quest [id] 执行失败 — 正在重试 (1/2)
+
+**错误**：[错误描述]
+**修复策略**：[策略描述]
+```
+
+**TodoWrite 同步要求**：每关开始时将该 Quest 的 TodoWrite 状态设为 `in_progress`，完成时设为 `completed`，失败设为 `pending`。
+
+**门禁**：每关进度卡片输出后 → 才能开始下一关。所有关完成并输出总览卡片后 → 进入 PHASE 4。
 
 ---
 
@@ -90,37 +309,178 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 | 轻量 | 编译通过 + 相关测试通过 + lint 无错             |
 | 完整 | 编译/构建 → 全量测试 → 覆盖率 >= 80% → 安全扫描 |
 
-失败自动路由: 每个失败 Quest 自动路由到 `build-error-resolver` agent，存储到 `verificationActions` 供 Claude Code 参考。
+失败自动路由: 每个失败 Quest 自动路由到 `build-error-resolver` agent。
 
-**验证结果持久化**: `last_verification` 写入 session memory，后续会话可查询上次验证状态。
+### 验证执行
+
+```bash
+# 按模式选择验证命令
+# 微型: npm test / mvn test / go test
+# 轻量: npm test && npm run lint
+# 完整: npm run build && npm test -- --coverage && npm run lint && npm audit
+```
 
 失败处理: 修复(1) → 替代方案(2) → `git checkout -- .` 回滚(3)
 
+### 验证输出模板（必须输出，不可省略）
+
+```markdown
+## 验证报告
+
+### 验证模式：[探索/微型/轻量/完整]
+
+### 验证结果
+
+| #   | 验证项    | 命令/方法 | 结果      | 详情             |
+| --- | --------- | --------- | --------- | ---------------- |
+| 1   | 编译/构建 | [命令]    | PASS/FAIL | [输出摘要]       |
+| 2   | 单元测试  | [命令]    | PASS/FAIL | [通过率]         |
+| 3   | 覆盖率    | [命令]    | [n]%      | >= 80% PASS/FAIL |
+| 4   | Lint      | [命令]    | PASS/FAIL | [错误数]         |
+| 5   | 安全扫描  | [方法]    | PASS/FAIL | [发现数]         |
+
+### 总结
+
+- 通过：[n] 项 / 失败：[n] 项
+- 判定：ALL PASS / HAS FAILURES
+```
+
+**失败时额外输出**：
+
+```markdown
+### 验证失败处理
+
+| #   | 失败项   | 修复状态             |
+| --- | -------- | -------------------- |
+| 1   | [验证项] | 修复中/已修复/已回滚 |
+```
+
+**门禁**：必须向用户输出验证报告后 → 进入 PHASE 5。全部通过或经修复后通过才能继续；3 次修复仍失败 → 回滚并终止，输出失败报告。
+
 ---
 
-## PHASE 5: COMMIT — 自动提交（按模式）
+## PHASE 5: SUMMARIZE — 完成阶段总结
 
-- **探索模式**: 无代码变更，跳过提交阶段。
-- **完整模式**: 所有 Quest 完成并通过验证后，在 PHASE 5 统一执行一次提交。
-- **轻量/微型模式**: 所有任务完成后统一提交一次。
+所有 Quest 执行并验证完成后，向用户输出本次工作流的变更总结。不自动提交，由用户决定是否提交。
 
-提交内容基于本次工作流累计的变更文件与决策信息生成，不保证每个 Quest 单独提交。
+### 完成总结输出模板（必须输出，不可省略）
+
+```markdown
+## 完成总结
+
+### 执行概览
+
+- **模式**：[探索/微型/轻量/完整]
+- **完成 Quest**：[n]/[total]
+- **验证结果**：ALL PASS / [n] FAILURES
+
+### 变更文件清单
+
+| #   | 文件       | 操作                 | 说明       |
+| --- | ---------- | -------------------- | ---------- |
+| 1   | [文件路径] | CREATE/MODIFY/DELETE | [变更摘要] |
+
+### 统计
+
+- 变更文件：[n] 个 | 新增：[+]行 | 删除：[-]行
+```
+
+**探索模式（无代码变更）输出**：
+
+```markdown
+## 完成总结
+
+- **模式**：探索
+- **变更文件**：0（纯阅读/分析）
+```
+
+**门禁**：必须向用户输出完成总结后 → 进入 PHASE 6。如用户要求提交，再执行 git commit。
 
 ---
 
 ## PHASE 6: LEARN — 知识沉淀
 
-1. **两轮记忆提取**: 从 `_messageAccumulator` 中自动提取用户偏好、错误修正、项目模式（上限 5 条）
-2. **知识整理**: AutoDream 调度器执行 Orient → Gather → Consolidate → Prune
-3. **经验持久化**: 将执行经验自动保存到 `.auto/insights/`
-4. **架构变更检测**: `_detectArchitectureChange()` → 记录 `pending_doc_update` 到 session memory → 触发 doc-updater 更新文档和 CODEMAPS
-5. **Git 历史分析**: `_analyzeGitPatterns()` 分析提交约定、文件联动、热点文件
-6. **DELETION_LOG**: `_generateDeletionLog()` 持久化删除记录到 `docs/DELETION_LOG.json`
-7. **会话摘要**: 若本次执行生成了会话摘要，将 `sessionSummary` + `resumeDirective` 包含在结果中
+### 6.1 收集执行摘要
 
-下一会话可使用 `resumeDirective` 自动续接。
+从 TodoWrite 获取执行结果，提取已完成和失败的 Quest。
 
-如改了核心架构 → `/auto:update-codemaps`。
+### 6.2 保存经验到知识库
+
+将经验按三类保存到 `.auto/insights/` 目录：
+
+**踩坑记录**（失败 Quest）：
+
+```bash
+mkdir -p .auto/insights
+# 写入 .auto/insights/traps.md（追加模式）
+# 包含: 时间、失败关卡、失败详情、教训
+```
+
+**成功模式**（完成 Quest）：
+
+```bash
+# 写入 .auto/insights/patterns.md（追加模式）
+# 包含: 时间、完成关卡、关键模式
+```
+
+**架构决策**（涉及架构变更的 Quest）：
+
+```bash
+# 写入 .auto/insights/decisions.md（追加模式）
+# 包含: 时间、变更内容、决策理由
+```
+
+### 6.3 更新项目记忆
+
+将本次执行摘要追加到项目记忆（Claude Code 的 Memory 系统），格式：
+
+```markdown
+- [{日期}] {任务摘要}: {n} 关完成, {n} 关失败, 关键经验: [摘要]
+```
+
+### 6.4 架构变更检测
+
+```bash
+# 对比 REPO_MAP.md 与实际源码结构
+# 如检测到架构变更 → 记录 pending_doc_update → 建议运行 /auto:update-codemaps
+```
+
+### 6.5 Git 模式分析
+
+调用 `/auto:learn` 分析提交约定、热点文件和文件联动。
+
+**门禁**：必须向用户输出工作流总结后 → 工作流结束。这是面向用户的最终交付物，不可省略。
+
+### 工作流总结输出模板（必须输出，不可省略）
+
+```markdown
+## 工作流完成
+
+### 执行概览
+
+| 指标       | 值                      |
+| ---------- | ----------------------- |
+| 执行模式   | [探索/微型/轻量/完整]   |
+| 完成 Quest | [n]/[total]             |
+| 验证结果   | ALL PASS / [n] FAILURES |
+
+### 知识沉淀
+
+| 类型     | 数量   | 摘要     |
+| -------- | ------ | -------- |
+| 踩坑记录 | [n] 条 | [关键词] |
+| 成功模式 | [n] 条 | [关键词] |
+| 架构决策 | [n] 条 | [关键词] |
+
+### 架构变更检测
+
+- 检测结果：[无变更 / 检测到变更]
+- 文档更新：[已触发 / 无需更新]
+
+### 下次可用
+
+下次执行 /auto 时，PHASE 2 会自动检索本次沉淀的经验，实现闭环。
+```
 
 ---
 
@@ -128,9 +488,9 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 当上下文窗口溢出时自动触发：
 
-1. `createSessionSummary()` 捕获: 任务 + 待办 + 错误 + 当前工作状态
-2. `createResumeDirective()` 生成续接指令
-3. 新会话使用 `resumeDirective` 自动继续工作（不确认/不回顾/不提问）
+1. 生成会话摘要：捕获 任务 + 待办 + 错误 + 当前工作状态
+2. 生成续接指令：包含足够信息让新会话无缝继续
+3. 新会话使用续接指令自动继续工作（不确认/不回顾/不提问）
 4. 摘要包含 9 节结构，所有用户消息原文保留
 
 ---
@@ -140,7 +500,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 1. **一个入口** — /auto 完成所有事情
 2. **按规模执行** — 探索/微型/轻量/完整四级，小任务不浪费
 3. **原子化验收** — 每关有验收标准，失败可回滚
-4. **可回溯** — 每步 Git Commit
-5. **知识沉淀** — 越用越强
+4. **可回溯** — 每步可追溯
+5. **知识闭环** — 经验持续沉淀 + 检索复用，越用越强
 6. **自动编排** — 验证/记忆/摘要/文档更新 全部由 auto 自动触发
-7. **结果持久化** — Agent 执行结果和验证状态写入 MemoryManager，跨会话可查询
+7. **结果持久化** — 执行结果写入 `.auto/` 目录，跨会话可查询
