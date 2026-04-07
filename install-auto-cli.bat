@@ -5,6 +5,7 @@ set "SCRIPT_DIR=%~dp0"
 set "PACKAGE="
 set "NPM_PREFIX="
 set "NPM_ROOT="
+set "CLAUDE_COMMANDS_DIR=%USERPROFILE%\.claude\commands"
 
 where npm >nul 2>&1
 if errorlevel 1 (
@@ -62,7 +63,14 @@ if exist "%NPM_ROOT%\auto-cli" (
         exit /b 1
       )
     ) else (
-      echo [WARN] Existing auto-cli package found, but auto command is unavailable. Old Claude resources may remain.
+      echo [WARN] Existing auto-cli package found, but auto command is unavailable.
+      echo [INFO] Removing known legacy slash-command paths directly...
+      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\create-hook.md"
+      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\doctor.md"
+      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\learn.md"
+      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\status.md"
+      call :remove_if_exists "%CLAUDE_COMMANDS_DIR%\auto\auto.md"
+      call :remove_dir_if_exists "%CLAUDE_COMMANDS_DIR%\auto\auto"
     )
   )
 
@@ -124,4 +132,12 @@ if errorlevel 1 (
 
 echo [INFO] Installation completed successfully.
 
+exit /b 0
+
+:remove_if_exists
+if exist "%~1" del /f /q "%~1" >nul 2>&1
+exit /b 0
+
+:remove_dir_if_exists
+if exist "%~1" rmdir /s /q "%~1" >nul 2>&1
 exit /b 0

@@ -1,3 +1,4 @@
+import { spawnSync } from 'child_process';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import path from 'path';
 import os from 'os';
@@ -8,6 +9,30 @@ import { install, uninstall, checkStatus } from '../src/installer.js';
 const testDir = path.join(os.tmpdir(), 'auto-test-' + Date.now());
 const testClaudeDir = path.join(testDir, '.claude');
 const testSourceDir = path.join(testDir, 'source');
+
+async function listRelativeFiles(baseDir) {
+  const files = [];
+
+  async function walk(currentDir, prefix = '') {
+    const entries = await fs.readdir(currentDir);
+    for (const entry of entries) {
+      const entryPath = path.join(currentDir, entry);
+      const relativePath = prefix ? path.join(prefix, entry) : entry;
+      const stats = await fs.stat(entryPath);
+      if (stats.isDirectory()) {
+        await walk(entryPath, relativePath);
+      } else {
+        files.push(relativePath);
+      }
+    }
+  }
+
+  if (await fs.pathExists(baseDir)) {
+    await walk(baseDir);
+  }
+
+  return files.sort();
+}
 
 // Mock ora spinner
 vi.mock('ora', () => {
@@ -54,6 +79,22 @@ describe('installer.js', () => {
     await fs.ensureDir(path.join(testSourceDir, 'commands', 'auto'));
     await fs.writeFile(path.join(testSourceDir, 'commands', 'auto.md'), '# Auto Command v2');
     await fs.writeFile(path.join(testSourceDir, 'commands', 'auto', 'route.md'), '# Auto Route v2');
+    await fs.writeFile(
+      path.join(testSourceDir, 'commands', 'auto', 'doctor.md'),
+      '# /auto:doctor -- Test'
+    );
+    await fs.writeFile(
+      path.join(testSourceDir, 'commands', 'auto', 'status.md'),
+      '# /auto:status -- Test'
+    );
+    await fs.writeFile(
+      path.join(testSourceDir, 'commands', 'auto', 'learn.md'),
+      '# /auto:learn -- Test'
+    );
+    await fs.writeFile(
+      path.join(testSourceDir, 'commands', 'auto', 'create-hook.md'),
+      '# /auto:create-hook -- Test'
+    );
 
     // agents: source='agents', target='agents', pattern='*.md'
     await fs.ensureDir(path.join(testSourceDir, 'agents'));
@@ -133,7 +174,77 @@ describe('installer.js', () => {
       const status = await checkStatus();
 
       expect(status.commands.installed).toBe(true);
-      expect(status.commands.fileCount).toBe(2);
+      expect(status.commands.fileCount).toBe(6);
+    });
+
+    it('should install only the canonical /auto command tree', async () => {
+      await install(['commands'], { backup: false });
+
+      const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
+
+      expect(files).toEqual([
+        'auto.md',
+        path.join('auto', 'create-hook.md'),
+        path.join('auto', 'doctor.md'),
+        path.join('auto', 'learn.md'),
+        path.join('auto', 'route.md'),
+        path.join('auto', 'status.md')
+      ]);
+    });
+
+    it('should remove legacy duplicated auto namespaces and stale top-level command files', async () => {
+      await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'doctor.md'),
+        '# /auto:doctor -- Legacy'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'status.md'),
+        '# /auto:status -- Legacy'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'learn.md'),
+        '# /auto:learn -- Legacy'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'create-hook.md'),
+        '# /auto:create-hook -- Legacy'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto.md'),
+        '# /auto -- Legacy'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'),
+        '# /auto:doctor -- Legacy nested'
+      );
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md'),
+        '# /auto:route -- Legacy nested'
+      );
+
+      await install(['commands'], { backup: false, force: false });
+
+      const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
+
+      expect(files).toEqual([
+        'auto.md',
+        path.join('auto', 'create-hook.md'),
+        path.join('auto', 'doctor.md'),
+        path.join('auto', 'learn.md'),
+        path.join('auto', 'route.md'),
+        path.join('auto', 'status.md')
+      ]);
+
+      await expect(fs.pathExists(path.join(testClaudeDir, 'commands', 'doctor.md'))).resolves.toBe(
+        false
+      );
+      await expect(
+        fs.pathExists(path.join(testClaudeDir, 'commands', 'auto', 'auto.md'))
+      ).resolves.toBe(false);
+      await expect(
+        fs.pathExists(path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'))
+      ).resolves.toBe(false);
     });
 
     it('should skip existing root command file when force=false and still install missing nested files', async () => {
@@ -219,5 +330,218 @@ describe('installer.js', () => {
 
       expect(Array.isArray(result)).toBe(true);
     });
+
+    it('should remove only auto command files in compatibility mode', async () => {
+      await install(['commands'], { backup: false });
+      await fs.writeFile(path.join(testClaudeDir, 'commands', 'custom.md'), '# Custom Command');
+      await fs.writeFile(path.join(testClaudeDir, 'commands', 'doctor.md'), '# Legacy Doctor');
+      await fs.ensureDir(path.join(testClaudeDir, 'commands', 'auto', 'auto'));
+      await fs.writeFile(
+        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'doctor.md'),
+        '# Legacy Nested Doctor'
+      );
+
+      const removedFiles = await uninstall(['commands']);
+      const files = await listRelativeFiles(path.join(testClaudeDir, 'commands'));
+
+      expect(files).toEqual(['custom.md']);
+      expect(removedFiles).toEqual(
+        expect.arrayContaining([
+          path.join(testClaudeDir, 'commands', 'auto.md'),
+          path.join(testClaudeDir, 'commands', 'auto', 'doctor.md'),
+          path.join(testClaudeDir, 'commands', 'doctor.md'),
+          path.join(testClaudeDir, 'commands', 'auto', 'auto')
+        ])
+      );
+      await expect(fs.pathExists(path.join(testClaudeDir, 'commands', 'auto'))).resolves.toBe(
+        false
+      );
+    });
+  });
+
+  describe('install-auto-cli.bat', () => {
+    const itIfWindows = process.platform === 'win32' ? it : it.skip;
+
+    itIfWindows(
+      'should remove legacy slash-command paths when auto is unavailable during reinstall',
+      async () => {
+        const sandboxDir = path.join(testDir, 'batch-installer');
+        const scriptDir = path.join(sandboxDir, 'script');
+        const fakeBinDir = path.join(sandboxDir, 'fake-bin');
+        const npmPrefix = path.join(sandboxDir, 'npm-prefix');
+        const npmRoot = path.join(sandboxDir, 'npm-root');
+        const userProfileDir = path.join(sandboxDir, 'user-profile');
+        const commandsDir = path.join(userProfileDir, '.claude', 'commands');
+        const logFile = path.join(sandboxDir, 'npm-calls.log');
+        const legacyCheckFile = path.join(sandboxDir, 'legacy-check.json');
+        const packagePath = path.join(scriptDir, 'auto-cli-9.9.9.tgz');
+        const batchScriptPath = path.join(scriptDir, 'install-auto-cli.bat');
+        const fakeNpmScriptPath = path.join(sandboxDir, 'fake-npm.js');
+        const customRootCommand = path.join(commandsDir, 'custom.md');
+        const customNestedCommand = path.join(commandsDir, 'auto', 'custom.md');
+        const legacyPaths = [
+          path.join(commandsDir, 'create-hook.md'),
+          path.join(commandsDir, 'doctor.md'),
+          path.join(commandsDir, 'learn.md'),
+          path.join(commandsDir, 'status.md'),
+          path.join(commandsDir, 'auto', 'auto.md'),
+          path.join(commandsDir, 'auto', 'auto')
+        ];
+        const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
+        const pathKey =
+          Object.keys(process.env).find((envKey) => envKey.toLowerCase() === 'path') ?? 'Path';
+        const isolatedPath = `${fakeBinDir};${path.join(systemRoot, 'System32')}`;
+
+        await fs.ensureDir(scriptDir);
+        await fs.ensureDir(fakeBinDir);
+        await fs.ensureDir(npmPrefix);
+        await fs.ensureDir(path.join(npmRoot, 'auto-cli'));
+        await fs.ensureDir(path.dirname(customNestedCommand));
+        await fs.ensureDir(path.join(commandsDir, 'auto', 'auto'));
+
+        await fs.copy(path.resolve(process.cwd(), 'install-auto-cli.bat'), batchScriptPath);
+        await fs.writeFile(packagePath, 'dummy tgz');
+        await fs.writeFile(customRootCommand, '# Custom Root Command');
+        await fs.writeFile(customNestedCommand, '# Custom Nested Command');
+        await fs.writeFile(legacyPaths[0], '# Legacy Create Hook');
+        await fs.writeFile(legacyPaths[1], '# Legacy Doctor');
+        await fs.writeFile(legacyPaths[2], '# Legacy Learn');
+        await fs.writeFile(legacyPaths[3], '# Legacy Status');
+        await fs.writeFile(legacyPaths[4], '# Legacy Auto');
+        await fs.writeFile(path.join(legacyPaths[5], 'doctor.md'), '# Legacy Nested Doctor');
+
+        await fs.writeFile(
+          fakeNpmScriptPath,
+          [
+            "const fs = require('fs');",
+            "const path = require('path');",
+            '',
+            'const args = process.argv.slice(2);',
+            'const logFile = process.env.FAKE_NPM_LOG;',
+            '',
+            'function logCall() {',
+            "  fs.appendFileSync(logFile, `${args.join(' ')}\\n`);",
+            '}',
+            '',
+            'logCall();',
+            '',
+            "if (args[0] === 'prefix' && args[1] === '-g') {",
+            '  process.stdout.write(`${process.env.FAKE_NPM_PREFIX}\\n`);',
+            '  process.exit(0);',
+            '}',
+            '',
+            "if (args[0] === 'root' && args[1] === '-g') {",
+            '  process.stdout.write(`${process.env.FAKE_NPM_ROOT}\\n`);',
+            '  process.exit(0);',
+            '}',
+            '',
+            "if (args[0] === 'uninstall' && args[1] === '-g' && args[2] === 'auto-cli') {",
+            '  process.exit(0);',
+            '}',
+            '',
+            "if (args[0] === 'install' && args[1] === '-g') {",
+            "  const commandsDir = path.join(process.env.USERPROFILE, '.claude', 'commands');",
+            '  const legacyRelativePaths = [',
+            "    'create-hook.md',",
+            "    'doctor.md',",
+            "    'learn.md',",
+            "    'status.md',",
+            "    path.join('auto', 'auto.md'),",
+            "    path.join('auto', 'auto')",
+            '  ];',
+            '  const remainingLegacyPaths = legacyRelativePaths',
+            '    .map((relativePath) => path.join(commandsDir, relativePath))',
+            '    .filter((targetPath) => fs.existsSync(targetPath));',
+            '  fs.writeFileSync(',
+            '    process.env.LEGACY_CHECK_FILE,',
+            '    JSON.stringify(',
+            '      {',
+            '        allRemoved: remainingLegacyPaths.length === 0,',
+            '        remainingLegacyPaths',
+            '      },',
+            '      null,',
+            '      2',
+            '    )',
+            '  );',
+            "  const autoCmdPath = path.join(process.env.FAKE_NPM_PREFIX, 'auto.cmd');",
+            '  fs.mkdirSync(path.dirname(autoCmdPath), { recursive: true });',
+            '  fs.writeFileSync(',
+            '    autoCmdPath,',
+            '    [',
+            "      '@echo off',",
+            '      \'if "%1"=="install" exit /b 0\',',
+            '      \'if "%1"=="--version" (\',',
+            "      '  echo 9.9.9',",
+            "      '  exit /b 0',",
+            "      ')',",
+            "      'exit /b 0',",
+            "      ''",
+            "    ].join('\\r\\n')",
+            '  );',
+            '  process.exit(0);',
+            '}',
+            '',
+            'process.exit(1);',
+            ''
+          ].join('\n')
+        );
+
+        await fs.writeFile(
+          path.join(fakeBinDir, 'npm.cmd'),
+          ['@echo off', '"%FAKE_NODE%" "%FAKE_NPM_SCRIPT%" %*', 'exit /b %ERRORLEVEL%', ''].join(
+            '\r\n'
+          )
+        );
+
+        const env = {
+          ...process.env,
+          USERPROFILE: userProfileDir,
+          FAKE_NODE: process.execPath,
+          FAKE_NPM_SCRIPT: fakeNpmScriptPath,
+          FAKE_NPM_PREFIX: npmPrefix,
+          FAKE_NPM_ROOT: npmRoot,
+          FAKE_NPM_LOG: logFile,
+          LEGACY_CHECK_FILE: legacyCheckFile,
+          SystemRoot: systemRoot,
+          ComSpec: process.env.ComSpec ?? path.join(systemRoot, 'System32', 'cmd.exe'),
+          [pathKey]: isolatedPath
+        };
+
+        const result = spawnSync(env.ComSpec, ['/d', '/s', '/c', batchScriptPath], {
+          encoding: 'utf8',
+          env,
+          windowsHide: true
+        });
+
+        const stdout = result.stdout ?? '';
+        const stderr = result.stderr ?? '';
+
+        if (result.status !== 0) {
+          throw new Error(`install-auto-cli.bat failed\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+        }
+
+        expect(stdout).toContain(
+          'Existing auto-cli package found, but auto command is unavailable.'
+        );
+        expect(stdout).toContain('Removing known legacy slash-command paths directly...');
+
+        const legacyCheck = await fs.readJson(legacyCheckFile);
+        const npmCallLog = await fs.readFile(logFile, 'utf-8');
+
+        expect(legacyCheck).toEqual({
+          allRemoved: true,
+          remainingLegacyPaths: []
+        });
+        expect(npmCallLog).toContain('uninstall -g auto-cli');
+        expect(npmCallLog).toContain('install -g');
+
+        for (const legacyPath of legacyPaths) {
+          await expect(fs.pathExists(legacyPath)).resolves.toBe(false);
+        }
+
+        await expect(fs.pathExists(customRootCommand)).resolves.toBe(true);
+        await expect(fs.pathExists(customNestedCommand)).resolves.toBe(true);
+      }
+    );
   });
 });
