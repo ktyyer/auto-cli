@@ -50,7 +50,7 @@ describe('installer.js', () => {
     await fs.ensureDir(testClaudeDir);
     await fs.ensureDir(testSourceDir);
 
-    // commands: source='commands', target='commands/auto', recursive=true
+    // commands: source='commands', target='commands', recursive=true
     await fs.ensureDir(path.join(testSourceDir, 'commands', 'auto'));
     await fs.writeFile(path.join(testSourceDir, 'commands', 'auto.md'), '# Auto Command v2');
     await fs.writeFile(path.join(testSourceDir, 'commands', 'auto', 'route.md'), '# Auto Route v2');
@@ -116,11 +116,11 @@ describe('installer.js', () => {
 
       expect(result.installedFiles.length).toBeGreaterThan(0);
       const rootContent = await fs.readFile(
-        path.join(testClaudeDir, 'commands', 'auto', 'auto.md'),
+        path.join(testClaudeDir, 'commands', 'auto.md'),
         'utf-8'
       );
       const nestedContent = await fs.readFile(
-        path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md'),
+        path.join(testClaudeDir, 'commands', 'auto', 'route.md'),
         'utf-8'
       );
       expect(rootContent).toContain('# Auto Command v2');
@@ -137,8 +137,8 @@ describe('installer.js', () => {
     });
 
     it('should skip existing root command file when force=false and still install missing nested files', async () => {
-      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
-      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md');
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto.md');
+      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'route.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 
@@ -152,8 +152,8 @@ describe('installer.js', () => {
     });
 
     it('should create backup for existing root command file and still install missing nested files', async () => {
-      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
-      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto', 'route.md');
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto.md');
+      const nestedTargetFile = path.join(testClaudeDir, 'commands', 'auto', 'route.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 
@@ -176,7 +176,7 @@ describe('installer.js', () => {
     });
 
     it('should overwrite existing files when force=true (non-recursive)', async () => {
-      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 
@@ -190,7 +190,7 @@ describe('installer.js', () => {
     });
 
     it('should not create backup when force=true', async () => {
-      const targetFile = path.join(testClaudeDir, 'commands', 'auto', 'auto.md');
+      const targetFile = path.join(testClaudeDir, 'commands', 'auto.md');
       await fs.ensureDir(path.dirname(targetFile));
       await fs.writeFile(targetFile, '# Old Content');
 

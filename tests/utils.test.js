@@ -77,7 +77,7 @@ describe('utils.js', () => {
       expect(COMPONENTS.commands).toMatchObject({
         name: 'auto 斜杠指令',
         source: 'commands',
-        target: 'commands/auto',
+        target: 'commands',
         pattern: '*.md'
       });
     });

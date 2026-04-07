@@ -37,7 +37,7 @@ describe('doctor.js', () => {
       changedFiles: []
     });
     mockCheckStatus.mockResolvedValue({
-      commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 },
+      commands: { installed: true, path: '/tmp/.claude/commands', fileCount: 6 },
       agents: { installed: true, path: '/tmp/.claude/agents', fileCount: 5 }
     });
     mockInstall.mockResolvedValue({ installedFiles: [], skippedFiles: [] });
@@ -56,11 +56,11 @@ describe('doctor.js', () => {
   it('should install missing components when fix mode is enabled', async () => {
     mockCheckStatus
       .mockResolvedValueOnce({
-        commands: { installed: false, path: '/tmp/.claude/commands/auto', fileCount: 0 },
+        commands: { installed: false, path: '/tmp/.claude/commands', fileCount: 0 },
         agents: { installed: true, path: '/tmp/.claude/agents', fileCount: 5 }
       })
       .mockResolvedValueOnce({
-        commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 },
+        commands: { installed: true, path: '/tmp/.claude/commands', fileCount: 6 },
         agents: { installed: true, path: '/tmp/.claude/agents', fileCount: 5 }
       });
 

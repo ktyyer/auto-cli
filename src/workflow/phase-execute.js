@@ -999,6 +999,7 @@ export class PhaseExecute {
 
     if (process.platform === 'win32' && !env.CLAUDE_CODE_GIT_BASH_PATH) {
       const candidates = [
+        'D:\\Git\\Git\\bin\\bash.exe',
         'D:\\Git\\Git\\usr\\bin\\bash.exe',
         'C:\\Program Files\\Git\\bin\\bash.exe',
         'C:\\Program Files\\Git\\usr\\bin\\bash.exe'

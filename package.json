@@ -14,7 +14,7 @@
     "lint:fix": "eslint src/ bin/ tests/ --fix",
     "format": "prettier --write \"src/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
-    "sync": "node -e \"const fs=require('fs'); const path=require('path'); const src='commands'; const dest=path.join('.claude','commands','auto'); fs.mkdirSync(dest,{recursive:true}); fs.cpSync(src,dest,{recursive:true}); console.log('Synced commands/ -> .claude/commands/auto/')\"",
+    "sync": "node -e \"const fs=require('fs'); const path=require('path'); const src='commands'; const dest=path.join('.claude','commands'); fs.mkdirSync(dest,{recursive:true}); fs.cpSync(src,dest,{recursive:true}); console.log('Synced commands/ -> .claude/commands/')\"",
     "prepublishOnly": "npm test",
     "prepare": "npx husky"
   },

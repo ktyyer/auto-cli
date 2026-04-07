@@ -31,6 +31,8 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 7. **环境快检**: 调用 `_runDoctorCheck()` 检查 Node.js 版本、依赖安装、Git 状态。结果记录到 `doctorResult`，不自动执行 `npm install`
 8. **CLAUDE.md 检测**: 检查项目根目录是否有 CLAUDE.md。缺失时记录到 doctor issues，并在后续工作流中给出补齐建议
 
+**门禁**：输出能力健康检查报告后 → 进入 PHASE 2。禁止跳过 PHASE 2 直接编辑代码。
+
 ```
 TodoWrite([
   { content: "任务: [需求摘要]", status: "completed" },
@@ -44,9 +46,11 @@ TodoWrite([
 
 ## PHASE 2: REASON — Quest 设计 + Skill 注入
 
-- **微型模式**: 先生成完整思考摘要与单关 Quest，再自动进入 `_runMicroExecute()`。
-- **轻量模式**: `_generateQuestMap()` 生成精简 Quest，但仍完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行。
-- **完整模式**: `_generateQuestMap()` 生成完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
+调用 quest-designer Agent，传递：用户需求、执行模式、技术栈、能力清单、源码路径。
+
+- **微型模式**：跳过 quest-designer，先生成完整思考摘要与单关 Quest，再自动进入执行。
+- **轻量模式**：quest-designer 输出精简版（影响文件 + 执行顺序 + 风险评估），仍完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行。
+- **完整模式**：quest-designer 输出完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
 
 所有模式都必须先展示结构化思考摘要与 Quest 信息，再自动进入下一阶段，不等待用户确认。
 
@@ -111,6 +115,8 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 7. **会话摘要**: 若本次执行生成了会话摘要，将 `sessionSummary` + `resumeDirective` 包含在结果中
 
 下一会话可使用 `resumeDirective` 自动续接。
+
+如改了核心架构 → `/auto:update-codemaps`。
 
 ---
 

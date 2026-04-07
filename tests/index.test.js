@@ -16,7 +16,7 @@ vi.mock('../src/installer.js', () => ({
   install: vi.fn().mockResolvedValue({ installedFiles: [], skippedFiles: [] }),
   uninstall: vi.fn().mockResolvedValue([]),
   checkStatus: vi.fn().mockResolvedValue({
-    commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
+    commands: { installed: true, path: '/tmp/.claude/commands', fileCount: 6 }
   })
 }));
 
@@ -28,7 +28,7 @@ vi.mock('../src/doctor.js', () => ({
     checks: {},
     recommendedActions: [],
     installStatus: {
-      commands: { installed: true, path: '/tmp/.claude/commands/auto', fileCount: 2 }
+      commands: { installed: true, path: '/tmp/.claude/commands', fileCount: 6 }
     },
     fixRequested: false,
     fixesApplied: [],

@@ -118,7 +118,7 @@ export const COMPONENTS = {
     name: 'auto 斜杠指令',
     description: '斜杠命令（/auto, /auto:route, /auto:doctor 等）',
     source: 'commands',
-    target: 'commands/auto',
+    target: 'commands',
     pattern: '*.md',
     recursive: true
   },
