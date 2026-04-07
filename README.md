@@ -36,7 +36,28 @@ cd auto-cli
 npm run install        # 安装到 ~/.claude/
 ```
 
-### 一键重装（打包 + 清理旧版 + 安装）
+### 打包分发到其他电脑
+
+```bash
+# 在源码仓库执行打包
+npm run pack
+# 产物: auto-cli-0.30.0.tgz（~83KB）
+```
+
+将 tgz 文件拷贝到目标电脑，然后：
+
+```bash
+# macOS / Linux / Git Bash
+tar -xzf auto-cli-0.30.0.tgz
+cd package
+bash scripts/install.sh
+
+# Windows
+# 解压 auto-cli-0.30.0.tgz，进入 package 目录
+# 双击 scripts\install.bat
+```
+
+### 一键重装（开发机用）
 
 ```bash
 # macOS / Linux / Git Bash
@@ -48,10 +69,11 @@ scripts\reinstall.bat
 
 该脚本自动完成：打包 → 卸载旧版全局包 → 解压安装新版 → 清理临时文件。
 
-### 单独卸载
+### 卸载
 
 ```bash
-npm run uninstall      # 移除已安装的文件
+npm run uninstall      # 源码仓库内
+node scripts/uninstall.js  # 从 tgz 解压目录
 ```
 
 ---
