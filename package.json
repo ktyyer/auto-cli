@@ -5,6 +5,7 @@
   "scripts": {
     "install": "node scripts/install.js",
     "uninstall": "node scripts/uninstall.js",
+    "reinstall": "bash scripts/reinstall.sh",
     "sync": "node scripts/install.js",
     "format": "prettier --write \"commands/**/*.md\" \"agents/**/*.md\" \"skills/**/*.md\"",
     "format:check": "prettier --check \"commands/**/*.md\" \"agents/**/*.md\" \"skills/**/*.md\""

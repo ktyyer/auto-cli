@@ -28,21 +28,30 @@ Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto
 
 ## 安装
 
+### 从源码安装
+
 ```bash
-# 克隆仓库
 git clone https://github.com/ktyyer/auto-cli.git
 cd auto-cli
-
-# 安装到 ~/.claude/
-npm run install
-
-# 重启 Claude Code
+npm run install        # 安装到 ~/.claude/
 ```
 
-卸载：
+### 一键重装（打包 + 清理旧版 + 安装）
 
 ```bash
-npm run uninstall
+# macOS / Linux / Git Bash
+npm run reinstall
+
+# Windows 双击运行
+scripts\reinstall.bat
+```
+
+该脚本自动完成：打包 → 卸载旧版全局包 → 解压安装新版 → 清理临时文件。
+
+### 单独卸载
+
+```bash
+npm run uninstall      # 移除已安装的文件
 ```
 
 ---
