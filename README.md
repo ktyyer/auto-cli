@@ -34,12 +34,10 @@ Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto
 npm install -g auto-cli
 auto install -y
 
-# 方式二：从源码安装
-# 如需重新安装，先删除旧打包产物再重新 npm pack
-# rm ./auto-cli-0.29.1.tgz
+# 方式二：从源码安装（跨平台）
 npm pack
-npm install -g auto-cli-0.29.1.tgz
-auto install -y -f
+npm install -g ./auto-cli-<version>.tgz
+auto install -y
 
 # 安装后重启 Claude Code
 ```
@@ -48,8 +46,45 @@ auto install -y -f
 
 ```bash
 auto uninstall -y
+npm uninstall -g auto-cli
+npm install -g ./auto-cli-<version>.tgz
 auto install -y -f
 ```
+
+Windows 下如果你把 `install-auto-cli.bat` 和 `auto-cli-*.tgz` 放在同一目录，可以直接运行：
+
+```bat
+install-auto-cli.bat
+```
+
+这个脚本会自动：
+- 按修改时间选择同目录最近生成的 `auto-cli-*.tgz`
+- 如检测到旧版 `auto-cli`，先执行 `auto uninstall -y` 清理旧的 Claude 资源
+- 卸载旧版全局 `auto-cli`
+- 安装新版包
+- 执行 `auto install -y -f` 强制覆盖 Claude 资源
+- 输出 `auto --version` 作为校验
+- 可继续用 `auto status --json -d .` 或 `auto doctor --json -d .` 做安装确认
+
+如果你不想覆盖已有 Claude 资源，可以手工执行：
+
+```bash
+npm install -g ./auto-cli-<version>.tgz
+auto install -y
+```
+
+这会安装缺失文件，但默认跳过已存在的文件。
+
+如果你想手工做一次完整覆盖升级，可以执行：
+
+```bash
+auto uninstall -y
+npm uninstall -g auto-cli
+npm install -g ./auto-cli-<version>.tgz
+auto install -y -f
+```
+
+这会先清理旧的 Claude 资源，再安装并覆盖当前版本的资源。
 
 ---
 
@@ -277,6 +312,9 @@ auto learn --git --json -d .
 
 **Q: 安装后命令不生效？**
 重启 Claude Code，检查 `node --version` >= 18。
+
+**Q: Windows 上怎么用本地打包产物重装？**
+先在仓库目录执行 `npm pack` 生成 `auto-cli-*.tgz`，确认它和 `install-auto-cli.bat` 在同一目录，再运行 `install-auto-cli.bat`。脚本会先尝试执行 `auto uninstall -y` 清理旧资源，再安装新包并执行 `auto install -y -f` 覆盖当前 Auto CLI 资源。
 
 **Q: 代码会泄露吗？**
 Auto CLI 本身主要负责本地安装、命令组织和结果汇总；具体数据流边界取决于你在 Claude Code 中启用的模型、Agent 和外部集成配置。
