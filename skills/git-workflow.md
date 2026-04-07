@@ -17,14 +17,14 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 
 ### 1.1 分支类型
 
-| 分支 | 命名规范 | 生命周期 | 用途 |
-|------|---------|---------|------|
-| `main` | — | 永久 | 生产分支，只通过 PR 合并 |
-| `dev` | — | 永久 | 开发分支，日常集成 |
-| `feature/*` | `feature/short-description` | 功能完成后删除 | 新功能开发 |
-| `fix/*` | `fix/issue-description` | 修复后删除 | Bug 修复 |
-| `refactor/*` | `refactor/scope-description` | 重构后删除 | 代码重构 |
-| `release/*` | `release/vX.Y.Z` | 发布后保留 | 发版准备 |
+| 分支         | 命名规范                     | 生命周期       | 用途                     |
+| ------------ | ---------------------------- | -------------- | ------------------------ |
+| `main`       | —                            | 永久           | 生产分支，只通过 PR 合并 |
+| `dev`        | —                            | 永久           | 开发分支，日常集成       |
+| `feature/*`  | `feature/short-description`  | 功能完成后删除 | 新功能开发               |
+| `fix/*`      | `fix/issue-description`      | 修复后删除     | Bug 修复                 |
+| `refactor/*` | `refactor/scope-description` | 重构后删除     | 代码重构                 |
+| `release/*`  | `release/vX.Y.Z`             | 发布后保留     | 发版准备                 |
 
 ### 1.2 分支操作
 
@@ -57,17 +57,17 @@ git checkout -b fix/hotfix-login-bug
 
 ### 2.2 Type 清单
 
-| Type | 用途 | 示例 |
-|------|------|------|
-| `feat` | 新功能 | `feat(order): 新增批量导出 Excel 功能` |
-| `fix` | Bug 修复 | `fix(auth): 修复 Token 过期后无限重定向` |
-| `refactor` | 重构 | `refactor(utils): 抽取分页工具方法` |
-| `perf` | 性能优化 | `perf(query): 优化列表查询 N+1 问题` |
-| `docs` | 文档 | `docs: 更新 API 接口文档` |
-| `test` | 测试 | `test(order): 补充导出功能单元测试` |
-| `chore` | 杂务 | `chore: 升级 vite 到 5.0` |
-| `ci` | CI/CD | `ci: 添加 GitHub Actions 构建流程` |
-| `style` | 格式 | `style: 统一使用单引号` |
+| Type       | 用途     | 示例                                     |
+| ---------- | -------- | ---------------------------------------- |
+| `feat`     | 新功能   | `feat(order): 新增批量导出 Excel 功能`   |
+| `fix`      | Bug 修复 | `fix(auth): 修复 Token 过期后无限重定向` |
+| `refactor` | 重构     | `refactor(utils): 抽取分页工具方法`      |
+| `perf`     | 性能优化 | `perf(query): 优化列表查询 N+1 问题`     |
+| `docs`     | 文档     | `docs: 更新 API 接口文档`                |
+| `test`     | 测试     | `test(order): 补充导出功能单元测试`      |
+| `chore`    | 杂务     | `chore: 升级 vite 到 5.0`                |
+| `ci`       | CI/CD    | `ci: 添加 GitHub Actions 构建流程`       |
+| `style`    | 格式     | `style: 统一使用单引号`                  |
 
 ### 2.3 auto 提交规则
 
@@ -96,14 +96,17 @@ Files: <变更文件列表>
 
 ```markdown
 ## Summary
+
 - <1-3 bullet points>
 
 ## Changes
-| 文件 | 变更 |
-|------|------|
+
+| 文件    | 变更           |
+| ------- | -------------- |
 | src/xxx | 新增/修改/删除 |
 
 ## Test Plan
+
 - [ ] 单元测试通过
 - [ ] 集成测试通过
 - [ ] 手动验证 <场景>
@@ -111,13 +114,13 @@ Files: <变更文件列表>
 
 ### 3.2 PR 检查项
 
-| 检查 | 工具 | 阻断 |
-|------|------|------|
-| 代码审查 | code-reviewer Agent | 是 |
-| 安全扫描 | security-reviewer Agent | 是 |
-| 测试覆盖率 >= 80% | vitest --coverage | 是 |
-| 构建通过 | npm run build | 是 |
-| Lint 通过 | eslint | 是 |
+| 检查              | 工具                    | 阻断 |
+| ----------------- | ----------------------- | ---- |
+| 代码审查          | code-reviewer Agent     | 是   |
+| 安全扫描          | security-reviewer Agent | 是   |
+| 测试覆盖率 >= 80% | vitest --coverage       | 是   |
+| 构建通过          | npm run build           | 是   |
+| Lint 通过         | eslint                  | 是   |
 
 ### 3.3 冲突解决策略
 

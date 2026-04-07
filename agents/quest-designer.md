@@ -549,7 +549,7 @@ v4 质量项：
 "cards": {
 "OrderController.java": {
 "package": "com.example.system.controller",
-"import_style": "javax._ → org._ → com.example._ → lombok._",
+"import*style": "javax.* → org._ → com.example._ → lombok.\_",
 "class_annotations": "@RestController → @RequestMapping(\"/system/order\") → @Tag(name=\"订单管理\")",
 "method_pattern": "@Operation(summary=\"xxx\") → @GetMapping(\"/list\") → Result<PageInfo<XxxDTO>>",
 "return_pattern": "Result<PageInfo<XxxDTO>>",

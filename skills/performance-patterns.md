@@ -69,12 +69,12 @@ MyBatis Plus:
 
 ### 2.1 缓存模式选择
 
-| 模式 | 适用场景 | 一致性 | 复杂度 |
-|------|---------|--------|--------|
-| Cache-Aside | 通用读缓存 | 最终一致 | 低 |
-| Write-Through | 写入频率低 | 强一致 | 中 |
-| Write-Behind | 写入频率高 | 最终一致 | 高 |
-| Refresh-Ahead | 可预测访问 | 最终一致 | 中 |
+| 模式          | 适用场景   | 一致性   | 复杂度 |
+| ------------- | ---------- | -------- | ------ |
+| Cache-Aside   | 通用读缓存 | 最终一致 | 低     |
+| Write-Through | 写入频率低 | 强一致   | 中     |
+| Write-Behind  | 写入频率高 | 最终一致 | 高     |
+| Refresh-Ahead | 可预测访问 | 最终一致 | 中     |
 
 ### 2.2 缓存键设计
 
@@ -183,13 +183,13 @@ const throttledScroll = throttle(handleScroll, 16)
 
 ## 五、性能检测工具
 
-| 工具 | 用途 | 命令 |
-|------|------|------|
-| Chrome DevTools | 前端性能分析 | Performance 面板 |
-| Lighthouse | 页面性能评分 | `npx lighthouse URL` |
-| why-is-node-running | Node.js 进程挂起 | 检测未关闭的句柄 |
-| clinic.js | Node.js 瓶颈分析 | `npx clinic doctor -- node app.js` |
-| EXPLAIN | SQL 查询分析 | `EXPLAIN ANALYZE SELECT ...` |
+| 工具                | 用途             | 命令                               |
+| ------------------- | ---------------- | ---------------------------------- |
+| Chrome DevTools     | 前端性能分析     | Performance 面板                   |
+| Lighthouse          | 页面性能评分     | `npx lighthouse URL`               |
+| why-is-node-running | Node.js 进程挂起 | 检测未关闭的句柄                   |
+| clinic.js           | Node.js 瓶颈分析 | `npx clinic doctor -- node app.js` |
+| EXPLAIN             | SQL 查询分析     | `EXPLAIN ANALYZE SELECT ...`       |
 
 ---
 

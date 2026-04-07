@@ -72,6 +72,7 @@ test.describe('认证流程', () => {
 ```
 
 关键规则：
+
 - 使用 `data-testid` 定位器（不依赖 CSS 类名或文本内容）
 - 用 `waitForResponse` / `waitForLoadState` 替代固定超时等待
 - 在关键步骤包含断言和截图
@@ -100,6 +101,7 @@ npx playwright show-report
 ```
 
 本地验证通过后，运行 3-5 次检查稳定性：
+
 ```bash
 for i in {1..5}; do npx playwright test tests/e2e/auth.spec.ts || break; done
 ```
@@ -128,24 +130,28 @@ export default defineConfig({
 ## E2E 测试报告
 
 ### 概要
+
 - 总测试: N
 - 通过: X | 失败: Y | 跳过: Z
 - 总耗时: T秒
 - 稳定性: 95%（连续 5 次运行通过率）
 
 ### 旅程覆盖
-| 旅程 | 测试数 | 状态 | 优先级 |
-|------|--------|------|--------|
-| 登录/注册 | 5 | 全通过 | 高 |
-| 数据 CRUD | 8 | 1 失败 | 高 |
-| 搜索/导航 | 3 | 全通过 | 中 |
+
+| 旅程      | 测试数 | 状态   | 优先级 |
+| --------- | ------ | ------ | ------ |
+| 登录/注册 | 5      | 全通过 | 高     |
+| 数据 CRUD | 8      | 1 失败 | 高     |
+| 搜索/导航 | 3      | 全通过 | 中     |
 
 ### 失败详情
-| 测试 | 错误 | 截图 | 建议 |
-|------|------|------|------|
+
+| 测试     | 错误        | 截图                              | 建议         |
+| -------- | ----------- | --------------------------------- | ------------ |
 | 数据创建 | Timeout 30s | [查看](artifacts/create-fail.png) | 增加 waitFor |
 
 ### 工件
+
 - HTML 报告: `playwright-report/index.html`
 - 截图: `test-results/*/screenshots/`
 - Trace: `test-results/*/trace.zip`
@@ -170,10 +176,11 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
-  },
+    video: 'on-first-retry'
+  }
 });
 ```
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

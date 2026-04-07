@@ -13,16 +13,10 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 当你不确定应该使用哪个 Agent 时，使用此命令：
 
 ```bash
-# Claude Code 中
 /auto:route 编写测试用例
-
-# CLI 等价调用
-auto route "<用户意图>"
-auto route "<用户意图>" --json
-auto route "<用户意图>" --debug
 ```
 
-如果 auto CLI 未安装，则根据关键词手动匹配（数据源：`src/router/agent-registry.js`）。
+根据关键词匹配 Agent（数据源：`agents/*.md`）。
 
 ---
 
@@ -34,6 +28,7 @@ auto route "<用户意图>" --debug
 4. **回退链**：主 Agent 失败时按优先级降级
 
 优先级排序（高→低）：
+
 - security-reviewer (95) → build-error-resolver (90) → architect (85)
 - quest-designer (82) → tdd-guide (75) → verification (72)
 - code-reviewer (70) → e2e-runner (65) → refactor-cleaner (55) → doc-updater (50)
@@ -62,8 +57,8 @@ Router 分析
 
 ## 错误处理
 
-| 错误 | 处理 |
-|------|------|
-| 空意图 | 返回默认路由（quest-designer） |
+| 错误         | 处理                           |
+| ------------ | ------------------------------ |
+| 空意图       | 返回默认路由（quest-designer） |
 | 无匹配 Agent | 返回默认路由（quest-designer） |
-| CLI 未安装 | 降级到手动查表选择 Agent |
+| CLI 未安装   | 降级到手动查表选择 Agent       |

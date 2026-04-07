@@ -18,6 +18,7 @@ tags: [shared, protocol, handoff, agent, principles]
 ## 报告格式
 
 所有 Agent 输出报告时遵循统一结构：
+
 1. 摘要（问题数量/严重级别）
 2. 详情（按严重级别排序）
 3. 修复建议（具体到文件和行号）
@@ -37,11 +38,13 @@ Agent 向下游传递结果时，使用以下标准结构：
 **任务**: {原始任务描述}
 
 ### 完成状态
+
 - 状态: completed | partial | failed
 - 产出文件: {文件列表}
 - 变更摘要: {简要说明改了什么}
 
 ### 传递给下游
+
 - 关键决策: {决策列表}
 - 待处理: {下游需要处理的事项}
 - 注意事项: {边界条件、已知问题}
@@ -54,6 +57,7 @@ Agent 向下游传递结果时，使用以下标准结构：
 用户意图 → CanonicalRouter → [主 Agent]
 
 触发条件映射：
+
 - architect: 架构/系统/重构/迁移 关键词
 - quest-designer: 规划/任务拆解/Quest 设计
 - tdd-guide: 测试/TDD/覆盖率 关键词
@@ -66,6 +70,7 @@ Agent 向下游传递结果时，使用以下标准结构：
 - refactor-cleaner: 清理/死代码/重构/unused 关键词
 
 标准流程：
+
 1. architect → quest-designer → [tdd-guide | code-reviewer] → verification
 2. 失败时: → build-error-resolver（重试 2 次后自动路由）
 3. 安全场景: → security-reviewer（安全敏感关键词触发 +50 分提升）

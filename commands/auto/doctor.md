@@ -81,11 +81,13 @@ Glob("package.json")
 ## Auto CLI 环境诊断报告
 
 ### 基础环境
+
 - Node.js: v20.11.0 -- PASS
 - npm: 10.2.4 -- PASS
 - git: 2.43.0 -- PASS
 
 ### Claude Code 配置
+
 - ~/.claude 目录: PASS
 - Agents (9): PASS
 - Commands (6): PASS
@@ -93,14 +95,17 @@ Glob("package.json")
 - Hooks: PASS
 
 ### 项目配置
+
 - CLAUDE.md: PASS
 - REPO_MAP.md: PASS
 
 ### 发现的问题
+
 1. [WARN] 缺少 CLAUDE.md
    -> 修复: 在项目根目录创建 CLAUDE.md
 
 ### 总结
+
 - PASS: 8 项
 - WARN: 1 项 (非阻塞)
 - FAIL: 0 项
@@ -116,13 +121,14 @@ Glob("package.json")
 
 使用 `--fix` 时，当前会自动执行以下修复操作：
 
-| 问题 | 自动修复动作 | 风险 |
-|------|-------------|------|
-| REPO_MAP.md 缺失 | 调用 RepoIndexer 生成 `REPO_MAP.md` | 安全 |
-| hooks/hooks.json 缺失 | 生成最小默认 hooks 配置 | 安全 |
-| Claude 组件缺失 | 调用 installer 补齐缺失组件 | 安全 |
+| 问题                  | 自动修复动作                        | 风险 |
+| --------------------- | ----------------------------------- | ---- |
+| REPO_MAP.md 缺失      | 调用 RepoIndexer 生成 `REPO_MAP.md` | 安全 |
+| hooks/hooks.json 缺失 | 生成最小默认 hooks 配置             | 安全 |
+| Claude 组件缺失       | 调用 installer 补齐缺失组件         | 安全 |
 
 以下问题**不会自动修复**（需人工确认）：
+
 - Node.js 版本过低（需要手动升级）
 - CLAUDE.md 缺失（需要根据项目内容生成）
 - node_modules 缺失（当前只提示，不自动执行 `npm install`）
@@ -137,6 +143,7 @@ Glob("package.json")
 ## 输出
 
 诊断结果会额外包含：
+
 - `fixRequested`：是否请求自动修复
 - `fixesApplied`：已成功应用的修复
 - `fixesSkipped`：尝试但跳过/失败的修复
@@ -147,6 +154,7 @@ Glob("package.json")
 ## 与 /auto 集成
 
 DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
+
 - PHASE 2 可消费 `recommendedActions`
 - 工作流结果会包含 `doctorResult`
 - 自动修复产生的 `changedFiles` 会合并进当前工作流上下文
@@ -167,7 +175,7 @@ DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
 
 - 新项目首次运行 `/auto` 前的环境诊断
 - 安装 Auto CLI 后检查 Claude 组件是否缺失
-- 显式 `auto doctor --fix` 时补齐代码地图或默认 hooks
+- 显式 `/auto:doctor --fix` 时补齐代码地图或默认 hooks
 - 在完整工作流开始前做最小健康检查
 
 这使 `doctor` 成为 `/auto` 的前置守门与自愈能力，而不是单独的诊断工具。
@@ -175,47 +183,20 @@ DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
 ## 示例
 
 ```bash
-auto doctor
-auto doctor --fix
-auto doctor --fix --json -d .
+/auto:doctor
+/auto:doctor --fix
 ```
 
-`/auto` 在进入 PHASE 1 时默认复用同一套诊断逻辑；只有显式 `doctor --fix` 才会执行安全修复。
-
-## CLI
-
-```bash
-auto doctor --json -d .
-auto doctor --fix -d .
-```
-
-`/auto:doctor --fix` 与 `auto doctor --fix` 语义保持一致。
+`/auto` 在进入 PHASE 1 时默认复用同一套诊断逻辑；只有显式 `--fix` 才会执行安全修复。
 
 ## 实现约束
 
-修复逻辑必须复用现有模块：installer、RepoIndexer、默认 hooks 生成器；不引入新的重型修复子系统。
+修复逻辑复用现有文件和工具；不引入新的重型修复子系统。
 
 ## 验收
 
-- `auto doctor --fix` 可运行
+- `/auto:doctor --fix` 可执行安全修复
 - `/auto` PHASE 1 默认保持只读诊断
 - 显式修复时结果中能看到 applied/skipped/changedFiles
 - 不执行高风险操作
 - 后续 PHASE 可消费 doctorResult
-
-满足以上即视为当前阶段完成。
-
-## 目标达成
-
-本阶段目标：`修复，并可以被auto自动编排和使用`。
-已通过上述设计直接对应。
-
-## 边界保持
-
-继续保持 doctor 小而稳，不把它做成全能运维器。这样最符合当前仓库定位和收益目标。
-
-## 最短结论
-
-`doctor --fix` 已定位为 `/auto` 的安全自愈前置能力。它既可单独跑，也可被 `/auto` 自动消费。
-
-这正是当前最小改动、高收益的实现方向。

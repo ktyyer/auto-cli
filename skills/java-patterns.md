@@ -341,15 +341,15 @@ public class GlobalExceptionHandler {
 
 ## 六、常见编译错误速查
 
-| 错误 | 根因 | 速修 |
-|------|------|------|
-| `Cannot resolve symbol` | 依赖未同步 | `mvn clean install` 或 IDEA 重新导入 |
-| `NullPointerException` | 未注入 Bean | 检查 `@Autowired` + `@Service` |
-| `BeanCreationException` | 循环依赖 | `@Lazy` 延迟加载或重构 |
-| `HttpMessageNotReadable` | JSON 字段类型错误 | 检查 DTO 字段 + `@JsonFormat` |
-| `DataIntegrityViolation` | 唯一键冲突 | 检查数据唯一性 |
-| `MyBatisSystemException` | XML 与接口不匹配 | 检查 namespace、方法签名 |
-| `InvalidDefinitionException` | Jackson 序列化失败 | 添加 `@JsonIgnore` 或无参构造器 |
+| 错误                         | 根因               | 速修                                 |
+| ---------------------------- | ------------------ | ------------------------------------ |
+| `Cannot resolve symbol`      | 依赖未同步         | `mvn clean install` 或 IDEA 重新导入 |
+| `NullPointerException`       | 未注入 Bean        | 检查 `@Autowired` + `@Service`       |
+| `BeanCreationException`      | 循环依赖           | `@Lazy` 延迟加载或重构               |
+| `HttpMessageNotReadable`     | JSON 字段类型错误  | 检查 DTO 字段 + `@JsonFormat`        |
+| `DataIntegrityViolation`     | 唯一键冲突         | 检查数据唯一性                       |
+| `MyBatisSystemException`     | XML 与接口不匹配   | 检查 namespace、方法签名             |
+| `InvalidDefinitionException` | Jackson 序列化失败 | 添加 `@JsonIgnore` 或无参构造器      |
 
 ---
 

@@ -17,6 +17,7 @@ description: 生成 Claude Code Hook 模板建议。基于项目配置（TypeScr
 ## 何时使用
 
 在以下情况使用 `/auto:create-hook`：
+
 - 想要在特定操作前/后执行自定义脚本
 - 需要强制执行代码规范（如 TDD）
 - 想要阻止某些危险操作
@@ -26,15 +27,15 @@ description: 生成 Claude Code Hook 模板建议。基于项目配置（TypeScr
 
 支持以下 Hook 类型：
 
-| Hook 类型 | 触发时机 | 用途 |
-|-----------|---------|------|
-| **PreToolUse** | 工具调用前 | 验证、修改输入、阻止操作 |
-| **PostToolUse** | 工具调用后 | 自动格式化、检查、通知 |
-| **PostCompaction** | 上下文压缩后 | 重新注入关键上下文 |
-| **UserPromptSubmit** | 用户提交提示后 | 验证提示、注入上下文 |
-| **TeammateIdle** | 队友空闲时 | 分配新任务 |
-| **TaskCompleted** | 任务完成时 | 质量门禁、验证 |
-| **Stop** | 会话结束时 | 最终检查、清理 |
+| Hook 类型            | 触发时机       | 用途                     |
+| -------------------- | -------------- | ------------------------ |
+| **PreToolUse**       | 工具调用前     | 验证、修改输入、阻止操作 |
+| **PostToolUse**      | 工具调用后     | 自动格式化、检查、通知   |
+| **PostCompaction**   | 上下文压缩后   | 重新注入关键上下文       |
+| **UserPromptSubmit** | 用户提交提示后 | 验证提示、注入上下文     |
+| **TeammateIdle**     | 队友空闲时     | 分配新任务               |
+| **TaskCompleted**    | 任务完成时     | 质量门禁、验证           |
+| **Stop**             | 会话结束时     | 最终检查、清理           |
 
 ## 使用示例
 
@@ -58,7 +59,7 @@ description: 生成 Claude Code Hook 模板建议。基于项目配置（TypeScr
 ### 示例 2：指定类型与名称
 
 ```bash
-auto create-hook --type PreToolUse --name tdd-guard --json
+/auto:create-hook --type PreToolUse --name tdd-guard
 ```
 
 输出示例：
@@ -74,7 +75,7 @@ auto create-hook --type PreToolUse --name tdd-guard --json
 
 ### 示例 3：手动落地模板
 
-1. 运行 `/auto:create-hook` 或 `auto create-hook --json`
+1. 运行 `/auto:create-hook`
 2. 根据返回的 `type` / `name` / `template` 手动编写真实 Hook 配置
 3. 将最终配置写入推荐位置并自行校验
 

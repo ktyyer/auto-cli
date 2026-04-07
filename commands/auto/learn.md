@@ -1,7 +1,7 @@
 ---
 name: learn
 description: 分析 Git 历史中的可复用模式，输出提交约定、热点文件和文件联动等结构化结果
-allowed_tools: ["Bash", "Read", "Write", "Grep", "Glob"]
+allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 ---
 
 # /auto:learn — Git 历史模式分析
@@ -16,10 +16,6 @@ allowed_tools: ["Bash", "Read", "Write", "Grep", "Glob"]
 ```bash
 /auto:learn                    # 在 Claude Code 中触发 learn 命令
 /auto:learn --git              # 基于 Git 历史分析模式
-auto learn --git               # CLI：分析最近默认数量的提交
-auto learn --git --commit-count 100
-auto learn --git --json
-auto learn --git --json -d .
 ```
 
 ---
@@ -62,12 +58,12 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 
 #### 第二步：检测模式
 
-| 模式类型 | 检测方法 |
-|---------|---------|
-| **提交约定** | 正则匹配提交消息（feat:, fix:, chore:, docs: 等） |
-| **文件联动** | 总是一起变更的文件组合 |
-| **热点文件** | 最近提交中被频繁修改的文件 |
-| **工作流线索** | 重复出现的文件变更模式 |
+| 模式类型       | 检测方法                                          |
+| -------------- | ------------------------------------------------- |
+| **提交约定**   | 正则匹配提交消息（feat:, fix:, chore:, docs: 等） |
+| **文件联动**   | 总是一起变更的文件组合                            |
+| **热点文件**   | 最近提交中被频繁修改的文件                        |
+| **工作流线索** | 重复出现的文件变更模式                            |
 
 #### 第三步：输出结果
 
@@ -115,25 +111,24 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 
 ## 参数说明
 
-| 参数 | 说明 |
-|------|------|
-| `--git` | 启用 Git 历史分析 |
+| 参数                 | 说明               |
+| -------------------- | ------------------ |
+| `--git`              | 启用 Git 历史分析  |
 | `--commit-count <n>` | 指定分析的提交数量 |
-| `--json` | 输出 JSON 结构 |
-| `-d, --dir <path>` | 指定分析目录 |
+| `--json`             | 输出 JSON 结构     |
+| `-d, --dir <path>`   | 指定分析目录       |
 
 ---
 
 ## 相关命令
 
 - `/auto`：在完整工作流后统一汇总执行结果
-- `auto status --json -d .`：查看当前 runtime 与能力状态
-- `auto codemaps -d .`：生成代码地图
+- `/auto:status`：查看当前 runtime 与能力状态
 
 ---
 
 ## 说明
 
-`/auto:learn` 与 `auto learn` 使用同一套底层分析逻辑；当前能力以 Git 历史模式分析为准。
+`/auto:learn` 当前能力以 Git 历史模式分析为准。
 
 如果后续扩展会话提取或 Skill 落盘，应以真实 CLI 参数与运行时输出为准再更新文档。

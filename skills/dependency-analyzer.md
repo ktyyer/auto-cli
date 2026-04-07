@@ -46,13 +46,13 @@ npx knip --reporter compact
 
 ### 1.3 版本兼容性矩阵
 
-| 场景 | 检测命令 | 风险 |
-|------|---------|------|
-| 版本范围冲突 | `npm ls <package>` | 中 |
-| peer 依赖缺失 | `npm ls 2>&1 \| grep "ERESOLVE"` | 高 |
-| 循环依赖 | `npx madge --circular src/` | 高 |
-| 重复安装 | `npx npm-dedupe` | 低 |
-| Phantom 依赖 | 检查 node_modules 直接引用 | 中 |
+| 场景          | 检测命令                         | 风险 |
+| ------------- | -------------------------------- | ---- |
+| 版本范围冲突  | `npm ls <package>`               | 中   |
+| peer 依赖缺失 | `npm ls 2>&1 \| grep "ERESOLVE"` | 高   |
+| 循环依赖      | `npx madge --circular src/`      | 高   |
+| 重复安装      | `npx npm-dedupe`                 | 低   |
+| Phantom 依赖  | 检查 node_modules 直接引用       | 中   |
 
 ### 1.4 依赖选择决策树
 
@@ -86,12 +86,12 @@ mvn dependency:analyze | grep "WARNING"
 
 ### 2.2 常见问题
 
-| 问题 | 症状 | 修复 |
-|------|------|------|
-| 版本冲突 | `NoSuchMethodError` | `mvn dependency:tree` + `<exclusions>` |
-| 依赖缺失 | `ClassNotFoundException` | 检查 scope 是否为 provided/test |
-| 重复依赖 | `LinkageError` | `mvn enforcer:enforce` + banDuplicates |
-| 过期依赖 | 安全漏洞 | 升级到最新稳定版 |
+| 问题     | 症状                     | 修复                                   |
+| -------- | ------------------------ | -------------------------------------- |
+| 版本冲突 | `NoSuchMethodError`      | `mvn dependency:tree` + `<exclusions>` |
+| 依赖缺失 | `ClassNotFoundException` | 检查 scope 是否为 provided/test        |
+| 重复依赖 | `LinkageError`           | `mvn enforcer:enforce` + banDuplicates |
+| 过期依赖 | 安全漏洞                 | 升级到最新稳定版                       |
 
 ---
 
@@ -113,12 +113,12 @@ go mod graph | grep indirect
 
 ## 四、风险评级标准
 
-| 等级 | CVE | 影响 | 处理 |
-|------|-----|------|------|
+| 等级     | CVE        | 影响         | 处理               |
+| -------- | ---------- | ------------ | ------------------ |
 | Critical | CVE >= 9.0 | 远程代码执行 | 立即修复，阻断构建 |
-| High | CVE >= 7.0 | 数据泄露 | 24h 内修复 |
-| Medium | CVE >= 4.0 | 拒绝服务 | 下个迭代修复 |
-| Low | CVE < 4.0 | 信息泄露 | 记录跟踪 |
+| High     | CVE >= 7.0 | 数据泄露     | 24h 内修复         |
+| Medium   | CVE >= 4.0 | 拒绝服务     | 下个迭代修复       |
+| Low      | CVE < 4.0  | 信息泄露     | 记录跟踪           |
 
 ---
 

@@ -12,6 +12,7 @@ model: sonnet
 ## 核心工作流
 
 ### 1. 分析仓库结构
+
 ```bash
 # 检测项目结构
 find . -maxdepth 3 -type f \( -name "package.json" -o -name "pom.xml" -o -name "go.mod" \) 2>/dev/null
@@ -25,7 +26,9 @@ grep -rl "react\|vue\|svelte\|angular" --include="*.js" --include="*.ts" --inclu
 ```
 
 ### 2. 模块分析
+
 对每个模块：
+
 ```bash
 # 提取公共 API（JSDoc/TSDoc）
 grep -rn "@public\|@export\|export " --include="*.ts" --include="*.js" src/ | head -50
@@ -38,6 +41,7 @@ grep -rn "@.*Mapping\|router\.\(get\|post\|put\|delete\)\|app\.\(get\|post\)" --
 ```
 
 ### 3. 生成代码地图
+
 输出到 `docs/CODEMAPS/`：
 
 ```markdown
@@ -47,32 +51,39 @@ grep -rn "@.*Mapping\|router\.\(get\|post\|put\|delete\)\|app\.\(get\|post\)" --
 **入口点：** 主文件列表
 
 ## 架构
-┌─────────┐     ┌─────────┐
+
+┌─────────┐ ┌─────────┐
 │ ModuleA │────▶│ ModuleB │
-└─────────┘     └─────────┘
-     │               │
-     ▼               ▼
-┌─────────┐     ┌─────────┐
-│ ModuleC │     │ ModuleD │
-└─────────┘     └─────────┘
+└─────────┘ └─────────┘
+│ │
+▼ ▼
+┌─────────┐ ┌─────────┐
+│ ModuleC │ │ ModuleD │
+└─────────┘ └─────────┘
 
 ## 关键模块
+
 | 模块 | 用途 | 导出 | 依赖 |
-|------|------|------|------|
-| ... | ... | ... | ... |
+| ---- | ---- | ---- | ---- |
+| ...  | ...  | ...  | ...  |
 
 ## 数据流
+
 [描述数据如何流经此区域]
 
 ## 外部依赖
+
 - 包名 - 用途
 
 ## 相关区域
+
 与其他代码地图的交叉链接
 ```
 
 ### 4. 更新文档
+
 从以下来源提取信息：
+
 ```bash
 # JSDoc/TSDoc 提取
 grep -rn "@param\|@returns\|@example\|@throws" --include="*.ts" --include="*.js" src/
@@ -85,11 +96,13 @@ find . -name "swagger.*" -o -name "openapi.*" | head -5
 ```
 
 更新目标：
+
 - `README.md` — 项目概述、安装、使用
 - `docs/GUIDES/*` — 使用指南
 - `CLAUDE.md` — AI 行为约束
 
 ### 5. 验证
+
 ```bash
 # 验证所有引用的文件存在
 grep -roh "src/[a-zA-Z0-9_/.*-]*\.\(js\|ts\)" docs/ | sort -u | while read f; do
@@ -105,6 +118,7 @@ done
 ## 质量检查清单
 
 提交前确认：
+
 - [ ] 代码地图从实际代码生成（非手写）
 - [ ] 所有文件路径验证存在
 - [ ] 链接有效（内部和外部）
@@ -118,18 +132,21 @@ done
 # 文档更新报告
 
 ## 更新范围
+
 - 文件数: N
 - 新增: X
 - 修改: Y
 - 删除: Z
 
 ## 变更详情
-| 文件 | 操作 | 描述 |
-|------|------|------|
+
+| 文件                      | 操作 | 描述                    |
+| ------------------------- | ---- | ----------------------- |
 | docs/CODEMAPS/frontend.md | 更新 | 新增 Dashboard 组件描述 |
-| README.md | 更新 | 安装命令同步 |
+| README.md                 | 更新 | 安装命令同步            |
 
 ## 验证结果
+
 - [x] 路径验证: 全部存在
 - [x] 链接验证: 全部有效
 - [x] 与代码同步: 已确认
@@ -138,6 +155,7 @@ done
 ---
 
 **原则**：与现实不符的文档比没有文档更糟糕。始终从事实来源（实际代码）生成。
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

@@ -34,6 +34,7 @@ cat .gitignore | grep -E "\.env|credentials|secret|\.pem|\.key"
 ### 1.5 语言特定漏洞模式
 
 #### Node.js / JavaScript
+
 ```bash
 # 原型链污染
 grep -rn "__proto__\|constructor\[" --include="*.js" --include="*.ts" .
@@ -44,6 +45,7 @@ grep -rn "RegExp(\|/.*{.*}.*{.*}/" --include="*.js" --include="*.ts" . | grep -v
 ```
 
 #### Java / Spring Boot
+
 ```bash
 # SQL 注入（字符串拼接）
 grep -rn '"select\|String.*+.*sql\|String.format.*sql' --include="*.java" .
@@ -54,6 +56,7 @@ grep -rn "jndi:lookup\|InitialContext" --include="*.java" .
 ```
 
 #### 通用
+
 ```bash
 # 命令注入
 grep -rn "exec\|spawn\|execSync\|Runtime.getRuntime" --include="*.js" --include="*.ts" --include="*.java" . | grep -v node_modules
@@ -85,12 +88,14 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
 **审查时间：** YYYY-MM-DD
 
 ## 摘要
+
 - 关键: X | 高: Y | 中: Z | 低: W
 - 风险级别: 红 / 黄 / 绿
 
 ## 问题列表
 
 ### [严重性] 问题标题
+
 **类别：** 注入/XSS/认证/等
 **位置：** `file.ts:123`
 
@@ -100,6 +105,7 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
 **参考：** OWASP/CWE 链接
 
 ## 安全检查清单
+
 - [ ] 无硬编码密钥，敏感值仅通过环境变量
 - [ ] 所有用户输入已验证和清理
 - [ ] 查询使用参数化，无拼接
@@ -111,6 +117,7 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
 - [ ] 依赖无已知漏洞
 - [ ] 金融操作使用原子事务和行锁
 ```
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

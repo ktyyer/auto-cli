@@ -8,12 +8,13 @@ description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 +
 
 ---
 
-## 三模式执行
+## 四模式执行
 
 根据任务复杂度自动选择：
 
 | 条件                  | 模式         | 执行路径                                                                                  |
 | --------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| 0文件变更（纯探索）   | **探索模式** | PHASE 1 → PHASE 2（思考摘要 + 单关探索 Quest，0 changedFiles）→ 直接回答 → PHASE 6        |
 | 1文件 且 <=10行变更   | **微型模式** | PHASE 1 → PHASE 2（完整思考摘要 + 单关 Quest）→ 微型执行 → PHASE 4 → PHASE 6              |
 | <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → PHASE 2（完整思考摘要 + 精简 Quest）→ 直接执行 → PHASE 4 → PHASE 6              |
 | >3文件 或 有架构变更  | **完整模式** | PHASE 1 → PHASE 2（完整思考摘要 + 完整 Quest Map）→ PHASE 3 → PHASE 4 → PHASE 5 → PHASE 6 |
@@ -38,7 +39,7 @@ TodoWrite([
   { content: "任务: [需求摘要]", status: "completed" },
   { content: "技术栈: [tech]", status: "completed" },
   { content: "能力: [N] cmd, [N] agent, [N] skill, [N] hook", status: "completed" },
-  { content: "执行模式: [微型/轻量/完整]", status: "completed" }
+  { content: "执行模式: [探索/微型/轻量/完整]", status: "completed" }
 ])
 ```
 
@@ -48,6 +49,7 @@ TodoWrite([
 
 调用 quest-designer Agent，传递：用户需求、执行模式、技术栈、能力清单、源码路径。
 
+- **探索模式**：跳过 quest-designer，生成思考摘要与单关探索 Quest（0 changedFiles，acceptanceCriteria 为回答完整性），直接回答用户问题，不进入执行/验证/提交阶段。
 - **微型模式**：跳过 quest-designer，先生成完整思考摘要与单关 Quest，再自动进入执行。
 - **轻量模式**：quest-designer 输出精简版（影响文件 + 执行顺序 + 风险评估），仍完整展示任务理解、模式理由、风险边界、Quest 与验收标准后再执行。
 - **完整模式**：quest-designer 输出完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
@@ -83,6 +85,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 | 模式 | 要求                                            |
 | ---- | ----------------------------------------------- |
+| 探索 | 无代码变更，跳过验证阶段                        |
 | 微型 | 编译通过 + 相关测试通过                         |
 | 轻量 | 编译通过 + 相关测试通过 + lint 无错             |
 | 完整 | 编译/构建 → 全量测试 → 覆盖率 >= 80% → 安全扫描 |
@@ -97,6 +100,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 ## PHASE 5: COMMIT — 自动提交（按模式）
 
+- **探索模式**: 无代码变更，跳过提交阶段。
 - **完整模式**: 所有 Quest 完成并通过验证后，在 PHASE 5 统一执行一次提交。
 - **轻量/微型模式**: 所有任务完成后统一提交一次。
 
@@ -108,7 +112,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 
 1. **两轮记忆提取**: 从 `_messageAccumulator` 中自动提取用户偏好、错误修正、项目模式（上限 5 条）
 2. **知识整理**: AutoDream 调度器执行 Orient → Gather → Consolidate → Prune
-3. **经验持久化**: 将执行经验自动保存到 `.auto/insights/`（CLI 未安装时暂存本地，CLI 可用时运行 `auto save insight`）
+3. **经验持久化**: 将执行经验自动保存到 `.auto/insights/`
 4. **架构变更检测**: `_detectArchitectureChange()` → 记录 `pending_doc_update` 到 session memory → 触发 doc-updater 更新文档和 CODEMAPS
 5. **Git 历史分析**: `_analyzeGitPatterns()` 分析提交约定、文件联动、热点文件
 6. **DELETION_LOG**: `_generateDeletionLog()` 持久化删除记录到 `docs/DELETION_LOG.json`
@@ -134,7 +138,7 @@ Quest 间压缩检查 → 若 OVERFLOW 则生成会话摘要 + 续接指令。
 ## 核心原则
 
 1. **一个入口** — /auto 完成所有事情
-2. **按规模执行** — 微型/轻量/完整三级，小任务不浪费
+2. **按规模执行** — 探索/微型/轻量/完整四级，小任务不浪费
 3. **原子化验收** — 每关有验收标准，失败可回滚
 4. **可回溯** — 每步 Git Commit
 5. **知识沉淀** — 越用越强

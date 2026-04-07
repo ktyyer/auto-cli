@@ -33,15 +33,15 @@ tags: [style, lint, format, naming, quality, enforcement, typescript, javascript
 
 ### 1.2 命名规范
 
-| 类型 | 规范 | 合法示例 | 非法示例 |
-|------|------|---------|---------|
-| 变量/函数 | camelCase | `getUserById` | `get_user_by_id` |
-| 常量 | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` | `maxRetryCount` |
-| 类/接口/类型 | PascalCase | `UserService` | `user_service` |
-| 文件名 | kebab-case | `user-service.ts` | `UserService.ts` |
-| 私有字段 | #前缀 或 _前缀 | `#privateField` | `privateField` |
-| 布尔变量 | is/has/should 前缀 | `isValid`, `hasPermission` | `valid`, `permission` |
-| 事件处理 | handle/on 前缀 | `handleClick` | `clickHandler` |
+| 类型         | 规范               | 合法示例                   | 非法示例              |
+| ------------ | ------------------ | -------------------------- | --------------------- |
+| 变量/函数    | camelCase          | `getUserById`              | `get_user_by_id`      |
+| 常量         | UPPER_SNAKE_CASE   | `MAX_RETRY_COUNT`          | `maxRetryCount`       |
+| 类/接口/类型 | PascalCase         | `UserService`              | `user_service`        |
+| 文件名       | kebab-case         | `user-service.ts`          | `UserService.ts`      |
+| 私有字段     | #前缀 或 \_前缀    | `#privateField`            | `privateField`        |
+| 布尔变量     | is/has/should 前缀 | `isValid`, `hasPermission` | `valid`, `permission` |
+| 事件处理     | handle/on 前缀     | `handleClick`              | `clickHandler`        |
 
 ```bash
 # 检测命名违规
@@ -86,13 +86,13 @@ import type { UserDTO } from '@/types/user'
 
 ### 2.1 命名规范
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 类名 | UpperCamelCase | `SysUserController` |
-| 方法名 | lowerCamelCase | `findByUsername` |
-| 常量 | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| 包名 | 全小写 | `com.eco.system.controller` |
-| 数据库表 | lower_snake_case | `sys_user` |
+| 类型     | 规范             | 示例                        |
+| -------- | ---------------- | --------------------------- |
+| 类名     | UpperCamelCase   | `SysUserController`         |
+| 方法名   | lowerCamelCase   | `findByUsername`            |
+| 常量     | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`           |
+| 包名     | 全小写           | `com.eco.system.controller` |
+| 数据库表 | lower_snake_case | `sys_user`                  |
 
 ### 2.2 分层架构约束
 
@@ -119,14 +119,14 @@ Controller → Service Interface → ServiceImpl → Mapper → Database
 
 ### 3.1 禁止项
 
-| 禁止 | 检测命令 | 替代方案 |
-|------|---------|---------|
-| console.log | `grep -rn "console\\.log" --include="*.ts" src/` | 使用 Logger |
-| 硬编码密钥 | `grep -rn "api[_-]?key\\|password\\|secret" --include="*.ts" src/` | 使用 process.env |
-| any 类型 | `grep -rn ": any" --include="*.ts" src/` | 使用具体类型 |
-| 空 catch 块 | `grep -A1 "catch" --include="*.ts" src/ \| grep "^\\s*}"` | 至少 log.error |
-| 可变操作 | 直接对象赋值 `obj.x = y` | 展开运算符 `{ ...obj, x: y }` |
-| var 声明 | `grep -rn "\\bvar\\b " --include="*.ts" src/` | 使用 const/let |
+| 禁止        | 检测命令                                                  | 替代方案                      |
+| ----------- | --------------------------------------------------------- | ----------------------------- | ------------------------------- | ---------------- |
+| console.log | `grep -rn "console\\.log" --include="*.ts" src/`          | 使用 Logger                   |
+| 硬编码密钥  | `grep -rn "api[_-]?key\\                                  | password\\                    | secret" --include="\*.ts" src/` | 使用 process.env |
+| any 类型    | `grep -rn ": any" --include="*.ts" src/`                  | 使用具体类型                  |
+| 空 catch 块 | `grep -A1 "catch" --include="*.ts" src/ \| grep "^\\s*}"` | 至少 log.error                |
+| 可变操作    | 直接对象赋值 `obj.x = y`                                  | 展开运算符 `{ ...obj, x: y }` |
+| var 声明    | `grep -rn "\\bvar\\b " --include="*.ts" src/`             | 使用 const/let                |
 
 ### 3.2 强制项
 

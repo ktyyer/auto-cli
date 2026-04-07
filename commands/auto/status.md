@@ -75,37 +75,37 @@ Bash: git branch --show-current → 当前分支
 
 调用 `getRuntimeStatus()` 检查 13 个核心模块的初始化和健康状态：
 
-| 模块 | 检查项 | 说明 |
-|------|--------|------|
-| flowEngine | state, phase | 工作流状态机 |
-| memory | stats | 三层记忆系统 |
-| tokenBudget | status, summary | Token 预算控制 |
-| contextMonitor | status, summary | 上下文窗口监控 |
-| skillIndexer | initialized | 技能索引器 |
-| agentRegistry | initialized, stats | Agent 注册表 |
-| canonicalRouter | initialized | 意图路由器 |
-| repoIndexer | initialized | 仓库符号索引 |
-| knowledgeSteward | initialized | 知识管家 |
-| dreamScheduler | healthy | 自动记忆整理 |
-| workflow | phase, mode, quests | 当前工作流状态 |
+| 模块             | 检查项              | 说明           |
+| ---------------- | ------------------- | -------------- |
+| flowEngine       | state, phase        | 工作流状态机   |
+| memory           | stats               | 三层记忆系统   |
+| tokenBudget      | status, summary     | Token 预算控制 |
+| contextMonitor   | status, summary     | 上下文窗口监控 |
+| skillIndexer     | initialized         | 技能索引器     |
+| agentRegistry    | initialized, stats  | Agent 注册表   |
+| canonicalRouter  | initialized         | 意图路由器     |
+| repoIndexer      | initialized         | 仓库符号索引   |
+| knowledgeSteward | initialized         | 知识管家       |
+| dreamScheduler   | healthy             | 自动记忆整理   |
+| workflow         | phase, mode, quests | 当前工作流状态 |
 
 输出格式：
 
 ```markdown
 ### Runtime 模块状态
 
-| 模块 | 状态 | 详情 |
-|------|------|------|
-| FlowEngine | IDLE/WORKING | phase={n} |
-| MemoryManager | OK | session={n} project={n} global={n} |
-| TokenBudget | OK/WARNING/CRITICAL | {used}% used |
-| ContextMonitor | OK/COMPRESS | {used}% of limit |
-| SkillIndexer | READY | cached={bool} |
-| AgentRegistry | READY | agents={n} |
-| CanonicalRouter | READY | - |
-| RepoIndexer | READY/IDLE | indexed={bool} |
-| KnowledgeSteward | READY/IDLE | - |
-| DreamScheduler | READY | - |
+| 模块             | 状态                | 详情                               |
+| ---------------- | ------------------- | ---------------------------------- |
+| FlowEngine       | IDLE/WORKING        | phase={n}                          |
+| MemoryManager    | OK                  | session={n} project={n} global={n} |
+| TokenBudget      | OK/WARNING/CRITICAL | {used}% used                       |
+| ContextMonitor   | OK/COMPRESS         | {used}% of limit                   |
+| SkillIndexer     | READY               | cached={bool}                      |
+| AgentRegistry    | READY               | agents={n}                         |
+| CanonicalRouter  | READY               | -                                  |
+| RepoIndexer      | READY/IDLE          | indexed={bool}                     |
+| KnowledgeSteward | READY/IDLE          | -                                  |
+| DreamScheduler   | READY               | -                                  |
 ```
 
 ### 5. Agent/Skill/Rule 文件完整性检查
@@ -138,39 +138,40 @@ rules/*.md: 检查文件非空且有实质内容（>100 字节）
 
 ### 已安装能力
 
-| 类型 | 数量 | 详情 |
-|------|------|------|
-| Agents | {n} | {agent names} |
-| Commands | {n} | {command names} |
-| Skills | {n} | {skill names} |
-| Rules | {n} | {rule names} |
-| Hooks | {n} | {hook types} |
-| Knowledge | {n} | 知识条目 |
+| 类型      | 数量 | 详情            |
+| --------- | ---- | --------------- |
+| Agents    | {n}  | {agent names}   |
+| Commands  | {n}  | {command names} |
+| Skills    | {n}  | {skill names}   |
+| Rules     | {n}  | {rule names}    |
+| Hooks     | {n}  | {hook types}    |
+| Knowledge | {n}  | 知识条目        |
 
 ### 健康度
 
-| 检查项 | 状态 |
-|--------|------|
-| CLAUDE.md | EXISTS / MISSING |
-| REPO_MAP.md | EXISTS / STALE |
+| 检查项       | 状态                |
+| ------------ | ------------------- |
+| CLAUDE.md    | EXISTS / MISSING    |
+| REPO_MAP.md  | EXISTS / STALE      |
 | node_modules | INSTALLED / MISSING |
-| Git 状态 | CLEAN / DIRTY |
+| Git 状态     | CLEAN / DIRTY       |
 
 ### Runtime 模块
 
 | 模块 | 状态 | 详情 |
-|------|------|------|
-| ... | ... | ... |
+| ---- | ---- | ---- |
+| ...  | ...  | ...  |
 
 ### 文件完整性
 
-| 类型 | 检查结果 |
-|------|----------|
+| 类型   | 检查结果     |
+| ------ | ------------ |
 | Agents | {n}/{n} 完整 |
 | Skills | {n}/{n} 完整 |
-| Rules | {n}/{n} 完整 |
+| Rules  | {n}/{n} 完整 |
 
 ### 建议
+
 - [ ] 缺失项的建议操作（如有）
 ```
 
@@ -194,7 +195,7 @@ rules/*.md: 检查文件非空且有实质内容（>100 字节）
 根据扫描结果生成建议：
 
 - CLAUDE.md 缺失 → 建议手动补齐项目上下文文件
-- REPO_MAP.md 缺失 → 建议运行 `auto codemaps -d .`
+- REPO_MAP.md 缺失 → 建议手动生成源码索引
 - node_modules 缺失 → 建议 `npm install`
 - 能力数量 < 预期 → 建议 `/auto:doctor` 检查安装
 - Agent/Skill 文件不完整 → 建议修复 frontmatter

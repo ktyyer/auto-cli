@@ -47,11 +47,11 @@ git diff --stat HEAD
 
 根据项目测试框架选择：
 
-| 框架 | 命令 | 配置文件 |
-|------|------|----------|
+| 框架       | 命令             | 配置文件           |
+| ---------- | ---------------- | ------------------ |
 | **Vitest** | `npx vitest run` | `vitest.config.js` |
-| **Jest** | `npx jest` | `jest.config.js` |
-| **Mocha** | `npx mocha` | `.mocharc.yml` |
+| **Jest**   | `npx jest`       | `jest.config.js`   |
+| **Mocha**  | `npx mocha`      | `.mocharc.yml`     |
 
 测试文件命名：`tests/<module>.test.js` 或 `__tests__/<module>.test.js`
 
@@ -82,6 +82,7 @@ npx vitest run --coverage
 ```
 
 阈值要求：
+
 - 分支覆盖率 >= 80%
 - 函数覆盖率 >= 80%
 - 行覆盖率 >= 80%
@@ -161,6 +162,7 @@ Status: [PASS|FAIL]
 ```
 
 **没有测试就没有代码。测试是支持自信重构和可靠交付的安全网。**
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：
