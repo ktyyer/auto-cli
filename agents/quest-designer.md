@@ -35,19 +35,6 @@ model: opus
 
 ---
 
-## v4 核心改变（相对 v3）
-
-| 维度         | v3 的问题                  | v4 的解决方案                                                           |
-| ------------ | -------------------------- | ----------------------------------------------------------------------- |
-| **蓝图内容** | 方法签名 + 注释说明        | **完整文件代码**（含 package/import/注解）                              |
-| **修改指令** | "在 Service 中新增方法"    | **精确锚点定位**："在 `public interface OrderService {` 后插入以下方法" |
-| **文件路径** | "新增 DTO"                 | **完整路径**：`src/main/java/com/.../dto/CreateOrderRequest.java`       |
-| **Import**   | 缺失，PHASE 3 自己猜       | **每个文件附带完整 import 列表**                                        |
-| **方法体**   | "校验库存→扣库存→创建订单" | **伪代码级完整实现**：每个分支、每个调用、每个异常                      |
-| **错误预测** | 无                         | **预判 PHASE 3 可能遇到的 3 个坑**                                      |
-
----
-
 ## 工作流程（严格按顺序执行）
 
 ### 第 1 步：需求解析 + 变更范围预判
@@ -238,71 +225,17 @@ ELSE:
 
 **v4 核心改变：📦 完整实现不再是一个骨架描述，而是完整可编译的代码。**
 
-在 Quest Map 正文前，必须先输出一个标准 `QuestMap` 协议块。该协议块是 PHASE 2 到 PHASE 3 的唯一交接真源。
+在 Quest Map 正文前，必须先输出一个标准 `QuestMap` 协议块（schema 见 `_shared-principles.md`）。该协议块是 PHASE 2 到 PHASE 3 的唯一交接真源。
+
+必填字段：`id`, `runId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`。
+每个 quest 必填：`questId`, `objective`, `ownerAgent`, `touchFiles`, `acceptance`, `decisionNotes`, `pitfalls`。
 
 ````markdown
 # 《[项目/功能名称] 闯关大纲》
 
 ## QuestMap 协议块
 
-```json
-{
-  "protocolVersion": "auto-md/v1",
-  "kind": "QuestMap",
-  "id": "quest-map-<id>",
-  "runId": "run-<id>",
-  "phase": "PLAN",
-  "status": "success",
-  "summary": "一句话说明任务拆解结果",
-  "source": "quest-designer",
-  "refs": {
-    "artifacts": ["route-<id>"],
-    "files": ["涉及文件路径"]
-  },
-  "handoff": {
-    "toPhase": "EXECUTE",
-    "ready": true,
-    "blockingIssues": []
-  },
-  "routeDecisionId": "route-<id>",
-  "goal": "<任务总目标>",
-  "executionMode": "direct | sequential | parallel | orchestrated",
-  "contracts": [
-    {
-      "name": "CONTRACT-1",
-      "producer": "quest-1",
-      "consumers": ["quest-2"],
-      "summary": "<合约摘要>"
-    }
-  ],
-  "globalAcceptance": ["编译通过", "相关测试通过", "关键门禁通过"],
-  "failurePolicy": {
-    "maxAttempts": 2,
-    "retryPlan": ["same_path", "alternative_path_or_agent"],
-    "escalateTo": "build-error-resolver",
-    "rollbackScope": "quest_only"
-  },
-  "knowledgeHints": ["<可沉淀经验1>", "<可沉淀经验2>"],
-  "quests": [
-    {
-      "questId": "quest-1",
-      "title": "<关卡标题>",
-      "objective": "<一句话目标>",
-      "ownerAgent": "direct | tdd-guide | code-reviewer | security-reviewer",
-      "skills": ["<skill1>"],
-      "dependsOn": [],
-      "inputs": ["<输入合约或上下文>"],
-      "outputs": ["<输出物>"],
-      "touchFiles": ["<文件路径>"],
-      "acceptance": ["<验收标准1>", "<验收标准2>"],
-      "risk": "low | medium | high",
-      "rollback": "<当前 Quest 的回滚范围和方式>",
-      "decisionNotes": ["<决策1>", "<决策2>"],
-      "pitfalls": ["<预判坑点1>", "<预判坑点2>"]
-    }
-  ]
-}
-```
+（输出符合 \_shared-principles.md 定义的 QuestMap JSON）
 
 ## 全局信息
 
@@ -315,237 +248,47 @@ ELSE:
 ### QuestMap 字段要求
 
 - `routeDecisionId`：必须引用上游 `RouteDecision.id`
-- `executionMode`：根据依赖关系选择 `direct / sequential / parallel / orchestrated`
-- `contracts[]`：对齐下文的合约清单，不得口径不一致
-- `failurePolicy`：统一失败协议，默认两次尝试后升级 `build-error-resolver`
-- `knowledgeHints[]`：记录本次任务可能沉淀的模式、踩坑、决策
-- `quests[]`：必须覆盖正文中出现的全部 Quest
-- 每个 Quest 的 `touchFiles`、`acceptance`、`rollback`、`decisionNotes`、`pitfalls` 不能省略
+- `contracts[]`：对齐正文合约清单
+- `quests[]`：必须覆盖正文中全部 Quest，每关 `touchFiles`、`acceptance`、`decisionNotes`、`pitfalls` 不可省略
 
 ---
 
-## Quest 正文（完整蓝图）
+## Quest 正文格式模板
 
-该部分继续保持 v4 的完整代码输出，不降低蓝图细度。PHASE 3 执行时，先读协议块，再按正文逐关落地。
+每个 Quest 按以下结构输出（语言无关，根据实际项目技术栈调整）：
 
----
+```markdown
+## Quest [N.M]：[一句话目标]
 
-## Quest [1.1]：新增导出请求 DTO 和 Excel VO
-
-🎯 **目标**：新建 ExportOrderRequest.java 和 OrderExcelVO.java 两个数据类
-
-⚠️ **风险**：🟢 低（纯数据类，无业务逻辑）
-
-🚫 **边界**：禁止修改已有 DTO；禁止引入新依赖
-
-🔗 **依赖**：无
-
-🔗 **合约**：产出 CONTRACT-1
+🎯 **目标**：[具体到文件和代码动作]
+⚠️ **风险**：🔴高 / 🟡中 / 🟢低（[理由]）
+🚫 **边界**：[禁止修改的文件/模式/技术]
+🔗 **依赖**：[上游 Quest] / 无
+🔗 **合约**：产出 CONTRACT-N / 消费 CONTRACT-M
 
 📦 **完整实现**：
 
-**文件 1** — CREATE `src/main/java/com/example/order/dto/ExportOrderRequest.java`
+**文件 1** — CREATE/MODIFY `[完整文件路径]`
+插入锚点（MODIFY 时）：在 `[唯一文本锚点]` 之后插入
 
-```java
-package com.example.order.dto;
+[完整可编译代码，含 package/import/注解]
 
-import javax.validation.constraints.NotNull;
-import lombok.Data;
+⚠️ **预判坑点**（基于代码分析，非通用建议）：
 
-/**
- * 订单导出请求参数
- */
-@Data
-public class ExportOrderRequest {
-
-    /** 开始日期 */
-    @NotNull(message = "开始日期不能为空")
-    private LocalDate startDate;
-
-    /** 结束日期 */
-    @NotNull(message = "结束日期不能为空")
-    private LocalDate endDate;
-
-    /** 订单状态（可选） */
-    private Integer status;
-}
-```
-````
-
-**文件 2** — CREATE `src/main/java/com/example/order/dto/OrderExcelVO.java`
-
-```java
-package com.example.order.dto;
-
-import com.alibaba.excel.annotation.ExcelProperty;
-import com.alibaba.excel.annotation.write.style.ColumnWidth;
-import lombok.Data;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-/**
- * 订单导出 Excel VO
- */
-@Data
-public class OrderExcelVO {
-
-    @ExcelProperty("订单编号")
-    @ColumnWidth(20)
-    private String orderNo;
-
-    @ExcelProperty("商品名称")
-    @ColumnWidth(30)
-    private String productName;
-
-    @ExcelProperty("金额")
-    private BigDecimal amount;
-
-    @ExcelProperty("状态")
-    private String statusName;
-
-    @ExcelProperty("创建时间")
-    private LocalDateTime createTime;
-}
-```
-
-⚠️ **预判坑点**：
-
-1. EasyExcel 的 @ExcelProperty import 是 `com.alibaba.excel.annotation.ExcelProperty`，不是 apache poi
-2. 项目使用 LocalDate 而非 Date（参见 OrderQueryRequest.java 第 12 行）
+1. [具体坑点]
+2. [具体坑点]
 
 ✅ **验收标准**：
 | # | 验证点 | 验证命令 | 预期 |
 |---|-------|---------|------|
-| 1 | 编译通过 | `mvn compile -pl order -am` | SUCCESS |
-| 2 | DTO 字段完整 | `grep -c "private" src/.../ExportOrderRequest.java` | 3 |
-| 3 | Excel 注解正确 | `grep -c "@ExcelProperty" src/.../OrderExcelVO.java` | 5 |
+| 1 | [验证点] | [可粘贴执行的命令] | [预期结果] |
 
-🔙 **回滚**：`rm src/.../ExportOrderRequest.java src/.../OrderExcelVO.java`
-
-📝 **决策笔记**（工工件交接标准）:
+📝 **决策笔记**：
 | # | 决策 | 理由 | 备选方案 |
 |---|------|------|---------|
-| 1 | 使用 EasyExcel 而非 Apache POI | 项目已有依赖，风格一致 | 原生 SXSSFWorkbook（更灵活但代码量 x3） |
-| 2 | LocalDate 而非 Date | 项目统一使用新时间 API | Date（向后兼容但不一致） |
-| 3 | private toExcelVO 不抽取 Converter | 只在一处使用，避免过度抽象 | MapStruct（增加编译复杂度） |
+| 1 | [决策] | [理由] | [备选] |
 
----
-
-## Quest [1.2]：新增 Service 导出方法
-
-🎯 **目标**：在 OrderService 接口新增 exportOrders 方法签名，在 OrderServiceImpl 新增实现
-
-⚠️ **风险**：🟡 中（涉及流操作，需注意资源关闭）
-
-🚫 **边界**：禁止修改已有 Service 方法；禁止引入新的第三方工具类（使用项目已有的 EasyExcel）
-
-🔗 **依赖**：Quest 1.1（需要 ExportOrderRequest 和 OrderExcelVO）
-
-🔗 **合约**：产出 CONTRACT-2，消费 CONTRACT-1
-
-📦 **完整实现**：
-
-**文件 1** — MODIFY `src/main/java/com/example/order/service/OrderService.java`
-
-插入锚点：在 `}` (类结束大括号) 之前插入
-
-```java
-    /**
-     * 导出订单列表
-     */
-    void exportOrders(ExportOrderRequest req, HttpServletResponse response) throws IOException;
-```
-
-需新增 import（检查是否已存在）：
-
-```java
-import com.example.order.dto.ExportOrderRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-```
-
-**文件 2** — MODIFY `src/main/java/com/example/order/service/impl/OrderServiceImpl.java`
-
-插入锚点：在最后一个 `}` 之前插入
-
-```java
-    @Override
-    public void exportOrders(ExportOrderRequest req, HttpServletResponse response) throws IOException {
-        // 1. 构建查询条件
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<Order>()
-                .ge(Order::getCreateTime, req.getStartDate())
-                .le(Order::getCreateTime, req.getEndDate())
-                .eq(req.getStatus() != null, Order::getStatus, req.getStatus())
-                .orderByDesc(Order::getCreateTime);
-
-        // 2. 查询数据
-        List<Order> orders = orderMapper.selectList(wrapper);
-        if (orders.isEmpty()) {
-            throw new ServiceException("无导出数据");
-        }
-
-        // 3. 转换为 VO
-        List<OrderExcelVO> voList = orders.stream()
-                .map(this::toExcelVO)
-                .collect(Collectors.toList());
-
-        // 4. 设置响应头
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment;filename=orders.xlsx");
-
-        // 5. 写入 Excel
-        EasyExcel.write(response.getOutputStream(), OrderExcelVO.class)
-                .sheet("订单列表")
-                .doWrite(voList);
-    }
-
-    private OrderExcelVO toExcelVO(Order order) {
-        OrderExcelVO vo = new OrderExcelVO();
-        vo.setOrderNo(order.getOrderNo());
-        vo.setProductName(order.getProductName());
-        vo.setAmount(order.getAmount());
-        vo.setStatusName(order.getStatus() == 1 ? "已完成" : "待处理");
-        vo.setCreateTime(order.getCreateTime());
-        return vo;
-    }
-```
-
-需新增 import（检查是否已存在）：
-
-```java
-import com.example.order.dto.ExportOrderRequest;
-import com.example.order.dto.OrderExcelVO;
-import com.alibaba.excel.EasyExcel;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.stream.Collectors;
-```
-
-反模式警告：
-
-- 不要用 HSSFWorkbook（项目用的是 EasyExcel，不是 Apache POI 原生）
-- 不要在循环中做 DB 查询（先批量查出再转换）
-- 不要忘记设置 Content-Type 响应头
-
-⚠️ **预判坑点**：
-
-1. `toExcelVO` 是 private 方法，放在同一个类中，不要抽取到 Converter
-2. `response.getOutputStream()` 可能抛 IOException，方法签名要 throws IOException
-3. LambdaQueryWrapper 的条件构造器：第二个参数是 boolean，当 status 为 null 时跳过
-
-✅ **验收标准**：
-| # | 验证点 | 验证命令 | 预期 |
-|---|-------|---------|------|
-| 1 | 编译通过 | `mvn compile -pl order -am` | SUCCESS |
-| 2 | Service 方法存在 | `grep "exportOrders" src/.../OrderService.java` | 匹配 |
-| 3 | ServiceImpl 实现 | `grep "EasyExcel.write" src/.../OrderServiceImpl.java` | 匹配 |
-| 4 | 异常处理 | `grep "ServiceException" src/.../OrderServiceImpl.java` | "无导出数据" |
-
-🔙 **回滚**：
-
-```bash
-git checkout -- src/.../OrderService.java src/.../OrderServiceImpl.java
+🔙 **回滚**：[具体 git/rm 命令]
 ```
 
 ```
@@ -615,8 +358,7 @@ v4 质量项：
 [13] CREATE 文件的 import 是否与项目中同层文件的 import 风格一致？
 [14] MODIFY 文件的插入锚点是否唯一（不会匹配到多个位置）？
 [15] 🔙 回滚方案是否具体到 git 命令？
-
-```
+````
 
 ---
 
@@ -631,56 +373,26 @@ v4 质量项：
 5. **自验证评分表**
 6. **风险汇总**（🔴 高风险 Quest 列表 + 建议执行顺序）
 
-然后交回主窗口展示。主窗口必须在展示后按照改动小收益大的方案自动继续执行，不等待用户确认；如需迭代修改，由主窗口在后续轮次重新调用。
-
-### 第 7.5 步：输出模式卡（供缓存，v4.1 新增）
-
-**在 Quest Map 输出之后，输出所有已分析文件的代码模式摘要，供主窗口写入缓存。**
-
-**重要**：仅输出 `cards` 对象。`head_hash` 和 `created_at` 由主窗口添加，你不要输出。
-
-```
-
-<!--PATTERN_CARDS_START-->
-
-{
-"cards": {
-"OrderController.java": {
-"package": "com.example.system.controller",
-"import*style": "javax.* → org._ → com.example._ → lombok.\_",
-"class_annotations": "@RestController → @RequestMapping(\"/system/order\") → @Tag(name=\"订单管理\")",
-"method_pattern": "@Operation(summary=\"xxx\") → @GetMapping(\"/list\") → Result<PageInfo<XxxDTO>>",
-"return_pattern": "Result<PageInfo<XxxDTO>>",
-"key_imports": ["com.example.common.core.domain.Result", "com.example.system.domain.dto.OrderDTO"]
-}
-}
-}
-
-<!--PATTERN_CARDS_END-->
-
-````
-
-规则：
-- 所有第 2 步实际读取过的文件（非缓存来源的），必须输出模式卡
-- 缓存中已有但未重新读取的文件，不需要重复输出
-- 主窗口会用 **upsert by key** 方式合并：同一文件路径的新卡覆盖旧卡
-- 如果没有读取任何新文件（全部缓存命中），**跳过本步骤**，不输出标记
+然后交回主窗口展示。主窗口展示后自动继续执行，不等待用户确认。
 
 ---
 
 ## 三大设计原则
 
 ### 1. 完整代码 > 描述
+
 - CREATE 操作输出 **完整可编译文件**（package + import + 注解 + 类/方法体）
 - MODIFY 操作输出 **精确锚点 + 插入代码 + import 列表**
 - PHASE 3 的工作是"复制→验证→修小错"，不是"理解描述→写代码"
 
 ### 2. 锚点定位 > 行号
+
 - 修改已有文件时，使用 **文本锚点**（如 `在 "public interface OrderService {" 之后插入`）
 - 不使用行号（行号在代码变动后失效）
 - 锚点必须是唯一的（不会匹配到多个位置）
 
 ### 3. 预判坑点 > 事后修复
+
 - 每个 Quest 预判 PHASE 3 可能遇到的 **3 个坑**
 - 坑点来自代码分析（"项目中用的是 LocalDate 不是 Date"），不是通用建议
 - 反模式警告来自对比分析（"其他 DTO 都没用 @Builder"），不是猜测
@@ -695,18 +407,22 @@ v4 质量项：
 # 执行前摘要：[需求摘要]
 
 ## 任务理解
+
 [一句话说明任务目标]
 
 ## 模式判定理由
+
 [为什么是轻量模式]
 
 ## 风险与边界
+
 - [关键风险]
 - [不可越界范围]
 
 ## Quest Map
 
 ### Quest light-1：[目标]
+
 - 描述：[具体动作]
 - 影响文件：[文件路径列表]
 - 验收标准：[可验证结果]
@@ -714,7 +430,9 @@ v4 质量项：
 - 预判坑点：
   1. [基于代码分析的具体坑点]
   2. [基于代码分析的具体坑点]
-````
+```
+
+```
 
 微型模式同样至少输出一关 Quest，不能跳过 Quest 展示。
 
@@ -743,3 +461,4 @@ v4 质量项：
 - **java-patterns** — Java/Spring Boot 模式库（Controller-Service-Mapper 模板）
 - **workflow-patterns** — 工作流模式（Plan Mode、Agent 编排、代码审查清单）
 - **performance-patterns** — 性能优化模式（缓存、查询优化、懒加载策略）
+```

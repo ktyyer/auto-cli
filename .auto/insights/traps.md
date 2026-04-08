@@ -1,0 +1,45 @@
+# 踩坑经验和问题排查
+
+> LEARN 阶段自动维护，记录已验证的踩坑经验。
+
+### Agent subagent 上下文溢出
+
+**日期**: 2026-04-09
+**标签**: agent, context-window, quest-designer
+**置信度**: high
+
+quest-designer.md 曾达 746 行，作为 subagent 加载时挤占上下文窗口，导致 50+ 次 agent 调度全部失败（成功率 0%）。
+
+**触发条件**: agent .md 文件超过 400 行
+**推荐动作**: 将 JSON schema 引用 `_shared-principles.md`，移除项目特定示例，保持 agent .md < 450 行
+**反模式**: 在 agent .md 中内联完整 JSON schema 和大段示例代码
+
+---
+
+### store.json 脏数据污染 SCAN
+
+**日期**: 2026-04-09
+**标签**: memory, scan, stale-data
+**置信度**: high
+
+store.json 残留旧 JS 运行时的路径引用（`src/router/canonical-router.js` 等已删除文件）和 100% 失败的 agent_result 记录。SCAN 阶段读取后被误导。
+
+**触发条件**: 项目架构大幅变更后未重置 store.json
+**推荐动作**: 架构迁移后清理 store.json，只保留 canonical 格式数据
+**反模式**: 在 store.json 中累积永不清理的历史记录
+
+---
+
+### 协议 schema 多处重复导致不一致
+
+**日期**: 2026-04-09
+**标签**: protocol, duplication, maintenance
+**置信度**: high
+
+QuestMap/QuestResult/VerifyReport/LearnCard 的 JSON schema 曾同时出现在 auto.md、_shared-principles.md、quest-designer.md 三处，修改一处忘记同步其他导致字段不一致。
+
+**触发条件**: 协议对象定义出现在多个文件中
+**推荐动作**: schema 只在 `_shared-principles.md` 定义一次，其他文件用引用
+**反模式**: 在多个 .md 文件中复制粘贴完整 JSON schema
+
+---

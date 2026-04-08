@@ -86,6 +86,9 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 - 发现常见文件联动关系
 - 将 Git 模式统一映射为 `LearnCard(category=pattern)`
 - 将路由反馈统一映射为 `LearnCard(category=feedback)`
+- 将可复用的 route hints 写回 `.auto/feedback/agents.json` / `.auto/feedback/skills.json`
+- 将可复用的模式卡写回 `.auto/cache/pattern-cards.json`
+- 为跨会话续接产出 `.auto/runs/<runId>/session-continuity.md`
 
 > 当前文档定义的是 canonical 输出协议；实际落盘范围应以当前实现结果为准。
 
@@ -144,6 +147,53 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
   ]
 }
 ```
+
+---
+
+### Route Hint / Pattern Card 回灌
+
+LEARN 除产出 `LearnCard` 外，还应把可复用的选择信号回灌给下次 `SCAN` / `route`：
+
+- `.auto/feedback/agents.json`：记录 Agent 路由反馈
+- `.auto/feedback/skills.json`：记录 Skill 注入反馈
+- `.auto/cache/pattern-cards.json`：记录可复用模式卡
+
+写回原则：
+
+1. 只有本次 run 中真实读取或验证过的内容才允许回写。
+2. 未通过 `VerifyReport` 的路径可以作为反例记录，但必须在 `LearnCard.category=feedback` 或 `trap` 中显式标识失败上下文。
+3. route hints 只能帮助下次选择，不得覆盖本次仓库扫描事实。
+
+### Session Continuity
+
+当 run 需要跨阶段或跨会话继续时，当前 phase 必须立即产出 `session-continuity.md`；`/auto:learn` 在 LEARN 阶段负责补全或更新该工件，而不是独占创建时机。
+
+推荐结构：
+
+````markdown
+## Session Continuity
+
+```json
+{
+  "runId": "run-<id>",
+  "status": "planned | in_progress | blocked | completed",
+  "currentPhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
+  "lastCompletedPhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN | none",
+  "nextPhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN | none",
+  "requiredArtifacts": ["route-<id>", "quest-map-<id>", "verify-<id>"],
+  "blockingIssues": [],
+  "resumePrompt": "继续 run-<id>，先读取 .auto/runs/<runId>/ 下的相关工件，再从 <nextPhase> 开始"
+}
+```
+````
+
+推荐落盘位置：
+
+- `.auto/runs/<runId>/learn-cards.md`
+- `.auto/runs/<runId>/session-continuity.md`
+- `.auto/feedback/agents.json`
+- `.auto/feedback/skills.json`
+- `.auto/cache/pattern-cards.json`
 
 ---
 

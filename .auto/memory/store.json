@@ -1,0 +1,7 @@
+{
+  "version": "auto-md/v1",
+  "lastReset": "2026-04-09",
+  "resetReason": "清理 legacy 脏数据（旧 JS 运行时残留 + 100% 失败记录）",
+  "runs": {},
+  "projectMeta": {}
+}

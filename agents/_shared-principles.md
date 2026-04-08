@@ -59,17 +59,54 @@ tags: [shared, protocol, handoff, agent, principles]
 }
 ```
 
+### Phase 硬约束
+
+| Phase     | 必需上游对象                   | 必需落盘 / 输出                                                              | 允许进入下游的条件                                     |
+| --------- | ------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `SCAN`    | 用户需求 + 项目上下文          | `RouteDecision`（内含 `capabilitySnapshot` + `selection`）                   | `RouteDecision.status=success` 且 `handoff.ready=true` |
+| `PLAN`    | `RouteDecision`                | `QuestMap`                                                                   | `QuestMap.status=success` 且 `handoff.ready=true`      |
+| `EXECUTE` | `QuestMap`                     | `QuestResult`                                                                | 至少 1 个 `QuestResult` 已生成                         |
+| `VERIFY`  | `QuestResult`                  | `VerifyReport`                                                               | `VerifyReport.status!=failed` 或显式回流到 `EXECUTE`   |
+| `LEARN`   | `QuestResult` + `VerifyReport` | `LearnCard`（必要）；若当前 run 需续接，则补全或更新 `session-continuity.md` | 仅在有可验证来源时写入跨 run 知识                      |
+
+硬规则：
+
+1. `PLAN` 不得在 `RouteDecision` 缺失时继续。
+2. `EXECUTE` 不得绕过 `QuestMap` 直接开始修改。
+3. `VERIFY` 不得在没有 `QuestResult` 时伪造验证结论。
+4. `LEARN` 默认依赖 `VerifyReport`；唯一例外是独立 `/auto:learn --git` 可基于 Git 证据生成 `LearnCard`。
+5. 任一阶段如发现上游对象缺失，必须显式输出 `blockingIssues`，而不是静默续行。
+6. 当 run 需要跨阶段或跨会话继续时，当前 phase 必须立即写入 `.auto/runs/<runId>/session-continuity.md`；LEARN 仅负责收尾时补全或更新。
+
+### 真源与缓存边界
+
+- `.auto/runs/<runId>/` 是单次 run 的协议真源。
+- `.auto/feedback/` 是跨 run 的结构化反馈真源。
+- `.auto/insights/` 是长期人类可读知识视图。
+- `.auto/cache/` 仅作派生缓存，不作为长期知识真源。
+- legacy 文件或路径可继续读取，但新写入必须优先走 `.auto/runs/`、`.auto/feedback/`、`.auto/insights/`。
+
+### 能力快照与选择的单对象规则
+
+- `capabilitySnapshot` 与 `selection` 不是独立协议对象，而是 `RouteDecision` 的内嵌字段。
+- `SCAN` / `route` 可以先收集事实、再做选择，但对下游的唯一标准产物仍是 `RouteDecision`。
+- `.auto/cache/capability-snapshot.json` 可作为派生缓存存在，但不替代 `RouteDecision` 作为 PHASE 间 handoff 真源。
+- `selection.selectedAgents` / `selection.selectedSkills` 是选择过程记录；最终 handoff 仍以顶层 `primaryAgent`、`fallbackAgents`、`skills` 为准。
+
 ### 对象职责
 
-| 对象            | 产出阶段 | 作用                                           | 关键字段                                                                 |
-| --------------- | -------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| `RouteDecision` | SCAN     | 固化路由、策略、主 Agent、回退链               | `userIntent`, `strategy`, `complexity`, `primaryAgent`, `fallbackAgents` |
-| `QuestMap`      | PLAN     | 固化 Quest 拆解、依赖、合约、回滚策略          | `quests[]`, `contracts[]`, `globalAcceptance[]`, `failurePolicy`         |
-| `QuestResult`   | EXECUTE  | 固化单关执行结果、重试信息、失败上下文         | `questId`, `attempt`, `changedFiles`, `validations[]`, `failureContext`  |
-| `VerifyReport`  | VERIFY   | 固化门禁、对抗验证和修复建议                   | `gateResults[]`, `overallStatus`, `failedGates`, `nextAction`            |
-| `LearnCard`     | LEARN    | 固化可复用知识单元，再分发到 insights/feedback | `category`, `recommendedAction`, `confidence`, `targetInsightFile`       |
+| 对象            | 产出阶段 | 作用                                           | 关键字段                                                                                      |
+| --------------- | -------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `RouteDecision` | SCAN     | 固化路由、策略、主 Agent、回退链               | `capabilitySnapshot`, `selection`, `userIntent`, `strategy`, `primaryAgent`, `fallbackAgents` |
+| `QuestMap`      | PLAN     | 固化 Quest 拆解、依赖、合约、回滚策略          | `quests[]`, `contracts[]`, `globalAcceptance[]`, `failurePolicy`                              |
+| `QuestResult`   | EXECUTE  | 固化单关执行结果、重试信息、失败上下文         | `questId`, `attempt`, `changedFiles`, `validations[]`, `failureContext`                       |
+| `VerifyReport`  | VERIFY   | 固化门禁、对抗验证和修复建议                   | `gateResults[]`, `overallStatus`, `failedGates`, `nextAction`                                 |
+| `LearnCard`     | LEARN    | 固化可复用知识单元，再分发到 insights/feedback | `category`, `recommendedAction`, `confidence`, `targetInsightFile`                            |
 
 ### RouteDecision 标准对象
+
+必填：`id`, `runId`, `status`, `summary`, `userIntent`, `strategy`, `primaryAgent`, `skills`, `next`。
+选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`。
 
 ```json
 {
@@ -89,6 +126,26 @@ tags: [shared, protocol, handoff, agent, principles]
     "toPhase": "PLAN",
     "ready": true,
     "blockingIssues": []
+  },
+  "capabilitySnapshot": {
+    "repoMap": "present | missing",
+    "commands": ["<command>"],
+    "agents": ["<agent>"],
+    "skillsCatalog": ["<skill>"],
+    "insightFiles": ["<insightFile>"],
+    "feedbackFiles": ["<feedbackFile>"],
+    "legacySignals": ["<legacySignal>"]
+  },
+  "selection": {
+    "selectedAgents": ["<agent>"],
+    "selectedSkills": ["<skill>"],
+    "rejectedCapabilities": [
+      {
+        "name": "<capability>",
+        "reason": "<why not selected>"
+      }
+    ],
+    "routeHintsUsed": ["<hint>"]
   },
   "userIntent": "<原始输入>",
   "normalizedTask": "<归一化任务摘要>",
@@ -118,6 +175,9 @@ tags: [shared, protocol, handoff, agent, principles]
 ```
 
 ### QuestMap 标准对象
+
+必填：`id`, `runId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
+选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`。
 
 ```json
 {
@@ -180,6 +240,10 @@ tags: [shared, protocol, handoff, agent, principles]
 
 ### QuestResult 标准对象
 
+必填：`id`, `runId`, `status`, `summary`, `questId`, `attempt`, `ownerAgent`, `changedFiles`。
+选填：`diffSummary`, `validations`, `producedOutputs`, `producedContracts`, `decisionNotes`。
+失败时必填：`failureContext`（含 `errorType`, `errorSummary`）, `retry`。
+
 ```json
 {
   "protocolVersion": "auto-md/v1",
@@ -228,6 +292,9 @@ tags: [shared, protocol, handoff, agent, principles]
 
 ### VerifyReport 标准对象
 
+必填：`id`, `runId`, `status`, `summary`, `gateResults[]`（每项必填 `name`, `status`）, `overallStatus`, `nextAction`。
+选填：`scope`, `targetIds`, `failedGates`, `evidence`, `remediationPlan`, `rollbackRecommendation`。
+
 ```json
 {
   "protocolVersion": "auto-md/v1",
@@ -251,11 +318,11 @@ tags: [shared, protocol, handoff, agent, principles]
   "targetIds": ["quest-result-<id>"],
   "gateResults": [
     {
-      "name": "build | test | lint | security | adversarial",
+      "name": "analysis | build | test | lint | coverage | security | adversarial",
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",
-      "evidence": "<输出摘要>",
+      "evidence": "<输出摘要；可附带 analysis-only / no-code-change / relevant / full 等范围信息>",
       "owner": "main | verification",
       "fixHint": "<修复建议>"
     }
@@ -270,6 +337,9 @@ tags: [shared, protocol, handoff, agent, principles]
 ```
 
 ### LearnCard 标准对象
+
+必填：`id`, `runId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`。
+选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`。
 
 ```json
 {

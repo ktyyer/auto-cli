@@ -76,6 +76,7 @@
 │       ├── quest-results.md
 │       ├── verify-report.md
 │       ├── learn-cards.md
+│       ├── session-continuity.md (optional)
 │       └── index.md
 ├── insights/
 │   ├── traps.md
@@ -92,10 +93,9 @@
 
 - `cache/` — 可丢弃缓存层，不作为长期知识真源
 - `runs/` — 单次 `/auto` 工作流的协议对象落盘真源
+- `runs/<runId>/session-continuity.md` — 当前 run 的结构化续接摘要（可选，仅在需续接时存在）
+- `runs/<runId>/index.md` — 当前 run 的人类可读汇总与收尾摘要
 - `insights/` — LearnCard 分类后的长期知识视图
 - `memory/` — 项目级辅助记忆索引
 - `feedback/` — agent / skill 路由反馈的结构化记录
 - legacy 路径可继续读取，但新写入统一走 canonical 结构
-
----
-核心目录映射 | `auto codemaps`
