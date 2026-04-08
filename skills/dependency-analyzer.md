@@ -8,7 +8,7 @@ tags: [dependency, security, audit, npm, maven, versions, compatibility, outdate
 
 # Dependency Analyzer — 依赖分析
 
-> 与 PHASE 1 DISCOVER 集成，在项目扫描阶段自动检测依赖健康度。
+> 与 PHASE 1 SCAN 集成，在项目扫描阶段自动检测依赖健康度。
 > security-reviewer Agent 参考本知识库进行安全门禁。
 
 ---
@@ -124,7 +124,7 @@ go mod graph | grep indirect
 
 ## 五、与 auto-cli 集成
 
-- **PHASE 1 DISCOVER**: `_runDoctorCheck()` 集成 `npm audit --audit-level=high`
+- **PHASE 1 SCAN**: `_runDoctorCheck()` 集成 `npm audit --audit-level=high`
 - **PHASE 4 VERIFY**: 完整模式运行 `npm audit` 作为安全门禁
 - **security-reviewer Agent**: 参考风险评级标准决定阻断/放行
 - **build-error-resolver Agent**: 依赖冲突时参考版本兼容性矩阵

@@ -140,6 +140,6 @@ Controller → Service Interface → ServiceImpl → Mapper → Database
 ## 四、与 auto-cli 集成
 
 - **PHASE 4 VERIFY**: 门禁自动运行格式化和类型检查
-- **PHASE 5 COMMIT**: 提交前自动运行 prettier --write
+- **SUMMARIZE 后、提交前**: 建议先运行 `prettier --check`；如执行 `prettier --write`，需重新执行 VERIFY
 - **code-reviewer Agent**: 参考 3.1 禁止项作为审查清单
 - **PostToolUse Hook**: 编辑后自动触发格式化（已配置）

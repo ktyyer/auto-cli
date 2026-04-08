@@ -1,35 +1,35 @@
 # REPO_MAP.md
 
-> 2026-04-08 | Pure Markdown — 0 JS runtime | v0.30.0
+> 2026-04-08 | Pure Markdown — 0 JS runtime | v0.31.0
 
 ## commands/
 
 ### commands/auto.md
-`/auto` 主命令 — 6 PHASE 工作流（DISCOVER → REASON → EXECUTE → VERIFY → SUMMARIZE → LEARN）
-四模式执行：探索 / 微型 / 轻量 / 完整
+`/auto` 主命令 — 6 PHASE 工作流（SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN）
+4 种执行策略：探索 / 修复 / 实现 / 重构
 
 ### commands/auto/
 - `create-hook.md` — 生成 Claude Code Hook 模板
-- `doctor.md` — 环境诊断（Node.js、Claude Code 配置、依赖状态）
-- `learn.md` — 分析 Git 历史中的可复用模式
-- `route.md` — Canonical Router 智能路由到最合适的 Agent
-- `status.md` — 查看项目状态和能力安装情况
+- `doctor.md` — 环境诊断与 preflight 辅助信息
+- `learn.md` — LearnCard 知识沉淀入口（统一输出到 insights / feedback）
+- `route.md` — 输出标准 `RouteDecision` 的路由入口
+- `status.md` — 查看 `.auto/` canonical 结构与能力安装状态
 
 ## agents/（11 个）
 
 | Agent | 用途 |
 |-------|------|
-| `_shared-principles.md` | Agent 公共原则和交接协议 |
+| `_shared-principles.md` | Agent 公共原则、协议对象与失败状态机 |
 | `architect.md` | 系统设计、可扩展性、技术决策 |
 | `build-error-resolver.md` | 构建和 TypeScript 错误修复 |
 | `code-reviewer.md` | 代码审查 |
 | `doc-updater.md` | 文档和代码地图更新 |
 | `e2e-runner.md` | Playwright E2E 测试 |
-| `quest-designer.md` | 闯关大纲设计 v4 |
+| `quest-designer.md` | 输出标准 `QuestMap` 的闯关设计器 |
 | `refactor-cleaner.md` | 死代码清理和整合 |
 | `security-reviewer.md` | 安全漏洞检测和修复 |
 | `tdd-guide.md` | 测试驱动开发 |
-| `verification.md` | 对抗性验证 |
+| `verification.md` | 输出标准 `VerifyReport` 的对抗性验证 |
 
 ## skills/（8 个）
 
@@ -58,14 +58,44 @@
 
 ## scripts/
 
-- `install.js` — 安装脚本
-- `uninstall.js` — 卸载脚本
-- `reinstall.sh` — 一键重装
+- `install.js` / `install.sh` / `install.bat` — 安装脚本
+- `uninstall.js` / `uninstall.bat` — 卸载脚本
+- `reinstall.sh` / `reinstall.bat` — 一键重装
 
 ## .auto/
 
-- `cache/` — 能力快照缓存
-- `insights/` — 知识沉淀（traps.md / patterns.md / decisions.md / prompts.md）
+```text
+.auto/
+├── cache/
+│   ├── capability-snapshot.json
+│   └── pattern-cards.json
+├── runs/
+│   └── <runId>/
+│       ├── route-decision.md
+│       ├── quest-map.md
+│       ├── quest-results.md
+│       ├── verify-report.md
+│       ├── learn-cards.md
+│       └── index.md
+├── insights/
+│   ├── traps.md
+│   ├── patterns.md
+│   ├── decisions.md
+│   ├── prompts.md
+│   └── agent-feedback.md
+├── memory/
+│   └── store.json
+└── feedback/
+    ├── agents.json
+    └── skills.json
+```
+
+- `cache/` — 可丢弃缓存层，不作为长期知识真源
+- `runs/` — 单次 `/auto` 工作流的协议对象落盘真源
+- `insights/` — LearnCard 分类后的长期知识视图
+- `memory/` — 项目级辅助记忆索引
+- `feedback/` — agent / skill 路由反馈的结构化记录
+- legacy 路径可继续读取，但新写入统一走 canonical 结构
 
 ---
-30 files | `auto codemaps`
+核心目录映射 | `auto codemaps`

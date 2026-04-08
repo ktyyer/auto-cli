@@ -33,34 +33,36 @@ tags:
 
 ### 工作流选择决策
 
-| 信号关键词                   | 工作流    | 上下文预算               |
-| ---------------------------- | --------- | ------------------------ |
-| 重构/迁移/架构/系统/redesign | Explore   | 10-15 文件, 3000-5000 行 |
-| 实现/开发/新增/功能/feature  | Implement | 5-8 文件, 1500-3000 行   |
-| bug/错误/失败/error/fix/修复 | Fix       | 3-5 文件, 500-1500 行    |
-| 审查/review/检查/安全/质量   | Review    | 3-6 文件, 1000-2000 行   |
+> 这里的工作流名称直接对应 canonical `RouteDecision.strategy`：`explore | fix | implement | refactor`。
+
+| 信号关键词                   | 工作流      | 上下文预算               |
+| ---------------------------- | ----------- | ------------------------ |
+| 审查/review/检查/安全/质量   | `explore`   | 3-6 文件, 1000-2000 行   |
+| bug/错误/失败/error/fix/修复 | `fix`       | 3-5 文件, 500-1500 行    |
+| 实现/开发/新增/功能/feature  | `implement` | 5-8 文件, 1500-3000 行   |
+| 重构/迁移/架构/系统/redesign | `refactor`  | 10-15 文件, 3000-5000 行 |
 
 ### 自动检测逻辑
 
 ```
 用户意图 -> 关键词匹配:
-  +--- [重构|迁移|全面|架构|系统|microservice] -> Explore
-  +--- [实现|开发|新增|功能|feature|创建|接口] -> Implement
-  +--- [bug|错误|失败|error|fix|修复|异常|debug] -> Fix
-  +--- [审查|review|检查|安全|质量|PR] -> Review
-  +--- 无匹配 -> 默认 Implement
+  +--- [审查|review|检查|安全|质量|PR|咨询|分析] -> explore
+  +--- [bug|错误|失败|error|fix|修复|异常|debug] -> fix
+  +--- [实现|开发|新增|功能|feature|创建|接口] -> implement
+  +--- [重构|迁移|全面|架构|系统|microservice] -> refactor
+  +--- 无匹配 -> 默认 implement
 ```
 
 ### 与 Auto CLI 对应
 
-| 工作流    | PHASE 1              | quest-designer  | Canonical Router          |
-| --------- | -------------------- | --------------- | ------------------------- |
-| Explore   | 完整扫描（不用缓存） | 读取 10-15 文件 | 默认 quest-designer       |
-| Implement | 缓存优先             | 读取 5-8 文件   | 默认 quest-designer       |
-| Fix       | 最小化               | 读取 3-5 文件   | 优先 build-error-resolver |
-| Review    | 缓存优先             | 读取 3-6 文件   | 优先 code-reviewer        |
+| 工作流      | PHASE 1              | quest-designer                       | Canonical Router                     |
+| ----------- | -------------------- | ------------------------------------ | ------------------------------------ |
+| `explore`   | 完整扫描（不用缓存） | 可跳过，由主窗口生成最小 `QuestMap`  | 默认 direct analysis / code-reviewer |
+| `fix`       | 最小化               | 可跳过，先走 direct / tdd-guide 修复 | 默认 direct / tdd-guide              |
+| `implement` | 缓存优先             | 读取 5-8 文件                        | 默认 quest-designer                  |
+| `refactor`  | 完整扫描（深度）     | 读取 10-15 文件                      | 默认 quest-designer                  |
 
-> 注：本 Skill 的工作流选择逻辑已由 `src/router/canonical-router.js` 的 COMPLEXITY_INDICATORS 实现，此处保留作为设计参考和人类可读文档。
+> 注：本 Skill 的工作流选择逻辑由 `/auto:route` 的 `RouteDecision` 复杂度与策略判定承接，此处保留为设计参考和人类可读文档。
 
 ---
 
@@ -95,6 +97,30 @@ tags:
 2. **并行 Agent 不修改同一文件**：如有冲突需串行化
 3. **失败不阻塞**：单个 Agent 失败设定超时和重试
 4. **结果聚合**：Union（审查类）/ Latest Wins（修复类）/ Vote（决策类）
+
+### Skill 注入规则
+
+编排时按技术栈和任务类型显式选择 Skill，不做 grep 匹配：
+
+| 自动注入时机 | Skill                               | 条件                                 |
+| ------------ | ----------------------------------- | ------------------------------------ |
+| SCAN 阶段    | dependency-analyzer, init-project   | 如 CLAUDE.md 缺失则触发 init-project |
+| PLAN 阶段    | workflow-patterns                   | Quest 设计参考                       |
+| EXECUTE 阶段 | 按编排计划声明                      | Skill 内容写入 Agent prompt          |
+| VERIFY 阶段  | code-style-enforcer, error-patterns | code-reviewer/verification 自动附带  |
+
+| 技术栈   | 自动关联 Skill       |
+| -------- | -------------------- |
+| Java     | java-patterns        |
+| 性能相关 | performance-patterns |
+| 错误处理 | error-patterns       |
+
+### Agent 交接规则
+
+1. **上游产出 = 下游输入**：交接时显式声明数据类型和格式
+2. **单向传递**：Agent 只向下游传递，不反向调用
+3. **失败升级**：重试 2 次后仍失败，且已形成 `failureContext` → 升级到 build-error-resolver
+4. **结果回传**：最终结果回传给编排器
 
 ---
 
@@ -147,12 +173,12 @@ tags:
 
 ### 审查时机
 
-| 场景       | 触发条件            | 使用方式                |
-| ---------- | ------------------- | ----------------------- |
-| 自动审查   | 每次 Edit/Write 后  | Hook 自动触发部分检查项 |
-| 手动审查   | `/auto:code-review` | 完整 10 维度审查        |
-| 提交前审查 | PHASE 5 COMMIT 前   | 精简版（维度 1-5）      |
-| PR 审查    | 创建 PR 时          | 完整 10 维度 + 安全专项 |
+| 场景       | 触发条件             | 使用方式                |
+| ---------- | -------------------- | ----------------------- |
+| 自动审查   | 每次 Edit/Write 后   | Hook 自动触发部分检查项 |
+| 手动审查   | `/auto:code-review`  | 完整 10 维度审查        |
+| 提交前审查 | SUMMARIZE 后、提交前 | 精简版（维度 1-5）      |
+| PR 审查    | 创建 PR 时           | 完整 10 维度 + 安全专项 |
 
 ### 10 维度审查清单
 

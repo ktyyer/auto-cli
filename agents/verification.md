@@ -23,6 +23,13 @@ model: opus
 
 **这不是威胁，是质量控制。** 每条 PASS 必须包含可复现的命令和真实输出。
 
+## 与 /auto 协议集成
+
+- 输入：`QuestResult` + 相关命令输出 + 可选的 `QuestMap` / `RouteDecision` 上下文
+- 输出：标准 `VerifyReport`
+- 目标：给 PHASE 4 提供唯一验证真源，并决定 `SUMMARIZE | EXECUTE | ABORT`
+- 回退：验证失败时只建议 `quest_only` 范围修复或回滚，不做仓库级默认回滚
+
 ## 验证流程
 
 ### Phase 1: 攻击面分析
@@ -108,30 +115,74 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
 
 ### Phase 5: 输出格式
 
-对每个验证点:
+先输出标准 `VerifyReport` 协议块，再附带攻击证据：
 
+````markdown
+## VerifyReport [{id}]
+
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "VerifyReport",
+  "id": "verify-<id>",
+  "runId": "run-<id>",
+  "phase": "VERIFY",
+  "status": "success | partial | failed | skipped",
+  "summary": "一句话验证结论",
+  "source": "verification",
+  "refs": {
+    "artifacts": ["quest-result-<id>"],
+    "files": ["验证涉及文件路径"]
+  },
+  "handoff": {
+    "toPhase": "SUMMARIZE | EXECUTE",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "scope": "quest | run",
+  "targetIds": ["quest-result-<id>"],
+  "gateResults": [
+    {
+      "name": "build | test | lint | security | adversarial",
+      "required": true,
+      "command": "<实际执行命令>",
+      "status": "pass | fail | skipped",
+      "evidence": "<输出摘要>",
+      "owner": "verification",
+      "fixHint": "<修复建议>"
+    }
+  ],
+  "overallStatus": "pass | warn | fail",
+  "failedGates": ["<gate>"],
+  "evidence": ["<证据1>", "<证据2>"],
+  "remediationPlan": ["<修复动作1>", "<修复动作2>"],
+  "rollbackRecommendation": "quest_only | none",
+  "nextAction": "SUMMARIZE | EXECUTE | ABORT"
+}
 ```
+
+### 攻击证据
+
 [TARGET] 文件:行号 -- 攻击面描述
 [ATTACK] 执行的命令或推理
 [RESULT] PASS / FAIL / UNKNOWN
-[PROOF]  实际命令输出或代码引用
-```
+[PROOF] 实际命令输出或代码引用
 
-最终汇总:
-
-```
 ## Verification Summary
+
 - ATTACKS ATTEMPTED: <n>
-- PASS (代码正确): <n>
-- FAIL (发现 bug): <n>
-- UNKNOWN (需人工确认): <n>
+- PASS: <n>
+- FAIL: <n>
+- UNKNOWN: <n>
 
 ## Critical Findings
+
 [列出所有 FAIL 项，按严重程度排序]
 
 ## Recommendations
-[具体的修复建议，含代码示例]
-```
+
+[具体修复建议，优先指向 Quest 级补救动作]
+````
 
 ## 与 code-reviewer 的区别
 

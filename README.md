@@ -41,16 +41,16 @@ npm run install        # 安装到 ~/.claude/
 ```bash
 # 在源码仓库执行打包
 npm run pack
-# 产物: auto-cli-0.30.0.tgz（~83KB）
+# 产物: auto-cli-<version>.tgz
 ```
 
 将 tgz 文件拷贝到目标电脑，然后：
 
 ```bash
 # macOS / Linux / Git Bash
-tar -xzf auto-cli-0.30.0.tgz
+tar -xzf auto-cli-<version>.tgz
 cd package
-bash scripts/install.sh
+node scripts/install.js
 
 # Windows
 # 解压 auto-cli-0.30.0.tgz，进入 package 目录
@@ -67,7 +67,7 @@ npm run reinstall
 scripts\reinstall.bat
 ```
 
-该脚本自动完成：打包 → 卸载旧版全局包 → 解压安装新版 → 清理临时文件。
+该脚本自动完成：打包 → 清理 Auto CLI 托管资源 → 解压安装新版 → 清理临时文件。
 
 ### 卸载
 
@@ -145,9 +145,9 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 
 ### Rules 编码规范
 
-位于 `rules/` 目录，在 `~/.claude/rules/` 中配置：
+位于 `rules/` 目录，安装后配置在 `~/.claude/rules/`：
 - agents、coding-style、git-workflow、hooks
-- java-coding-style、performance、security、testing
+- performance、security、testing
 
 ### Skills 知识库（8 个）
 
@@ -180,8 +180,8 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 ```
 /auto 用户需求
     |
-PHASE 1: DISCOVER  -- 扫描技术栈、能力清单、环境快检（含缓存）
-PHASE 2: REASON    -- 知识检索 + Quest Map + Agent 路由 + Skill 注入（Phase-Skill 自动映射）
+PHASE 1: SCAN      -- 扫描技术栈、能力清单、环境快检（含缓存）
+PHASE 2: PLAN      -- 知识检索 + Quest Map + Agent 路由 + Skill 注入（Phase-Skill 自动映射）
 PHASE 3: EXECUTE   -- 逐关执行（串行/并行/Teams，每关输出进度卡片）
 PHASE 4: VERIFY    -- 按模式门禁（编译/测试/lint/安全）
 PHASE 5: SUMMARIZE -- 完成阶段总结（不自动提交）

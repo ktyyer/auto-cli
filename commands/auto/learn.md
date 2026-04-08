@@ -1,22 +1,80 @@
 ---
 name: learn
-description: 分析 Git 历史中的可复用模式，输出提交约定、热点文件和文件联动等结构化结果
+description: 将 Git 历史模式、执行经验和路由反馈统一输出为 LearnCard，并分发到 insights / feedback
 allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 ---
 
-# /auto:learn — Git 历史模式分析
+# /auto:learn — LearnCard 知识沉淀入口
 
-> 当前版本聚焦 Git 历史分析，提取提交约定、热点文件与文件联动模式。
-> 输出以终端文本或 JSON 结构为主，不会自动生成 Skill 文件或 Instinct 文件。
+> `/auto:learn` 是 LEARN 阶段的显式入口。它先产出标准 `LearnCard`，再按分类写入 `.auto/insights/` 与 `.auto/feedback/`。
 
 ---
 
 ## 使用方式
 
 ```bash
-/auto:learn                    # 在 Claude Code 中触发 learn 命令
-/auto:learn --git              # 基于 Git 历史分析模式
+/auto:learn
+/auto:learn --git
+/auto:learn --json
 ```
+
+---
+
+## 目标
+
+统一处理 3 类知识来源：
+
+- Git 历史模式
+- 本次 `/auto` 执行中的决策 / 踩坑 / Prompt
+- agent / skill 路由反馈
+
+输出时以 `LearnCard` 为唯一标准对象，不再额外定义另一套经验卡片格式。
+
+---
+
+## LearnCard 协议
+
+````markdown
+## LearnCard [{id}]
+
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "LearnCard",
+  "id": "learn-<id>",
+  "runId": "run-<id>",
+  "phase": "LEARN",
+  "status": "success",
+  "summary": "一句话经验",
+  "source": "auto / auto:learn / 相关 Agent",
+  "refs": {
+    "artifacts": [
+      "可为空；如 route-<id> / quest-map-<id> / quest-result-<id> / verify-<id> / git-log:<range>"
+    ],
+    "files": ["相关文件路径"]
+  },
+  "handoff": {
+    "toPhase": "SCAN",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "category": "trap | pattern | decision | prompt | feedback",
+  "title": "<标题>",
+  "context": "<上下文>",
+  "trigger": "<触发条件>",
+  "recommendedAction": "<推荐动作>",
+  "antiPattern": "<反模式>",
+  "evidenceRefs": ["<证据1>"],
+  "sourcePhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
+  "sourceArtifacts": [
+    "可为空；按来源填写 route-<id> / quest-map-<id> / quest-result-<id> / verify-<id> / git-log:<range>"
+  ],
+  "tags": ["<tag1>", "<tag2>"],
+  "confidence": "low | medium | high",
+  "targetInsightFile": ".auto/insights/<file>.md"
+}
+```
+````
 
 ---
 
@@ -26,9 +84,10 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 - 识别约定式提交占比
 - 统计热点文件
 - 发现常见文件联动关系
-- 支持 JSON 输出供后续流程消费
+- 将 Git 模式统一映射为 `LearnCard(category=pattern)`
+- 将路由反馈统一映射为 `LearnCard(category=feedback)`
 
-> 当前版本不支持会话级提取、Skill 落盘、`--output` 或 `--instincts`。
+> 当前文档定义的是 canonical 输出协议；实际落盘范围应以当前实现结果为准。
 
 ---
 
@@ -36,76 +95,65 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 
 ### 使用场景
 
-- 新团队成员快速了解仓库提交习惯
+- 新成员快速了解仓库提交习惯
 - 回顾团队常见改动热点
-- 为后续文档或流程优化提供依据
-- 在 `/auto` 工作流后补充 Git 经验分析
+- 为 `/auto` 后续规划提供模式输入
+- 在完整工作流后补充 `LearnCard(category=pattern)`
 
 ### 工作流程
 
 #### 第一步：收集 Git 数据
 
 ```bash
-# 获取最近 N 次提交及其文件变更
 git log --oneline -n 200 --name-only --pretty=format:"%H|%s|%ad" --date=short
-
-# 获取文件变更频率（哪些文件最常被修改）
 git log --oneline -n 200 --name-only | grep -v "^$" | grep -v "^[a-f0-9]" | sort | uniq -c | sort -rn | head -20
-
-# 获取提交消息模式
 git log --oneline -n 200 --pretty=format:"%s" | head -50
 ```
 
 #### 第二步：检测模式
 
-| 模式类型       | 检测方法                                          |
-| -------------- | ------------------------------------------------- |
-| **提交约定**   | 正则匹配提交消息（feat:, fix:, chore:, docs: 等） |
-| **文件联动**   | 总是一起变更的文件组合                            |
-| **热点文件**   | 最近提交中被频繁修改的文件                        |
-| **工作流线索** | 重复出现的文件变更模式                            |
+| 模式类型   | 检测方法                                          |
+| ---------- | ------------------------------------------------- |
+| 提交约定   | 正则匹配提交消息（feat:, fix:, chore:, docs: 等） |
+| 文件联动   | 总是一起变更的文件组合                            |
+| 热点文件   | 最近提交中被频繁修改的文件                        |
+| 工作流线索 | 重复出现的文件变更模式                            |
 
-#### 第三步：输出结果
+#### 第三步：映射为 LearnCard
 
-命令返回结构化结果，包含：
-
-- `mode`
-- `gitPatterns.analyzedCommits`
-- `gitPatterns.commitConventions`
-- `gitPatterns.fileCochanges`
-- `gitPatterns.hotFiles`
-- `gitPatterns.analyzedAt`
+| 输入来源               | LearnCard.category | 目标文件                           |
+| ---------------------- | ------------------ | ---------------------------------- |
+| 热点文件 / 联动关系    | `pattern`          | `.auto/insights/patterns.md`       |
+| 常见失败 / 回退经验    | `trap`             | `.auto/insights/traps.md`          |
+| 架构选择理由           | `decision`         | `.auto/insights/decisions.md`      |
+| 可复用输入模板         | `prompt`           | `.auto/insights/prompts.md`        |
+| Agent / Skill 表现反馈 | `feedback`         | `.auto/insights/agent-feedback.md` |
 
 ### 示例输出
 
 ```json
 {
   "mode": "git",
-  "gitPatterns": {
-    "analyzedCommits": 50,
-    "commitConventions": [
-      {
-        "name": "conventional-commits",
-        "ratio": 98,
-        "sampleCount": 49
-      }
-    ],
-    "fileCochanges": [
-      {
-        "pair": "README.md <-> bin/cli.js",
-        "count": 2
-      }
-    ],
-    "hotFiles": [
-      {
-        "file": "commands/auto.md",
-        "changes": 14
-      }
-    ],
-    "analyzedAt": 1775455817119
-  }
+  "learnCards": [
+    {
+      "category": "pattern",
+      "title": "commands/auto.md 是高频联动热点",
+      "summary": "主命令文档经常与 route / shared-principles 一起变更",
+      "targetInsightFile": ".auto/insights/patterns.md"
+    }
+  ]
 }
 ```
+
+---
+
+## 与 `/auto` 主流程关系
+
+- `SCAN` / `PLAN` 不直接写 insights
+- `LEARN` 先汇总 `QuestResult` + `VerifyReport`
+- `/auto:learn` 可作为显式补充入口，继续生成 `LearnCard`
+- 主流程 LEARN 默认消费 `VerifyReport`；独立 `/auto:learn --git` 可在无 `VerifyReport` 时基于 Git 证据单独生成 `LearnCard`
+- 最终统一写入 `.auto/runs/<runId>/learn-cards.md`，并按分类分发到 insights / feedback
 
 ---
 
@@ -122,13 +170,13 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 
 ## 相关命令
 
-- `/auto`：在完整工作流后统一汇总执行结果
-- `/auto:status`：查看当前 runtime 与能力状态
+- `/auto`：完整工作流入口
+- `/auto:status`：查看 `.auto/` canonical 结构状态
+- `/auto:route`：查看路由决策对象
 
 ---
 
 ## 说明
 
-`/auto:learn` 当前能力以 Git 历史模式分析为准。
-
-如果后续扩展会话提取或 Skill 落盘，应以真实 CLI 参数与运行时输出为准再更新文档。
+`/auto:learn` 的核心职责是统一知识入口，而不是单独维护另一套知识协议。
+如果未来扩展新的知识来源，也应先映射到 `LearnCard`，再进入 insights / feedback。

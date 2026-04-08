@@ -136,7 +136,7 @@ Glob("package.json")
 
 ## /auto 自动编排
 
-`/auto` 的 PHASE 1 DISCOVER 会复用同一套诊断结果，并默认保持只读扫描。
+`/auto` 的 PHASE 1 SCAN 会复用同一套诊断结果，并默认保持只读扫描。
 
 显式修复（例如 `doctor --fix`）只使用上述安全修复能力，不会执行依赖安装、删除文件或覆盖用户内容。
 
@@ -153,7 +153,7 @@ Glob("package.json")
 
 ## 与 /auto 集成
 
-DISCOVER 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
+SCAN 阶段产出的 `doctorResult` 会继续传递到后续 PHASE：
 
 - PHASE 2 可消费 `recommendedActions`
 - 工作流结果会包含 `doctorResult`

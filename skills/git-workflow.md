@@ -8,8 +8,8 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 
 # Git Workflow — Git 工作流规范
 
-> 与 PHASE 5 COMMIT 集成，确保提交信息规范、分支策略一致。
-> auto 在工作流完成并通过验证后统一提交，参考本规范。
+> 与 SUMMARIZE 后的手动提交流程集成，确保提交信息规范、分支策略一致。
+> auto 在工作流完成并通过验证后输出总结，由用户决定是否提交，提交时参考本规范。
 
 ---
 
@@ -71,15 +71,17 @@ git checkout -b fix/hotfix-login-bug
 
 ### 2.3 auto 提交规则
 
-PHASE 5 在当前工作流完成后统一提交：
+如用户在 SUMMARIZE 后决定提交，建议使用：
 
 ```
-feat(<scope>): <Quest 标题>
+<type>(<scope>): <Quest 标题>
 
 Quest: <quest-id>
 Decision: <关键决策笔记>
 Files: <变更文件列表>
 ```
+
+其中 `<type>` 必须根据本次 run 的实际性质选择，如 `feat` / `fix` / `refactor` / `docs` / `test`。
 
 ### 2.4 禁止项
 
@@ -163,7 +165,7 @@ git log -p --all -S "function_name" -- "*.ts"
 
 ## 五、与 auto-cli 集成
 
-- **PHASE 5 COMMIT**: 使用约定式提交格式，每个 Quest 单独提交
-- **PHASE 6 LEARN**: `_analyzeGitPatterns()` 分析提交约定、文件联动、热点文件
+- **用户决定提交时**: 使用约定式提交格式，按本次变更边界组织提交
+- **PHASE 6 LEARN**: `/auto:learn --git` 分析提交约定、文件联动、热点文件
 - **/auto:learn --git**: 从 Git 历史自动提取编码模式
 - **create-hook**: PreToolUse Hook 阻止 `git push --force` 到 main/dev

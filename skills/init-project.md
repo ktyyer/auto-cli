@@ -238,7 +238,7 @@ integration/ # 集成测试
 
 当用户请求 "为当前项目生成 CLAUDE.md" 时，quest-designer 应：
 
-1. **PHASE 1 DISCOVER**: 扫描项目（package.json/pom.xml/go.mod/pyproject.toml、src/ 目录结构、已有测试、已有配置文件）
+1. **PHASE 1 SCAN**: 扫描项目（package.json/pom.xml/go.mod/pyproject.toml、src/ 目录结构、已有测试、已有配置文件）
 2. **提取信息**: 从 package.json 提取技术栈和脚本、从 src/ 提取目录结构、从 .eslintrc 提取编码规范
 3. **生成 CLAUDE.md**: 基于提取的信息 + 上方模板，生成项目专属的 CLAUDE.md
 4. **PHASE 4 VERIFY**: 验证生成的 CLAUDE.md 格式正确、信息准确
@@ -279,7 +279,7 @@ integration/ # 集成测试
 
 ## 已完成的步骤
 
-1. [x] PHASE 1 DISCOVER 完成
+1. [x] PHASE 1 SCAN 完成
 2. [x] PHASE 2 Quest Map 已生成
 3. [ ] PHASE 3 执行中（Quest 3/7）
 

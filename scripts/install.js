@@ -18,6 +18,7 @@ const COMPONENTS = [
   { src: 'commands', dest: path.join(CLAUDE_DIR, 'commands') },
   { src: 'agents', dest: path.join(CLAUDE_DIR, 'agents') },
   { src: 'skills', dest: path.join(CLAUDE_DIR, 'skills') },
+  { src: 'rules', dest: path.join(CLAUDE_DIR, 'rules') },
   { src: 'hooks', dest: path.join(CLAUDE_DIR, 'hooks') },
 ];
 
@@ -51,7 +52,7 @@ function copyDir(src, dest) {
 
     if (entry.isDirectory()) {
       copied += copyDir(srcPath, destPath);
-    } else if (entry.name.endsWith('.md') || entry.name.endsWith('.json')) {
+    } else if (/\.(md|json|js|sh)$/.test(entry.name)) {
       fs.copyFileSync(srcPath, destPath);
       copied++;
     }
@@ -67,11 +68,54 @@ console.log('');
 let totalFiles = 0;
 
 if (cleanFlag) {
-  console.log('清理 backup 残留...');
+  console.log('清理 Auto CLI 托管资源...');
+  // 清理 install.js 部署的旧文件，与 uninstall.js 对齐
+  const OLD_FILES = [
+    { dir: path.join(CLAUDE_DIR, 'commands'), files: ['auto.md'], subdirs: ['auto'] },
+    { dir: path.join(CLAUDE_DIR, 'agents'), files: [
+      '_shared-principles.md', 'architect.md', 'build-error-resolver.md',
+      'code-reviewer.md', 'doc-updater.md', 'e2e-runner.md', 'quest-designer.md',
+      'refactor-cleaner.md', 'security-reviewer.md', 'tdd-guide.md', 'verification.md',
+    ]},
+    { dir: path.join(CLAUDE_DIR, 'skills'), files: [
+      'code-style-enforcer.md', 'dependency-analyzer.md', 'error-patterns.md',
+      'git-workflow.md', 'init-project.md', 'java-patterns.md',
+      'performance-patterns.md', 'workflow-patterns.md',
+    ]},
+    { dir: path.join(CLAUDE_DIR, 'rules'), files: [
+      'agents.md', 'coding-style.md', 'git-workflow.md', 'hooks.md',
+      'performance.md', 'security.md', 'testing.md',
+    ]},
+    { dir: path.join(CLAUDE_DIR, 'hooks'), files: ['hooks.json'] },
+    { dir: path.join(CLAUDE_DIR, 'hooks', 'lib'), files: [
+      'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js',
+    ]},
+  ];
+
+  let removed = 0;
+  for (const { dir, files, subdirs } of OLD_FILES) {
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      if (fs.existsSync(filePath)) {
+        fs.rmSync(filePath, { recursive: true, force: true });
+        removed++;
+      }
+    }
+    if (subdirs) {
+      for (const sub of subdirs) {
+        const subPath = path.join(dir, sub);
+        if (fs.existsSync(subPath)) {
+          fs.rmSync(subPath, { recursive: true, force: true });
+          removed++;
+        }
+      }
+    }
+  }
+  // 清理 backup 残留
   for (const { dest } of COMPONENTS) {
     cleanBackups(dest);
   }
-  console.log('已清理');
+  console.log(`已清理 ${removed} 项旧资源`);
   console.log('');
 }
 

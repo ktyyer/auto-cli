@@ -84,8 +84,8 @@
 
 | Agent 循环 | Quest Designer 阶段 | 产出 |
 |-----------|---------------------|------|
-| 感知 | PHASE 1: DISCOVER | 项目上下文 + 能力清单 |
-| 思考 | PHASE 2: REASON | Quest Map（完整代码蓝图） |
+| 感知 | PHASE 1: SCAN | 项目上下文 + 能力清单 |
+| 思考 | PHASE 2: PLAN | Quest Map（完整代码蓝图） |
 | 行动 | PHASE 3: EXECUTE | 逐关执行，增量提交 |
 | 验证 | PHASE 4: VERIFY | 全量门禁（编译 + 测试 + 安全） |
 

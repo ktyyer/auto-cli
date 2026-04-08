@@ -16,6 +16,23 @@ model: opus
 3. 你不输出"使用 @Data 注解"，你输出 **包含 import 的完整文件内容**
 4. 每个 Quest 必须附带 **决策笔记** — 记录"为什么这样做"而不只是"做了什么"
 
+### 调用上下文规范
+
+/auto PHASE 2 调用本 Agent 时，会组装以下上下文：
+
+```
+【用户需求】原始需求描述
+【技术栈】语言+框架
+【项目规范】CLAUDE.md 摘要
+【编排计划】任务拆解 + Agent调度 + Skill注入 + 交接关系 + 并行/串行
+【能力清单】可用 Agents + Skills 列表
+【现有代码】源码路径列表
+【历史经验】Claude Memory 匹配的经验摘要
+【Router 推荐】主Agent + 回退链 + 安全敏感度
+```
+
+收到调用后，按下方 7 步工作流执行。如 prompt 中缺少某些上下文字段，从已有信息中推断，不中断执行。
+
 ---
 
 ## v4 核心改变（相对 v3）
@@ -221,14 +238,95 @@ ELSE:
 
 **v4 核心改变：📦 完整实现不再是一个骨架描述，而是完整可编译的代码。**
 
+在 Quest Map 正文前，必须先输出一个标准 `QuestMap` 协议块。该协议块是 PHASE 2 到 PHASE 3 的唯一交接真源。
+
 ````markdown
 # 《[项目/功能名称] 闯关大纲》
+
+## QuestMap 协议块
+
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "QuestMap",
+  "id": "quest-map-<id>",
+  "runId": "run-<id>",
+  "phase": "PLAN",
+  "status": "success",
+  "summary": "一句话说明任务拆解结果",
+  "source": "quest-designer",
+  "refs": {
+    "artifacts": ["route-<id>"],
+    "files": ["涉及文件路径"]
+  },
+  "handoff": {
+    "toPhase": "EXECUTE",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "routeDecisionId": "route-<id>",
+  "goal": "<任务总目标>",
+  "executionMode": "direct | sequential | parallel | orchestrated",
+  "contracts": [
+    {
+      "name": "CONTRACT-1",
+      "producer": "quest-1",
+      "consumers": ["quest-2"],
+      "summary": "<合约摘要>"
+    }
+  ],
+  "globalAcceptance": ["编译通过", "相关测试通过", "关键门禁通过"],
+  "failurePolicy": {
+    "maxAttempts": 2,
+    "retryPlan": ["same_path", "alternative_path_or_agent"],
+    "escalateTo": "build-error-resolver",
+    "rollbackScope": "quest_only"
+  },
+  "knowledgeHints": ["<可沉淀经验1>", "<可沉淀经验2>"],
+  "quests": [
+    {
+      "questId": "quest-1",
+      "title": "<关卡标题>",
+      "objective": "<一句话目标>",
+      "ownerAgent": "direct | tdd-guide | code-reviewer | security-reviewer",
+      "skills": ["<skill1>"],
+      "dependsOn": [],
+      "inputs": ["<输入合约或上下文>"],
+      "outputs": ["<输出物>"],
+      "touchFiles": ["<文件路径>"],
+      "acceptance": ["<验收标准1>", "<验收标准2>"],
+      "risk": "low | medium | high",
+      "rollback": "<当前 Quest 的回滚范围和方式>",
+      "decisionNotes": ["<决策1>", "<决策2>"],
+      "pitfalls": ["<预判坑点1>", "<预判坑点2>"]
+    }
+  ]
+}
+```
 
 ## 全局信息
 
 **技术栈**：Java 17 + Spring Boot 3 + MyBatis Plus + MySQL
 **建议执行模式**：单Agent / Subagent并行 / Agent Teams
 **合约清单**：CONTRACT-1(ExportOrderRequest), CONTRACT-2(OrderService.exportOrders)
+
+---
+
+### QuestMap 字段要求
+
+- `routeDecisionId`：必须引用上游 `RouteDecision.id`
+- `executionMode`：根据依赖关系选择 `direct / sequential / parallel / orchestrated`
+- `contracts[]`：对齐下文的合约清单，不得口径不一致
+- `failurePolicy`：统一失败协议，默认两次尝试后升级 `build-error-resolver`
+- `knowledgeHints[]`：记录本次任务可能沉淀的模式、踩坑、决策
+- `quests[]`：必须覆盖正文中出现的全部 Quest
+- 每个 Quest 的 `touchFiles`、`acceptance`、`rollback`、`decisionNotes`、`pitfalls` 不能省略
+
+---
+
+## Quest 正文（完整蓝图）
+
+该部分继续保持 v4 的完整代码输出，不降低蓝图细度。PHASE 3 执行时，先读协议块，再按正文逐关落地。
 
 ---
 

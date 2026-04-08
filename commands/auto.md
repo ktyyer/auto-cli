@@ -1,530 +1,517 @@
 ---
-description: 智能超级命令 - 上下文扫描 + Quest设计 + 逐关执行 + 验证 + 总结 + 知识沉淀
+description: 智能超级命令 - 上下文扫描 + Quest 设计 + 逐关执行 + 验证 + 总结 + 知识沉淀
 ---
 
 # /auto — 智能超级命令
 
-> 上下文扫描 → Quest设计 → 逐关执行 + 验证 + 总结 + 知识沉淀
+> SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN
 
 ---
 
-## 四模式执行
+## 执行策略
 
-根据任务复杂度自动选择：
+根据任务本质自主选择执行深度：
 
-| 条件                  | 模式         | 执行路径                                                                                     |
-| --------------------- | ------------ | -------------------------------------------------------------------------------------------- |
-| 0文件变更（纯探索）   | **探索模式** | PHASE 1 → PHASE 2（思考摘要 + 单关探索 Quest）→ 展示 Quest → 回答 → PHASE 5（总结）→ PHASE 6 |
-| 1文件 且 <=10行变更   | **微型模式** | PHASE 1 → PHASE 2（完整思考摘要 + 单关 Quest）→ 微型执行 → PHASE 4 → PHASE 5 → PHASE 6       |
-| <=3文件 且 无架构变更 | **轻量模式** | PHASE 1 → PHASE 2（完整思考摘要 + 精简 Quest）→ 直接执行 → PHASE 4 → PHASE 5 → PHASE 6       |
-| >3文件 或 有架构变更  | **完整模式** | PHASE 1 → PHASE 2（完整思考摘要 + 完整 Quest Map）→ PHASE 3 → PHASE 4 → PHASE 5 → PHASE 6    |
+| 策略     | 适用场景                       | 执行路径                                                                                                                 |
+| -------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **探索** | 分析/咨询/代码审查，无代码变更 | SCAN → PLAN（生成最小 `QuestMap`）→ EXECUTE（只读分析产出 `QuestResult`）→ VERIFY（`status=skipped`）→ SUMMARIZE → LEARN |
+| **修复** | bug/小调整，少量文件局部修改   | SCAN → PLAN → EXECUTE（直接修复）→ VERIFY → SUMMARIZE → LEARN                                                            |
+| **实现** | 新功能/多文件变更              | SCAN → PLAN → quest-designer → EXECUTE（逐关）→ VERIFY → SUMMARIZE → LEARN                                               |
+| **重构** | 架构级变更                     | SCAN → PLAN → quest-designer → EXECUTE（逐关）→ VERIFY（含对抗验证）→ SUMMARIZE → LEARN                                  |
 
----
+AI 在 SCAN 阶段综合任务语义、安全敏感度、架构影响等因素自主判定，不按文件数或行数硬编码。
 
-## 自检机制
+## 协议对象与 Phase 出入口
 
-每个 PHASE 开始前，必须确认上一 PHASE 的产出存在。不存在则回退执行上一 PHASE。
+`/auto` 统一消费和产出以下 5 个标准对象（定义见 `agents/_shared-principles.md`）：
 
-| PHASE   | 前置产出检查                           |
-| ------- | -------------------------------------- |
-| PHASE 2 | TodoWrite 已创建 + DISCOVER 报告已输出 |
-| PHASE 3 | Quest 卡片已向用户展示                 |
-| PHASE 4 | 代码变更已写入（探索模式除外）         |
-| PHASE 5 | 验证报告已输出（探索模式除外）         |
-| PHASE 6 | 完成总结已输出                         |
+- `RouteDecision`
+- `QuestMap`
+- `QuestResult`
+- `VerifyReport`
+- `LearnCard`
 
----
+旧术语兼容映射：
 
-## PHASE 1: DISCOVER — 扫描 + 能力清单
+- `DISCOVER` = `SCAN`
+- `REASON` = `PLAN`
 
-### 1.1 缓存检查
+### PHASE 输入 / 输出矩阵
 
-```bash
-# 检查能力快照缓存是否存在且在 24h 内
-test -f .auto/cache/capability-snapshot.json && \
-  find .auto/cache/capability-snapshot.json -mtime -1 -exec echo "CACHE_HIT" \;
+| Phase       | 主要输入                                       | 标准输出             | 默认落盘位置                                                                  |
+| ----------- | ---------------------------------------------- | -------------------- | ----------------------------------------------------------------------------- |
+| `SCAN`      | 用户需求 + 技术栈 + 能力清单 + preflight       | `RouteDecision`      | `.auto/runs/<runId>/route-decision.md`                                        |
+| `PLAN`      | `RouteDecision` + 相关上下文 + Memory/insights | `QuestMap`           | `.auto/runs/<runId>/quest-map.md`                                             |
+| `EXECUTE`   | `QuestMap` + 上游产出合约                      | `QuestResult`        | `.auto/runs/<runId>/quest-results.md`                                         |
+| `VERIFY`    | `QuestResult` 列表 + 相关命令输出              | `VerifyReport`       | `.auto/runs/<runId>/verify-report.md`                                         |
+| `SUMMARIZE` | `QuestResult` + `VerifyReport`                 | 汇总摘要（人类可读） | `.auto/runs/<runId>/index.md`                                                 |
+| `LEARN`     | `QuestResult` + `VerifyReport` + Git 模式      | `LearnCard` 列表     | `.auto/runs/<runId>/learn-cards.md` + `.auto/insights/*` + `.auto/feedback/*` |
+
+### `.auto/` canonical 结构
+
+```text
+.auto/
+├── cache/
+│   ├── capability-snapshot.json
+│   └── pattern-cards.json
+├── runs/
+│   └── <runId>/
+│       ├── route-decision.md
+│       ├── quest-map.md
+│       ├── quest-results.md
+│       ├── verify-report.md
+│       ├── learn-cards.md
+│       └── index.md
+├── insights/
+│   ├── traps.md
+│   ├── patterns.md
+│   ├── decisions.md
+│   ├── prompts.md
+│   └── agent-feedback.md
+├── memory/
+│   └── store.json
+└── feedback/
+    ├── agents.json
+    └── skills.json
 ```
 
-命中缓存 → 读取快照，跳到 1.4 输出报告。
-未命中 → 执行 1.2-1.3 完整扫描。
+说明：
 
-### 1.2 技术栈 + 能力清单（并行扫描）
+- `cache/` 是可丢弃层，只缓存能力快照和模式卡。
+- `runs/` 是单次工作流的运行记录真源。
+- `insights/` 是长期复用的知识视图。
+- `memory/` 是项目级辅助记忆索引层。
+- `feedback/` 存放结构化 agent / skill 反馈。
+- 已存在 legacy 文件可继续读取，但新协议以以上结构为准。
 
-```
-Glob("REPO_MAP.md") → 如存在则 Read（跳过源码扫描）
-Glob("package.json") / Glob("pom.xml") / Glob("go.mod") / Glob("requirements.txt") / Glob("Cargo.toml")
-  → 匹配任一即确定技术栈 → Read 获取依赖和 scripts
+---
+
+## 核心编排规则
+
+1. **先协议后正文** — 关键阶段先输出 JSON 协议块，再输出人类可读摘要。
+2. **Phase 单向流动** — `RouteDecision → QuestMap → QuestResult → VerifyReport → LearnCard`。
+3. **Quest 级失败控制** — 默认只回滚当前 Quest 触及文件，不做仓库级全局回滚。
+4. **默认自动续行** — 展示阶段摘要后继续执行，除非用户显式打断。
+5. **LEARN 依赖可验证来源** — 主流程 LEARN 默认依赖 `VerifyReport`；独立 `/auto:learn --git` 可使用 Git 证据单独产出 `LearnCard`。
+6. **知识复用只读 insights/memory** — `cache/` 不作为长期知识真源。
+7. **doctor/status 是 preflight 辅助** — 它们提供上下文，但不替代核心协议对象。
+
+---
+
+## PHASE 约定
+
+- `SCAN`：产出 `RouteDecision`，决定主 Agent、回退链、策略、敏感度。
+- `PLAN`：消费 `RouteDecision`，产出 `QuestMap`，固化 Quest 拆解、依赖、合约、失败策略。
+- `EXECUTE`：逐关执行，产出 `QuestResult`，记录尝试次数、验证结果、失败上下文。
+- `VERIFY`：消费 `QuestResult`，产出 `VerifyReport`，决定继续执行、总结或终止。
+- `SUMMARIZE`：汇总 `QuestResult` 与 `VerifyReport`，不自动提交。
+- `LEARN`：将执行与验证结果沉淀为 `LearnCard`，再归档到 `.auto/insights/` 与 `.auto/feedback/`。
+
+---
+
+## 运行 ID
+
+每次 `/auto` 调用默认生成一个 `runId`，用于串联所有协议对象、运行记录和知识沉淀。
+
+后续阶段引用上游结果时，必须携带：
+
+- `runId`
+- 上游对象 `id`
+- 涉及文件路径
+- 阻塞项（如有）
+
+---
+
+## 结果持久化
+
+- `RouteDecision`、`QuestMap`、`QuestResult`、`VerifyReport`、`LearnCard` 优先写入 `.auto/runs/<runId>/`
+- 长期复用知识再从 `LearnCard` 分类投递到 `.auto/insights/` 或 `.auto/feedback/`
+- `.auto/memory/store.json` 用于聚合项目级记忆索引，不再承担单次 Quest 运行记录
+
+---
+
+## 与子命令关系
+
+- `/auto:route`：显式输出 `RouteDecision`
+- `/auto:doctor`：提供 `preflight` 辅助信息，挂入 `RouteDecision.preflight`
+- `/auto:status`：读取 `.auto/` canonical 结构，展示运行记录、缓存、知识与反馈状态
+- `/auto:learn`：输出 `LearnCard` 视图并更新 insights/feedback
+- `quest-designer`：消费 `RouteDecision`，产出 `QuestMap`
+- `verification`：消费 `QuestResult`，产出 `VerifyReport`
+- `build-error-resolver`：消费失败上下文，输出修复后的 `QuestResult` 增量
+
+---
+
+## 兼容说明
+
+当前文档或旧说明中若出现 `DISCOVER`、`REASON`、`.auto/memory/quest-{id}.json`、仓库级回滚等表达，均以本文件和 `agents/_shared-principles.md` 的新协议为准。
+
+---
+
+## PHASE 1: SCAN — 上下文扫描
+
+### 1.1 技术栈 + 能力扫描
+
+```text
+Glob("REPO_MAP.md") → 如存在则 Read（优先使用仓库地图）
+Glob("package.json" / "pom.xml" / "go.mod" / "requirements.txt" / "Cargo.toml") → 确定技术栈
 Glob("CLAUDE.md") → Read（如存在）
-
-Glob("~/.claude/commands/auto/*.md") → 提取子命令列表
-Glob("~/.claude/agents/*.md") → Grep 提取 frontmatter 元数据（name, description）
-Glob("~/.claude/skills/*.md") → Grep 提取标题和描述
-Read("~/.claude/hooks/hooks.json") → 统计 hook 类型数量
+Glob("~/.claude/agents/*.md") → 提取可用 Agent 列表
+Glob("~/.claude/skills/*.md") → 提取可用 Skill 列表
 ```
 
-### 1.3 环境快检
+### 1.2 环境快检
 
 ```bash
 node --version 2>/dev/null || echo "Node.js: NOT_FOUND"
 git status --porcelain 2>/dev/null | head -5 || echo "Git: NOT_REPO"
 test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
-test -d node_modules && echo "deps: INSTALLED" || echo "deps: MISSING"
 ```
 
-### 1.4 Agent 路由
+### 1.3 Agent 路由
 
-使用 `/auto:route` 路由到合适的 Agent，输出推荐 Agent + 回退链。
+使用 `/auto:route` 分析用户意图，输出主 Agent、回退链、执行策略和安全敏感度。
+路由结果必须作为 `RouteDecision` 流入 PHASE 2。
 
-### 1.5 写入能力快照
+### 1.4 能力缓存
 
-```bash
-mkdir -p .auto/cache
-# 将扫描结果写入 .auto/cache/capability-snapshot.json
-# 包含: tech_stack, capabilities, environment, timestamp
-```
+扫描结果写入 `.auto/cache/capability-snapshot.json`（24h 有效）。
+命中缓存时可跳过重复扫描，但仍要输出本次 SCAN 摘要。
 
-**门禁**：必须向用户输出 DISCOVER 报告后 → 进入 PHASE 2。禁止跳过 PHASE 2 直接编辑代码。
-
-```
-TodoWrite([
-  { content: "任务: [需求摘要]", status: "completed" },
-  { content: "技术栈: [tech]", status: "completed" },
-  { content: "能力: [N] cmd, [N] agent, [N] skill, [N] hook", status: "completed" },
-  { content: "执行模式: [探索/微型/轻量/完整]", status: "completed" }
-])
-```
-
-### DISCOVER 输出模板（必须输出，不可省略）
-
-```markdown
-## DISCOVER 扫描结果
-
-### 技术栈检测
-
-- 语言/框架：[检测结果]
-- 构建工具：[检测结果]
-
-### 能力清单
-
-| 类型     | 数量 | 列表            |
-| -------- | ---- | --------------- |
-| Commands | {n}  | [command names] |
-| Agents   | {n}  | [agent names]   |
-| Skills   | {n}  | [skill names]   |
-| Hooks    | {n}  | [hook types]    |
-
-### 环境快检
-
-| 检查项    | 状态                 |
-| --------- | -------------------- |
-| Node.js   | v{version} PASS/FAIL |
-| 依赖安装  | INSTALLED/MISSING    |
-| Git 状态  | CLEAN/DIRTY          |
-| CLAUDE.md | EXISTS/MISSING       |
-
-### 执行模式判定
-
-**模式**：[探索/微型/轻量/完整]
-**理由**：[判定依据]
-```
+**出口**：展示技术栈、能力清单、环境状态与策略判定摘要，随后进入 PLAN。
 
 ---
 
-## PHASE 2: REASON — Quest 设计 + Skill 注入 + 知识检索
+## PHASE 2: PLAN — 编排 + Quest 设计
 
-### 2.1 知识检索（读回历史经验）
+### 2.1 知识检索
 
-在分析前先搜索相关历史知识，实现闭环：
+从 Claude Memory 中检索相关经验。
+如有 `.auto/insights/*.md`，按标题关键词匹配读取相关段落。
 
-```bash
-# 搜索历史经验（每个分类最多 3 条）
-grep -r -l "[用户需求关键词]" .auto/insights/ 2>/dev/null | head -5
-# 对匹配文件 Read 前 50 行，提取相关经验摘要
-```
+### 2.2 编排决策
 
-将搜索到的历史经验注入 quest-designer 的上下文。
+参考 `workflow-patterns.md` 的编排模式，结合用户需求自主完成：
 
-### 2.2 Skill 匹配
+1. **任务拆解**：分析自然边界，每步有明确产出
+2. **Agent 选择**：基于 route 结果 + 任务特性（参考 `_shared-principles.md` 交接路径）
+3. **Skill 注入**：按技术栈自动关联
+4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
+5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
 
-```bash
-# 关键词匹配可用 Skill
-grep -l "[任务关键词]" ~/.claude/skills/*.md 2>/dev/null
-```
+| 技术栈   | 自动关联 Skill       |
+| -------- | -------------------- |
+| Java     | java-patterns        |
+| 性能相关 | performance-patterns |
+| 错误处理 | error-patterns       |
 
-匹配的 Skill 名称注入 Quest 的 `skills` 字段。
+### 2.3 推理摘要
 
-### 2.2a Phase-Skill 自动映射
+向用户展示简明编排推理，至少包含：
 
-除了关键词匹配，以下 Skill 按阶段自动注入：
+- 任务理解
+- 复杂度与执行策略
+- Quest 拆解与依赖拓扑
+- Agent 调度与 Skill 注入
 
-| Phase    | 自动注入 Skill                      | 注入方式                                  |
-| -------- | ----------------------------------- | ----------------------------------------- |
-| DISCOVER | dependency-analyzer, init-project   | 如 CLAUDE.md 缺失则触发 init-project      |
-| REASON   | workflow-patterns                   | Quest 设计参考                            |
-| EXECUTE  | 按关键词动态匹配                    | Skill 内容写入 Agent prompt               |
-| VERIFY   | code-style-enforcer, error-patterns | code-reviewer/verification Agent 自动附带 |
-| COMMIT   | git-workflow                        | 提交信息格式参考                          |
-| LEARN    | —                                   | 无额外注入                                |
+展示后默认继续执行，不等待确认；如用户显式打断则停止。
 
-### 2.3 按模式生成 Quest
+### 2.4 Quest 设计
 
-- **探索模式**：跳过 quest-designer Agent 调用，自行生成思考摘要与单关探索 Quest（0 changedFiles，acceptanceCriteria 为回答完整性），按下方模板展示分析结果后回答用户问题，不进入执行/验证阶段。
-- **微型模式**：跳过 quest-designer Agent 调用，自行生成完整思考摘要与单关 Quest，再自动进入执行。
-- **轻量模式**：调用 quest-designer Agent 输出精简版（影响文件 + 执行顺序 + 风险评估），完整展示后再执行。
-- **完整模式**：调用 quest-designer Agent 输出完整 Quest Map（分析/设计 → 核心实现 → 验证测试），展示后自动执行。
+| 策略 | Quest 设计方式                                                   |
+| ---- | ---------------------------------------------------------------- |
+| 探索 | 跳过 quest-designer，由主窗口生成最小 `QuestMap`，供后续只读执行 |
+| 修复 | 跳过 quest-designer，自行生成单关修复计划并固化为最小 `QuestMap` |
+| 实现 | 调用 quest-designer 生成完整 `QuestMap`                          |
+| 重构 | 调用 quest-designer 生成完整 `QuestMap`（含深度分析）            |
 
-### 2.4 quest-designer 调用上下文模板
+调用 quest-designer 时，组装上下文：
 
-轻量/完整模式调用 quest-designer Agent 时，必须组装以下上下文：
-
-```
-Agent({
-  subagent_type: "quest-designer",
-  prompt: "
-【用户需求】[原始需求描述]
+```text
+【用户需求】[原始需求]
 【技术栈】[语言+框架]
-【项目规范】[CLAUDE.md 存在/缺失]
-【能力清单】
-  Commands: [name + description]
-  Agents: [name + description]
-  Skills: [name + description]
-  Hooks: [类型数量]
-【现有代码文件】[源码路径列表]
-【历史经验】（来自 .auto/insights/）
-  [匹配的历史经验摘要，每条最多 200 字]
-【Router 推荐】主 Agent：<name> | 回退链：<fallbacks>
-  "
-})
+【项目规范】[CLAUDE.md 摘要]
+【编排计划】任务拆解 + Agent 调度 + Skill 注入 + 交接关系 + 并行/串行
+【能力清单】Agents + Skills 列表
+【现有代码】源码路径列表
+【历史经验】Memory 匹配的经验摘要
+【Router 推荐】主 Agent + 回退链 + 安全敏感度
 ```
 
-**门禁**：必须向用户输出 Quest 卡片后 → 进入下一阶段。禁止在 PHASE 2 内部消化 Quest 后直接回答或编辑代码。Quest 卡片是面向用户的输出，不是内部推理步骤。
-
-每个 Quest 包含：`id, title, description, keywords, complexity, changedFiles, acceptanceCriteria, decisionNotes, skills, agent`。
-
-### 探索模式输出模板（必须输出，不可省略）
-
-```markdown
-## 探索分析
-
-### 任务理解
-
-[一句话说明任务目标]
-
-### 分析路径
-
-- [扫描了哪些文件/目录]
-- [关注了哪些关键代码段]
-
-### 历史经验（如有）
-
-- [来自 .auto/insights/ 的相关经验摘要]
-
-### Quest explore-1：[探索目标]
-
-- 描述：[具体探索动作]
-- 关注文件：[文件路径列表]
-- 验收标准：回答完整覆盖用户问题
-```
-
-### 微型/轻量模式输出模板（必须输出，不可省略）
-
-```markdown
-## 执行前摘要：[需求摘要]
-
-### 任务理解
-
-[一句话说明任务目标]
-
-### 模式判定理由
-
-[为什么是微型/轻量模式]
-
-### 风险与边界
-
-- [关键风险]
-- [不可越界范围]
-
-### Quest light-1：[目标]
-
-- 描述：[具体动作]
-- 影响文件：[文件路径列表]
-- 验收标准：[可验证结果]
-- 决策笔记：[为什么这样做]
-- 预判坑点：
-  1. [基于代码分析的具体坑点]
-```
-
-微型模式至少输出一关 Quest，不能跳过 Quest 展示。
+**出口**：始终产出 `QuestMap`，再进入 EXECUTE；探索模式随后也必须产出只读 `QuestResult` 与 `VerifyReport(status=skipped)`，再进入 SUMMARIZE / LEARN。
 
 ---
 
 ## PHASE 3: EXECUTE — 逐关执行
 
-| 规模    | 模式          | Token 成本 |
-| ------- | ------------- | ---------- |
-| 1-5 关  | 单 Agent 串行 | 1x         |
-| 6-15 关 | Subagent 并行 | 2-3x       |
-| 15+ 关  | Agent Teams   | 3-10x      |
+### 3.1 Agent 调度
 
-每关流程：Read 代码 → Write/Edit → 补 import → 编译验证。
-失败：回滚 → 修复 → 重试（最多 2 次）。
-Quest 间检查上下文窗口 → 若接近溢出则生成会话摘要 + 续接指令。
-每关完成后：
+每关根据编排计划调度对应 Agent：
 
-- 将执行结果记录到 `.auto/memory/quest-{id}.json`（后续会话可查询）
-- 使用 `Grep` / `Glob` 替代手动搜索相关代码
+| Agent                | 触发条件                          | 调度方式                                       |
+| -------------------- | --------------------------------- | ---------------------------------------------- |
+| Claude 直接执行      | 实现类 Quest（按蓝图 Write/Edit） | Write/Edit                                     |
+| tdd-guide            | 编排计划标记测试关                | `Agent(subagent_type: "tdd-guide")`            |
+| code-reviewer        | 编排计划标记审查关                | `Agent(subagent_type: "code-reviewer")`        |
+| security-reviewer    | route 标记安全敏感                | `Agent(subagent_type: "security-reviewer")`    |
+| build-error-resolver | Quest 执行失败（最多 2 次重试后） | `Agent(subagent_type: "build-error-resolver")` |
 
-### 逐关执行输出要求（强制，不可省略）
+### 3.2 执行流程
 
-每关完成后 **必须** 向用户输出进度卡片：
+每关：Read 代码 → Write/Edit 或只读分析 → 必要验证。
+探索模式也必须产出一个只读 `QuestResult`，用于把分析结论标准化地交给 VERIFY / SUMMARIZE / LEARN。
+失败协议固定为：
 
-```markdown
-## Quest [id]：[title] — [PASS/FAIL]
+1. `same_path` — 沿当前实现路径做最小差异修复
+2. `alternative_path_or_agent` — 切换替代路径或替代 Agent
+3. `build-error-resolver` — 两次尝试后升级构建修复 Agent
+4. `quest rollback / abort` — 若仍失败，仅回滚当前 Quest 触及文件并终止当前 run
 
-### 执行结果
+每关完成后记录到 `.auto/runs/<runId>/quest-results.md`。
+Quest 间检查上下文窗口，接近溢出则生成会话摘要续接。
 
-| 操作          | 文件       | 状态      |
-| ------------- | ---------- | --------- |
-| CREATE/MODIFY | [文件路径] | OK/FAILED |
+### 3.3 QuestResult（每关完成后输出）
 
-### 验证结果
+````markdown
+## QuestResult [{id}]
 
-| #   | 验证点     | 命令   | 结果      |
-| --- | ---------- | ------ | --------- |
-| 1   | [验收标准] | [命令] | PASS/FAIL |
-
-### 进度
-
-已完成：[n]/[total] 关 | 成功：[n] | 失败：[n]
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "QuestResult",
+  "id": "quest-result-<id>",
+  "runId": "run-<id>",
+  "phase": "EXECUTE",
+  "status": "success | partial | failed | skipped",
+  "summary": "一句话说明本关结果",
+  "source": "执行当前 Quest 的 command/agent",
+  "refs": {
+    "artifacts": ["quest-map-<id>"],
+    "files": ["变更文件路径"]
+  },
+  "handoff": {
+    "toPhase": "VERIFY",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "questId": "quest-<id>",
+  "attempt": 1,
+  "ownerAgent": "direct | tdd-guide | code-reviewer | security-reviewer | build-error-resolver",
+  "changedFiles": ["<文件路径>"],
+  "diffSummary": "+N / -N",
+  "validations": [
+    {
+      "name": "build",
+      "command": "<命令>",
+      "status": "pass | fail"
+    }
+  ],
+  "producedOutputs": ["<输出物>"],
+  "producedContracts": ["CONTRACT-1"],
+  "decisionNotes": ["<决策1>", "<决策2>"],
+  "failureContext": {
+    "errorType": "unknown | build | test | security | logic",
+    "errorSummary": "<一句话错误摘要>",
+    "failedCommand": "<失败命令>",
+    "rootCauseHypothesis": "<根因假设>",
+    "suggestedFallbackAgent": "<候选 Agent>"
+  },
+  "retry": "same_path | alternative_path_or_agent | escalate_build_error_resolver | none",
+  "rollbackApplied": false
+}
 ```
+````
 
-**失败/重试时额外输出**：
+要点：
 
-```markdown
-### Quest [id] 执行失败 — 正在重试 (1/2)
+- `QuestResult` 是 PHASE 3 到 PHASE 4 的唯一标准产物
+- 探索模式也要输出 `QuestResult(status=success)`，并把 `validations` 标记为 `analysis` / `skipped`
+- 失败上下文供 `verification` 和 `build-error-resolver` 直接消费
+- 不再将单关结果写入 `.auto/memory/quest-{id}.json` 这类旧路径
 
-**错误**：[错误描述]
-**修复策略**：[策略描述]
-```
+### 3.4 执行失败与升级
 
-**TodoWrite 同步要求**：每关开始时将该 Quest 的 TodoWrite 状态设为 `in_progress`，完成时设为 `completed`，失败设为 `pending`。
-
-**门禁**：每关进度卡片输出后 → 才能开始下一关。所有关完成并输出总览卡片后 → 进入 PHASE 4。
+- 第 1 次失败：沿当前方案最小差异修复
+- 第 2 次失败：切换替代路径或替代 Agent
+- 两次尝试后仍失败：升级到 `build-error-resolver`
+- 若升级后仍失败：只回滚当前 Quest 触及文件并终止当前 run
+- 禁止默认使用仓库级 `git checkout -- .` 作为常规失败策略
 
 ---
 
-## PHASE 4: VERIFY — 门禁
+## PHASE 4: VERIFY — 门禁验证
 
-| 模式 | 要求                                            |
-| ---- | ----------------------------------------------- |
-| 探索 | 无代码变更，跳过验证阶段                        |
-| 微型 | 编译通过 + 相关测试通过                         |
-| 轻量 | 编译通过 + 相关测试通过 + lint 无错             |
-| 完整 | 编译/构建 → 全量测试 → 覆盖率 >= 80% → 安全扫描 |
+| 策略 | 验证要求                                                                          |
+| ---- | --------------------------------------------------------------------------------- |
+| 探索 | 输出 `VerifyReport(status=skipped)`；至少记录 analysis-only / no-code-change 证据 |
+| 修复 | 编译通过 + 相关测试通过                                                           |
+| 实现 | 编译 + 测试 + lint + 覆盖率 ≥ 80%                                                 |
+| 重构 | 编译 + 全量测试 + 覆盖率 + 安全扫描 + 对抗验证                                    |
 
-失败自动路由: 每个失败 Quest 自动路由到 `build-error-resolver` agent。
+`VERIFY` 必须消费 `QuestResult` 并输出标准 `VerifyReport`。即使探索模式没有代码变更，也要输出 `status=skipped` 的 `VerifyReport`，再进入 SUMMARIZE / LEARN。验证失败时只按 Quest 级失败协议回流，不做仓库级默认回滚。
 
-### 验证执行
+### VerifyReport
 
-```bash
-# 按模式选择验证命令
-# 微型: npm test / mvn test / go test
-# 轻量: npm test && npm run lint
-# 完整: npm run build && npm test -- --coverage && npm run lint && npm audit
+````markdown
+## VerifyReport [{id}]
+
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "VerifyReport",
+  "id": "verify-<id>",
+  "runId": "run-<id>",
+  "phase": "VERIFY",
+  "status": "success | partial | failed | skipped",
+  "summary": "一句话验证结论",
+  "source": "verification 或主窗口",
+  "refs": {
+    "artifacts": ["quest-result-<id>"],
+    "files": ["验证涉及文件路径"]
+  },
+  "handoff": {
+    "toPhase": "SUMMARIZE | EXECUTE",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "scope": "quest | run",
+  "targetIds": ["quest-result-<id>"],
+  "gateResults": [
+    {
+      "name": "build",
+      "required": true,
+      "command": "<命令>",
+      "status": "pass | fail | skipped",
+      "evidence": "<输出摘要>",
+      "owner": "main | verification",
+      "fixHint": "<修复建议>"
+    }
+  ],
+  "overallStatus": "pass | warn | fail",
+  "failedGates": ["<gate>"],
+  "evidence": ["<证据1>", "<证据2>"],
+  "remediationPlan": ["<修复动作1>", "<修复动作2>"],
+  "rollbackRecommendation": "quest_only | none",
+  "nextAction": "SUMMARIZE | EXECUTE | ABORT"
+}
 ```
+````
 
-失败处理: 修复(1) → 替代方案(2) → `git checkout -- .` 回滚(3)
+### 对抗验证（重构模式专用）
 
-### 验证输出模板（必须输出，不可省略）
+调度 `verification` 进行红蓝对抗：边界值攻击、并发场景、幂等性、错误路径覆盖。
 
-```markdown
-## 验证报告
-
-### 验证模式：[探索/微型/轻量/完整]
-
-### 验证结果
-
-| #   | 验证项    | 命令/方法 | 结果      | 详情             |
-| --- | --------- | --------- | --------- | ---------------- |
-| 1   | 编译/构建 | [命令]    | PASS/FAIL | [输出摘要]       |
-| 2   | 单元测试  | [命令]    | PASS/FAIL | [通过率]         |
-| 3   | 覆盖率    | [命令]    | [n]%      | >= 80% PASS/FAIL |
-| 4   | Lint      | [命令]    | PASS/FAIL | [错误数]         |
-| 5   | 安全扫描  | [方法]    | PASS/FAIL | [发现数]         |
-
-### 总结
-
-- 通过：[n] 项 / 失败：[n] 项
-- 判定：ALL PASS / HAS FAILURES
-```
-
-**失败时额外输出**：
-
-```markdown
-### 验证失败处理
-
-| #   | 失败项   | 修复状态             |
-| --- | -------- | -------------------- |
-| 1   | [验证项] | 修复中/已修复/已回滚 |
-```
-
-**门禁**：必须向用户输出验证报告后 → 进入 PHASE 5。全部通过或经修复后通过才能继续；3 次修复仍失败 → 回滚并终止，输出失败报告。
+**出口**：展示 `VerifyReport`。全部通过则进入 SUMMARIZE；达到最大修复次数仍失败则 Quest 级回滚并终止。
 
 ---
 
-## PHASE 5: SUMMARIZE — 完成阶段总结
+## PHASE 5: SUMMARIZE — 完成总结
 
-所有 Quest 执行并验证完成后，向用户输出本次工作流的变更总结。不自动提交，由用户决定是否提交。
+向用户输出：
 
-### 完成总结输出模板（必须输出，不可省略）
+- 执行策略
+- 完成 Quest 数
+- 验证结果
+- 变更文件清单
+- 统计（行数变更）
+- 是否有遗留阻塞项
 
-```markdown
-## 完成总结
+不自动提交，由用户决定。
 
-### 执行概览
-
-- **模式**：[探索/微型/轻量/完整]
-- **完成 Quest**：[n]/[total]
-- **验证结果**：ALL PASS / [n] FAILURES
-
-### 变更文件清单
-
-| #   | 文件       | 操作                 | 说明       |
-| --- | ---------- | -------------------- | ---------- |
-| 1   | [文件路径] | CREATE/MODIFY/DELETE | [变更摘要] |
-
-### 统计
-
-- 变更文件：[n] 个 | 新增：[+]行 | 删除：[-]行
-```
-
-**探索模式（无代码变更）输出**：
-
-```markdown
-## 完成总结
-
-- **模式**：探索
-- **变更文件**：0（纯阅读/分析）
-```
-
-**门禁**：必须向用户输出完成总结后 → 进入 PHASE 6。如用户要求提交，再执行 git commit。
+**出口**：展示总结并进入 LEARN。
 
 ---
 
 ## PHASE 6: LEARN — 知识沉淀
 
-### 6.1 收集执行摘要
+### 6.1 LearnCard
 
-从 TodoWrite 获取执行结果，提取已完成和失败的 Quest。
+LEARN 阶段先产出标准 `LearnCard`，再把它分发到 `.auto/insights/` 和 `.auto/feedback/`。
 
-### 6.2 保存经验到知识库
+````markdown
+## LearnCard [{id}]
 
-将经验按三类保存到 `.auto/insights/` 目录：
-
-**踩坑记录**（失败 Quest）：
-
-```bash
-mkdir -p .auto/insights
-# 写入 .auto/insights/traps.md（追加模式）
-# 包含: 时间、失败关卡、失败详情、教训
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "LearnCard",
+  "id": "learn-<id>",
+  "runId": "run-<id>",
+  "phase": "LEARN",
+  "status": "success",
+  "summary": "一句话经验",
+  "source": "auto / auto:learn / 相关 Agent",
+  "refs": {
+    "artifacts": [
+      "可为空；如 route-<id> / quest-map-<id> / quest-result-<id> / verify-<id> / git-log:<range>"
+    ],
+    "files": ["相关文件路径"]
+  },
+  "handoff": {
+    "toPhase": "SCAN",
+    "ready": true,
+    "blockingIssues": []
+  },
+  "category": "trap | pattern | decision | prompt | feedback",
+  "title": "<标题>",
+  "context": "<上下文>",
+  "trigger": "<触发条件>",
+  "recommendedAction": "<推荐动作>",
+  "antiPattern": "<反模式>",
+  "evidenceRefs": ["<证据1>"],
+  "sourcePhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
+  "sourceArtifacts": [
+    "可为空；按来源填写 route-<id> / quest-map-<id> / quest-result-<id> / verify-<id> / git-log:<range>"
+  ],
+  "tags": ["<tag1>", "<tag2>"],
+  "confidence": "low | medium | high",
+  "targetInsightFile": ".auto/insights/<file>.md"
+}
 ```
+````
 
-**成功模式**（完成 Quest）：
+按分类写入：
 
-```bash
-# 写入 .auto/insights/patterns.md（追加模式）
-# 包含: 时间、完成关卡、关键模式
-```
+| 类型   | 文件                | 内容                 |
+| ------ | ------------------- | -------------------- |
+| 踩坑   | `traps.md`          | 遇到的坑和解决方案   |
+| 模式   | `patterns.md`       | 验证有效的做法       |
+| 决策   | `decisions.md`      | 架构/技术选择及理由  |
+| Prompt | `prompts.md`        | 可复用输入模式       |
+| 反馈   | `agent-feedback.md` | agent/skill 路由反馈 |
 
-**架构决策**（涉及架构变更的 Quest）：
+### 6.2 Agent 路由反馈
 
-```bash
-# 写入 .auto/insights/decisions.md（追加模式）
-# 包含: 时间、变更内容、决策理由
-```
+记录本次 Agent 调用结果，先生成 `LearnCard(category=feedback)`，再落盘到 `.auto/insights/agent-feedback.md` 与 `.auto/feedback/agents.json` / `.auto/feedback/skills.json`。
 
-### 6.3 更新项目记忆
+### 6.3 Git 模式分析
 
-将本次执行摘要追加到项目记忆（Claude Code 的 Memory 系统），格式：
-
-```markdown
-- [{日期}] {任务摘要}: {n} 关完成, {n} 关失败, 关键经验: [摘要]
-```
+调用 `/auto:learn` 分析提交约定、热点文件和文件联动，统一输出为 `LearnCard(category=pattern)` 列表。
 
 ### 6.4 架构变更检测
 
-```bash
-# 对比 REPO_MAP.md 与实际源码结构
-# 如检测到架构变更 → 记录 pending_doc_update → 建议运行 /auto:update-codemaps
-```
+对比 `REPO_MAP.md` 与实际结构，如检测到变更则建议更新文档。
 
-### 6.5 Agent 反馈记录
-
-将本次 Agent 路由结果写入反馈文件，供下次 PHASE 1 路由参考：
-
-```bash
-# 追加到 .auto/insights/agent-feedback.md
-# 格式: [{日期}] agent={name} | task={摘要} | result={SUCCESS/FAIL} | reason={原因}
-```
-
-PHASE 1 的 `/auto:route` 在路由时应先检索此文件，优先推荐历史成功率高的 Agent。
-
-### 6.6 Git 模式分析
-
-调用 `/auto:learn` 分析提交约定、热点文件和文件联动。
-
-**门禁**：必须向用户输出工作流总结后 → 工作流结束。这是面向用户的最终交付物，不可省略。
-
-### 工作流总结输出模板（必须输出，不可省略）
-
-```markdown
-## 工作流完成
-
-### 执行概览
-
-| 指标       | 值                      |
-| ---------- | ----------------------- |
-| 执行模式   | [探索/微型/轻量/完整]   |
-| 完成 Quest | [n]/[total]             |
-| 验证结果   | ALL PASS / [n] FAILURES |
-
-### 知识沉淀
-
-| 类型     | 数量   | 摘要     |
-| -------- | ------ | -------- |
-| 踩坑记录 | [n] 条 | [关键词] |
-| 成功模式 | [n] 条 | [关键词] |
-| 架构决策 | [n] 条 | [关键词] |
-
-### 架构变更检测
-
-- 检测结果：[无变更 / 检测到变更]
-- 文档更新：[已触发 / 无需更新]
-
-### 下次可用
-
-下次执行 /auto 时，PHASE 2 会自动检索本次沉淀的经验，实现闭环。
-```
+**出口**：展示执行概览、知识沉淀统计和下次可复用提示。
 
 ---
 
-## Session Continuity（会话续接）
+## Session Continuity
 
-当上下文窗口溢出时自动触发：
+上下文溢出时自动触发：
 
-1. 生成会话摘要：捕获 任务 + 待办 + 错误 + 当前工作状态
-2. 生成续接指令：包含足够信息让新会话无缝继续
-3. 新会话使用续接指令自动继续工作（不确认/不回顾/不提问）
-4. 摘要包含 9 节结构，所有用户消息原文保留
+1. 生成会话摘要：任务、待办、错误、当前状态
+2. 新会话使用续接指令自动继续（不确认、不提问）
+3. 摘要包含结构化交接信息，保留用户消息原文
 
 ---
 
 ## 核心原则
 
-1. **一个入口** — /auto 完成所有事情
-2. **按规模执行** — 探索/微型/轻量/完整四级，小任务不浪费
-3. **原子化验收** — 每关有验收标准，失败可回滚
-4. **可回溯** — 每步可追溯
-5. **知识闭环** — 经验持续沉淀 + 检索复用，越用越强
-6. **自动编排** — 验证/记忆/摘要/文档更新 全部由 auto 自动触发
-7. **结果持久化** — 执行结果写入 `.auto/` 目录，跨会话可查询
+1. **一个入口** — `/auto` 完成统一编排
+2. **协议驱动** — 关键阶段统一产出标准对象
+3. **自主编排** — AI 综合能力清单，自主选择 Agent/Skill 调度路径
+4. **默认续行** — 展示摘要后继续执行，除非用户显式打断
+5. **Quest 原子化** — 每关有验收标准，失败只做 Quest 级回滚
+6. **知识闭环** — 经验沉淀到 memory + insights + feedback，越用越强
+7. **结果持久化** — 标准对象写入 `.auto/runs/`，跨会话可查询

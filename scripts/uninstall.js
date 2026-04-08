@@ -26,7 +26,14 @@ const REMOVE = [
     'git-workflow.md', 'init-project.md', 'java-patterns.md',
     'performance-patterns.md', 'workflow-patterns.md',
   ]},
+  { dir: path.join(CLAUDE_DIR, 'rules'), files: [
+    'agents.md', 'coding-style.md', 'git-workflow.md', 'hooks.md',
+    'performance.md', 'security.md', 'testing.md',
+  ]},
   { dir: path.join(CLAUDE_DIR, 'hooks'), files: ['hooks.json'] },
+  { dir: path.join(CLAUDE_DIR, 'hooks', 'lib'), files: [
+    'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js',
+  ]},
 ];
 
 let removed = 0;
