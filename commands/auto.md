@@ -153,6 +153,19 @@ grep -l "[任务关键词]" ~/.claude/skills/*.md 2>/dev/null
 
 匹配的 Skill 名称注入 Quest 的 `skills` 字段。
 
+### 2.2a Phase-Skill 自动映射
+
+除了关键词匹配，以下 Skill 按阶段自动注入：
+
+| Phase    | 自动注入 Skill                      | 注入方式                                  |
+| -------- | ----------------------------------- | ----------------------------------------- |
+| DISCOVER | dependency-analyzer, init-project   | 如 CLAUDE.md 缺失则触发 init-project      |
+| REASON   | workflow-patterns                   | Quest 设计参考                            |
+| EXECUTE  | 按关键词动态匹配                    | Skill 内容写入 Agent prompt               |
+| VERIFY   | code-style-enforcer, error-patterns | code-reviewer/verification Agent 自动附带 |
+| COMMIT   | git-workflow                        | 提交信息格式参考                          |
+| LEARN    | —                                   | 无额外注入                                |
+
 ### 2.3 按模式生成 Quest
 
 - **探索模式**：跳过 quest-designer Agent 调用，自行生成思考摘要与单关探索 Quest（0 changedFiles，acceptanceCriteria 为回答完整性），按下方模板展示分析结果后回答用户问题，不进入执行/验证阶段。
@@ -445,7 +458,18 @@ mkdir -p .auto/insights
 # 如检测到架构变更 → 记录 pending_doc_update → 建议运行 /auto:update-codemaps
 ```
 
-### 6.5 Git 模式分析
+### 6.5 Agent 反馈记录
+
+将本次 Agent 路由结果写入反馈文件，供下次 PHASE 1 路由参考：
+
+```bash
+# 追加到 .auto/insights/agent-feedback.md
+# 格式: [{日期}] agent={name} | task={摘要} | result={SUCCESS/FAIL} | reason={原因}
+```
+
+PHASE 1 的 `/auto:route` 在路由时应先检索此文件，优先推荐历史成功率高的 Agent。
+
+### 6.6 Git 模式分析
 
 调用 `/auto:learn` 分析提交约定、热点文件和文件联动。
 

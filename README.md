@@ -6,22 +6,22 @@
 
 ## 这是什么？
 
-Auto CLI 是运行在 Claude Code 中的智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
+Auto CLI 是运行在 Claude Code 中的纯 Markdown 智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
 
 1. **扫描项目** -- 检测语言、框架、已有规范
 2. **发现能力** -- 盘点可用的 commands、agents、skills、hooks
-3. **智能推理** -- 结合 Router、Skills、当前上下文生成 Quest 计划
+3. **智能推理** -- 结合 Router、Skills、历史经验生成 Quest 计划
 4. **逐步执行** -- 按规模自动选择执行模式，拆解为可验证的执行步骤
 5. **自动门禁** -- 构建验证、测试、lint 与安全检查
 6. **知识沉淀** -- 执行经验自动保存，越用越强
 
-**核心理念**：不是硬编码路由，是 AI 动态发现 + 推理编排。经验持续沉淀并自动检索复用，形成知识闭环。
+**核心理念**：纯 Markdown 指令驱动，无需额外运行时。Phase-Skill 自动映射 + Agent 反馈闭环，经验持续沉淀并自动检索复用。
 
 ---
 
 ## 环境要求
 
-- **Node.js** >= 18（用于安装脚本）
+- **Node.js** >= 18（仅用于安装脚本，运行时零依赖）
 - **Claude Code** 已安装并可用
 
 ---
@@ -164,10 +164,14 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 
 ### Hooks 自动化
 
-位于 `hooks/hooks.json`，包含 16 个 Hook：
-- PreToolUse: TDD Guard、Dev Server Blocker、Git Push Review、Doc Blocker 等
-- PostToolUse: Prettier + ESLint、TypeScript Check、Coverage Check 等
-- PostCompaction、UserPromptSubmit、TaskCompleted、Stop 等
+位于 `hooks/hooks.json`，包含 17 个 Hook：
+- PreToolUse (6): TDD Guard、Dev Server Blocker、Git Push Review、Doc Blocker、Large File Warning、TDD Guard CLI
+- PostToolUse (6): Prettier + ESLint、TypeScript Check、Coverage Check、Console.log Warning、Frequent Commit Reminder、PR Creation Log
+- PostCompaction (1): 上下文重注入
+- UserPromptSubmit (1): 密钥泄露检测
+- TeammateIdle (1): 空闲队友提醒
+- TaskCompleted (1): 质量门禁
+- Stop (1): console.log 审计
 
 ---
 
@@ -177,11 +181,11 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 /auto 用户需求
     |
 PHASE 1: DISCOVER  -- 扫描技术栈、能力清单、环境快检（含缓存）
-PHASE 2: REASON    -- 知识检索 + Quest Map + Agent 路由 + Skill 注入
+PHASE 2: REASON    -- 知识检索 + Quest Map + Agent 路由 + Skill 注入（Phase-Skill 自动映射）
 PHASE 3: EXECUTE   -- 逐关执行（串行/并行/Teams，每关输出进度卡片）
 PHASE 4: VERIFY    -- 按模式门禁（编译/测试/lint/安全）
 PHASE 5: SUMMARIZE -- 完成阶段总结（不自动提交）
-PHASE 6: LEARN     -- 知识沉淀（踩坑/模式/决策）→ 下次自动检索复用
+PHASE 6: LEARN     -- 知识沉淀（踩坑/模式/决策/Agent反馈）→ 下次自动检索复用
 ```
 
 每个 PHASE 均有自检机制（检查上一阶段产出）和门禁（输出后才能进入下一阶段）。

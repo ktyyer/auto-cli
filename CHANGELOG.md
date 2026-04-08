@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-04-08
+
+### Changed
+
+- **Phase-Skill 自动映射**：auto.md PHASE 2 新增 2.2a 映射表，6 个 Phase 各自绑定最优 Skill
+- **Agent 反馈闭环**：auto.md PHASE 6 新增 6.5 反馈记录，路由结果写入 `.auto/insights/agent-feedback.md`
+- **REPO_MAP.md 重写**：移除过时的 src/ 引用，更新为当前纯 Markdown 结构（30 files）
+- **README 更新**：定位描述改为"纯 Markdown 智能开发辅助工具"，Hooks 数量修正为 17
+
+### Technical Details
+
+- 纯 Markdown 变更，无运行时依赖
+- format:check 通过
 ## [0.25.0] - 2026-03-29
 
 ### Changed
