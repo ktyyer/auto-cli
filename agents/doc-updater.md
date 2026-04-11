@@ -156,6 +156,17 @@ done
 
 **原则**：与现实不符的文档比没有文档更糟糕。始终从事实来源（实际代码）生成。
 
+## 与 /auto 协议集成
+
+- 输入：`QuestResult.changedFiles` + 可选的 `QuestMap` / 架构变更上下文
+- 触发时机：LEARN 阶段检测到架构变更需要文档同步，或用户显式请求文档更新
+- 输出：文档更新报告（含变更详情 + 验证结果 + 链接有效性校验）
+- 目标：保持代码地图和文档与代码库实际状态同步，从事实来源生成文档
+- 交接路径：
+  - 标准：doc-updater → verification（验证文档链接和引用有效性）
+  - 上游入口：quest-designer QuestMap 编排、LEARN 阶段架构变更检测触发
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

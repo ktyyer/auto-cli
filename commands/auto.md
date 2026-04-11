@@ -138,6 +138,7 @@ Phase 交接时只输出（不输出完整 JSON）：
 - `/auto:doctor`：提供 `preflight` 辅助信息，挂入 `RouteDecision.preflight`
 - `/auto:status`：读取 `.auto/` canonical 结构，展示运行记录、缓存、知识与反馈状态
 - `/auto:learn`：输出 `LearnCard` 视图并更新 insights/feedback
+- `/auto:create-hook`：生成 Hook 模板建议，辅助手动补全配置
 - `quest-designer`：消费 `RouteDecision`，产出 `QuestMap`
 - `verification`：消费 `QuestResult`，产出 `VerifyReport`
 - `build-error-resolver`：消费失败上下文，输出修复后的 `QuestResult` 增量

@@ -129,6 +129,18 @@ done
 - 不理解代码存在原因时绝不删除
 - 动态导入模式搜索：`grep -rn "require\(.*'\|import\(.*'" src/`
 
+## 与 /auto 协议集成
+
+- 输入：代码库分析结果 + 可选的 `QuestResult` 上下文
+- 触发时机：deletion-log 触发（死代码检测）、LEARN 阶段代码维护、或用户显式请求清理
+- 输出：重构清理报告（移除详情 + 重复代码合并 + 风险分类 + 验证结果）
+- 目标：安全移除死代码、重复代码和未使用导出，保持代码库精简可维护
+- 交接路径：
+  - 标准：refactor-cleaner → verification（验证构建和测试通过）
+  - 上游入口：quest-designer QuestMap 编排、LEARN 阶段 deletion-log 触发
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+- 安全约束：移除前必须 Grep 全局引用（含动态导入），有疑问时保守保留
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

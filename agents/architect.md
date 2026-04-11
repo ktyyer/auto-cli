@@ -176,13 +176,23 @@ interface ApiContract<Req, Res> {
 - 推荐关联 Agent: {agent 名称}
 ```
 
-### 交接协议
+## 与 /auto 协议集成
 
-架构设计完成后，将报告传递给下游 Agent：
+- 输入：`RouteDecision`（来自 SCAN）+ 用户需求 + 项目上下文
+- 触发时机：PLAN 阶段需要架构决策，或用户显式请求架构评审
+- 输出：架构设计报告（含 `交接指令` 段），作为 quest-designer 的输入上下文
+- 目标：为下游提供可执行的架构决策和组件设计，不做代码修改
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
 
-1. **→ quest-designer**: 使用"交接指令"部分生成 Quest Map
-2. **→ tdd-guide**: 使用"组件设计"中的接口定义生成测试骨架
-3. **→ code-reviewer**: 架构决策表作为审查依据
+### 交接路径
+
+architect 的**唯一标准出口**是 quest-designer：
+
+- **→ quest-designer**：使用"交接指令"部分生成 Quest Map
+  - quest-designer 内部会将组件设计分发给 tdd-guide（测试骨架）
+  - quest-designer 内部会将架构决策表传递给 code-reviewer（审查依据）
+- 禁止直接交接给 tdd-guide、code-reviewer、security-reviewer 等下游 Agent
+- 安全敏感场景由 quest-designer 在 QuestMap 中编排 security-reviewer
 
 ## 参考 Skills
 

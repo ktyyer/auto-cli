@@ -133,7 +133,7 @@ Controller → Service Interface → ServiceImpl → Mapper → Database
 | 禁止        | 检测命令                                                  | 替代方案                      |
 | ----------- | --------------------------------------------------------- | ----------------------------- | ------------------------------- | ---------------- |
 | console.log | `grep -rn "console\\.log" --include="*.ts" src/`          | 使用 Logger                   |
-| 硬编码密钥  | `grep -rn "api[_-]?key\\                                  | password\\                    | secret" --include="\*.ts" src/` | 使用 process.env |
+| 硬编码密钥  | `grep -rnE "api[_-]?key                                   | password                      | secret" --include="\*.ts" src/` | 使用 process.env |
 | any 类型    | `grep -rn ": any" --include="*.ts" src/`                  | 使用具体类型                  |
 | 空 catch 块 | `grep -A1 "catch" --include="*.ts" src/ \| grep "^\\s*}"` | 至少 log.error                |
 | 可变操作    | 直接对象赋值 `obj.x = y`                                  | 展开运算符 `{ ...obj, x: y }` |

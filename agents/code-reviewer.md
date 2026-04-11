@@ -109,6 +109,18 @@ const apiKey = process.env.API_KEY;  // ✓ 正确
 
 根据你项目的 `CLAUDE.md` 或 skill 文件自定义。
 
+## 与 /auto 协议集成
+
+- 输入：`QuestResult.changedFiles` + `git diff` 变更内容 + 可选的 `QuestMap` 上下文
+- 触发时机：EXECUTE 阶段代码修改完成后，进入 VERIFY 之前
+- 输出：代码审查报告（按关键/警告/建议三级分类）
+- 目标：发现代码质量、安全和可维护性问题，阻挡不合格代码进入 VERIFY
+- 交接路径：
+  - 标准：code-reviewer → verification（红蓝对抗）
+  - 安全升级：发现安全疑点时 → 标记 `→ 建议交接 security-reviewer`
+  - 不直接修改代码，仅输出审查结论和修复建议
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

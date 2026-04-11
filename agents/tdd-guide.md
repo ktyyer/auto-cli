@@ -163,6 +163,18 @@ Status: [PASS|FAIL]
 
 **没有测试就没有代码。测试是支持自信重构和可靠交付的安全网。**
 
+## 与 /auto 协议集成
+
+- 输入：`QuestMap` 中的测试需求 + 组件接口定义 + 可选的 `QuestResult` 上下文
+- 触发时机：EXECUTE 阶段新功能/Bug 修复时，由 quest-designer 编排或用户显式请求
+- 输出：TDD 报告（红灯/绿灯/重构阶段 + 覆盖率指标 + 变更文件列表）
+- 目标：确保所有代码测试优先开发，覆盖率达到 80%+ 阈值
+- 交接路径：
+  - 标准：tdd-guide → code-reviewer（代码审查）
+  - E2E 交接：检测到 Playwright 场景时 → 标记 `→ 建议交接 e2e-runner`
+  - 上游入口：quest-designer QuestMap 编排、architect 组件设计传递
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

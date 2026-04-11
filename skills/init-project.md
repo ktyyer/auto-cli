@@ -270,7 +270,6 @@ integration/ # 集成测试
 - `/auto 为当前项目生成 CLAUDE.md` -- 自动触发本 Skill
 - quest-designer 在 PHASE 2 分析时会检查 CLAUDE.md 是否存在，不存在时推荐使用本 Skill
 - PHASE 6 LEARN 会记录 CLAUDE.md 的生成和后续更新
-- `skills/unified-memory-system.md` 的 "策略 3: 活规则书" 与本 Skill 形成闭环
 
 ---
 
@@ -321,14 +320,6 @@ integration/ # 集成测试
 
 ### 知识沉淀
 
-```bash
-# 保存经验到知识库
-auto save insight -c "发现 N+1 查询问题：循环中调用 selectList 应该先批量查出"
-auto save insight -c "选择了 Event Sourcing 而非 CRUD" -t decision
+使用 `/auto:learn` 将经验沉淀为 `LearnCard`，自动归档到 `.auto/insights/` 和 `.auto/feedback/`。
 
-# 搜索知识
-auto save search -q "N+1"
-
-# 列出统计
-auto save list
-```
+也可通过 `/auto` 完整工作流的 PHASE 6 LEARN 自动触发知识沉淀。

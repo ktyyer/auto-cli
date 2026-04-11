@@ -118,6 +118,17 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
 - [ ] 金融操作使用原子事务和行锁
 ```
 
+## 与 /auto 协议集成
+
+- 输入：目标文件/组件路径 + 可选的 `QuestResult` 上下文
+- 触发时机：安全敏感关键词触发（认证、用户输入、API 端点、支付、敏感数据），或 code-reviewer 安全升级 handoff
+- 输出：安全审查报告（OWASP Top 10 逐项审查 + 漏洞列表 + 修复建议）
+- 目标：在生产环境部署前预防安全漏洞，提供可执行的修复方案
+- 交接路径：
+  - 标准：security-reviewer → verification（验证修复有效性）
+  - 上游入口：code-reviewer 安全升级、quest-designer QuestMap 编排、用户显式请求
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

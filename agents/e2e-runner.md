@@ -181,6 +181,17 @@ export default defineConfig({
 });
 ```
 
+## 与 /auto 协议集成
+
+- 输入：`QuestMap` 中的用户旅程需求 + 可选的 `QuestResult` 上下文
+- 触发时机：tdd-guide 交接（Playwright 检测到时 handoff），或 QuestMap 中显式编排 E2E 测试
+- 输出：E2E 测试报告（旅程覆盖 + 失败详情 + 工件路径 + 稳定性评分）
+- 目标：确保关键用户流程正常工作，管理不稳定测试，产出可追溯的测试工件
+- 交接路径：
+  - 标准：e2e-runner → verification（验证测试结果和覆盖率）
+  - 上游入口：tdd-guide handoff、quest-designer QuestMap 编排
+- 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

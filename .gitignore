@@ -58,5 +58,8 @@ build/
 # Auto-cli runtime cache (per-project, not committed)
 .auto/
 
+# Golutra workspace state (local tooling)
+.golutra/
+
 # Planning documents (one-time, not for repo)
 PLAN.md

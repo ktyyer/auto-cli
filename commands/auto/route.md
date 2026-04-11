@@ -82,9 +82,37 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
   },
   "capabilitySnapshot": {
     "repoMap": "present | missing",
-    "commands": ["/auto", "/auto:route", "/auto:learn", "/auto:status"],
-    "agents": ["quest-designer", "tdd-guide", "code-reviewer"],
-    "skillsCatalog": ["workflow-patterns", "git-workflow"],
+    "commands": [
+      "/auto",
+      "/auto:route",
+      "/auto:learn",
+      "/auto:status",
+      "/auto:doctor",
+      "/auto:create-hook"
+    ],
+    "agents": [
+      "quest-designer",
+      "architect",
+      "tdd-guide",
+      "code-reviewer",
+      "security-reviewer",
+      "build-error-resolver",
+      "verification",
+      "e2e-runner",
+      "refactor-cleaner",
+      "doc-updater"
+    ],
+    "skillsCatalog": [
+      "workflow-patterns",
+      "git-workflow",
+      "code-style-enforcer",
+      "java-patterns",
+      "performance-patterns",
+      "error-patterns",
+      "dependency-analyzer",
+      "init-project",
+      "skill-creator"
+    ],
     "insightFiles": [".auto/insights/patterns.md"],
     "feedbackFiles": [".auto/feedback/agents.json"],
     "legacySignals": ["legacy-feedback-found"]
