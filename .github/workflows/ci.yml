@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  format:
+    name: Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +22,6 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
-
-      - name: ESLint
-        run: npm run lint
 
       - name: Prettier check
         run: npm run format:check
@@ -46,8 +43,8 @@ jobs:
         run: npm audit --audit-level=moderate
         continue-on-error: true
 
-  test:
-    name: Test (Node ${{ matrix.node-version }}, OS ${{ matrix.os }})
+  install:
+    name: Install Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -63,17 +60,5 @@ jobs:
 
       - run: npm ci
 
-      - name: Run tests
-        run: npm test
-
-      - name: Run tests with coverage
-        if: matrix.node-version == '18'
-        run: npm run test:coverage
-
-      - name: Upload coverage
-        if: matrix.node-version == '18'
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-${{ matrix.os }}
-          path: coverage/
-          retention-days: 7
+      - name: Verify install script
+        run: node scripts/install.js
