@@ -1,8 +1,6 @@
 ---
 name: code-style-enforcer
-description: 代码风格自动检查和修正 — 覆盖 TypeScript/JavaScript/Java 三大语言，提供格式化、命名规范、文件大小和导入排序的自动化检查规则
-version: 1.0.0
-author: auto-cli
+description: 代码风格自动检查和修正 — 覆盖 TypeScript/JavaScript/Java 三大语言，提供格式化（Prettier）、命名规范、文件大小限制和导入排序的自动化检查规则。当 PHASE 4 VERIFY 执行 lint 门禁、提交前检查、code-reviewer 审查代码风格、或用户提到格式化/lint/代码风格时，必须加载此 skill。
 tags: [style, lint, format, naming, quality, enforcement, typescript, javascript, java]
 ---
 
@@ -10,6 +8,19 @@ tags: [style, lint, format, naming, quality, enforcement, typescript, javascript
 
 > 与 PHASE 4 VERIFY 门禁集成，自动检查代码风格合规性。
 > quest-designer 在 PHASE 2 设计 Quest 时参考此规则，build-error-resolver 修复后验证。
+
+## 使用时机
+
+**必须加载**：
+
+- PHASE 4 VERIFY 执行 lint 门禁时
+- code-reviewer agent 执行代码风格审查时
+- 提交前手动检查代码风格时
+
+**按需加载**（按语言）：
+
+- TypeScript/JavaScript → Section 1（Prettier + ESLint 规则）
+- Java/Spring Boot → Section 2（命名 + 分层架构约束）
 
 ---
 
@@ -136,6 +147,13 @@ Controller → Service Interface → ServiceImpl → Mapper → Database
 - 所有新代码有测试覆盖（>= 80%）
 
 ---
+
+## 验收标准
+
+- [ ] PHASE 4 VERIFY lint 门禁通过（`prettier --check` + `tsc --noEmit` 均通过）
+- [ ] 所有文件符合文件大小限制（单文件 < 400 行）
+- [ ] 无 `console.log` 语句（PostToolUse Hook 已检查）
+- [ ] 命名规范符合项目既有风格
 
 ## 四、与 auto-cli 集成
 

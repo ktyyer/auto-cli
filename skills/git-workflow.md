@@ -1,8 +1,6 @@
 ---
 name: git-workflow
-description: Git 分支策略、提交规范和 PR 流程 — 覆盖分支模型、约定式提交、PR 模板、冲突解决策略
-version: 1.0.0
-author: auto-cli
+description: Git 分支策略、约定式提交和 PR 流程 — 覆盖分支模型（main/dev/feature/fix）、约定式提交格式（feat/fix/refactor/docs）、PR 模板、冲突解决和 Git 历史分析。当 SUMMARIZE 后用户决定提交、创建 PR、处理合并冲突、或 /auto:learn 执行 Git 历史分析时，必须加载此 skill。
 tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 ---
 
@@ -10,6 +8,22 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 
 > 与 SUMMARIZE 后的手动提交流程集成，确保提交信息规范、分支策略一致。
 > auto 在工作流完成并通过验证后输出总结，由用户决定是否提交，提交时参考本规范。
+
+## 使用时机
+
+**必须加载**：
+
+- SUMMARIZE 后用户决定提交时（执行约定式提交格式）
+- 创建 PR 前（PR 检查项 + PR 模板）
+- 合并冲突时（冲突解决策略）
+- /auto:learn 执行 Git 历史分析时
+
+**按需加载**（按操作）：
+
+- 分支管理 → Section 1（分支模型 + 分支操作）
+- 提交规范 → Section 2（约定式提交格式 + 禁止项）
+- PR 流程 → Section 3（PR 模板 + 检查项）
+- 历史分析 → Section 4（分析命令）
 
 ---
 
@@ -162,6 +176,13 @@ git log -p --all -S "function_name" -- "*.ts"
 ```
 
 ---
+
+## 验收标准
+
+- [ ] 每次提交符合约定式提交格式（`type: description`）
+- [ ] 提交信息真实反映变更内容（不包含无关文件）
+- [ ] PR 包含 Summary + Test Plan
+- [ ] 无敏感文件（.env/credentials）被意外提交
 
 ## 五、与 auto-cli 集成
 

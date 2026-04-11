@@ -1,14 +1,29 @@
 ---
 name: error-patterns
-description: 常见错误模式速查 - 编译错误、运行时错误、测试失败、CI/CD 故障的根因分析和速修方案，让 build-fix Agent 秒级定位问题
-version: 1.0.0
-author: auto-cli
+description: 常见错误模式速查 — 编译错误、运行时错误、测试失败、CI/CD 故障、跨语言（Node.js/Python/Go/Rust/Java/TypeScript）的根因分析和速修方案。当用户提到 bug、error、编译失败、测试不通过、CI 报错、运行时异常，或 build-fix agent 修复失败时，必须加载此 skill。
 tags: [error, debugging, patterns, build-fix, troubleshooting, python, go, rust, java, node]
 ---
 
 # Error Patterns -- 常见错误模式速查
 
 > build-fix Agent 自动加载此知识库，快速定位错误根因并修复。
+
+## 使用时机
+
+**必须加载**：
+
+- build-error-resolver agent 执行时
+- 编译报错、测试失败、CI 报错的诊断阶段
+- 用户提到 bug/错误/失败/error/异常 时
+
+**按需加载**（按错误语言）：
+
+- Node.js/JS → Section 1-2（编译 + 测试错误）
+- Python → Section 7
+- Go → Section 8
+- Rust → Section 9
+- TypeScript → Section 10
+- Java/Spring → Section 6
 
 ## 错误分类体系
 
@@ -143,6 +158,13 @@ tags: [error, debugging, patterns, build-fix, troubleshooting, python, go, rust,
 3. **依赖检查**：`npm ls` 检查依赖树是否完整
 4. **版本回退**：`git stash` 暂存改动，验证是否是最近引入的
 5. **搜索引擎**：通过 brave-search/tavily MCP 搜索错误信息
+
+## 验收标准
+
+- [ ] build-error-resolver 每次执行错误诊断时，诊断结论与错误分类体系对应
+- [ ] 速修方案在 3 步内给出（关键词 → 根因 → 速修）
+- [ ] 修复后运行原始错误命令验证通过
+- [ ] 新增语言/框架错误时，同步更新本 skill
 
 ## 与 auto-cli 集成
 

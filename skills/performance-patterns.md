@@ -1,8 +1,6 @@
 ---
 name: performance-patterns
-description: 性能优化模式库 — N+1 查询、缓存策略、懒加载、批量操作、React 渲染优化等 15 种常见性能反模式和修复方案
-version: 1.0.0
-author: auto-cli
+description: 性能优化模式库 — N+1 查询、缓存策略、懒加载、批量操作、React 渲染优化、防抖节流等常见性能反模式和修复方案。当用户提到性能慢、加载慢、N+1、缓存优化、数据库慢、页面卡顿、内存泄漏，或 architect agent 设计缓存/分库分表时，必须加载此 skill。
 tags: [performance, optimization, caching, n+1, lazy-loading, react, database, batch, profiling]
 ---
 
@@ -10,6 +8,21 @@ tags: [performance, optimization, caching, n+1, lazy-loading, react, database, b
 
 > quest-designer 在 PHASE 2 设计 Quest 时参考，避免性能反模式。
 > code-reviewer Agent 将维度 4（性能）的审查清单与此模式库关联。
+
+## 使用时机
+
+**必须加载**：
+
+- 性能优化任务（用户提到性能、慢、卡顿）
+- architect agent 设计缓存架构或分库分表方案时
+- code-reviewer 执行维度 4（性能）审查时
+
+**按需加载**（按场景）：
+
+- 数据库慢 → Section 1（N+1、批量、索引）
+- 缓存问题 → Section 2（缓存模式、键设计）
+- React 卡顿 → Section 3（重渲染、懒加载、虚拟化）
+- 通用优化 → Section 4（异步并行、防抖节流）
 
 ---
 
@@ -192,6 +205,13 @@ const throttledScroll = throttle(handleScroll, 16)
 | EXPLAIN             | SQL 查询分析     | `EXPLAIN ANALYZE SELECT ...`       |
 
 ---
+
+## 验收标准
+
+- [ ] Quest 设计阶段识别并规避了 N+1 查询、循环内 await 等常见反模式
+- [ ] 性能优化方案包含量化指标（响应时间、内存占用、查询次数）
+- [ ] 缓存策略包含失效机制（TTL/主动失效/容量控制）
+- [ ] 优化后运行性能基线测试确认改善
 
 ## 六、与 auto-cli 集成
 

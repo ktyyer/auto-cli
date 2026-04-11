@@ -1,8 +1,6 @@
 ---
 name: dependency-analyzer
-description: 依赖安全性分析和版本兼容性检查 — 覆盖 npm/Maven/Go modules，检测已知漏洞、版本漂移、废弃包和依赖膨胀
-version: 1.0.0
-author: auto-cli
+description: 依赖安全性分析和版本兼容性检查 — 覆盖 npm/Maven/Go modules，检测已知漏洞（CVE）、版本漂移、废弃包和依赖膨胀。当 PHASE 1 SCAN 执行依赖检查、security-reviewer 执行安全门禁、用户提到依赖漏洞、版本冲突、npm audit、依赖升级、或 build-error-resolver 处理依赖冲突时，必须加载此 skill。
 tags: [dependency, security, audit, npm, maven, versions, compatibility, outdated]
 ---
 
@@ -10,6 +8,20 @@ tags: [dependency, security, audit, npm, maven, versions, compatibility, outdate
 
 > 与 PHASE 1 SCAN 集成，在项目扫描阶段自动检测依赖健康度。
 > security-reviewer Agent 参考本知识库进行安全门禁。
+
+## 使用时机
+
+**必须加载**：
+
+- PHASE 1 SCAN 执行依赖健康度检查时
+- security-reviewer 执行安全门禁时
+- 用户提到依赖漏洞、版本冲突、npm audit 时
+
+**按需加载**（按技术栈）：
+
+- Node.js/npm → Section 1（安全审计、废弃检测、版本兼容性）
+- Java/Maven → Section 2（安全审计、常见问题）
+- Go modules → Section 3
 
 ---
 
@@ -121,6 +133,13 @@ go mod graph | grep indirect
 | Low      | CVE < 4.0  | 信息泄露     | 记录跟踪           |
 
 ---
+
+## 验收标准
+
+- [ ] PHASE 1 SCAN 包含依赖安全检查（`npm audit` 或等效命令）
+- [ ] Critical/High CVE 必须在构建前修复
+- [ ] 依赖升级后运行 `npm audit` 确认无新漏洞引入
+- [ ] 版本兼容性矩阵覆盖项目所有直接依赖
 
 ## 五、与 auto-cli 集成
 

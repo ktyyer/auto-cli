@@ -1,8 +1,6 @@
 ---
 name: init-project
-description: 项目智能初始化 - 为新项目生成结构化 CLAUDE.md，包含技术栈声明、编码规范、目录说明和 AI 行为约束，让 AI 从第一天就"懂"你的项目
-version: 1.0.0
-author: auto-cli
+description: 为新项目生成结构化 CLAUDE.md — 包含技术栈声明、编码规范、目录说明、AI 行为约束和会话恢复模板。当用户提到新项目初始化、生成 CLAUDE.md、项目规范、让 AI 理解项目、或 AI 反复犯同样错误时，必须加载此 skill。即使用户没有明确说"初始化"或"CLAUDE.md"，只要检测到当前项目缺少 CLAUDE.md，也要主动建议使用本 skill。
 tags: [init, setup, claude-md, project-context, onboarding]
 ---
 
@@ -10,6 +8,20 @@ tags: [init, setup, claude-md, project-context, onboarding]
 
 > 新项目第一步不是写代码，是让 AI 理解你的项目。本 Skill 提供结构化 CLAUDE.md 生成能力，
 > 帮助 AI 从第一个会话就遵守你的规范、理解你的架构、知道你的禁区。
+
+## 使用时机
+
+**必须加载**：
+
+- 新项目初始化（用户提到新项目、生成 CLAUDE.md）
+- 现有项目缺少 CLAUDE.md（AI 反复犯同样错误）
+- 团队统一 AI 行为规范时
+- 项目重大重构后更新 CLAUDE.md 时
+
+**使用方式**：
+
+- 方式 1：`/auto 为当前项目生成 CLAUDE.md`
+- 方式 2：手动参考模板章节生成
 
 ---
 
@@ -245,6 +257,13 @@ integration/ # 集成测试
 5. **PHASE 6 LEARN**: 将 "项目已初始化 CLAUDE.md" 记录到知识沉淀
 
 ---
+
+## 验收标准
+
+- [ ] 新生成的 CLAUDE.md 包含所有必填板块（概述、技术栈、编码规范、测试规范、AI 行为约束）
+- [ ] AI 在新项目中首次对话即理解项目技术栈和编码规范
+- [ ] 会话恢复模板包含任务描述、已完成的步骤、关键决策记录
+- [ ] 项目 CLAUDE.md 在重大架构变更后同步更新
 
 ## 与 Auto CLI 的集成
 
