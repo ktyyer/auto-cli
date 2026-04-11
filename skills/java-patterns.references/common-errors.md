@@ -1,3 +1,8 @@
+---
+name: java-patterns:common-errors
+description: 由 java-patterns.md 主文件按需加载。完整上下文见主文件。
+---
+
 # Java 常见编译错误速查参考
 
 > 由 `java-patterns.md` 主文件按需加载。完整上下文见主文件。

@@ -1,3 +1,8 @@
+---
+name: java-patterns:dto-entity-mapper
+description: 由 java-patterns.md 主文件按需加载。完整上下文见主文件。
+---
+
 # DTO + Entity + Mapper 模板参考
 
 > 由 `java-patterns.md` 主文件按需加载。完整上下文见主文件。

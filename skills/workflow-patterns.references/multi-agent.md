@@ -1,3 +1,8 @@
+---
+name: workflow-patterns:multi-agent
+description: 由 workflow-patterns.md 主文件按需加载。完整上下文见主文件。
+---
+
 # Multi-Agent 编排模式参考
 
 > 由 `workflow-patterns.md` 主文件按需加载。完整上下文见主文件。

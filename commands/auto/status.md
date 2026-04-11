@@ -1,4 +1,5 @@
 ---
+name: auto:status
 description: 查看项目状态、能力安装情况与 .auto 协议落盘状态
 ---
 

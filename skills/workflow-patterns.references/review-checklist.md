@@ -1,3 +1,8 @@
+---
+name: workflow-patterns:review-checklist
+description: 由 workflow-patterns.md 主文件按需加载。完整上下文见主文件。
+---
+
 # 10 维度代码审查清单参考
 
 > 由 `workflow-patterns.md` 主文件按需加载。完整上下文见主文件。

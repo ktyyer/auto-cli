@@ -1,4 +1,5 @@
 ---
+name: auto:doctor
 description: 环境诊断 - 检查 Node.js 版本、Claude Code 配置、依赖状态，输出健康报告和修复建议
 ---
 

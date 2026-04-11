@@ -1,4 +1,5 @@
 ---
+name: auto
 description: 智能超级命令 - 上下文扫描 + Quest 设计 + 逐关执行 + 验证 + 总结 + 知识沉淀
 ---
 

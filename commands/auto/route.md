@@ -1,4 +1,5 @@
 ---
+name: auto:route
 description: 使用 Canonical Router 智能路由到最合适的 Agent
 ---
 

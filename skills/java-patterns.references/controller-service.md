@@ -1,3 +1,8 @@
+---
+name: java-patterns:controller-service
+description: 由 java-patterns.md 主文件按需加载。完整上下文见主文件。
+---
+
 # Controller + Service 模板参考
 
 > 由 `java-patterns.md` 主文件按需加载。完整上下文见主文件。

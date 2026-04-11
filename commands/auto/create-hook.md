@@ -1,4 +1,5 @@
 ---
+name: auto:create-hook
 description: 生成 Claude Code Hook 模板建议。基于项目配置（TypeScript, Prettier, ESLint）返回可复制的 Hook 配置片段。
 ---
 
