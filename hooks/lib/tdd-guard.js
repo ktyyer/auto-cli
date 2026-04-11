@@ -7,7 +7,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import fsExtra from 'fs-extra';
+import { access } from 'node:fs/promises';
 
 /**
  * TDD Guard configuration options
@@ -140,7 +140,8 @@ export class TDDGuard {
     const testPaths = this.getTestFilePaths(sourcePath);
 
     for (const testPath of testPaths) {
-      const exists = await fsExtra.pathExists(testPath);
+      let exists = false;
+      try { await access(testPath); exists = true; } catch {}
       if (exists) {
         return { exempt: false, hasTest: true, testPaths, foundTest: testPath };
       }
@@ -182,7 +183,9 @@ export class TDDGuard {
         }
       }
     } catch (error) {
-      // Skip directories we can't read
+      if (process.env.TDD_GUARD_DEBUG) {
+        console.error(`[TDD Guard] Skipped ${dirPath}: ${error.message}`);
+      }
     }
 
     return violations;

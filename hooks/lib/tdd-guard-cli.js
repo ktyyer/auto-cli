@@ -25,8 +25,8 @@ try {
     console.error('[TDD Guard] 3. Refactor (REFACTOR)');
     process.exit(1);
   }
-} catch {
-  // If guard fails, allow through (fail-open)
+} catch (error) {
+  console.error(`[TDD Guard] Check failed, allowing through: ${error.message}`);
 }
 
 process.exit(0);

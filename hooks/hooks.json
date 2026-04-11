@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\ncmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"')\n\n# Block dev servers that aren't run in tmux\necho '[Hook] BLOCKED: Dev server must run in tmux for log access' >&2\necho '[Hook] Use this command instead:' >&2\necho \"[Hook] tmux new-session -d -s dev 'npm run dev'\" >&2\necho '[Hook] Then: tmux attach -t dev' >&2\nexit 1"
+            "command": "#!/bin/bash\ninput=$(cat)\n\n# Check if tmux is available first\nif ! command -v tmux >/dev/null 2>&1; then\n  echo \"$input\"\n  exit 0\nfi\n\ncmd=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\n\n# Block dev servers that aren't run in tmux\nif [ -z \"$TMUX\" ]; then\n  echo '[Hook] BLOCKED: Dev server must run in tmux for log access' >&2\n  echo '[Hook] Use this command instead:' >&2\n  echo \"[Hook] tmux new-session -d -s dev 'npm run dev'\" >&2\n  echo '[Hook] Then: tmux attach -t dev' >&2\n  exit 1\nfi\n\necho \"$input\""
           }
         ],
         "description": "Block dev servers outside tmux - ensures you can access logs"
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\nif [ -z \"$TMUX\" ]; then\n  echo '[Hook] Consider running in tmux for session persistence' >&2\n  echo '[Hook] tmux new -s dev  |  tmux attach -t dev' >&2\nfi\necho \"$input\""
+            "command": "#!/bin/bash\ninput=$(cat)\nif [ -z \"$TMUX\" ] && command -v tmux >/dev/null 2>&1; then\n  echo '[Hook] Consider running in tmux for session persistence' >&2\n  echo '[Hook] tmux new -s dev  |  tmux attach -t dev' >&2\nfi\necho \"$input\""
           }
         ],
         "description": "Reminder to use tmux for long-running commands"
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Open editor for review before pushing\necho '[Hook] Review changes before push...' >&2\n# Uncomment your preferred editor:\n# zed . 2>/dev/null\n# code . 2>/dev/null\n# cursor . 2>/dev/null\necho '[Hook] Press Enter to continue with push or Ctrl+C to abort...' >&2\nread -r"
+            "command": "#!/bin/bash\n# Warn before pushing (non-interactive - Claude Code hooks are non-interactive)\necho '[Hook] WARNING: git push detected. Review changes carefully.' >&2\necho '[Hook] Use git diff to review before pushing.' >&2\necho \"$input\""
           }
         ],
         "description": "Pause before git push to review changes"
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Block creation of unnecessary documentation files\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [[ \"$file_path\" =~ \\.(md|txt)$ ]] && [[ ! \"$file_path\" =~ (README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$ ]]; then\n  echo \"[Hook] BLOCKED: Unnecessary documentation file creation\" >&2\n  echo \"[Hook] File: $file_path\" >&2\n  echo \"[Hook] Use README.md for documentation instead\" >&2\n  exit 1\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Block creation of unnecessary documentation files\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [[ \"$file_path\" =~ \\.(md|txt)$ ]] && [[ ! \"$file_path\" =~ (README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$ ]]; then\n  echo \"[Hook] BLOCKED: Unnecessary documentation file creation\" >&2\n  echo \"[Hook] File: $file_path\" >&2\n  echo \"[Hook] Use README.md for documentation instead\" >&2\n  exit 1\nfi\n\necho \"$input\""
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn when writing large files (>500 lines)\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  line_count=$(wc -l < \"$file_path\" 2>/dev/null || echo 0)\n  if [ \"$line_count\" -gt 500 ]; then\n    echo \"[Hook] WARNING: $file_path already has $line_count lines\" >&2\n    echo \"[Hook] Consider splitting into smaller modules (recommended < 400 lines)\" >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn when writing large files (>500 lines)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  line_count=$(wc -l < \"$file_path\" 2>/dev/null || echo 0)\n  if [ \"$line_count\" -gt 500 ]; then\n    echo \"[Hook] WARNING: $file_path already has $line_count lines\" >&2\n    echo \"[Hook] Consider splitting into smaller modules (recommended < 400 lines)\" >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Warn when editing files that are already >500 lines - suggests splitting into smaller modules"
@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# TDD Guard (Node.js): Enforce Test-Driven Development\n# Uses hooks/lib/tdd-guard.js for multi-language support\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -z \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Try Node.js TDD guard first (supports 8 languages)\nguard_script=\"$(dirname \"$0\")/lib/tdd-guard-cli.js\"\nif [ -f \"$guard_script\" ]; then\n  node \"$guard_script\" \"$file_path\" 2>&1 >&2\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    exit 1\n  fi\n  echo \"$input\"\n  exit 0\nfi\n\n# Fallback: inline bash check for .js/.ts only\ndir=$(dirname \"$file_path\")\nbase_name=$(basename \"$file_path\")\nbase_noext=\"${base_name%.*}\"\nfound_test=false\n\nfor ext in test.js spec.js test.ts spec.ts; do\n  if [ -f \"$dir/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\n  if [ -f \"$dir/__tests__/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\ndone\n\nif [ \"$found_test\" = false ]; then\n  echo '[TDD Guard] BLOCKED: No corresponding test file for' \"$file_path\" >&2\n  echo '[TDD Guard] Follow TDD: Write test first (RED) → Implement (GREEN) → Refactor' >&2\n  exit 1\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# TDD Guard (Node.js): Enforce Test-Driven Development\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Use fixed path for TDD guard script\nCLAUDE_HOME=\"${HOME}/.claude\"\nguard_script=\"${CLAUDE_HOME}/hooks/lib/tdd-guard-cli.js\"\nif [ -f \"$guard_script\" ]; then\n  node \"$guard_script\" \"$file_path\" 2>&1 >&2\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    exit 1\n  fi\n  echo \"$input\"\n  exit 0\nfi\n\n# Fallback: inline bash check for .js/.ts only\ndir=$(dirname \"$file_path\")\nbase_name=$(basename \"$file_path\")\nbase_noext=\"${base_name%.*}\"\nfound_test=false\n\nfor ext in test.js spec.js test.ts spec.ts; do\n  if [ -f \"$dir/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\n  if [ -f \"$dir/__tests__/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\ndone\n\nif [ \"$found_test\" = false ]; then\n  echo '[TDD Guard] BLOCKED: No corresponding test file for' \"$file_path\" >&2\n  echo '[TDD Guard] Follow TDD: Write test first (RED) → Implement (GREEN) → Refactor' >&2\n  exit 1\nfi\n\necho \"$input\""
           }
         ],
         "description": "TDD Guard: Enforce Test-Driven Development - uses tdd-guard.js for multi-language support with bash fallback"
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Auto-detect PR creation and log useful info\ninput=$(cat)\ncmd=$(echo \"$input\" | jq -r '.tool_input.command')\n\nif echo \"$cmd\" | grep -qE 'gh pr create'; then\n  output=$(echo \"$input\" | jq -r '.tool_output.output // \"\"')\n  pr_url=$(echo \"$output\" | grep -oE 'https://github.com/[^/]+/[^/]+/pull/[0-9]+')\n  \n  if [ -n \"$pr_url\" ]; then\n    echo \"[Hook] PR created: $pr_url\" >&2\n    echo \"[Hook] Checking GitHub Actions status...\" >&2\n    repo=$(echo \"$pr_url\" | sed -E 's|https://github.com/([^/]+/[^/]+)/pull/[0-9]+|\\1|')\n    pr_num=$(echo \"$pr_url\" | sed -E 's|.*/pull/([0-9]+)|\\1|')\n    echo \"[Hook] To review PR: gh pr review $pr_num --repo $repo\" >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Auto-detect PR creation and log useful info\ninput=$(cat)\ncmd=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\n\nif echo \"$cmd\" | grep -qE 'gh pr create'; then\n  output=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_output?.output||'')\")\n  pr_url=$(echo \"$output\" | grep -oE 'https://github.com/[^/]+/[^/]+/pull/[0-9]+')\n  \n  if [ -n \"$pr_url\" ]; then\n    echo \"[Hook] PR created: $pr_url\" >&2\n    echo \"[Hook] Checking GitHub Actions status...\" >&2\n    repo=$(echo \"$pr_url\" | sed -E 's|https://github.com/([^/]+/[^/]+)/pull/[0-9]+|\\1|')\n    pr_num=$(echo \"$pr_url\" | sed -E 's|.*/pull/([0-9]+)|\\1|')\n    echo \"[Hook] To review PR: gh pr review $pr_num --repo $repo\" >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Log PR URL and provide review command after PR creation"
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Auto-lint-fix: format + lint + auto-fix loop (Aider pattern)\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -z \"$file_path\" ] || [ ! -f \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Step 1: Prettier format\nif command -v prettier >/dev/null 2>&1; then\n  prettier --write \"$file_path\" 2>/dev/null\nfi\n\n# Step 2: ESLint auto-fix (if available)\ndir=$(dirname \"$file_path\")\nproject_root=\"$dir\"\nwhile [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n  project_root=$(dirname \"$project_root\")\ndone\n\nif [ -f \"$project_root/.eslintrc.json\" ] || [ -f \"$project_root/.eslintrc.js\" ] || [ -f \"$project_root/.eslintrc.cjs\" ] || [ -f \"$project_root/eslint.config.js\" ] || [ -f \"$project_root/eslint.config.mjs\" ]; then\n  cd \"$project_root\"\n  npx eslint --fix \"$file_path\" 2>/dev/null\n  \n  # Step 3: Check if lint errors remain after auto-fix\n  lint_errors=$(npx eslint \"$file_path\" --format compact 2>/dev/null | grep -c 'Error' || true)\n  if [ \"$lint_errors\" -gt 0 ]; then\n    echo \"[Hook] LINT: $lint_errors error(s) remain after auto-fix in $file_path\" >&2\n    npx eslint \"$file_path\" --format compact 2>/dev/null | head -5 >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Auto-lint-fix: format + lint + auto-fix loop (Aider pattern)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -f \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Step 1: Prettier format\nif command -v prettier >/dev/null 2>&1; then\n  prettier --write \"$file_path\" 2>/dev/null\nfi\n\n# Step 2: ESLint auto-fix (if available)\ndir=$(dirname \"$file_path\")\nproject_root=\"$dir\"\nwhile [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n  project_root=$(dirname \"$project_root\")\ndone\n\nif [ -f \"$project_root/.eslintrc.json\" ] || [ -f \"$project_root/.eslintrc.js\" ] || [ -f \"$project_root/.eslintrc.cjs\" ] || [ -f \"$project_root/eslint.config.js\" ] || [ -f \"$project_root/eslint.config.mjs\" ]; then\n  cd \"$project_root\"\n  npx eslint --fix \"$file_path\" 2>/dev/null\n  \n  # Step 3: Check if lint errors remain after auto-fix\n  lint_errors=$(npx eslint \"$file_path\" --format compact 2>/dev/null | grep -c 'Error' || true)\n  if [ \"$lint_errors\" -gt 0 ]; then\n    echo \"[Hook] LINT: $lint_errors error(s) remain after auto-fix in $file_path\" >&2\n    npx eslint \"$file_path\" --format compact 2>/dev/null | head -5 >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Auto-lint-fix: Prettier format → ESLint --fix → report remaining errors"
@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# TypeScript check with actionable error output\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\"\n    tsc_output=$(npx tsc --noEmit --pretty false 2>&1 | grep \"$(basename \"$file_path\")\" | head -10)\n    if [ -n \"$tsc_output\" ]; then\n      error_count=$(echo \"$tsc_output\" | wc -l)\n      echo \"[Hook] TSC: $error_count type error(s) in $file_path\" >&2\n      echo \"$tsc_output\" >&2\n      echo \"[Hook] Fix these type errors before proceeding\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# TypeScript check with actionable error output\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\"\n    tsc_output=$(npx tsc --noEmit --pretty false 2>&1 | grep \"$(basename \"$file_path\")\" | head -10)\n    if [ -n \"$tsc_output\" ]; then\n      error_count=$(echo \"$tsc_output\" | wc -l)\n      echo \"[Hook] TSC: $error_count type error(s) in $file_path\" >&2\n      echo \"$tsc_output\" >&2\n      echo \"[Hook] Fix these type errors before proceeding\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "TypeScript check with error count and actionable output"
@@ -99,7 +99,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn about console.log in edited files\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  console_logs=$(grep -n \"console\\\\.log\" \"$file_path\" 2>/dev/null || true)\n  \n  if [ -n \"$console_logs\" ]; then\n    echo \"[Hook] WARNING: console.log found in $file_path\" >&2\n    echo \"$console_logs\" | head -5 >&2\n    echo \"[Hook] Remove console.log before committing\" >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn about console.log in edited files\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  console_logs=$(grep -n \"console\\\\.log\" \"$file_path\" 2>/dev/null || true)\n  \n  if [ -n \"$console_logs\" ]; then\n    echo \"[Hook] WARNING: console.log found in $file_path\" >&2\n    echo \"$console_logs\" | head -5 >&2\n    echo \"[Hook] Remove console.log before committing\" >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Warn about console.log statements after edits"
@@ -109,20 +109,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Frequent commit reminder - suggest committing after 5+ edits\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -z \"$file_path\" ] || [ ! -d \".git\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count uncommitted changes\nuncommitted=$(git diff --name-only 2>/dev/null | wc -l)\nunstaged=$(git diff --cached --name-only 2>/dev/null | wc -l)\ntotal=$((uncommitted + unstaged))\n\nif [ \"$total\" -ge 5 ]; then\n  echo \"[Hook] REMINDER: You have $total uncommitted file changes\" >&2\n  echo '[Hook] Consider committing your progress:' >&2\n  echo '[Hook]   git add -p && git commit -m \"feat: description\"' >&2\n  echo '[Hook] Frequent commits reduce risk and make rollback easier' >&2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Frequent commit reminder - suggest committing after 5+ edits\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -d \".git\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count uncommitted changes\nuncommitted=$(git diff --name-only 2>/dev/null | wc -l)\nunstaged=$(git diff --cached --name-only 2>/dev/null | wc -l)\ntotal=$((uncommitted + unstaged))\n\nif [ \"$total\" -ge 5 ]; then\n  echo \"[Hook] REMINDER: You have $total uncommitted file changes\" >&2\n  echo '[Hook] Consider committing your progress:' >&2\n  echo '[Hook]   git add -p && git commit -m \"feat: description\"' >&2\n  echo '[Hook] Frequent commits reduce risk and make rollback easier' >&2\nfi\n\necho \"$input\""
           }
         ],
         "description": "Remind to commit when 5+ files have uncommitted changes - encourages frequent incremental commits"
       },
       {
-        "matcher": "Bash",
+        "matcher": "tool == \"Bash\"",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'OUTPUT=\"$CLAUDE_TOOL_OUTPUT\"; if echo \"$OUTPUT\" | grep -q \"Tests.*passed\"; then COV=$(echo \"$OUTPUT\" | grep -oP \"All files.*?\\K[0-9.]+\" | head -1); if [ -n \"$COV\" ] && [ \"$(echo \"$COV < 80\" | bc -l)\" -eq 1 ] 2>/dev/null; then echo \"⚠ Coverage below 80%: ${COV}%\" >&2; fi; fi'",
-            "description": "Coverage check after test runs"
+            "command": "#!/bin/bash\n# Coverage check after test runs\nOUTPUT=\"$CLAUDE_TOOL_OUTPUT\"\nif echo \"$OUTPUT\" | grep -q \"Tests.*passed\"; then\n  COV=$(echo \"$OUTPUT\" | grep -oP \"All files.*?\\K[0-9.]+\" | head -1)\n  if [ -n \"$COV\" ]; then\n    BELOW=$(awk \"BEGIN { if ($COV < 80) print 1; else print 0 }\")\n    if [ \"$BELOW\" -eq 1 ]; then\n      echo \"[Hook] Coverage below 80%: ${COV}%\" >&2\n    fi\n  fi\nfi"
           }
-        ]
+        ],
+        "description": "Coverage check after test runs"
       }
     ],
     "PostCompaction": [
@@ -143,7 +143,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn if user prompt contains potential secrets\ninput=$(cat)\nprompt=$(echo \"$input\" | jq -r '.prompt // \"\"')\n\n# Check for common secret patterns\nif echo \"$prompt\" | grep -qE '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\\-]{20,}|xoxb-[0-9]{10,}|AKIA[0-9A-Z]{16})'; then\n  echo '[Hook] WARNING: Potential secret/API key detected in your prompt!' >&2\n  echo '[Hook] Patterns found: sk-*, ghp_*, gho_*, glpat-*, xoxb-*, AKIA*' >&2\n  echo '[Hook] Consider using environment variables instead of pasting keys directly' >&2\nfi\n\n# Pass through input data without blocking\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn if user prompt contains potential secrets\ninput=$(cat)\nprompt=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.prompt||'')\")\n\n# Check for common secret patterns\nif echo \"$prompt\" | grep -qE '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\\-]{20,}|xoxb-[0-9]{10,}|AKIA[0-9A-Z]{16})'; then\n  echo '[Hook] WARNING: Potential secret/API key detected in your prompt!' >&2\n  echo '[Hook] Patterns found: sk-*, ghp_*, gho_*, glpat-*, xoxb-*, AKIA*' >&2\n  echo '[Hook] Consider using environment variables instead of pasting keys directly' >&2\nfi\n\n# Pass through input data without blocking\necho \"$input\""
           }
         ],
         "description": "Warn if user prompt contains potential secrets (API keys, tokens)"
@@ -155,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Remind team lead to check task list when a teammate goes idle\ninput=$(cat)\nagent_name=$(echo \"$input\" | jq -r '.agent_name // \"unknown\"')\n\necho \"[Hook] Teammate '$agent_name' is now idle\" >&2\necho '[Hook] Consider checking TaskList for unassigned tasks to keep the team productive' >&2\necho '[Hook] Use SendMessage to assign new work or send shutdown_request if done' >&2\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Remind team lead to check task list when a teammate goes idle\ninput=$(cat)\nagent_name=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.agent_name||'unknown')\")\n\necho \"[Hook] Teammate '$agent_name' is now idle\" >&2\necho '[Hook] Consider checking TaskList for unassigned tasks to keep the team productive' >&2\necho '[Hook] Use SendMessage to assign new work or send shutdown_request if done' >&2\n\necho \"$input\""
           }
         ],
         "description": "Remind team lead to check task list and assign work when teammate goes idle"
