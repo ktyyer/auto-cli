@@ -63,3 +63,8 @@ build/
 
 # Planning documents (one-time, not for repo)
 PLAN.md
+
+# Local debug artifacts
+tools/
+workflow-protocol*.txt
+temp-*.json
