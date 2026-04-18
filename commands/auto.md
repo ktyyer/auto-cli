@@ -216,16 +216,18 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 2. **Agent 选择**：基于 route 结果 + 任务特性（参考 `_shared-principles.md` 交接路径）
 3. **Skill 注入**：按技术栈 + 任务类型自动关联
 
-| 触发条件             | 自动注入 Skill         |
-| -------------------- | ---------------------- |
-| Java / Spring Boot   | `java-patterns`        |
-| 性能优化相关         | `performance-patterns` |
-| 错误处理 / 异常      | `error-patterns`       |
-| Git 操作 / 提交 / PR | `git-workflow`         |
-| 代码风格 / 格式化    | `code-style-enforcer`  |
-| 依赖分析 / 升级      | `dependency-analyzer`  |
-| 多 Agent 编排        | `workflow-patterns`    |
-| 新项目初始化         | `init-project`         |
+| 触发条件                         | 自动注入 Skill         |
+| -------------------------------- | ---------------------- |
+| Java / Spring Boot               | `java-patterns`        |
+| 性能优化相关                     | `performance-patterns` |
+| 错误处理 / 异常                  | `error-patterns`       |
+| Git 操作 / 提交 / PR             | `git-workflow`         |
+| 代码风格 / 格式化                | `code-style-enforcer`  |
+| 依赖分析 / 升级                  | `dependency-analyzer`  |
+| 多 Agent 编排                    | `workflow-patterns`    |
+| 新项目初始化                     | `init-project`         |
+| Bug / 调试 / 测试失败 / 构建失败 | `systematic-debugging` |
+| PRD / 需求文档 / 产品需求        | `prd-writer`           |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行

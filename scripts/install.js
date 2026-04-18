@@ -80,7 +80,11 @@ if (cleanFlag) {
     { dir: path.join(CLAUDE_DIR, 'skills'), files: [
       'code-style-enforcer.md', 'dependency-analyzer.md', 'error-patterns.md',
       'git-workflow.md', 'init-project.md', 'java-patterns.md',
-      'performance-patterns.md', 'workflow-patterns.md',
+      'performance-patterns.md', 'prd-writer.md', 'skill-creator.md',
+      'systematic-debugging.md', 'workflow-patterns.md',
+    ], subdirs: [
+      'java-patterns.references', 'prd-writer.references',
+      'systematic-debugging.references', 'workflow-patterns.references',
     ]},
     { dir: path.join(CLAUDE_DIR, 'rules'), files: [
       'agents.md', 'coding-style.md', 'git-workflow.md', 'hooks.md',

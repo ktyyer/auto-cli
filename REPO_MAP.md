@@ -1,6 +1,6 @@
 # REPO_MAP.md
 
-> 2026-04-08 | Pure Markdown — 0 JS runtime | v0.31.0
+> 2026-04-18 | Pure Markdown — 0 JS runtime | v0.32.0
 
 ## commands/
 
@@ -31,7 +31,7 @@
 | `tdd-guide.md` | 测试驱动开发 |
 | `verification.md` | 输出标准 `VerifyReport` 的对抗性验证 |
 
-## skills/（8 个）
+## skills/（11 个）
 
 | Skill | 用途 |
 |-------|------|
@@ -42,6 +42,9 @@
 | `init-project.md` | 项目初始化 |
 | `java-patterns.md` | Java/Spring Boot 编码模式 |
 | `performance-patterns.md` | 性能优化模式 |
+| `prd-writer.md` | PRD 需求文档写作（两阶段：概念版 → 落地板） |
+| `skill-creator.md` | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
+| `systematic-debugging.md` | 系统化调试方法论（4 阶段强制流程） |
 | `workflow-patterns.md` | 工作流模式 |
 
 ## hooks/

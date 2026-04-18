@@ -53,7 +53,7 @@ cd package
 node scripts/install.js
 
 # Windows
-# 解压 auto-cli-0.30.0.tgz，进入 package 目录
+# 解压 auto-cli-<version>.tgz，进入 package 目录
 # 双击 scripts\install.bat
 ```
 
@@ -149,7 +149,7 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 - agents、coding-style、git-workflow、hooks
 - performance、security、testing
 
-### Skills 知识库（8 个）
+### Skills 知识库（11 个）
 
 | Skill | 领域 |
 |-------|------|
@@ -161,6 +161,9 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 | performance-patterns | 性能优化模式 |
 | java-patterns | Spring Boot + MyBatis Plus 模板 |
 | error-patterns | 错误模式速查 |
+| skill-creator | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
+| systematic-debugging | 系统化调试方法论（4 阶段强制流程） |
+| prd-writer | PRD 需求文档写作（两阶段：概念版 → 落地板） |
 
 ### Hooks 自动化
 
