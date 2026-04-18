@@ -123,6 +123,16 @@
           }
         ],
         "description": "Coverage check after test runs"
+      },
+      {
+        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"([\\\\\\\\/]skills[\\\\\\\\/].*\\\\.md$|SKILL\\\\.md$)\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Skill health reminder: warn never block (philosophy: SkillCompass)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ]; then\n  echo \"[Hook] Skill edited: $file_path\" >&2\n  echo \"[Hook] Consider a health check with skill-evaluator:\" >&2\n  echo \"[Hook]   - D1 name / D2 description / D3 progressive-disclosure (static, main agent)\" >&2\n  echo \"[Hook]   - D8 effect (Task(subagent_type: verification), A/B with/without skill)\" >&2\n  echo \"[Hook] See skills/skill-evaluator.md for the full loop\" >&2\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "Skill health reminder: suggest skill-evaluator after editing skills/*.md or SKILL.md (warn never block)"
       }
     ],
     "PostCompaction": [

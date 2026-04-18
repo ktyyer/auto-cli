@@ -57,3 +57,18 @@ QuestMap/QuestResult/VerifyReport/LearnCard 的 JSON schema 曾同时出现在 a
 **反模式**: 在多个 .md 文件中复制粘贴完整 JSON schema
 
 ---
+
+### 纯 MD 仓库 VERIFY 要按可执行子集调整 gate
+
+**日期**: 2026-04-18
+**标签**: verify-gate, markdown-repo, strategy-adaptation
+**置信度**: high
+
+"实现"策略默认要求 build+test+lint+coverage，但 auto-cli 是纯 MD 指令仓库，仅 `format:check` 与 JSON 合法性可跑。
+
+**触发条件**: 在无 build/test 的仓库跑 /auto 实现任务
+**推荐动作**: VerifyReport 明确标记 skipped gate 与原因；必须 pass 的是 format + JSON + 引用一致性
+**反模式**: 机械按"实现=必须过 build+test"，在纯 MD 仓库会导致 VERIFY 误判失败
+**来源**: run-1776525672
+
+---

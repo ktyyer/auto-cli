@@ -81,7 +81,7 @@ if (cleanFlag) {
       'code-style-enforcer.md', 'dependency-analyzer.md', 'error-patterns.md',
       'git-workflow.md', 'init-project.md', 'java-patterns.md',
       'performance-patterns.md', 'prd-writer.md', 'skill-creator.md',
-      'systematic-debugging.md', 'workflow-patterns.md',
+      'skill-evaluator.md', 'systematic-debugging.md', 'workflow-patterns.md',
     ], subdirs: [
       'java-patterns.references', 'prd-writer.references',
       'systematic-debugging.references', 'workflow-patterns.references',

@@ -87,6 +87,7 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 - 将 Git 模式统一映射为 `LearnCard(category=pattern)`
 - 将路由反馈统一映射为 `LearnCard(category=feedback)`
 - 将可复用的 route hints 写回 `.auto/feedback/agents.json` / `.auto/feedback/skills.json`
+- 分析 skill 使用模式（命中、忽略、纠正），写回 `.auto/feedback/skills.json`
 - 将可复用的模式卡写回 `.auto/cache/pattern-cards.json`
 - 为跨会话续接产出 `.auto/runs/<runId>/session-continuity.md`
 
@@ -147,6 +148,44 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
   ]
 }
 ```
+
+---
+
+## Skill 使用模式分析
+
+### 使用场景
+
+- 发现触发不准的 skill（应触发未触发 / 不应触发却触发）
+- 识别长期被忽略的 skill，作为 `skill-evaluator` 的优先改进目标
+- 积累 skill 健康度历史，辅助下次 `SCAN` / `route` 决策
+
+### 数据来源
+
+- 本次 run 的 `quest-results.md`：哪些 skill 被注入、哪些命中、是否被采纳
+- 历史 `.auto/runs/**/quest-results.md`：滚动统计
+- 用户纠正信号：对话中的"不对"/"别用"/"这个 skill 不合适"等负向反馈
+
+### 映射为 LearnCard
+
+| 观察           | category   | 目标文件                     |
+| -------------- | ---------- | ---------------------------- |
+| skill 高命中   | `pattern`  | `.auto/insights/patterns.md` |
+| skill 被忽略   | `feedback` | `.auto/feedback/skills.json` |
+| skill 被纠正   | `trap`     | `.auto/insights/traps.md`    |
+| skill 触发不准 | `feedback` | `.auto/feedback/skills.json` |
+
+### 回写 `.auto/feedback/skills.json`
+
+按 skill 名聚合：
+
+- `trigger_accuracy`
+- `adoption_rate`
+- `correction_count`
+- `correction_patterns`
+- `ignore_rate`
+- `usage_frequency`
+
+字段定义详见 `commands/auto.md` 6.2 节与 `skills/skill-evaluator.md`。
 
 ---
 

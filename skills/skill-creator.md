@@ -154,6 +154,18 @@ Description 是主要触发机制。写法要点：
 
 ---
 
+## 健康度评估
+
+新 skill 写完后，用 `skill-evaluator` 做体检：
+
+- 结构分（D1–D7）由主 agent 直接 Read 打分
+- 效果分（D8）由 `Task(subagent_type: "verification")` 独立 A/B 跑出
+- 单轮只改一维，保留改进、回滚回归
+
+详见 `skills/skill-evaluator.md`。
+
+---
+
 ## 验收标准
 
 - [ ] 每个 Skill 的 description 包含具体触发关键词（不是"这是一个 X 文档"）
