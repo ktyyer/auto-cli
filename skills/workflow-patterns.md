@@ -73,8 +73,11 @@ tags:
 
 ### 根因追踪方法论
 
-五步流程、常见根因模式、工具辅助：
+快速参考（五步流程、常见根因模式）：
 → 读取 `workflow-patterns.references/root-cause.md`
+
+完整调试方法论（4 阶段强制流程、铁律约束、假说验证）：
+→ 加载 `systematic-debugging` skill
 
 ### 10 维度代码审查清单
 
@@ -110,7 +113,7 @@ tags:
 
 **按需加载**（具体方法论）：
 
-- Bug 修复 → 加载根因追踪五步法
+- Bug 修复 → 加载 `systematic-debugging` skill（深度调试）或根因追踪五步法（快速定位）
 - 多 Agent 协作任务 → 加载 Multi-Agent 编排模式
 - 代码审查 → 加载 10 维度审查清单
 
