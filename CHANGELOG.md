@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-04-18
+
+### Added
+
+- **prd-writer skill**：PRD 需求文档写作（两阶段：概念版 → 落地版）
+- **systematic-debugging skill**：集成 obra/superpowers 官方源的系统化调试方法论（4 阶段强制流程）
+- **Windows 安装脚本**：`install.bat`、`reinstall.bat`、`uninstall.bat` 一键化脚本
+- **CI 强化**：新增引用完整性校验（`scripts/validate-references.js`）与发布工作流
+
+### Changed
+
+- **对外叙事对齐**：README 的"四级执行模式"（文件数硬编码）更新为"四种执行策略"（探索/修复/实现/重构），与 `commands/auto.md` 真源一致
+- **仓库卫生**：清理 `skills/` 下 12 个空子目录与 `docs/`、`examples/`、`lib/` 空目录
+- **canonical 结构补齐**：`.auto/` 显式提供 `runs/` 与 `feedback/` 目录
+- **REPO_MAP 同步**：Hook 数量修正为 17，Rules 列出全部 10 个文件
+
+### Fixed
+
+- **彻底卸载**：`scripts/uninstall.js` 补齐清单，确保不留孤儿文件
+- **CI 工作流**：修复纯 Markdown 项目的 CI 适配问题
+- **frontmatter 补全**：规范化 commands 和 skills 的引用与 frontmatter
+
+### Technical Details
+
+- 纯 Markdown 变更，无运行时依赖
+- format:check 通过，validate:references 通过（仅孤立警告）
+
 ## [0.31.0] - 2026-04-08
 
 ### Changed

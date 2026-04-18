@@ -49,15 +49,23 @@
 
 ## hooks/
 
-- `hooks.json` — 15 个 Hook 配置（PreToolUse/PostToolUse/PostCompaction/UserPromptSubmit/Stop 等）
+- `hooks.json` — 17 个 Hook 配置（PreToolUse 6 / PostToolUse 6 / PostCompaction 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 1）
 - `lib/tdd-guard.js` — TDD 守卫逻辑
 - `lib/tdd-guard-cli.js` — TDD 守卫 CLI 入口
 - `lib/codemaps-hook.sh` — Codemaps 钩子脚本
 
 ## rules/
 
-- `coding-style.md` — 编码风格规范
+- `agents.md` — Agent 编排
+- `coding-style.md` — 编码风格
+- `commands.md` — Commands 编写规范
+- `git-workflow.md` — Git 工作流
+- `hooks.md` — Hook 系统
+- `markdown-authoring.md` — Markdown 编写规范
+- `performance.md` — 性能与设计模式
 - `security.md` — 安全指南
+- `testing.md` — 测试要求
+- `version-and-release.md` — 版本与发布规范
 
 ## scripts/
 

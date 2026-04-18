@@ -2,6 +2,20 @@
 
 > LEARN 阶段自动维护，记录已验证的踩坑经验。
 
+### 空目录污染：skills/ 下 12 个历史试验残留
+
+**日期**: 2026-04-18
+**标签**: dir-hygiene, skills, git-tracking
+**置信度**: high
+
+skills/ 下残留 12 个空子目录（architect / backend / ceo / data / data-patterns / devops / frontend / qa / security / security-patterns / super-nexus-engineering / project-development-quality-maintainability）。git 不跟踪空目录，所以 CI、引用校验、commit diff 都看不到，但 `ls skills/` 让外部看到"23 个 skill"（实际只有 11 个）。
+
+**触发条件**: 历史实验创建目录后未清理
+**推荐动作**: 定期 `find <dir> -maxdepth 1 -type d -empty` 扫描并 rmdir；CI 加目录卫生检查
+**反模式**: 依赖 git 追踪来发现目录漂移
+
+---
+
 ### Agent subagent 上下文溢出
 
 **日期**: 2026-04-09

@@ -2,6 +2,16 @@
 
 > LEARN 阶段自动维护，记录已验证有效的模式。
 
+### README 与主命令叙事对齐
+
+**日期**: 2026-04-18
+**标签**: doc-consistency, single-source-of-truth
+**置信度**: high
+
+对外 README 容易在主命令迭代时脱节。把 `commands/auto.md` 作为叙事真源，README 只做派生描述；主命令结构变更后必须反向同步 README + REPO_MAP + CHANGELOG。本次验证：v0.32.0 优化通过此模式一次性消除 6 项文档漂移。
+
+---
+
 ### Schema-once-reference-everywhere
 
 **日期**: 2026-04-09

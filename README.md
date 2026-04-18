@@ -8,12 +8,12 @@
 
 Auto CLI 是运行在 Claude Code 中的纯 Markdown 智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
 
-1. **扫描项目** -- 检测语言、框架、已有规范
-2. **发现能力** -- 盘点可用的 commands、agents、skills、hooks
-3. **智能推理** -- 结合 Router、Skills、历史经验生成 Quest 计划
-4. **逐步执行** -- 按规模自动选择执行模式，拆解为可验证的执行步骤
-5. **自动门禁** -- 构建验证、测试、lint 与安全检查
-6. **知识沉淀** -- 执行经验自动保存，越用越强
+1. **扫描项目** -- 检测语言、框架、已有规范，产出 `RouteDecision`
+2. **编排 Quest** -- 结合 Router、Skills、历史经验生成 `QuestMap`
+3. **逐关执行** -- 按任务本质自主判定执行深度，产出 `QuestResult`
+4. **自动门禁** -- 编译/测试/lint/安全按策略分级验证，产出 `VerifyReport`
+5. **完成总结** -- 汇总变更与遗留阻塞，不自动提交
+6. **知识沉淀** -- 产出 `LearnCard` 回写 insights/feedback，下次自动检索复用
 
 **核心理念**：纯 Markdown 指令驱动，无需额外运行时。Phase-Skill 自动映射 + Agent 反馈闭环，经验持续沉淀并自动检索复用。
 
@@ -118,16 +118,18 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 | `/auto:create-hook` | 生成 Hook 模板建议 |
 | `/auto:learn` | 分析 Git 历史模式并返回结构化结果 |
 
-### 四级执行模式
+### 四种执行策略
 
-| 条件 | 执行模式 | 说明 |
-|------|---------|------|
-| 0 文件变更（纯探索） | 探索模式 | PHASE 1 → 2 → 展示 Quest → 回答 → 5 → 6 |
-| 1 文件且 <=10 行变更 | 微型模式 | PHASE 1 → 2 → 执行 → 4 → 5 → 6 |
-| <=3 文件且无架构变更 | 轻量模式 | PHASE 1 → 2 → 执行 → 4 → 5 → 6 |
-| >3 文件或存在架构变更 | 完整模式 | 完整 6 PHASE（含自检 + 门禁） |
+AI 在 SCAN 阶段综合任务语义、安全敏感度和架构影响自主判定，不按文件数或行数硬编码。
 
-### Agent（11 个）
+| 策略 | 适用场景 | 执行路径 |
+|------|----------|----------|
+| **探索** | 分析/咨询/代码审查，无代码变更 | SCAN → PLAN（最小 QuestMap）→ EXECUTE（只读分析）→ VERIFY(skipped) → SUMMARIZE → LEARN |
+| **修复** | bug/小调整，少量文件局部修改 | SCAN → PLAN → EXECUTE（直接修复）→ VERIFY（编译+相关测试）→ SUMMARIZE → LEARN |
+| **实现** | 新功能/多文件变更 | SCAN → PLAN → quest-designer → EXECUTE（逐关）→ VERIFY（含覆盖率）→ SUMMARIZE → LEARN |
+| **重构** | 架构级变更 | SCAN → PLAN → quest-designer → EXECUTE（逐关）→ VERIFY（含对抗验证）→ SUMMARIZE → LEARN |
+
+### Agent（10 个）
 
 | Agent | 作用 |
 |-------|------|
@@ -141,13 +143,23 @@ node scripts/uninstall.js  # 从 tgz 解压目录
 | doc-updater | 文档更新 |
 | verification | 对抗性验证 |
 | quest-designer | 闯关大纲设计师 |
-| shared-principles | Agent 公共原则和交接协议 |
+
+> `agents/_shared-principles.md` 是所有 Agent 共享的协议和报告规范，不作为独立 Agent 调用。
 
 ### Rules 编码规范
 
-位于 `rules/` 目录，安装后配置在 `~/.claude/rules/`：
-- agents、coding-style、git-workflow、hooks
-- performance、security、testing
+位于 `rules/`，安装后配置在 `~/.claude/rules/`：
+
+- `agents.md` — Agent 编排
+- `coding-style.md` — 编码风格
+- `commands.md` — Commands 编写规范
+- `git-workflow.md` — Git 工作流
+- `hooks.md` — Hook 系统
+- `markdown-authoring.md` — Markdown 文件编写规范
+- `performance.md` — 性能与设计模式
+- `security.md` — 安全指南
+- `testing.md` — 测试要求
+- `version-and-release.md` — 版本与发布规范
 
 ### Skills 知识库（11 个）
 
