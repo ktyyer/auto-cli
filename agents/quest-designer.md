@@ -28,7 +28,7 @@ model: opus
 【能力清单】可用 Agents + Skills 列表
 【现有代码】源码路径列表
 【历史经验】Claude Memory 匹配的经验摘要
-【Router 推荐】主Agent + 回退链 + 安全敏感度
+【Router 推荐】主Agent + 回退链 + 复杂度 + 安全敏感度
 ```
 
 收到调用后，按下方 7 步工作流执行。如 prompt 中缺少某些上下文字段，从已有信息中推断，不中断执行。

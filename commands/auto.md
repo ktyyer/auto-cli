@@ -262,7 +262,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 【能力清单】Agents + Skills 列表
 【现有代码】源码路径列表
 【历史经验】Memory 匹配的经验摘要
-【Router 推荐】主 Agent + 回退链 + 安全敏感度
+【Router 推荐】主 Agent + 回退链 + 复杂度 + 安全敏感度
 ```
 
 ### 2.5 Micro QuestMap 最小要求

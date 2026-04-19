@@ -177,7 +177,7 @@ tags: [shared, protocol, handoff, agent, principles]
 ### QuestMap 标准对象
 
 必填：`id`, `runId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
-选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`。
+选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
 
 ```json
 {
@@ -232,7 +232,8 @@ tags: [shared, protocol, handoff, agent, principles]
       "risk": "low | medium | high",
       "rollback": "<当前 Quest 的回滚范围和方式>",
       "decisionNotes": ["<决策1>", "<决策2>"],
-      "pitfalls": ["<预判坑点1>", "<预判坑点2>"]
+      "pitfalls": ["<预判坑点1>", "<预判坑点2>"],
+      "thinkingDepth": "light | standard | deep"
     }
   ]
 }
