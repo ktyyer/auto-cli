@@ -10,35 +10,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-
-const CLAUDE_DIR = path.join(os.homedir(), '.claude');
-
-const REMOVE = [
-  { dir: path.join(CLAUDE_DIR, 'commands'), files: ['auto.md'], subdirs: ['auto'] },
-  { dir: path.join(CLAUDE_DIR, 'agents'), files: [
-    '_shared-principles.md', 'architect.md', 'build-error-resolver.md',
-    'code-reviewer.md', 'doc-updater.md', 'e2e-runner.md', 'quest-designer.md',
-    'refactor-cleaner.md', 'security-reviewer.md', 'tdd-guide.md', 'verification.md',
-  ]},
-  { dir: path.join(CLAUDE_DIR, 'skills'), files: [
-    'code-style-enforcer.md', 'dependency-analyzer.md', 'error-patterns.md',
-    'git-workflow.md', 'init-project.md', 'java-patterns.md',
-    'performance-patterns.md', 'prd-writer.md', 'skill-creator.md',
-    'skill-evaluator.md', 'systematic-debugging.md', 'workflow-patterns.md',
-  ], subdirs: [
-    'java-patterns.references', 'prd-writer.references',
-    'systematic-debugging.references', 'workflow-patterns.references',
-  ]},
-  { dir: path.join(CLAUDE_DIR, 'rules'), files: [
-    'agents.md', 'coding-style.md', 'git-workflow.md', 'hooks.md',
-    'performance.md', 'security.md', 'testing.md',
-  ]},
-  { dir: path.join(CLAUDE_DIR, 'hooks'), files: ['hooks.json'] },
-  { dir: path.join(CLAUDE_DIR, 'hooks', 'lib'), files: [
-    'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js',
-  ]},
-];
+import { MANAGED_FILES } from './manifest.js';
 
 let removed = 0;
 
@@ -52,7 +24,7 @@ function removeIfExists(filePath) {
 console.log('Auto CLI 卸载');
 console.log('');
 
-for (const { dir, files, subdirs } of REMOVE) {
+for (const { dir, files, subdirs } of MANAGED_FILES) {
   for (const file of files) {
     removeIfExists(path.join(dir, file));
   }
@@ -64,7 +36,7 @@ for (const { dir, files, subdirs } of REMOVE) {
 }
 
 // 清理 backup 残留
-for (const { dir } of REMOVE) {
+for (const { dir } of MANAGED_FILES) {
   if (!fs.existsSync(dir)) continue;
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {

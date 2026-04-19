@@ -11,16 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-
-const CLAUDE_DIR = path.join(os.homedir(), '.claude');
-const COMPONENTS = [
-  { src: 'commands', dest: path.join(CLAUDE_DIR, 'commands') },
-  { src: 'agents', dest: path.join(CLAUDE_DIR, 'agents') },
-  { src: 'skills', dest: path.join(CLAUDE_DIR, 'skills') },
-  { src: 'rules', dest: path.join(CLAUDE_DIR, 'rules') },
-  { src: 'hooks', dest: path.join(CLAUDE_DIR, 'hooks') },
-];
+import { COMPONENTS, MANAGED_FILES } from './manifest.js';
 
 const cleanFlag = process.argv.includes('--clean');
 
@@ -62,42 +53,14 @@ function copyDir(src, dest) {
 
 // Main
 console.log('Auto CLI 安装');
-console.log(`目标: ${CLAUDE_DIR}`);
 console.log('');
 
 let totalFiles = 0;
 
 if (cleanFlag) {
   console.log('清理 Auto CLI 托管资源...');
-  // 清理 install.js 部署的旧文件，与 uninstall.js 对齐
-  const OLD_FILES = [
-    { dir: path.join(CLAUDE_DIR, 'commands'), files: ['auto.md'], subdirs: ['auto'] },
-    { dir: path.join(CLAUDE_DIR, 'agents'), files: [
-      '_shared-principles.md', 'architect.md', 'build-error-resolver.md',
-      'code-reviewer.md', 'doc-updater.md', 'e2e-runner.md', 'quest-designer.md',
-      'refactor-cleaner.md', 'security-reviewer.md', 'tdd-guide.md', 'verification.md',
-    ]},
-    { dir: path.join(CLAUDE_DIR, 'skills'), files: [
-      'code-style-enforcer.md', 'dependency-analyzer.md', 'error-patterns.md',
-      'git-workflow.md', 'init-project.md', 'java-patterns.md',
-      'performance-patterns.md', 'prd-writer.md', 'skill-creator.md',
-      'skill-evaluator.md', 'systematic-debugging.md', 'workflow-patterns.md',
-    ], subdirs: [
-      'java-patterns.references', 'prd-writer.references',
-      'systematic-debugging.references', 'workflow-patterns.references',
-    ]},
-    { dir: path.join(CLAUDE_DIR, 'rules'), files: [
-      'agents.md', 'coding-style.md', 'git-workflow.md', 'hooks.md',
-      'performance.md', 'security.md', 'testing.md',
-    ]},
-    { dir: path.join(CLAUDE_DIR, 'hooks'), files: ['hooks.json'] },
-    { dir: path.join(CLAUDE_DIR, 'hooks', 'lib'), files: [
-      'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js',
-    ]},
-  ];
-
   let removed = 0;
-  for (const { dir, files, subdirs } of OLD_FILES) {
+  for (const { dir, files, subdirs } of MANAGED_FILES) {
     for (const file of files) {
       const filePath = path.join(dir, file);
       if (fs.existsSync(filePath)) {

@@ -2,6 +2,36 @@
 
 > LEARN 阶段自动维护，记录已验证的踩坑经验。
 
+### .auto/cache/ legacy 文件描述已删除运行时
+
+**日期**: 2026-04-19
+**标签**: cache, stale-data, scan-pollution
+**置信度**: high
+
+`.auto/cache/knowledge-runtime-v1.md` 仍引用 `src/hooks/*` JS 文件（v0.31.0 已删除），`.auto/cache/optimization-lessons.md` 不在 canonical 清单。cache 层是可丢弃缓存，但 legacy 残留会被 SCAN 误读为"当前事实"。
+
+**触发条件**: 架构迁移后 cache/ 未同步清理
+**推荐动作**: cache/ 按 canonical 白名单（capability-snapshot.json、pattern-cards.json）保留，其余归档或删除
+**反模式**: cache/ 堆积历史文件当"知识"使用
+**来源**: 20260419-201905
+
+---
+
+### REPO_MAP 与 README 能力计数漂移
+
+**日期**: 2026-04-19
+**标签**: doc-drift, single-source-of-truth
+**置信度**: high
+
+REPO_MAP.md 写 skills "11 个"、hooks "17 个"；实际 12 / 18（skill-evaluator 新增未录入，PostToolUse 从 6 加到 7）。README 已更新但 REPO_MAP 落后一次迭代。
+
+**触发条件**: 新增 agent/skill/hook 时只改 README 未改 REPO_MAP
+**推荐动作**: 发布前 checklist 强制 REPO_MAP + README 计数一致；或写 `scripts/sync-counts.js` 自动校验
+**反模式**: 把 README 当唯一真源，REPO_MAP 自生自灭
+**来源**: 20260419-201905
+
+---
+
 ### 空目录污染：skills/ 下 12 个历史试验残留
 
 **日期**: 2026-04-18

@@ -15,9 +15,9 @@
 
 ## 安装与卸载
 
-- `npm run install` — 复制 commands/agents/skills/hooks 到 ~/.claude/
+- `npm run sync` — 复制 commands/agents/skills/hooks 到 ~/.claude/（主推路径）
+- `npm run install` — `sync` 的向后兼容别名（与 `npm install` 名字易混，新脚本请用 sync）
 - `npm run uninstall` — 移除已安装的文件
-- `npm run sync` — install 的别名
 
 ## 包产物管理
 

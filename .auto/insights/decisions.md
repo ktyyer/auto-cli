@@ -2,6 +2,19 @@
 
 > LEARN 阶段自动维护，记录关键架构决策及理由。
 
+### `npm run install` 让位于 `npm run sync` 作为主入口
+
+**日期**: 2026-04-19
+**标签**: onboarding, ux, install-ergonomics
+**置信度**: medium
+
+`npm run install` 与 `npm install` 语义重叠，新用户易误以为 `npm install` 就已部署。决策：README 与 CONTRIBUTING 主推 `npm run sync`；`install` 脚本保留向后兼容但不宣传。
+
+**备选方案**: 删除 `install` 脚本 → 放弃，会破坏已有用户；作别名即可。
+**来源**: 20260419-201905
+
+---
+
 ### 从 JS 运行时迁移到纯 Markdown 指令系统
 
 **日期**: 2026-04-04

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **prd-writer skill**：PRD 需求文档写作（两阶段：概念版 → 落地版）
 - **systematic-debugging skill**：集成 obra/superpowers 官方源的系统化调试方法论（4 阶段强制流程）
+- **skill-evaluator skill**：Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径，结构分主 agent + 效果分 verification 子 agent）
 - **Windows 安装脚本**：`install.bat`、`reinstall.bat`、`uninstall.bat` 一键化脚本
 - **CI 强化**：新增引用完整性校验（`scripts/validate-references.js`）与发布工作流
 

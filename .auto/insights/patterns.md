@@ -2,6 +2,54 @@
 
 > LEARN 阶段自动维护，记录已验证有效的模式。
 
+### install/uninstall 抽 manifest.js 实测收益
+
+**日期**: 2026-04-19
+**标签**: dry, refactor, install, proven-in-run
+**置信度**: high
+
+`scripts/manifest.js` 导出 `COMPONENTS` + `MANAGED_FILES` 两个共享清单后：install.js -28%（138→99 行），uninstall.js -38%（79→49 行），功能等价。新增 agent/skill/rule/hook 时只改一处，避免清单漂移。未来 `validate-references.js` 也可复用同一清单做"声明即生效"校验。
+
+**来源**: 20260419-205007
+
+---
+
+### npm `check` 作为纯 MD 仓库的 lint+validate 主命令
+
+**日期**: 2026-04-19
+**标签**: npm-script, naming, ux
+**置信度**: high
+
+纯 Markdown 仓库的 `test` 脚本通常只跑 prettier + 引用校验，新用户会误期待 `npm test` 等价单元测试。正确做法：`check` 为主命令（语义清晰），`test` 保留为 `npm run check` 别名以不破坏 CI。真正有测试时再把 `test` 改成实际测试命令。
+
+**来源**: 20260419-205007
+
+---
+
+### install/uninstall 清单抽取为共享 manifest
+
+**日期**: 2026-04-19
+**标签**: refactor, dry, install
+**置信度**: high
+
+`scripts/install.js` 的 `--clean` 路径与 `scripts/uninstall.js` 完全同构（80 行重复）。抽 `scripts/manifest.js` 导出 `MANAGED_FILES`，两侧 import，可让新增 agent/skill 时只改一处。
+
+**来源**: 20260419-201905
+
+---
+
+### validator 应识别 markdown 表格引用
+
+**日期**: 2026-04-19
+**标签**: tooling, validator, ci-signal
+**置信度**: medium
+
+`validate-references.js` 当前只认 `Agent(subagent_type:"x")` 与 `agent:x` 语法；auto.md 里以 markdown 表格列出的 agent/skill 被误判为"未引用"。扩展扫描器识别表格单元格或新增 `--ignore-orphans` 开关，可让 CI 输出信噪比回升。
+
+**来源**: 20260419-201905
+
+---
+
 ### README 与主命令叙事对齐
 
 **日期**: 2026-04-18

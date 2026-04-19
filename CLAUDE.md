@@ -30,9 +30,9 @@
 - 修改子命令后检查内部引用是否一致。
 
 ## 安装与卸载
-- `npm run install` — 复制 commands/agents/skills/hooks 到 ~/.claude/
+- `npm run sync` — 复制 commands/agents/skills/hooks 到 ~/.claude/（主推路径）
+- `npm run install` — `sync` 的向后兼容别名（与 `npm install` 名字易混，新脚本请用 sync）
 - `npm run uninstall` — 移除已安装的文件
-- `npm run sync` — 同上，install 的别名
 
 ## Git 与发布
 - 提交信息遵循 conventional commits：`feat: ...` / `fix: ...` / `docs: ...`

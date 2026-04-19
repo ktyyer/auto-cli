@@ -1,6 +1,6 @@
 # REPO_MAP.md
 
-> 2026-04-18 | Pure Markdown — 0 JS runtime | v0.32.0
+> 2026-04-19 | Pure Markdown — 0 JS runtime | v0.32.0
 
 ## commands/
 
@@ -15,11 +15,13 @@
 - `route.md` — 输出标准 `RouteDecision` 的路由入口
 - `status.md` — 查看 `.auto/` canonical 结构与能力安装状态
 
-## agents/（11 个）
+## agents/（10 业务 Agent + 1 共享原则）
+
+> `_shared-principles.md` 定义协议对象与公共原则，供其他 Agent 引用，不作为独立 Agent 调度。业务 Agent 共 10 个。
 
 | Agent | 用途 |
 |-------|------|
-| `_shared-principles.md` | Agent 公共原则、协议对象与失败状态机 |
+| `_shared-principles.md` | Agent 公共原则、协议对象与失败状态机（共享，非独立 Agent） |
 | `architect.md` | 系统设计、可扩展性、技术决策 |
 | `build-error-resolver.md` | 构建和 TypeScript 错误修复 |
 | `code-reviewer.md` | 代码审查 |
@@ -31,7 +33,7 @@
 | `tdd-guide.md` | 测试驱动开发 |
 | `verification.md` | 输出标准 `VerifyReport` 的对抗性验证 |
 
-## skills/（11 个）
+## skills/（12 个）
 
 | Skill | 用途 |
 |-------|------|
@@ -44,12 +46,13 @@
 | `performance-patterns.md` | 性能优化模式 |
 | `prd-writer.md` | PRD 需求文档写作（两阶段：概念版 → 落地板） |
 | `skill-creator.md` | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
+| `skill-evaluator.md` | Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径） |
 | `systematic-debugging.md` | 系统化调试方法论（4 阶段强制流程） |
 | `workflow-patterns.md` | 工作流模式 |
 
 ## hooks/
 
-- `hooks.json` — 17 个 Hook 配置（PreToolUse 6 / PostToolUse 6 / PostCompaction 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 1）
+- `hooks.json` — 18 个 Hook 配置（PreToolUse 6 / PostToolUse 7 / PostCompaction 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 1）
 - `lib/tdd-guard.js` — TDD 守卫逻辑
 - `lib/tdd-guard-cli.js` — TDD 守卫 CLI 入口
 - `lib/codemaps-hook.sh` — Codemaps 钩子脚本
