@@ -43,12 +43,13 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 
 1. **能力快照**：先列出可用 commands / agents / skills / insights / feedback / legacy 信号
 2. **意图分析**：提取关键词 + 评估复杂度 + 检测安全敏感性
-3. **候选匹配**：基于任务特征、能力清单和项目知识选择最优 Agent / Skill
-4. **安全优先**：安全相关意图自动提升 `security-reviewer` 优先级
-5. **回退链**：主 Agent 失败时按优先级降级
-6. **升级修复**：仅当已存在 `failureContext` 或前两次尝试耗尽时，才把 `build-error-resolver` 作为升级目标
+3. **反馈加权**：读取 `.auto/feedback/agents.json`，对已有记录的 agent 计算 `adjusted_priority = base_priority + (successRate - 0.9) * 20 + (usageCount > 3 ? 5 : 0)`。未记录的 agent bonus = 0。文件不存在或为空时跳过（静默降级为纯静态路由）
+4. **候选匹配**：基于任务特征、能力清单和反馈加权后的优先级选择最优 Agent / Skill
+5. **安全优先**：安全相关意图自动提升 `security-reviewer` 优先级（+10，无视反馈值）
+6. **回退链**：主 Agent 失败时按优先级降级
+7. **升级修复**：仅当已存在 `failureContext` 或前两次尝试耗尽时，才把 `build-error-resolver` 作为升级目标
 
-优先级排序（高→低）：
+基础优先级（高→低，经步骤 3 反馈加权调整后为最终值）：
 
 - security-reviewer (95) → architect (85) → quest-designer (82)
 - tdd-guide (75) → verification (72) → code-reviewer (70)
@@ -59,118 +60,9 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 
 ## 输出格式
 
-输出一个标准 `RouteDecision` 协议块，其中必须内嵌 `capabilitySnapshot` / `selection`，供 `/auto` 的 PLAN 阶段直接消费。
+输出标准 `RouteDecision`（schema 见 `agents/_shared-principles.md`），必须内嵌 `capabilitySnapshot` + `selection`，供 PHASE 2 直接消费。
 
-````markdown
-```json
-{
-  "protocolVersion": "auto-md/v1",
-  "kind": "RouteDecision",
-  "id": "route-<id>",
-  "runId": "run-<id>",
-  "phase": "SCAN",
-  "status": "success",
-  "summary": "一句话说明路由决策",
-  "source": "/auto:route",
-  "refs": {
-    "artifacts": [],
-    "files": []
-  },
-  "handoff": {
-    "toPhase": "PLAN",
-    "ready": true,
-    "blockingIssues": []
-  },
-  "capabilitySnapshot": {
-    "repoMap": "present | missing",
-    "commands": [
-      "/auto",
-      "/auto:route",
-      "/auto:learn",
-      "/auto:status",
-      "/auto:doctor",
-      "/auto:create-hook"
-    ],
-    "agents": [
-      "quest-designer",
-      "architect",
-      "tdd-guide",
-      "code-reviewer",
-      "security-reviewer",
-      "build-error-resolver",
-      "verification",
-      "e2e-runner",
-      "refactor-cleaner",
-      "doc-updater"
-    ],
-    "skillsCatalog": [
-      "workflow-patterns",
-      "git-workflow",
-      "code-style-enforcer",
-      "java-patterns",
-      "performance-patterns",
-      "error-patterns",
-      "dependency-analyzer",
-      "init-project",
-      "skill-creator"
-    ],
-    "insightFiles": [".auto/insights/patterns.md"],
-    "feedbackFiles": [".auto/feedback/agents.json"],
-    "legacySignals": ["legacy-feedback-found"]
-  },
-  "selection": {
-    "selectedAgents": ["<agent>"],
-    "selectedSkills": ["<skill1>", "<skill2>"],
-    "rejectedCapabilities": [
-      {
-        "name": "<capability>",
-        "reason": "<why not selected>"
-      }
-    ],
-    "routeHintsUsed": ["<hint>"]
-  },
-  "userIntent": "<原始输入>",
-  "normalizedTask": "<归一化任务摘要>",
-  "strategy": "explore | fix | implement | refactor",
-  "complexity": "low | medium | high",
-  "sensitivity": "low | medium | high",
-  "primaryAgent": {
-    "name": "<name>",
-    "priority": 0,
-    "reason": "<matchReason>"
-  },
-  "fallbackAgents": [
-    {
-      "name": "<fallback>",
-      "priority": 0,
-      "reason": "<fallback reason>"
-    }
-  ],
-  "skills": ["<skill1>", "<skill2>"],
-  "reasoning": ["<理由1>", "<理由2>"],
-  "preflight": {
-    "doctorResult": "optional",
-    "statusSnapshot": "optional"
-  },
-  "next": "planDirectly | useQuestDesigner"
-}
-```
-````
-
-### RouteDecision 字段说明
-
-- `capabilitySnapshot`：本次路由前扫描到的事实层能力，不带推荐色彩。
-- `selection`：在事实层之上做出的选择层结果，记录选中的能力、未选能力和使用过的 route hints。
-- `strategy`：四级执行策略，必须与 `/auto` 主流程一致。
-- `complexity`：低 / 中 / 高，不再单纯按文件数硬编码。
-- `sensitivity`：普通 / 安全敏感 / 高风险。
-- `primaryAgent`：本次主路由。
-- `fallbackAgents`：失败时的回退链。
-- `skills`：本次建议注入的 Skill。
-- `preflight`：来自 `doctor` / `status` 的辅助信息，可为空。
-- `next`：`planDirectly` 表示轻量直编排，`useQuestDesigner` 表示进入完整 QuestMap 设计。
-
-`/auto` 的 PHASE 2 必须直接消费该协议块，而不是仅凭自然语言摘要继续推理。
+`capabilitySnapshot` 为事实层能力快照（不带推荐色彩），`selection` 为选择层结果（记录选中/未选能力和使用过的 route hints）。`/auto` PHASE 2 必须直接消费该协议块，不凭自然语言摘要推理。
 
 ---
 
@@ -181,11 +73,11 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 - `.auto/cache/capability-snapshot.json`
 - `.auto/runs/<runId>/route-decision.md`
 
-如历史 hints 存在，应从以下位置读取：
+路由阶段**必须读取**以下反馈文件用于优先级加权（见步骤 3 反馈加权）：
 
-- `.auto/feedback/agents.json`
-- `.auto/feedback/skills.json`
-- `.auto/cache/pattern-cards.json`
+- `.auto/feedback/agents.json` — agent 使用成功率与频率
+- `.auto/feedback/skills.json` — skill 触发精度与采纳率
+- `.auto/cache/pattern-cards.json` — 可复用模式卡（可选）
 
 ---
 

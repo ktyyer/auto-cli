@@ -9,6 +9,13 @@ tags: [skill, authoring, evaluation, testing, workflow, template]
 > 基于 [anthropics/skills/skill-creator](https://github.com/anthropics/skills/tree/master/skills/skill-creator) 编写方法论。
 > 任何 auto-cli 用户都可以通过本 Skill 学会写 Skill，auto-cli 自身也用本 Skill 持续优化 `skills/` 目录。
 
+## 快速使用
+
+```
+/auto 帮我创建一个 Django REST Framework 的 skill
+/auto 现有的 java-patterns skill 触发不准确，帮我优化
+```
+
 ## 使用时机
 
 **必须加载**：

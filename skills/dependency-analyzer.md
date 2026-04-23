@@ -9,6 +9,14 @@ tags: [dependency, security, audit, npm, maven, versions, compatibility, outdate
 > 与 PHASE 1 SCAN 集成，在项目扫描阶段自动检测依赖健康度。
 > security-reviewer Agent 参考本知识库进行安全门禁。
 
+## 快速使用
+
+```
+/auto 检查 package.json 里的依赖有没有已知漏洞
+/auto lodash 版本太旧，分析升级影响
+/auto mvn dependency-check 扫描结果分析
+```
+
 ## 使用时机
 
 **必须加载**：

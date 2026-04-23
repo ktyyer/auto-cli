@@ -44,6 +44,39 @@
 - 对删除文件、git 提交等可见操作要谨慎，按用户请求范围执行。
 - 如果发现文档与实际行为冲突，优先修文档到一致。
 
+## 架构分层（root/dev 模式）
+
+借鉴 karpathy/llm.c 的 root/dev 分离设计：
+
+| 层 | 目录 | 职责 | 复杂度容忍度 |
+|----|------|------|-------------|
+| **root** | `commands/` | 用户可直接调用的入口，简单可读 | 低 — 拒绝无显著收益的复杂度 |
+| **dev** | `skills/` | 被 commands 调用的能力库，可实验 | 中 — 允许局部复杂 |
+| **infra** | `agents/` | Agent 定义与协议 | 低 — 保持 < 450 行 |
+| **guard** | `rules/` + `hooks/` | 编码规范与自动化 | 低 — 声明式为主 |
+
+新增能力时优先放 `skills/`，不修改主命令。主命令只做路由和编排。
+
+## 路线图
+
+### 进行中
+
+- [ ] `commands/auto.md` 精简：将 Skill 注入映射表等细节下沉到 skill 文件
+- [ ] `.auto/runs/` 示例索引：沉淀典型 `/auto` 运行作为使用教程
+- [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
+
+### 计划中
+
+- [ ] 多语言 README（英文版）
+- [ ] Agent 效果分自动化：verification agent 定期评估 quest-designer 产出质量
+- [ ] skills 自动发现：SCAN 阶段按标签自动匹配而非硬编码映射表
+
+### 已完成
+
+- [x] v0.32.0: scripts 抽 manifest + validator 识别表格
+- [x] v0.32.0: skill-evaluator skill 集成
+- [x] v0.31.0: 从 JS 运行时迁移到纯 Markdown 指令系统
+
 ## 当前仓库高价值关注点
 - `commands/auto.md` 是统一动作入口。
 - 子命令 md 中的能力描述需要持续与实际行为同步。

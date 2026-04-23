@@ -9,6 +9,14 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 > 与 SUMMARIZE 后的手动提交流程集成，确保提交信息规范、分支策略一致。
 > auto 在工作流完成并通过验证后输出总结，由用户决定是否提交，提交时参考本规范。
 
+## 快速使用
+
+```
+/auto 提交当前变更（约定式提交格式）
+/auto 创建 PR 合并 feature/auth 分支
+/auto 解决 main 和 dev 分支的合并冲突
+```
+
 ## 使用时机
 
 **必须加载**：

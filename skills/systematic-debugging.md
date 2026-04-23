@@ -9,6 +9,14 @@ tags: [debugging, root-cause, hypothesis-testing, multi-component, defense-in-de
 > 基于 [obra/superpowers/systematic-debugging](https://github.com/obra/superpowers/tree/main/skills/systematic-debugging) 适配。
 > 核心原则：**先找到根因，再提出修复。** 违反此流程就是违反调试精神。
 
+## 快速使用
+
+```
+/auto 页面加载后白屏，控制台报 TypeError
+/auto 测试用例在 CI 通过但本地失败
+/auto 接口响应从 200ms 变成 5s
+```
+
 ---
 
 ## 铁律

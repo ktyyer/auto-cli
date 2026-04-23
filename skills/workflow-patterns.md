@@ -25,6 +25,15 @@ tags:
 > 四大核心方法论合一：Plan Mode 工作流选择、Multi-Agent 编排模式、结构化根因追踪、10 维度代码审查清单。
 > 让 quest-designer 在 PHASE 2 自动匹配最优工作流。
 
+## 快速使用
+
+```
+/auto:route 审查这个模块的代码质量    → explore 工作流
+/auto:route 修复登录页白屏 bug       → fix 工作流
+/auto:route 用 React 实现搜索组件    → implement 工作流
+/auto:route 把 Redux 迁移到 Zustand  → refactor 工作流
+```
+
 ---
 
 ## 一、Plan Mode 工作流（4 种）

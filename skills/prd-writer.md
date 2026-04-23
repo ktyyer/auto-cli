@@ -8,6 +8,14 @@ tags: [prd, requirements, product, writing, discovery]
 
 > 把模糊的产品点子，一步步变成可以直接拿去开发的需求文档。
 
+## 快速使用
+
+```
+/auto 我想做一个 AI 写作助手，帮我写 PRD
+/auto 把"用户可以在App里记账"这个想法变成需求文档
+/auto 优化现有的 PRD，补充验收标准
+```
+
 ## 何时使用
 
 **必须加载**：

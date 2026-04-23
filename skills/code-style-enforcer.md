@@ -9,6 +9,14 @@ tags: [style, lint, format, naming, quality, enforcement, typescript, javascript
 > 与 PHASE 4 VERIFY 门禁集成，自动检查代码风格合规性。
 > quest-designer 在 PHASE 2 设计 Quest 时参考此规则，build-error-resolver 修复后验证。
 
+## 快速使用
+
+```
+/auto 检查 src/ 下的代码风格是否符合规范
+/auto 修复所有 ESLint 报错
+/auto 统一 Java 项目的命名规范
+```
+
 ## 使用时机
 
 **必须加载**：

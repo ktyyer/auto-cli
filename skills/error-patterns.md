@@ -8,6 +8,14 @@ tags: [error, debugging, patterns, build-fix, troubleshooting, python, go, rust,
 
 > build-fix Agent 自动加载此知识库，快速定位错误根因并修复。
 
+## 快速使用
+
+```
+/auto npm run build 报 Module not found 错误
+/auto pytest 失败：fixture 'db' not found
+/auto mvn compile 报 Cannot resolve symbol
+```
+
 ## 使用时机
 
 **必须加载**：

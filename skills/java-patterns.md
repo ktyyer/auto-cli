@@ -9,6 +9,14 @@ tags: [java, spring-boot, mybatis-plus, patterns, rest, pagination, transaction,
 > quest-designer 在 PHASE 2 设计 Java 项目 Quest 时直接引用。
 > build-error-resolver 参考"常见编译错误"速查表。
 
+## 快速使用
+
+```
+/auto 用 Spring Boot 实现用户分页查询接口
+/auto 为 Order 实体创建完整的 CRUD 分层代码
+/auto 修复 MyBatis Plus 分页查询返回空结果
+```
+
 ---
 
 ## 核心分层原则

@@ -9,6 +9,14 @@ tags: [performance, optimization, caching, n+1, lazy-loading, react, database, b
 > quest-designer 在 PHASE 2 设计 Quest 时参考，避免性能反模式。
 > code-reviewer Agent 将维度 4（性能）的审查清单与此模式库关联。
 
+## 快速使用
+
+```
+/auto 列表页加载慢，数据库查询耗时 3 秒
+/auto React 组件频繁重渲染导致卡顿
+/auto 添加 Redis 缓存层优化热点查询
+```
+
 ## 使用时机
 
 **必须加载**：

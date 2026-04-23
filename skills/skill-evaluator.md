@@ -9,6 +9,14 @@ tags: [skill, evaluation, evolution, quality-gate, verification]
 > 与 `skill-creator` 互补：`skill-creator` 负责**写出**新 skill，`skill-evaluator` 负责**养好**已有 skill。
 > 借鉴 Evol-ai/SkillCompass 的评估维度与 alchaincyf/darwin-skill 的"双路径评分 + keep-or-revert"闭环，纯 Markdown 落地，不引入任何运行时依赖。
 
+## 快速使用
+
+```
+/auto 评估所有 skill 的健康度
+/auto workflow-patterns skill 触发不准，帮我诊断
+/auto skill-evaluator 自评一下自己的质量
+```
+
 ## 使用时机
 
 **必须加载**：

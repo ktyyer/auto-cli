@@ -149,3 +149,54 @@ darwin-skill 的"结构分主 agent + 效果分独立 sub-agent"模式，与 aut
 **来源**: run-1776525672
 
 ---
+
+### karpathy/minbpe 设计哲学：渐进式复杂度 + 极简核心
+
+**日期**: 2026-04-22
+**标签**: architecture, education, design-philosophy
+**置信度**: high
+
+Karpathy minbpe 项目展示了"渐进式复杂度"设计：BasicTokenizer(最简) → RegexTokenizer(加正则) → GPT4Tokenizer(完全兼容)。所有文件 200-400 行，代码即文档。另一个关键原则：核心代码保持可读易改，高性能变体放 dev/ 目录（见 llm.c root/dev 分离）。
+
+**auto-cli 借鉴点**:
+- `commands/auto.md` 应保持核心逻辑 500 行以内
+- 高性能/实验性能力放 `skills/` 子目录，不污染主命令
+- 每个 skill 文件头部加 3-5 行使用示例
+
+**来源**: 20260422-karpathy-research
+
+---
+
+### karpathy/llm.c root/dev 分离架构
+
+**日期**: 2026-04-22
+**标签**: architecture, complexity-management, performance
+**置信度**: high
+
+llm.c 用 root/ 放简单可读的 mainline 代码，dev/ 放高性能 kernel 库。root 允许 PR 仅因"增加 2% 性能但加 500 行复杂度"而拒绝。dev 是"scratch space"，可局部复杂。核心价值：性能和教育性的平衡点由目录分离表达，而非在同一文件内堆条件分支。
+
+**auto-cli 借鉴点**:
+- `commands/` = root（简单可读的编排入口）
+- `skills/` = dev（可实验、可复杂的能力库）
+- 新增 skill 优先放 skills/ 而非修改主命令
+
+**来源**: 20260422-karpathy-research
+
+---
+
+### karpathy 项目 todo 公开化
+
+**日期**: 2026-04-22
+**标签**: project-management, open-todos, community
+**置信度**: medium
+
+nanoGPT/llm.c README 末尾有公开 TODO 列表，明确优先级和已完成项。minbpe 公开"community extensions"（Rust 移植等）。这种公开规划让贡献者知道从何下手，减少重复询问。
+
+**auto-cli 借鉴点**:
+- 在 `CLAUDE.md` 或 `README.md` 添加公开 TODO 列表
+- 明确 Next Focus / Future Work / Done 区隔
+- `skills/community/` 目录可放第三方/实验性 skills
+
+**来源**: 20260422-karpathy-research
+
+---
