@@ -86,6 +86,38 @@ tags: [shared, protocol, handoff, agent, principles]
 - `.auto/cache/` 仅作派生缓存，不作为长期知识真源。
 - legacy 文件或路径可继续读取，但新写入必须优先走 `.auto/runs/`、`.auto/feedback/`、`.auto/insights/`。
 
+### insight-index 派生对象
+
+`.auto/cache/insight-index.json` 是 LEARN 阶段维护的反向索引，用于让 SCAN/PLAN 阶段把「按印象 grep」升级为「程序化反查」。
+
+**只读真源仍是 `.auto/insights/*.md`**；索引仅作派生缓存，重建无副作用。
+
+```json
+{
+  "version": "auto-md/v1",
+  "lastUpdated": "YYYY-MM-DD",
+  "by_tag": {
+    "<tag>": [
+      {
+        "file": "traps.md | patterns.md | decisions.md | prompts.md | agent-feedback.md",
+        "section": "<heading 标题>",
+        "confidence": "low | medium | high"
+      }
+    ]
+  },
+  "by_keyword": {
+    "<keyword 小写>": [{ "file": "...", "section": "..." }]
+  }
+}
+```
+
+**维护时机**：每次 LEARN 阶段产出 `LearnCard` 后，必须更新本索引。详见 `commands/auto/learn.md` 「insight-index 维护」节。
+
+**消费时机**：
+
+- `PHASE 2.1` 知识检索：先按 `by_keyword` 反查，再按 `by_tag` 命中
+- `PHASE 4` knowledge-reuse gate：核对 `QuestMap.routeHintsUsed` 中的 `[insight:<file>#<title>]` 引用数 ≥ 索引命中数 × 0.5
+
 ### 能力快照与选择的单对象规则
 
 - `capabilitySnapshot` 与 `selection` 不是独立协议对象，而是 `RouteDecision` 的内嵌字段。
@@ -177,7 +209,16 @@ tags: [shared, protocol, handoff, agent, principles]
 ### QuestMap 标准对象
 
 必填：`id`, `runId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
-选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
+选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, `costCaps`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
+
+**实现 / 重构策略下的额外必填字段**（思考充分度门禁）：
+
+- `assumptions[]` — 每个假设需含 `text`（假设内容）+ `counterexample`（≥1 反例）
+- `alternatives[]` — ≥1 个备选方案（即使最终未选用，也要记录）
+- `riskMatrix[]` — 每条含 `risk`（风险描述）+ `impact`（low/medium/high）+ `mitigation`（缓解措施）
+- `reflexionNote` — 一行：当前 QuestMap 我最不放心的是哪一关？为什么？
+
+缺失任一则 PHASE 2 → PHASE 3 不允许 handoff（与 PHASE 2.4 「30 秒 Reflexion」联动）。
 
 ```json
 {
@@ -217,6 +258,12 @@ tags: [shared, protocol, handoff, agent, principles]
     "rollbackScope": "quest_only"
   },
   "knowledgeHints": ["<可沉淀经验1>", "<可沉淀经验2>"],
+  "costCaps": {
+    "fileWrites": 50,
+    "fileReads": 200,
+    "bashCalls": 30,
+    "maxQuests": 15
+  },
   "quests": [
     {
       "questId": "quest-1",
@@ -252,7 +299,7 @@ tags: [shared, protocol, handoff, agent, principles]
   "id": "quest-result-<id>",
   "runId": "run-<id>",
   "phase": "EXECUTE",
-  "status": "success | partial | failed | skipped",
+  "status": "success | partial | failed | skipped | cost_exceeded",
   "summary": "一句话说明本关结果",
   "source": "执行该关的 command/agent",
   "refs": {
@@ -280,7 +327,7 @@ tags: [shared, protocol, handoff, agent, principles]
   "producedContracts": ["CONTRACT-1"],
   "decisionNotes": ["<决策1>", "<决策2>"],
   "failureContext": {
-    "errorType": "unknown | build | test | security | logic",
+    "errorType": "unknown | build | test | security | logic | cost",
     "errorSummary": "<一句话错误摘要>",
     "failedCommand": "<失败命令>",
     "rootCauseHypothesis": "<根因假设>",
@@ -319,7 +366,7 @@ tags: [shared, protocol, handoff, agent, principles]
   "targetIds": ["quest-result-<id>"],
   "gateResults": [
     {
-      "name": "analysis | build | test | lint | coverage | security | adversarial",
+      "name": "analysis | build | test | lint | coverage | security | adversarial | cost",
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",
@@ -340,7 +387,7 @@ tags: [shared, protocol, handoff, agent, principles]
 ### LearnCard 标准对象
 
 必填：`id`, `runId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`。
-选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`。
+选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`, `failureClass`。
 
 ```json
 {
@@ -375,6 +422,7 @@ tags: [shared, protocol, handoff, agent, principles]
     "可为空；按来源填写 route-<id> / quest-map-<id> / quest-result-<id> / verify-<id> / git-log:<range>"
   ],
   "tags": ["<tag1>", "<tag2>"],
+  "failureClass": "timeout | network | logic | resource",
   "confidence": "low | medium | high",
   "targetInsightFile": ".auto/insights/<file>.md"
 }
@@ -417,6 +465,57 @@ tags: [shared, protocol, handoff, agent, principles]
 
 禁止默认使用仓库级全局回滚作为常规失败策略。
 
+## 失败学习闭环
+
+`VERIFY` 任何 gate `status=fail`，或 `EXECUTE` 触发 `attempt 2 / escalate / fail` 任一升级路径时，**当前 Phase 必须**在产出 `VerifyReport` 之前/同时产出一张 `LearnCard(category=trap)`，并立即落盘到 `.auto/insights/traps.md`。
+
+最小字段：
+
+- `category: trap`
+- `title`：失败现象的一句话描述
+- `trigger`：失败前可观测的征兆（错误码、命令输出关键词、调用上下文）
+- `recommendedAction`：下次遇到同征兆的处置（如 fallback 路径、替代 Agent、跳过条件）
+- `tags`：≥ 1 个可被关键词匹配的标签
+- `targetInsightFile: .auto/insights/traps.md`
+
+下次 `PHASE 2.1` 知识检索时，按 `tags` 命中即注入 `QuestMap.pitfalls`，从而保证「同样错误不犯第二次」。
+
+> 注：`build-error-resolver` 升级路径上的失败也适用本约束 — 升级前的失败上下文必须先沉淀为 trap，再交给 resolver。
+
+## 失败模式分类
+
+失败学习闭环产出的 `LearnCard(category=trap)` 必须附带 `failureClass` 字段，按以下 4 类标注：
+
+| 分类       | 特征                               | 典型触发                                | 推荐处置                       |
+| ---------- | ---------------------------------- | --------------------------------------- | ------------------------------ |
+| `timeout`  | 超过预设时间阈值                   | API 调用超时、构建超时、Agent 执行超时  | 增大超时 + 重试 + 排查瓶颈     |
+| `network`  | 连接失败 / DNS 解析失败 / 连接重置 | ECONNREFUSED、ENOTFOUND、socket hang up | 重试 + 退避 + 检查依赖可用性   |
+| `logic`    | 断言失败 / 类型错误 / 业务逻辑错误 | 测试红灯、类型检查失败、验收标准不满足  | 修复代码 + 补充测试 + 更新假设 |
+| `resource` | 内存不足 / 磁盘满 / 连接池耗尽     | OOM、ENOENT、连接池 timeout             | 释放资源 + 调整配额 + 扩容     |
+
+`LearnCard` 中 `failureClass` 与 `tags` 配合使用：`failureClass` 粗分类用于统计趋势（哪类失败最多），`tags` 细分类用于关键词匹配和知识检索。
+
+## 7 角色定义
+
+`/auto` 编排时同时融入 7 个生产视角，每个 PHASE 主导角色不同（详见 `commands/auto.md` 各 PHASE 末尾的「角色快检」blockquote）。
+
+| 简称 | 角色         | 核心问                                       | 主导 PHASE              |
+| ---- | ------------ | -------------------------------------------- | ----------------------- |
+| C    | 挑剔用户     | 我自己用都不会满意吗？真实最丑陋输入会怎样？ | SCAN / SUMMARIZE        |
+| P    | 顶级产品     | 衡量成功的指标？有没有更小的版本？           | SCAN / SUMMARIZE        |
+| A    | 顶级架构     | 边界 / 依赖单向 / SOLID / 接口契约           | PLAN / VERIFY           |
+| D    | 世界顶级开发 | 每行变更可追溯？错误处理覆盖所有路径？       | EXECUTE                 |
+| T    | 严格测试     | 红测试在绿之前真失败过？coverage ≥ 80%？     | PLAN / EXECUTE / VERIFY |
+| B    | 顶级 DBA     | SQL 参数化？索引覆盖？事务边界？N+1？        | EXECUTE / VERIFY        |
+| O    | 顶级运维     | graceful shutdown？correlation-id？监控？    | EXECUTE / VERIFY        |
+
+### 嵌入原则
+
+- 7 角色不是新增 7 个 agent，而是「checklist 视角」融入 6 PHASE
+- 每个 PHASE 出口前必须过完所属角色 checklist；严重命中补充到 `QuestMap.pitfalls` 或 `VerifyReport.findings`
+- 7 角色思想统一定义在本节，PHASE 文档以 blockquote 引用，避免重复
+- LEARN 阶段每个角色复盘对应分类：C/P → prompts.md · A → decisions.md · D → patterns+traps.md · T → test-plan-writer · B → systematic-debugging · O → hooks
+
 ## 交接路径
 
 用户意图 → RouteDecision → QuestMap → QuestResult → VerifyReport → LearnCard
@@ -450,4 +549,24 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 - 遵守 `.claude/rules/` 中的编码规范
 - 不伪造协议字段；没有证据的字段必须留空或显式标记 `unknown`
 - `/auto` 主流程中，不跳过 `VerifyReport` 直接沉淀 `LearnCard`；唯一例外是独立 `/auto:learn --git` 可基于 `git-log:<range>` 等 Git 证据直接生成 `LearnCard`
+
+## Cost-Caps 协议
+
+每次 `/auto` run 的资源消耗必须受以下上限约束，超限自动停止并报告：
+
+| 资源          | 默认上限     | 超限行为                  | 调整方式                       |
+| ------------- | ------------ | ------------------------- | ------------------------------ |
+| 文件写入次数  | 50 次 / run  | 停止 EXECUTE，进入 VERIFY | `QuestMap.costCaps.fileWrites` |
+| 文件读取次数  | 200 次 / run | WARN 日志，不硬停         | `QuestMap.costCaps.fileReads`  |
+| Bash 命令次数 | 30 次 / run  | 停止 EXECUTE，进入 VERIFY | `QuestMap.costCaps.bashCalls`  |
+| 总 Quest 数   | 15 / run     | 拒绝新增 Quest            | `QuestMap.costCaps.maxQuests`  |
+
+### 落地方式
+
+1. `QuestMap` 可选字段 `costCaps` 覆盖默认值（通常不需要）
+2. EXECUTE 阶段每个操作后递增计数器（`Read` / `Write` / `Edit` / `Bash`）
+3. 接近上限（≥ 80%）时输出 WARN 日志
+4. 达到上限时停止当前 Quest，产出 `QuestResult.status=cost_exceeded`，进入 VERIFY
+5. VERIFY 检查已完成的 Quest 是否满足验收标准，未完成的部分标记 `deferred`
+
 - 不把 `cache/` 当作知识真源，长期复用只写入 `.auto/insights/`、`.auto/feedback/` 或 `.auto/memory/`

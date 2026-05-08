@@ -129,6 +129,33 @@ grep -rn "\.\./\|\.\.\\\|\.\.\/\|path\.join.*req\.\|Paths\.get.*request" --inclu
   - 上游入口：code-reviewer 安全升级、quest-designer QuestMap 编排、用户显式请求
 - 失败策略：遵循 `_shared-principles.md` 统一失败状态机（same_path → alternative_path → escalate → fail）
 
+## OWASP Agentic Top 10（Agent 系统专用）
+
+Agent / LLM 应用除了传统 OWASP Top 10，还需逐项检查以下威胁：
+
+| #   | 威胁                             | 检查要点                                       | 修复建议                           |
+| --- | -------------------------------- | ---------------------------------------------- | ---------------------------------- |
+| A1  | Prompt Injection                 | 用户输入是否拼入 system prompt；有无分隔符隔离 | 输入/指令分离 + 输出过滤           |
+| A2  | Insecure Output Handling         | LLM 输出是否直接 eval / exec / SQL 拼接        | 输出转义 + 白名单 + 沙箱执行       |
+| A3  | Training Data Poisoning          | 是否引用不可信外部数据作为 context             | 来源校验 + 人工审核 + 信任域划分   |
+| A4  | Denial of Service（Model）       | 有无 token / 请求频率 / 并发上限               | 限流 + cost caps + 超时            |
+| A5  | Supply Chain（Plugin/Tool）      | 第三方 tool/plugin 是否审计；权限是否最小化    | 权限白名单 + 沙箱 + 签名验证       |
+| A6  | Sensitive Information Disclosure | LLM 输出是否泄露训练数据/系统 prompt/内部信息  | 输出过滤 + PII 检测 + 红蓝对抗测试 |
+| A7  | Insecure Plugin Design           | Plugin 是否验证调用者身份；参数是否校验        | 输入校验 + 调用鉴权 + 权限隔离     |
+| A8  | Excessive Agency                 | Agent 是否有超出任务的权限（删除/支付/发送）   | 最小权限 + 人工审批 + 操作确认     |
+| A9  | Overreliance                     | 关键决策是否无人审核直接执行                   | 人机协作 + 置信度阈值 + 失败回退   |
+| A10 | Model Theft / IP Leakage         | 模型权重/系统 prompt 是否可被侧信道提取        | 访问控制 + 输出审计 + 频率异常检测 |
+
+### Agent 安全检查清单
+
+- [ ] 用户输入与 system prompt 分离（分隔符/结构化输入）
+- [ ] LLM 输出不直接执行（eval/exec/SQL）
+- [ ] Token 消耗有上限（cost caps）
+- [ ] Tool/Plugin 权限最小化 + 调用鉴权
+- [ ] 敏感操作需人工确认（支付/删除/发送）
+- [ ] 输出经 PII 检测过滤
+- [ ] 第三方数据来源可信且经校验
+
 ## 参考 Skills
 
 执行时自动加载以下 Skill 以增强分析能力：

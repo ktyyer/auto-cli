@@ -102,3 +102,28 @@ QuestMap/QuestResult/VerifyReport/LearnCard 的 JSON schema 曾同时出现在 a
 **来源**: run-1776525672
 
 ---
+
+### Explore agent 网络调研：中转网关 500 时立即降级主窗口 WebSearch
+**标签**：agent-failure, network-research, fallback-path
+**触发条件**：Agent 任务返回含 `API Error: 500 Panic detected (Calcium-Ion/new-api)`
+**症状**：4 路并行 Explore agent 全部约 3 分钟后报 500 失败
+**反应**：
+1. 立即 TaskStop 任何同类 agent（避免 same_path 重试）
+2. 主窗口直接 WebSearch / WebFetch（alternative_path）
+3. 每搜一次立即结构化压缩 ≤ 30 行写盘
+**来源**：run-20260508-ecosystem-scan
+
+### 新建 markdown 文件后必须立即 prettier --write
+**标签**：prettier, format-check, new-file, lint-flow
+**触发条件**：format:check 报 Code style issues found in N files
+**症状**：Write 工具不套 Prettier，新文件首次必然挂 lint
+**反应**：先 npx prettier --write 文件路径，再跑 npm run check
+**根因**：Prettier 是 lint 代理（已记录），但 Write 工具首次走原始内容
+**来源**：run-20260508-p0skills
+
+### Bash heredoc 写大文件遇反引号 + 复杂表格撞 EOF 解析
+**标签**：bash-heredoc, large-write, backtick-eof
+**触发条件**：cat > file << 'EOF' ... EOF 内容含 ` 反引号代码块 + 多表格时偶发 EOF 提前关闭
+**症状**：unexpected EOF while looking for matching ' (line N)
+**反应**：拆成多个独立 cat heredoc 分批 append，每段 < 80 行
+**来源**：run-20260508-perfect-loop
