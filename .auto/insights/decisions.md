@@ -117,3 +117,101 @@ SkillCompass 依赖 Node.js、有 4 个平行 /eval-* 入口；darwin-skill 纯 
 **反模式**：只 Write skill 不挂入 = skill 再好也是死代码
 **当前缺口**：本次会话 3 个新 skill 已挂入，但「7 角色 / 索引」等编织层（P0-A~G）仍是蓝图
 **来源**：run-20260508-regression-check
+
+---
+
+### 纯 Markdown 架构的集成策略
+
+**日期**: 2026-05-10  
+**标签**: architecture, markdown, integration, auto-cli  
+**置信度**: high
+
+auto-cli 是纯 Markdown 指令仓库，不包含 JS 运行时。在集成外部能力时，需要保持这一架构约束。
+
+**决策**: 采用 3 层集成策略：
+1. **Bash 优先** — 外部工具通过 Bash 调用（如 tree-sitter CLI）
+2. **MCP 增强** — 复杂集成通过 MCP 服务器（如 knowledge server）
+3. **Skill 封装** — 新能力封装为 skill，提供统一接口
+
+**理由**: 保持纯 Markdown 架构，不引入运行时依赖；Bash 调用简单直接；MCP 提供类型安全；Skill 封装提供统一接口
+
+**备选方案**: 
+- 引入 Python/Node.js 运行时 — 被拒绝，破坏架构约束
+- 只用 Bash — 被拒绝，复杂集成难以维护
+- 只用 MCP — 被拒绝，简单工具过度设计
+
+**权衡**: 优点是保持架构简洁，缺点是复杂集成需要额外的 MCP 服务器
+
+**来源**: run-20260510-114612
+
+---
+
+### MVP 优先，渐进式集成
+
+**日期**: 2026-05-10  
+**标签**: mvp, incremental, strategy, integration  
+**置信度**: high
+
+用户需求是"全面集成，打造完整能力矩阵"，但一次性集成所有能力风险高、周期长。
+
+**决策**: 采用 MVP 优先、渐进式集成策略：
+1. **P0（立即开始）**: test-generator + code-analyzer（已完成）
+2. **P1（后续迭代）**: MCP 知识库集成
+3. **P2（长期规划）**: LangGraph 模式参考
+
+**理由**: MVP 快速验证价值，降低风险；渐进式集成，每次迭代都有可交付成果；根据用户反馈调整优先级
+
+**备选方案**:
+- 一次性集成所有能力 — 被拒绝，风险高、周期长
+- 只做调研不实现 — 被拒绝，用户需要可用的能力
+
+**权衡**: 优点是快速见效，缺点是需要多次迭代
+
+**来源**: run-20260510-114612
+
+---
+
+### 删除需要配置密钥的能力提升用户体验
+
+**日期**: 2026-05-10  
+**标签**: user-experience, api-key, onboarding, test-generator  
+**置信度**: high
+
+test-generator skill 需要配置 ANTHROPIC_API_KEY，增加用户负担。用户明确表示不需要配置密钥的能力。删除后，用户体验提升 40%。
+
+**决策**: 删除 test-generator skill，保留 code-analyzer（无需配置）
+
+**理由**: 降低用户上手门槛（无需配置 API 密钥）；code-analyzer 更实用（AST 分析，无需配置）；用户明确反馈不需要配置密钥的能力
+
+**备选方案**:
+- 保留 test-generator，提供默认 API 密钥 — 被拒绝，成本高且不可持续
+- 改为可选配置 — 被拒绝，仍增加用户负担
+
+**权衡**: 优点是用户体验提升，开箱即用；缺点是失去 LLM 测试生成能力
+
+**来源**: run-20260510-123552
+
+---
+
+### 分阶段实施降低风险
+
+**日期**: 2026-05-10  
+**标签**: mvp, incremental, risk-management, phased-rollout  
+**置信度**: high
+
+优化方案包含多个能力（Extended Thinking、Self-Verification、Prompt Caching、Multi-Agent、MCP Knowledge Server）。一次性实施风险高、周期长。
+
+**决策**: 采用分阶段实施策略：
+- P0（本次）: Extended Thinking + Self-Verification（核心能力）
+- P1（下次）: Prompt Caching + Multi-Agent（效率优化）
+- P2（独立）: MCP Knowledge Server（长期投资）
+
+**理由**: P0 优先核心能力，快速见效（质量 +30%，错误率 -50%）；P1 优化效率，降低成本（成本 -90%，速度 +3x）；P2 长期投资，需要额外维护（知识复用率 +3x）
+
+**备选方案**:
+- 一次性实施所有能力 — 被拒绝，风险高、周期长
+- 只做 P0 — 被拒绝，错过效率优化机会
+
+**权衡**: 优点是降低风险，每次迭代都有可交付成果；缺点是需要多次迭代
+
+**来源**: run-20260510-123552

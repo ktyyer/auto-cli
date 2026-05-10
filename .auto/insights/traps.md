@@ -127,3 +127,59 @@ QuestMap/QuestResult/VerifyReport/LearnCard 的 JSON schema 曾同时出现在 a
 **症状**：unexpected EOF while looking for matching ' (line N)
 **反应**：拆成多个独立 cat heredoc 分批 append，每段 < 80 行
 **来源**：run-20260508-perfect-loop
+
+---
+
+### tree-sitter 需要 C 编译器
+
+**日期**: 2026-05-10  
+**标签**: tree-sitter, c-compiler, environment, code-analyzer  
+**置信度**: high
+
+tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少 C 编译器，tree-sitter 安装会失败。
+
+**触发条件**: 使用 code-analyzer skill，环境中没有 gcc 或 clang  
+**推荐动作**: 
+- 在 `/auto:doctor` 中检查 C 编译器
+- 缺失时提示安装：Linux `sudo apt-get install build-essential`，Mac `xcode-select --install`
+- 提供降级方案：使用 grep 或 ctags
+
+**反模式**: 假设所有环境都有 C 编译器  
+**来源**: run-20260510-114612
+
+---
+
+### LLM 生成的测试需要人工审查
+
+**日期**: 2026-05-10  
+**标签**: test-generation, llm, quality, test-generator  
+**置信度**: high
+
+使用 Claude API 生成单元测试时，LLM 可能遗漏特定领域的边界值或包含逻辑错误。直接运行未审查的测试可能导致误报或漏报。
+
+**触发条件**: 使用 test-generator skill，跳过人工审查步骤  
+**推荐动作**:
+- 强制要求人工审查：检查可编译运行、补充边界值、验证断言、调整风格
+- 与 code-reviewer agent 协同，自动检查测试质量
+
+**反模式**: 盲目信任 LLM 生成的测试  
+**来源**: run-20260510-114612
+
+---
+
+### 向量数据库成本随规模爆炸
+
+**日期**: 2026-05-10  
+**标签**: vector-db, cost, scaling, mcp-knowledge  
+**置信度**: high
+
+向量数据库成本随向量数量呈非线性增长。pgvector 在 10M 向量时约 $45/月，但 Pinecone 在 100M 向量时可达 $700+/月。
+
+**触发条件**: 向量数超过 10M，选择托管向量数据库  
+**推荐动作**:
+- MVP 阶段使用 pgvector（本地 PostgreSQL）
+- 生产级再迁移到 Pinecone（零运维、自动扩展）
+- 提前规划成本预算，设置告警阈值
+
+**反模式**: 一开始就用 Pinecone，导致 MVP 阶段成本过高  
+**来源**: run-20260510-114612
