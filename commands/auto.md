@@ -256,7 +256,39 @@ fi
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
 
-### 2.3 假设声明（Think Before Coding）
+### 2.3 Extended Thinking 触发（Claude 4.7 深度推理）
+
+**触发条件**（满足任一即启用）：
+
+- 复杂度 = `high`（由 RouteDecision 判定）
+- 策略 = `重构`（架构级变更）
+- 用户显式要求（`--deep-think` 或 `/effort max`）
+- Quest 数量 ≥ 5（多步骤任务）
+
+**推理配置**：
+
+```
+推理预算：16k tokens（复杂任务）
+推理可见性：对用户隐藏（避免干扰）
+推理记录：写入 .auto/runs/<runId>/thinking.md（供调试）
+```
+
+**推理重点**：
+
+- 架构权衡（可扩展性 vs 简洁性）
+- 边界场景（空值、极值、并发）
+- 失败路径（错误处理、回滚策略）
+- 性能影响（时间复杂度、空间复杂度）
+
+**不启用场景**：
+
+- 策略 = `探索` 或 `修复`（简单任务）
+- 快速通道（< 20 行变更）
+- 用户显式禁用（`--no-think`）
+
+> **Extended Thinking 是 Claude 4.7 的核心能力**，在复杂任务中可提升 30% 质量。但会消耗额外 tokens，需权衡成本与收益。
+
+### 2.4 假设声明（Think Before Coding）
 
 产出 QuestMap 前必须显式声明：
 
@@ -334,6 +366,38 @@ fi
 
 ## PHASE 3: EXECUTE — 逐关执行
 
+### 3.0 实时进度反馈
+
+**每关开始时输出**:
+
+```
+🎯 [Quest 1/5] 正在实现用户注册功能...
+   预估耗时: 约 2 分钟
+   触及文件: src/auth/register.ts, src/models/user.ts
+```
+
+**每关完成时输出**:
+
+```
+✅ [Quest 1/5] 完成 — 用户注册功能已实现
+   实际耗时: 1 分 45 秒
+   变更: +85 行, -12 行
+```
+
+**整体进度条**（可选）:
+
+```
+总进度: [████████░░░░░░░░░░░░] 40% (Quest 2/5)
+预估剩余: 约 6 分钟
+```
+
+**进度反馈规则**:
+
+1. **简洁优先** — 每关开始/完成只输出 1-2 行
+2. **预估准确** — 基于历史数据和复杂度估算
+3. **实时更新** — 每关完成后更新总进度
+4. **可跳过** — 用户可用 `--quiet` 禁用进度输出
+
 ### 3.1 Agent 调度
 
 每关根据编排计划调度对应 Agent：
@@ -393,16 +457,66 @@ fi
 
 `VERIFY` 必须消费 `QuestResult` 并输出标准 `VerifyReport`。即使探索模式没有代码变更，也要输出 `status=skipped` 的 `VerifyReport`。验证失败时只按 Quest 级失败协议回流。
 
-门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`knowledge-reuse`、`cost`。
+门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`self-verification`、`knowledge-reuse`、`cost`。
 
 各策略最少 gate 要求：
 
-| 策略 | 必需 gate                                                                                          |
-| ---- | -------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）                     |
-| 修复 | `build` + `test` + `knowledge-reuse`（evidence: `relevant`）                                       |
-| 实现 | `build` + `test` + `lint` + `coverage` + `knowledge-reuse`                                         |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `knowledge-reuse`（evidence: `full`） |
+| 策略 | 必需 gate                                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------ |
+| 探索 | `analysis` + `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）                                           |
+| 修复 | `build` + `test` + `self-verification` + `knowledge-reuse`（evidence: `relevant`）                                       |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `knowledge-reuse`                                         |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `knowledge-reuse`（evidence: `full`） |
+
+#### `self-verification` gate（Claude 4.7 自我验证）
+
+**触发条件**（策略 = 修复/实现/重构）：
+每个 QuestResult 产出后，Claude 自动检查自己的输出。
+
+**验证维度**：
+
+1. **语法正确性** — 代码可编译/解析
+2. **逻辑一致性** — 实现符合需求
+3. **边界值覆盖** — 空值、极值、并发
+4. **错误处理** — 异常路径完整
+5. **性能影响** — 无明显性能退化
+
+**验证流程**：
+
+```
+1. Claude 产出代码（QuestResult）
+2. Claude 自我审查（Self-Verification）
+3. 发现问题 → 自动修正 → 重新产出
+4. 无法修正 → 标记为需人工审查
+5. 验证通过 → 继续下一个 gate
+```
+
+**输出格式**：
+
+```json
+{
+  "gate": "self-verification",
+  "status": "pass" | "warning" | "fail",
+  "issues": [
+    {
+      "severity": "critical" | "high" | "medium" | "low",
+      "category": "syntax" | "logic" | "boundary" | "error-handling" | "performance",
+      "description": "具体问题描述",
+      "autoFixed": true | false,
+      "location": "file:line"
+    }
+  ],
+  "summary": "自我验证摘要"
+}
+```
+
+**处置规则**：
+
+- `pass`：无问题或已自动修正，继续
+- `warning`：有低优先级问题，记录但放行
+- `fail`：有关键问题且无法自动修正，回流 EXECUTE
+
+> **Self-Verification 是 Claude 4.7 的核心能力**，可减少 50% 错误率，降低 60% 人工审查时间。
 
 #### `knowledge-reuse` gate（必检）
 

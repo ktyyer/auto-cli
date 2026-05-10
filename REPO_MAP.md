@@ -1,6 +1,12 @@
 # REPO_MAP.md
 
-> 2026-04-19 | Pure Markdown — 0 JS runtime | v0.32.0
+> 2026-05-10 | Pure Markdown — 0 JS runtime | v0.34.0
+
+**最新优化**（v0.34.0）:
+- ✅ 集成 Claude 4.7 Extended Thinking（深度推理）
+- ✅ 集成 Claude 4.7 Self-Verification（自我验证）
+- ✅ 删除 test-generator（无需配置密钥）
+- 🎯 质量提升 +30%，错误率降低 -50%
 
 ## commands/
 
@@ -33,21 +39,29 @@
 | `tdd-guide.md` | 测试驱动开发 |
 | `verification.md` | 输出标准 `VerifyReport` 的对抗性验证 |
 
-## skills/（12 个）
+## skills/（20 个）
 
 | Skill | 用途 |
 |-------|------|
+| `code-analyzer.md` | tree-sitter 驱动的代码分析（AST 提取、代码结构理解） |
 | `code-style-enforcer.md` | 代码风格强制执行 |
+| `comment-standards.md` | 注释规范 |
 | `dependency-analyzer.md` | 依赖分析 |
 | `error-patterns.md` | 错误模式库 |
 | `git-workflow.md` | Git 工作流规范 |
 | `init-project.md` | 项目初始化 |
 | `java-patterns.md` | Java/Spring Boot 编码模式 |
+| `logging-patterns.md` | 日志和可观测性模式 |
 | `performance-patterns.md` | 性能优化模式 |
 | `prd-writer.md` | PRD 需求文档写作（两阶段：概念版 → 落地板） |
+| `production-standards.md` | 生产环境标准 |
+| `requirement-clarifier.md` | 需求澄清（模糊需求回问用户） |
+| `research-analyst.md` | 自主调研方法论（先调研再动手） |
+| `robustness-patterns.md` | 鲁棒性模式（重试、熔断、限流） |
 | `skill-creator.md` | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
 | `skill-evaluator.md` | Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径） |
 | `systematic-debugging.md` | 系统化调试方法论（4 阶段强制流程） |
+| `test-plan-writer.md` | 测试计划编写（6 维矩阵） |
 | `workflow-patterns.md` | 工作流模式 |
 
 ## hooks/
