@@ -234,24 +234,27 @@ fi
 2. **Agent 选择**：基于 route 结果 + 任务特性（参考 `_shared-principles.md` 交接路径）
 3. **Skill 注入**：按技术栈 + 任务类型自动关联
 
-| 触发条件                                  | 自动注入 Skill          |
-| ----------------------------------------- | ----------------------- |
-| Java / Spring Boot                        | `java-patterns`         |
-| 性能优化相关                              | `performance-patterns`  |
-| 错误处理 / 异常                           | `error-patterns`        |
-| Git 操作 / 提交 / PR                      | `git-workflow`          |
-| 代码风格 / 格式化                         | `code-style-enforcer`   |
-| 依赖分析 / 升级                           | `dependency-analyzer`   |
-| 多 Agent 编排                             | `workflow-patterns`     |
-| 新项目初始化                              | `init-project`          |
-| Bug / 调试 / 测试失败 / 构建失败          | `systematic-debugging`  |
-| PRD / 需求文档 / 产品需求                 | `prd-writer`            |
-| 模糊需求 / 多种合理理解 / 关键名词缺定义  | `requirement-clarifier` |
-| 不熟悉的库 / 新技术栈 / 显式 `--research` | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2               | `test-plan-writer`      |
-| 日志 / log / tracing / 可观测性           | `logging-patterns`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发   | `robustness-patterns`   |
-| 上线 / 部署 / 生产环境 / production       | `production-standards`  |
+| 触发条件                                         | 自动注入 Skill          |
+| ------------------------------------------------ | ----------------------- |
+| Java / Spring Boot                               | `java-patterns`         |
+| 性能优化相关                                     | `performance-patterns`  |
+| 错误处理 / 异常                                  | `error-patterns`        |
+| Git 操作 / 提交 / PR                             | `git-workflow`          |
+| 代码风格 / 格式化                                | `code-style-enforcer`   |
+| 依赖分析 / 升级                                  | `dependency-analyzer`   |
+| 多 Agent 编排                                    | `workflow-patterns`     |
+| 新项目初始化                                     | `init-project`          |
+| Bug / 调试 / 测试失败 / 构建失败                 | `systematic-debugging`  |
+| PRD / 需求文档 / 产品需求                        | `prd-writer`            |
+| 模糊需求 / 多种合理理解 / 关键名词缺定义         | `requirement-clarifier` |
+| 不熟悉的库 / 新技术栈 / 显式 `--research`        | `research-analyst`      |
+| 实现 / 重构策略下的 PHASE 2                      | `test-plan-writer`      |
+| 日志 / log / tracing / 可观测性                  | `logging-patterns`      |
+| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发          | `robustness-patterns`   |
+| 上线 / 部署 / 生产环境 / production              | `production-standards`  |
+| 代码注释 / 注释规范 / JSDoc                      | `comment-standards`     |
+| 创建 skill / 编写 skill / 优化 skill             | `skill-creator`         |
+| 代码结构分析 / AST / tree-sitter（非纯 MD 项目） | `code-analyzer`         |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
@@ -409,6 +412,10 @@ fi
 | code-reviewer        | 编排计划标记审查关                | `Agent(subagent_type: "code-reviewer")`        |
 | security-reviewer    | route 标记安全敏感                | `Agent(subagent_type: "security-reviewer")`    |
 | build-error-resolver | Quest 执行失败（最多 2 次重试后） | `Agent(subagent_type: "build-error-resolver")` |
+| architect            | 架构决策 / 重构策略               | `Agent(subagent_type: "architect")`            |
+| doc-updater          | 实现/重构策略 LEARN 阶段          | `Agent(subagent_type: "doc-updater")`          |
+| refactor-cleaner     | 重构策略 / 死代码清理             | `Agent(subagent_type: "refactor-cleaner")`     |
+| e2e-runner           | E2E 测试关（非纯 MD 项目）        | `Agent(subagent_type: "e2e-runner")`           |
 
 ### 3.2 执行流程
 

@@ -152,12 +152,12 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 ### LLM 生成的测试需要人工审查
 
 **日期**: 2026-05-10  
-**标签**: test-generation, llm, quality, test-generator  
+**标签**: test-generation, llm, quality, ai-generated-code  
 **置信度**: high
 
-使用 Claude API 生成单元测试时，LLM 可能遗漏特定领域的边界值或包含逻辑错误。直接运行未审查的测试可能导致误报或漏报。
+使用 AI 生成单元测试时，LLM 可能遗漏特定领域的边界值或包含逻辑错误。直接运行未审查的测试可能导致误报或漏报。
 
-**触发条件**: 使用 test-generator skill，跳过人工审查步骤  
+**触发条件**: 使用 AI 生成测试代码，跳过人工审查步骤  
 **推荐动作**:
 - 强制要求人工审查：检查可编译运行、补充边界值、验证断言、调整风格
 - 与 code-reviewer agent 协同，自动检查测试质量

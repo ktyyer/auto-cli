@@ -95,7 +95,7 @@
         "description": "TypeScript check with error count and actionable output"
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\" && !(tool_input.file_path matches \"scripts/\")",
         "hooks": [
           {
             "type": "command",
