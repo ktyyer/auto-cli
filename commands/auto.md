@@ -134,7 +134,8 @@ Glob("REPO_MAP.md") → 如存在则 Read（优先使用仓库地图）
 Glob("package.json" / "pom.xml" / "go.mod" / "requirements.txt" / "Cargo.toml") → 确定技术栈
 Glob("CLAUDE.md") → Read（如存在）
 Glob("~/.claude/agents/*.md") → 提取可用 Agent 列表
-Glob("~/.claude/skills/*.md") → 提取可用 Skill 列表
+Glob("skills/*.md") → 提取项目 Skill 列表（仅顶层 .md，自动排除 .references/ 子目录）；读每个 Skill 的 frontmatter（name, description, tags），注意 tags 可能为多行数组格式
+Glob("~/.claude/skills/*.md") → 提取全局 Skill 列表（补充），与项目 Skill 按 name 去重（项目 Skill 优先）
 ```
 
 ### 1.2 环境快检
@@ -232,9 +233,23 @@ fi
 
 1. **任务拆解**：分析自然边界，每步有明确产出
 2. **Agent 选择**：基于 route 结果 + 任务特性（参考 `_shared-principles.md` 交接路径）
-3. **Skill 注入**：按技术栈 + 任务类型自动关联
+3. **Skill 激活**（两阶段：动态发现 → 激活执行，替代旧的"被动注入"模式）
 
-| 触发条件                                         | 自动注入 Skill          |
+**阶段 A — 动态发现**：
+a. 从 SCAN 1.1 已读取的所有 Skill frontmatter 中提取 `name` + `description` + `tags`
+b. 以 `RouteDecision.userIntent` + 技术栈 + 策略提取 3-5 个语义关键词
+c. 逐 Skill 计算匹配度：`tags` 命中数 × 2 + `description` 与用户意图的语义相似度
+d. 排序产出 **激活列表**（top-5，匹配度 ≥ 2）和 **备选列表**（其余匹配度 ≥ 1）
+e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
+
+**阶段 B — 激活执行**：
+
+- **激活**（top-5）：对应 Quest 执行时，必须先 `Read` 该 skill 全文，提取其中的检查清单/模式/约束/输出模板，作为该 Quest 的活跃验收标准（追加到 `acceptance`），在 `QuestResult.validations` 中逐条记录应用证据
+- **备选**：仅在 Quest 遇到特定场景时补充查阅
+
+**兜底索引**（动态发现不可用时的回退路径 — SCAN 未读到任何 frontmatter 或全部 Skill 匹配度 < 2）：
+
+| 触发条件                                         | 激活 Skill              |
 | ------------------------------------------------ | ----------------------- |
 | Java / Spring Boot                               | `java-patterns`         |
 | 性能优化相关                                     | `performance-patterns`  |
@@ -255,6 +270,7 @@ fi
 | 代码注释 / 注释规范 / JSDoc                      | `comment-standards`     |
 | 创建 skill / 编写 skill / 优化 skill             | `skill-creator`         |
 | 代码结构分析 / AST / tree-sitter（非纯 MD 项目） | `code-analyzer`         |
+| 评估 skill / skill 健康度 / skill 触发诊断       | `skill-evaluator`       |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
@@ -337,7 +353,7 @@ fi
 【用户需求】[原始需求]
 【技术栈】[语言+框架]
 【项目规范】[CLAUDE.md 摘要]
-【编排计划】任务拆解 + Agent 调度 + Skill 注入 + 交接关系 + 并行/串行
+【编排计划】任务拆解 + Agent 调度 + Skill 激活列表（含匹配度）+ 交接关系 + 并行/串行
 【能力清单】Agents + Skills 列表
 【现有代码】源码路径列表
 【历史经验】Memory 匹配的经验摘要
@@ -416,10 +432,24 @@ fi
 | doc-updater          | 实现/重构策略 LEARN 阶段          | `Agent(subagent_type: "doc-updater")`          |
 | refactor-cleaner     | 重构策略 / 死代码清理             | `Agent(subagent_type: "refactor-cleaner")`     |
 | e2e-runner           | E2E 测试关（非纯 MD 项目）        | `Agent(subagent_type: "e2e-runner")`           |
+| quest-designer       | 实现/重构策略 Quest 设计          | `Agent(subagent_type: "quest-designer")`       |
+| verification         | 重构策略对抗验证 / VERIFY 汇总    | `Agent(subagent_type: "verification")`         |
 
 ### 3.2 执行流程
 
-每关：Read 代码 → Write/Edit 或只读分析 → 必要验证。
+**Skill 激活协议**（每关执行前必做，确保 Skill 被真正执行而非被动参考）：
+
+1. 从 `QuestMap` 获取本关分配的 `skills` 列表（由 2.2 动态发现产出）
+2. 对每个激活 skill：`Read` 该 skill 文件全文（非仅看摘要）
+3. 从 skill 内容中提取以下可执行要素，追加到本关执行计划：
+   - **检查清单**（checklist）→ 追加到本关 `acceptance`
+   - **模式/规范**（patterns）→ 作为本关代码生成约束
+   - **输出模板**（output template）→ 作为本关产出格式
+   - **禁止项**（anti-patterns）→ 作为本关回避清单
+4. 执行完成后，在 `QuestResult.validations` 中逐条记录每个 skill 的应用证据（不得跳过）
+5. 如 skill 有明确的输出格式要求，`QuestResult` 必须遵循该格式
+
+每关执行序列：激活 Skills → Read 代码 → Write/Edit 或只读分析 → 必要验证。
 探索模式也必须产出一个只读 `QuestResult`，用于把分析结论标准化地交给 VERIFY / SUMMARIZE / LEARN。
 
 **变更洁癖（Surgical Changes）**：每关完成后自检 — 每行变更是否可追溯到用户需求？禁止顺手"改进"无关代码、重构未损坏的逻辑、或添加未要求的抽象。只清理本关引入的孤立代码。
@@ -464,16 +494,16 @@ fi
 
 `VERIFY` 必须消费 `QuestResult` 并输出标准 `VerifyReport`。即使探索模式没有代码变更，也要输出 `status=skipped` 的 `VerifyReport`。验证失败时只按 Quest 级失败协议回流。
 
-门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`self-verification`、`knowledge-reuse`、`cost`。
+门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`self-verification`、`skill-activation`、`knowledge-reuse`、`cost`。
 
 各策略最少 gate 要求：
 
-| 策略 | 必需 gate                                                                                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------------------ |
-| 探索 | `analysis` + `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）                                           |
-| 修复 | `build` + `test` + `self-verification` + `knowledge-reuse`（evidence: `relevant`）                                       |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `knowledge-reuse`                                         |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `knowledge-reuse`（evidence: `full`） |
+| 策略 | 必需 gate                                                                                                                                     |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`（evidence: `read-only`）+ `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）                   |
+| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`（evidence: `relevant`）                                       |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `skill-activation` + `knowledge-reuse`                                         |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `skill-activation` + `knowledge-reuse`（evidence: `full`） |
 
 #### `self-verification` gate（Claude 4.7 自我验证）
 
@@ -524,6 +554,38 @@ fi
 - `fail`：有关键问题且无法自动修正，回流 EXECUTE
 
 > **Self-Verification 是 Claude 4.7 的核心能力**，可减少 50% 错误率，降低 60% 人工审查时间。
+
+#### `skill-activation` gate（必检）
+
+核对 PLAN 2.2 激活的 Skill 是否在 EXECUTE 中被真正应用（Read + 提取要素 + 记录证据），而非仅作为参考名称被引用。
+
+**验证逻辑**：
+
+```text
+对每个激活 Skill（top-5 列表）：
+1. 检查 QuestResult.validations 中是否存在该 skill 的应用证据条目
+2. 每条证据必须包含：skill 名称 + 提取了哪些要素（checklist/pattern/template/anti-pattern）+ 对应的代码位置或决策点
+3. 缺失证据的 skill 计为未激活
+```
+
+| 结果      | 条件                                                           | 处置                  |
+| --------- | -------------------------------------------------------------- | --------------------- |
+| `pass`    | 所有激活 Skill 均有 ≥ 1 条应用证据                             | 继续                  |
+| `warning` | ≤ 50% 激活 Skill 缺少证据，但核心 Skill 已应用                 | 记录缺失列表，放行    |
+| `fail`    | > 50% 激活 Skill 无证据，或核心 Skill（由 2.2 排序决定）未应用 | 回流 EXECUTE 补充应用 |
+
+**跳过条件**：探索模式且无激活 Skill（激活列表为空）。
+
+**证据格式**（写入 `QuestResult.validations`）：
+
+```json
+{
+  "name": "skill-activation",
+  "skillName": "systematic-debugging",
+  "status": "pass",
+  "evidence": "Read skill 全文（286 行），提取 4 阶段调试流程作为约束，在 Quest 3 错误处理中应用了根因追踪方法（见 file.ts:L45-L62）"
+}
+```
 
 #### `knowledge-reuse` gate（必检）
 
