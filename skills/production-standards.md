@@ -29,6 +29,36 @@ tags: [production, deployment, health-check, readiness, operational, checklist]
 - 已有项目的局部修改 → 只需相关 section
 - 纯前端项目 → Section 1-3（健康检查不适用）
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 健康检查端点: `GET /health` 返回 200
+- [ ] 就绪探针: `GET /ready` 检测所有依赖可用性
+- [ ] 优雅关闭: SIGTERM 后等待进行中请求完成
+- [ ] 环境变量: 所有配置通过 env 注入, 无硬编码
+- [ ] 结构化日志: JSON 格式, 含 correlationId
+- [ ] 错误不泄露: 500 响应不含堆栈/内部路径
+- [ ] 速率限制: 公开 API 有 per-user/IP 限流
+- [ ] HTTPS + 安全头: HSTS/CSP/X-Frame-Options
+
+**硬约束** (constraints):
+
+- 缺少健康检查不得上线
+- 配置不得硬编码（必须走环境变量）
+- 生产日志必须 JSON 格式 + correlationId
+
+**输出模板** (output):
+
+- 检查项 → 验证命令 → 结果(pass/fail) → 修复建议
+
+**反模式** (anti-patterns):
+
+- 健康检查返回 200 但不检查 DB 连接 → 假健康
+- SIGTERM 直接杀进程 → 请求被截断
+
+---
+
 ## 1. 生产就绪 Checklist
 
 ### 必备项（上线前必须全过）

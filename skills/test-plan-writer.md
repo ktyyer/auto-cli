@@ -40,6 +40,33 @@ tags: [test-plan, tdd, qa, coverage, quality, methodology]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 6 维矩阵: unit / integration / e2e / regression / edge-case / security
+- [ ] 每个维度: 验证目标 + 工具/Agent + 预期结果 + 必需性标记
+- [ ] 测试优先级: P0(阻塞上线) > P1(重要) > P2(可延后)
+- [ ] 边界值覆盖: 空值/null/零值/极大值/特殊字符/并发
+- [ ] 产出 test-plan.md 作为 quest-designer 上下文输入
+
+**硬约束** (constraints):
+
+- 实现/重构策略必须先有 test plan 再动代码
+- 涉及对外契约(API/事件/DB schema)必须有 regression 测试
+- 验收标准必须用可执行命令（`npm test -- --grep "X"`），不用"功能正常"
+
+**输出模板** (output):
+
+- 6 维矩阵表 → 测试优先级排序 → 可执行测试命令列表
+
+**反模式** (anti-patterns):
+
+- 只关注 happy path 忽略边界值 → 生产事故
+- test plan 写成"功能正常即可" → 不可验证
+
+---
+
 ## 核心流程（3 步）
 
 ### 第一步：6 维测试矩阵

@@ -32,6 +32,33 @@ tags: [style, lint, format, naming, quality, enforcement, typescript, javascript
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 确认目标语言（TS/JS → Section 1, Java → Section 2）
+- [ ] 运行 Prettier 格式化：`npx prettier --write "src/**/*.{ts,tsx,js,jsx}"`
+- [ ] 运行 ESLint 检查：`npx eslint "src/**/*.{ts,tsx}" --format compact`
+- [ ] 检查命名规范（camelCase 变量, PascalCase 类, kebab-case 文件）
+- [ ] 文件行数检查（>500 行建议拆分）
+
+**硬约束** (constraints):
+
+- 必须单引号、无分号、2 空格缩进、行宽 100
+- Java: Controller 不直接操作数据库，Service 不含 SQL
+- 禁止跳过 lint 门禁直接提交
+
+**输出模板** (output):
+
+- 语言 → 格式化结果 → lint 错误数 → 命名违规清单 → 修复建议
+
+**反模式** (anti-patterns):
+
+- 混用引号风格、混用分号 → 格式不一致
+- 大文件不拆分持续膨胀 → 维护困难
+
+---
+
 ## 一、TypeScript / JavaScript 规则
 
 ### 1.1 格式化（Prettier 自动修复）

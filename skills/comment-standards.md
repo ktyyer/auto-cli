@@ -16,6 +16,32 @@ tags: [comments, documentation, readability, code-quality]
 /auto 加 JSDoc 到公共 API
 ```
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 只写 WHY 注释（业务约束、性能取舍、第三方坑、workaround、副作用）
+- [ ] 不写 WHAT 注释（代码已自解释的内容）
+- [ ] 使用 WHY/REF/RISK 三段模板写关键注释
+- [ ] 检查是否有注释漂移（注释与代码不一致）
+
+**硬约束** (constraints):
+
+- 禁止写 `// 获取用户信息` 类废话注释
+- 禁止不写 WHY 的业务约束注释（如"退款 T+3"）
+- 魔数/硬编码值必须有注释说明来源
+
+**输出模板** (output):
+
+- `// WHY: <原因>  // REF: <参考>  // RISK: <注意事项>`
+
+**反模式** (anti-patterns):
+
+- 每行都注释 → 信息噪声，真正的关键注释被淹没
+- 注释与代码不同步 → 误导维护者
+
+---
+
 ## 核心原则
 
 > 好代码自解释。注释只解释「为什么」，不解释「是什么」。

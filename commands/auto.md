@@ -239,15 +239,20 @@ fi
 a. 从 SCAN 1.1 已读取的所有 Skill frontmatter 中提取 `name` + `description` + `tags`
 b. 以 `RouteDecision.userIntent` + 技术栈 + 策略提取 3-5 个语义关键词
 c. 逐 Skill 计算匹配度：`tags` 命中数 × 2 + `description` 与用户意图的语义相似度
-d. 排序产出 **激活列表**（top-5，匹配度 ≥ 2）和 **备选列表**（其余匹配度 ≥ 1）
+d. 排序产出 **激活列表**（top-5，匹配度 ≥ 3）和 **备选列表**（匹配度 1-2）。激活列表按匹配度分三级：摘要级(3-4) | 全文级(5-6) | 深度级(7+)
 e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
+f. **Phase 敏感性调整**：实现/探索策略下，code-style-enforcer、comment-standards 的匹配度 -1（这些 Skill 的核心价值在 VERIFY 阶段，PLAN/EXECUTE 阶段降权）；重构策略下所有 Skill 恢复正常权重。
 
-**阶段 B — 激活执行**：
+**阶段 B — 激活执行（三级激活，分段读取，控制上下文占用）**：
 
-- **激活**（top-5）：对应 Quest 执行时，必须先 `Read` 该 skill 全文，提取其中的检查清单/模式/约束/输出模板，作为该 Quest 的活跃验收标准（追加到 `acceptance`），在 `QuestResult.validations` 中逐条记录应用证据
-- **备选**：仅在 Quest 遇到特定场景时补充查阅
+- **摘要级激活**（匹配度 3-4）：只读 skill 的 `## 激活摘要` 段落（~20 行），提取 checklist + constraints + anti-patterns，追加到本关 `acceptance`。不读全文。
+- **全文级激活**（匹配度 5-6）：先读 `## 激活摘要`，再按需读全文中的相关 `###` 子段落（如具体模式/代码模板/详细流程）。不读 references。
+- **深度激活**（匹配度 7+）：全文级 + 按需 Read 对应 `.references/` 目录下的参考文件。
+- 缓存加速：如 `.auto/cache/skill-extracts/<skill>.md` 存在 → 直接读缓存（内容即 `## 激活摘要` 副本），跳过 skill 文件读取。
+- 缓存回写：执行完成后将提取的四要素（checklist/patterns/anti-patterns/template）写入 `.auto/cache/skill-extracts/<skill>.md`（格式：4 个 `##` 段落，每段 ≤ 10 行），供后续 run 复用。
+- **备选**（其余匹配度 ≥ 1）：仅在 Quest 遇到特定场景时补充查阅，默认不加载。
 
-**兜底索引**（动态发现不可用时的回退路径 — SCAN 未读到任何 frontmatter 或全部 Skill 匹配度 < 2）：
+**兜底索引**（动态发现不可用时的回退路径 — SCAN 未读到任何 frontmatter 或全部 Skill 匹配度 < 3）：
 
 | 触发条件                                         | 激活 Skill              |
 | ------------------------------------------------ | ----------------------- |
@@ -437,16 +442,22 @@ e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
 
 ### 3.2 执行流程
 
-**Skill 激活协议**（每关执行前必做，确保 Skill 被真正执行而非被动参考）：
+**Skill 激活协议**（每关执行前必做，三级激活，确保 Skill 被真正执行而非被动参考）：
 
-1. 从 `QuestMap` 获取本关分配的 `skills` 列表（由 2.2 动态发现产出）
-2. 对每个激活 skill：`Read` 该 skill 文件全文（非仅看摘要）
-3. 从 skill 内容中提取以下可执行要素，追加到本关执行计划：
+1. 从 `QuestMap` 获取本关分配的 `skills` 列表及激活级别（由 2.2 动态发现产出）
+2. **分段读取**（按激活级别 + 缓存优先，控制上下文占用）：
+   - 优先读 `.auto/cache/skill-extracts/<skill>.md`（如存在，~20 行激活摘要副本）
+   - 缓存不存在 → **摘要级**: 只读 skill 的 `## 激活摘要` 段落（~20 行）
+   - **全文级**: 摘要级 + 按需读具体 `###` 子段落（如模式/模板）
+   - **深度级**: 全文级 + 按需 Read `.references/` 目录文件
+3. 从读取内容中提取以下可执行要素，追加到本关执行计划：
    - **检查清单**（checklist）→ 追加到本关 `acceptance`
    - **模式/规范**（patterns）→ 作为本关代码生成约束
    - **输出模板**（output template）→ 作为本关产出格式
    - **禁止项**（anti-patterns）→ 作为本关回避清单
-4. 执行完成后，在 `QuestResult.validations` 中逐条记录每个 skill 的应用证据（不得跳过）
+4. 执行完成后：
+   - 在 `QuestResult.validations` 中逐条记录每个 skill 的应用证据（不得跳过）
+   - 将提取的要素写入 `.auto/cache/skill-extracts/<skill>.md`，供后续 run 复用
 5. 如 skill 有明确的输出格式要求，`QuestResult` 必须遵循该格式
 
 每关执行序列：激活 Skills → Read 代码 → Write/Edit 或只读分析 → 必要验证。
@@ -562,7 +573,7 @@ e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
 **验证逻辑**：
 
 ```text
-对每个激活 Skill（top-5 列表）：
+对每个激活 Skill（top-3 列表）：
 1. 检查 QuestResult.validations 中是否存在该 skill 的应用证据条目
 2. 每条证据必须包含：skill 名称 + 提取了哪些要素（checklist/pattern/template/anti-pattern）+ 对应的代码位置或决策点
 3. 缺失证据的 skill 计为未激活
@@ -583,7 +594,7 @@ e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
   "name": "skill-activation",
   "skillName": "systematic-debugging",
   "status": "pass",
-  "evidence": "Read skill 全文（286 行），提取 4 阶段调试流程作为约束，在 Quest 3 错误处理中应用了根因追踪方法（见 file.ts:L45-L62）"
+  "evidence": "读 skill 缓存/快速使用段（42 行），提取 checklist + anti-patterns，在 Quest 3 错误处理中应用了根因追踪方法（见 file.ts:L45-L62）"
 }
 ```
 

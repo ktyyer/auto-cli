@@ -19,6 +19,36 @@ tags: [java, spring-boot, mybatis-plus, patterns, rest, pagination, transaction,
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] Controller: 参数校验 + 调用 Service + 返回 `Result<T>` 包装
+- [ ] Service: 接口+实现分离, 业务逻辑不跨层调 Mapper
+- [ ] Mapper: 只做数据库操作, MyBatis Plus 复杂查询用 XML
+- [ ] DTO: 与 Entity 分离, 使用 MapStruct 转换
+- [ ] 统一异常: `@RestControllerAdvice` + `ServiceException`
+- [ ] 事务: `@Transactional` 用于写操作, 读操作不加
+
+**硬约束** (constraints):
+
+- Controller 禁止直接操作数据库（跨层调用）
+- ServiceImpl 禁止写 SQL（应通过 Mapper）
+- 禁止返回裸 Entity（必须 DTO 包装）
+- 所有 API 返回 `Result<T>` 统一格式
+
+**输出模板** (output):
+
+- 参考 `java-patterns.references/controller-service.md` 完整模板
+
+**反模式** (anti-patterns):
+
+- 在 Controller 写业务逻辑 → 分层混乱
+- Entity 直接返回给前端 → 暴露数据库结构
+- 不用 MapStruct 手写转换 → 样板代码多
+
+---
+
 ## 核心分层原则
 
 ```

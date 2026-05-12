@@ -37,6 +37,32 @@ tags: [research, web-search, knowledge-collection, external-docs, methodology]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 识别调研维度: 库选型/API 规范/版本兼容/最佳实践/安全考量
+- [ ] 优先查官方文档 + release notes + migration guide
+- [ ] 补充社区验证: GitHub issues/Discord/Stack Overflow 中的已知坑
+- [ ] 产出 research-brief.md 到 `.auto/runs/<runId>/`, 含结论+证据+风险
+
+**硬约束** (constraints):
+
+- 不熟悉的库/API 必须先调研再动手
+- 调研结论必须有来源引用（URL/文档版本/日期）
+- 禁止基于猜测或过时知识开发
+
+**输出模板** (output):
+
+- 调研维度 → 信息来源 → 结论 → 风险/限制 → 证据引用
+
+**反模式** (anti-patterns):
+
+- 直接问 AI"怎么用"不查官方文档 → AI 知识可能过时
+- 调研无时间限制 → 调研 30 分钟无结论应降级或切换方案
+
+---
+
 ## 核心流程（4 步）
 
 ### 第一步：识别调研维度

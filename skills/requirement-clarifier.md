@@ -39,6 +39,32 @@ tags: [requirements, clarification, ambiguity, ask-user, plan-phase, methodology
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 6 信号扫描: 模糊副词/关键名词未定义/≥2 种路径/验收标准缺失/范围未限定/隐含假设
+- [ ] 命中 ≥ 1 项 → 触发澄清流程, 用 `AskUserQuestion` 回问(最多 3 题)
+- [ ] 优先澄清: 范围(包含/不包含) > 验收标准 > 技术选型
+- [ ] 澄清后更新 RouteDecision 或 QuestMap, 确保无歧义再动手
+
+**硬约束** (constraints):
+
+- 命中 ≥ 1 个模糊信号必须回问, 禁止猜测
+- 单次最多 3 题（避免用户疲劳）
+- 澄清结果必须写回 QuestMap, 不依赖"上下文记忆"
+
+**输出模板** (output):
+
+- 模糊信号 → 澄清问题 → 用户选择 → QuestMap 更新
+
+**反模式** (anti-patterns):
+
+- "这个需求我知道什么意思" → 自以为是, 做出来不是用户想要的
+- 一次问太多(>5 题) → 用户不想回答, 跳过澄清
+
+---
+
 ## 核心流程（3 步）
 
 ### 第一步：模糊度评估（6 信号清单）

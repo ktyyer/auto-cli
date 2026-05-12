@@ -30,6 +30,35 @@ tags: [logging, observability, tracing, correlation-id, structured-logging, debu
 - 后端 API → Section 1-3（结构化 + correlation-id）
 - 微服务 → 全部章节
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 生产环境默认 INFO 级别, DEBUG/TRACE 通过 `LOG_LEVEL` 环境变量控制
+- [ ] ERROR 必须含完整堆栈 (`error.stack`)，不截断
+- [ ] 所有 I/O 操作记录 INFO 日志（请求开始/结束 + 耗时）
+- [ ] 日志用 JSON 格式输出, 含 `correlationId` 字段
+- [ ] 关键业务节点记录 INFO（状态变更、支付、定时任务）
+
+**硬约束** (constraints):
+
+- ERROR 级别日志不得省略堆栈
+- catch 块不允许静默吞错（至少 `logger.warn`）
+- 禁止在循环中同步写日志（用批量或异步）
+- 禁止日志中打印密钥/密码/PII
+
+**输出模板** (output):
+
+- `{ "level": "INFO", "correlationId": "xxx", "message": "...", "duration": 200, "timestamp": "..." }`
+
+**反模式** (anti-patterns):
+
+- `console.log` 代替结构化日志 → 无 correlationId, 排查困难
+- 异常只 log message 不含 stack → 定位不到根因
+- 生产环境开 DEBUG → 日志爆炸, 性能下降
+
+---
+
 ## 1. 日志级别策略
 
 | 级别  | 何时使用                                   | 示例                                  |

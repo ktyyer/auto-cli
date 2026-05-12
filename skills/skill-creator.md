@@ -27,6 +27,33 @@ tags: [skill, authoring, evaluation, testing, workflow, template]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 捕获意图：Skill 要做什么？何时触发？输出格式？
+- [ ] 用户访谈：痛点是什么？典型触发语句 3-5 个？边界在哪？
+- [ ] 编写 SKILL.md：frontmatter(name+description+tags) + 使用时机 + 核心流程 + 验收标准
+- [ ] 测试迭代：触发是否准确？输出是否可用？迭代至合格
+
+**硬约束** (constraints):
+
+- description 必须写清触发条件（用户说什么时激活）
+- tags 必须覆盖触发关键词
+- 必须包含验收标准（可执行命令/可验证结果）
+
+**输出模板** (output):
+
+- 完整 SKILL.md 文件（含 frontmatter + 使用时机 + 流程 + 验收标准）
+
+**反模式** (anti-patterns):
+
+- description 太泛导致误触发 → 浪费上下文
+- 缺少验收标准 → 质量不可控
+- Skill 内容超过 400 行不拆分 → 激活时占用过多上下文
+
+---
+
 ## 核心流程（4 步）
 
 ### 第一步：Capture Intent — 意图捕获

@@ -35,6 +35,33 @@ tags: [git, workflow, branch, commit, pr, convention, merge, rebase]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 分支命名: `feature/*`, `fix/*`, `refactor/*`, `release/*`
+- [ ] 提交格式: `<type>: <description>` (feat/fix/refactor/docs/test/chore/perf/ci)
+- [ ] PR 检查: 标题 < 70 字符, 含 Summary + Test plan
+- [ ] 冲突解决: 优先 rebase, 不改他人代码
+
+**硬约束** (constraints):
+
+- main 分支只通过 PR 合并，禁止直接 push
+- 禁止 `git push --force` 到 main/master
+- 提交信息必须遵循 conventional commits 格式
+
+**输出模板** (output):
+
+- 分支名 → 提交信息 → PR 标题 + 描述(Summary + Test plan)
+
+**反模式** (anti-patterns):
+
+- `git add -A` 或 `git add .` → 可能提交敏感文件
+- 跳过 hook (`--no-verify`) → 绕过质量门禁
+- commit message: "fix bug" / "update" → 不可追溯
+
+---
+
 ## 一、分支模型
 
 ### 1.1 分支类型

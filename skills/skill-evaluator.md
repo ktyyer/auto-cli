@@ -29,6 +29,32 @@ tags: [skill, evaluation, evolution, quality-gate, verification]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] D1-D7 结构分: 主 agent 直接 Read skill, 按 7 维度评分
+- [ ] D8 效果分: 独立 verification agent 做 A/B 对比（有/无 skill 产出质量差异）
+- [ ] 诊断最弱维度 → 最小改动改进 → 独立验证 → 保留或回滚
+- [ ] 改进后验证: 触发准确率是否提升？产出质量是否改善？
+
+**硬约束** (constraints):
+
+- 结构分(D1-D7)和效果分(D8)必须分开跑，避免自评偏差
+- 失败只回滚当前 skill，不影响其他 skill
+- 改进必须是最小改动（单文件、单 section），不做大面积重写
+
+**输出模板** (output):
+
+- Skill 名 → D1-D7 分数 → D8 A/B 对比 → 最弱维度 → 改进方案 → 验证结果
+
+**反模式** (anti-patterns):
+
+- 只看结构分不看效果分 → 格式漂亮但触发不准
+- 一次改太多维度 → 无法归因改进效果
+
+---
+
 ## 核心循环（5 步）
 
 ```

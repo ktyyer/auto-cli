@@ -33,6 +33,33 @@ tags: [code-analysis, tree-sitter, ast, code-structure, static-analysis]
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 检测项目语言: 从 package.json/pom.xml/go.mod 等推断
+- [ ] 检查 tree-sitter CLI 可用性, 不可用时降级 grep/ctags
+- [ ] 生成 AST → 提取函数/类/导入 → 写入 `.auto/cache/code-structure.json`
+- [ ] 排除 node_modules 和大文件 (>10k 行)
+
+**硬约束** (constraints):
+
+- 纯 Markdown 项目不触发（无需 AST 分析）
+- tree-sitter 不可用时必须降级, 不阻塞流程
+- 必须排除 node_modules 和第三方依赖
+
+**输出模板** (output):
+
+- `.auto/cache/code-structure.json`: { functions[], classes[], imports[], metadata }
+
+**反模式** (anti-patterns):
+
+- 不检查 C 编译器直接装 tree-sitter → 安装失败
+- 解析 node_modules → 性能极差
+- 不处理解析失败 → 单个文件语法错误导致全量失败
+
+---
+
 ## 核心流程（4 步）
 
 ### 第一步：检测项目语言

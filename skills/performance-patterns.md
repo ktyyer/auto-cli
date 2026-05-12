@@ -34,6 +34,33 @@ tags: [performance, optimization, caching, n+1, lazy-loading, react, database, b
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 数据库: 检查 N+1 查询, 用批量查询或 JOIN 替代循环查询
+- [ ] 缓存: 热点数据加 Redis 缓存, 设置合理 TTL, 使用 Cache-Aside 模式
+- [ ] 前端: React 用 `React.memo` + `useMemo` + `useCallback`, 长列表用虚拟化
+- [ ] 通用: 防抖(输入搜索)、节流(滚动)、异步并行(`Promise.all`)
+- [ ] 识别瓶颈: 用 profiling 工具确认慢点, 不凭感觉优化
+
+**硬约束** (constraints):
+
+- 禁止循环内数据库查询（N+1）
+- 禁止无过期时间的缓存（内存泄漏）
+- 优化前必须先 profiling, 禁止凭直觉优化
+
+**输出模板** (output):
+
+- 瓶颈点 → 根因 → 优化方案 → 预期提升 → 验证命令
+
+**反模式** (anti-patterns):
+
+- 过早优化 → 代码复杂化但无实际收益
+- 所有数据都缓存 → 缓存雪崩、数据不一致
+
+---
+
 ## 一、数据库性能
 
 ### 1.1 N+1 查询

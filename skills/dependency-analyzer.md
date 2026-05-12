@@ -33,6 +33,32 @@ tags: [dependency, security, audit, npm, maven, versions, compatibility, outdate
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 确认技术栈: Node.js/npm → Section 1, Java/Maven → Section 2, Go → Section 3
+- [ ] 运行安全审计: `npm audit --audit-level=high` / `mvn dependency-check:check` / `go list -m all`
+- [ ] 检查废弃包: `npm outdated` / `mvn versions:display-dependency-updates`
+- [ ] 检查版本漂移和 breaking changes
+
+**硬约束** (constraints):
+
+- 有 HIGH/CRITICAL 漏洞的包不得用于生产
+- 升级前必须检查 changelog 中的 breaking changes
+- 自动修复只允许 patch 级别 (`npm audit fix`)，minor/major 需人工审查
+
+**输出模板** (output):
+
+- 包名 → 当前版本 → 最新版本 → 漏洞(CVE) → 升级风险 → 建议
+
+**反模式** (anti-patterns):
+
+- 不审计划直接 `npm audit fix --force` → 可能引入 breaking changes
+- 只看直接依赖忽略传递依赖 → 漏掉深层漏洞
+
+---
+
 ## 一、Node.js / npm 依赖
 
 ### 1.1 安全审计
