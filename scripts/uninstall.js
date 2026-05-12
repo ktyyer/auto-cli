@@ -2,7 +2,8 @@
 
 /**
  * Auto CLI 卸载脚本
- * 移除 ~/.claude/ 下由 install.js 安装的文件
+ * 移除所有检测到的工具目录（Claude Code ~/.claude/ + Codex ~/.codex/）下
+ * 由 install.js 安装的文件。
  *
  * 用法：
  *   node scripts/uninstall.js
@@ -10,7 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { MANAGED_FILES } from './manifest.js';
+import { MANAGED_FILES, detectTools } from './manifest.js';
 
 let removed = 0;
 
@@ -24,28 +25,70 @@ function removeIfExists(filePath) {
 console.log('Auto CLI 卸载');
 console.log('');
 
-for (const { dir, files, subdirs } of MANAGED_FILES) {
-  for (const file of files) {
-    removeIfExists(path.join(dir, file));
-  }
-  if (subdirs) {
-    for (const sub of subdirs) {
-      removeIfExists(path.join(dir, sub));
-    }
-  }
+const tools = detectTools();
+
+if (tools.length === 0) {
+  console.log('未检测到 Claude Code (~/.claude/) 或 Codex (~/.codex/)。');
+  console.log('无需卸载。');
+  process.exit(0);
 }
 
-// 清理 backup 残留
-for (const { dir } of MANAGED_FILES) {
-  if (!fs.existsSync(dir)) continue;
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.name.includes('.backup.')) {
-      fs.unlinkSync(path.join(dir, entry.name));
-      removed++;
+console.log(
+  `检测到: ${tools.map((t) => (t.name === 'claude' ? 'Claude Code' : 'Codex')).join(' + ')}`,
+);
+console.log('');
+
+for (const tool of tools) {
+  const toolLabel = tool.name === 'claude' ? 'Claude Code' : 'Codex';
+  const dir = tool.dir;
+
+  if (tool.name === 'claude') {
+    // Claude: use MANAGED_FILES list
+    for (const { dir: managedDir, files, subdirs } of MANAGED_FILES) {
+      for (const file of files) {
+        removeIfExists(path.join(managedDir, file));
+      }
+      if (subdirs) {
+        for (const sub of subdirs) {
+          removeIfExists(path.join(managedDir, sub));
+        }
+      }
+    }
+
+    // 清理 backup 残留
+    for (const { dir: managedDir } of MANAGED_FILES) {
+      if (!fs.existsSync(managedDir)) continue;
+      const entries = fs.readdirSync(managedDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.includes('.backup.')) {
+          fs.unlinkSync(path.join(managedDir, entry.name));
+          removed++;
+        }
+      }
+    }
+  } else {
+    // Codex: remove prompts/auto.md, prompts/auto/, skills/<skillName>/
+    const promptsDir = path.join(dir, 'prompts');
+    removeIfExists(path.join(promptsDir, 'auto.md'));
+    removeIfExists(path.join(promptsDir, 'auto'));
+
+    const skillsDir = path.join(dir, 'skills');
+    const managedSkillNames = MANAGED_FILES.find((f) =>
+      f.dir.includes('skills'),
+    )?.files;
+    if (managedSkillNames && fs.existsSync(skillsDir)) {
+      for (const skillFile of managedSkillNames) {
+        const skillName = skillFile.replace(/\.md$/, '');
+        removeIfExists(path.join(skillsDir, skillName));
+      }
     }
   }
 }
 
 console.log(`卸载完成: 已移除 ${removed} 项`);
-console.log('~/.claude/ 目录保留（可能包含其他配置）');
+if (tools.some((t) => t.name === 'claude')) {
+  console.log('~/.claude/ 目录保留（可能包含其他配置）');
+}
+if (tools.some((t) => t.name === 'codex')) {
+  console.log('~/.codex/ 目录保留（可能包含其他配置）');
+}
