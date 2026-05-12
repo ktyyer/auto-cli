@@ -118,6 +118,124 @@ tags: [shared, protocol, handoff, agent, principles]
 - `PHASE 2.1` 知识检索：先按 `by_keyword` 反查，再按 `by_tag` 命中
 - `PHASE 4` knowledge-reuse gate：核对 `QuestMap.routeHintsUsed` 中的 `[insight:<file>#<title>]` 引用数 ≥ 索引命中数 × 0.5
 
+### quest-status 派生对象
+
+`.auto/runs/<runId>/quest-status.json` 是 EXECUTE 阶段维护的 Quest 级状态追踪文件，提供机器可读的进度快照。借鉴 harness engineering 的 `feature_list.json` 模式——状态枚举 + evidence 字段 + "一次一关"约束。
+
+```json
+{
+  "version": "auto-md/v1",
+  "runId": "run-<id>",
+  "lastUpdated": "YYYY-MM-DD",
+  "rules": {
+    "singleActiveQuest": true,
+    "passingRequiresEvidence": true,
+    "doNotSkipVerification": true
+  },
+  "statusLegend": {
+    "not_started": "Quest 尚未开始。",
+    "in_progress": "Quest 是当前活跃任务。同时只能有一个 in_progress。",
+    "blocked": "Quest 被已记录的阻塞项卡住，无法继续。",
+    "passing": "Quest 的验收标准已通过，证据已记录。",
+    "failed": "Quest 已达到最大尝试次数，已回滚。"
+  },
+  "quests": [
+    {
+      "questId": "quest-<id>",
+      "title": "<Quest 标题>",
+      "objective": "<一句话目标>",
+      "status": "not_started | in_progress | blocked | passing | failed",
+      "attempt": 0,
+      "maxAttempts": 2,
+      "verification": ["<验收命令 1>", "<验收命令 2>"],
+      "evidence": [],
+      "blocker": null,
+      "notes": ""
+    }
+  ]
+}
+```
+
+**字段约束**：
+
+- `rules.singleActiveQuest`：任意时刻最多一个 Quest 处于 `in_progress`
+- `rules.passingRequiresEvidence`：status 从任意状态变为 `passing` 时，`evidence` 数组不能为空
+- `evidence`：每项含 `gate`（对应 gate taxonomy）、`output`（命令输出摘要 ≤ 200 字符）、`recordedAt`（ISO 时间戳）
+- `blocker`：status=`blocked` 时必填，含 `description` + `raisedBy`（questId 或 agent 名）
+
+**维护时机**：每关 EXECUTE 开始/完成时更新。VERIFY 阶段按 `quest-status.json` 逐条核对 gate 覆盖，LEARN 阶段将其作为 clean-state gate 的输入。
+
+**消费时机**：
+
+- `PHASE 3.0` 实时进度反馈：读取 `quests[].status` 生成进度条
+- `PHASE 4` skill-activation gate：核对每关 `evidence` 中是否包含 skill 应用证据
+- `PHASE 6.5` session-continuity：新会话通过读 `quest-status.json` 了解上一会话的 Quest 完成状态
+- `/auto:status`：展示当前 run 的 Quest 进度快照
+
+### session-continuity 标准对象
+
+`.auto/runs/<runId>/session-continuity.md` 是跨会话续接的真源文件。当 run 因上下文耗尽或用户中断需要跨会话继续时，当前 phase 必须写入此文件。
+
+必填：`runId`, `status`, `currentPhase`, `nextPhase`, `requiredArtifacts`, `blockingIssues`, `resumePrompt`。
+本次新增：`knownDefects`（已知但未修的缺陷）、`unverifiedPaths`（未验证的代码路径），借鉴 session-handoff 的 "Broken Or Unverified" 段。
+
+```json
+{
+  "protocolVersion": "auto-md/v1",
+  "kind": "SessionContinuity",
+  "runId": "run-<id>",
+  "status": "in_progress | blocked | suspended",
+  "currentPhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
+  "nextPhase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
+  "requiredArtifacts": ["<下一 phase 所需的上游对象 ID 或文件路径>"],
+  "blockingIssues": [
+    {
+      "description": "<阻塞描述>",
+      "raisedBy": "<phase 或 agent>",
+      "resolutionHint": "<建议解决方式>"
+    }
+  ],
+  "knownDefects": [
+    {
+      "description": "<已知缺陷描述>",
+      "location": "<file:line 或 questId>",
+      "severity": "low | medium | high | critical",
+      "discoveredIn": "<phase>",
+      "deferredReason": "<为何不在本次 run 修复>"
+    }
+  ],
+  "unverifiedPaths": [
+    {
+      "path": "<未验证的代码路径或功能点>",
+      "reason": "<为何未验证：时间不够/依赖未就绪/非本次范围>",
+      "riskIfBroken": "<如果此路径有 bug 的影响>"
+    }
+  ],
+  "resumePrompt": "<新会话可直接使用的续接 prompt，含 runId + 已完成 Quest + 下一步动作>",
+  "lastCheckpoint": "<最后一关完成的 questId 或 phase 出口>",
+  "cleanStateChecklist": {
+    "startupAndTestsPass": true,
+    "progressLogReflectsReality": true,
+    "noHalfFinishedWorkRemains": true,
+    "repoRestartableViaStandardPath": true
+  }
+}
+```
+
+**字段说明**：
+
+- `knownDefects`：显式声明"我们知道这些是坏的"——避免下个会话踩坑，也避免 AI 在不知道的情况下触碰已知缺陷区域
+- `unverifiedPaths`：显式声明"这些路径没验过"——防止下个会话假设一切正常
+- `cleanStateChecklist`：关门自检清单，4 项全部为 true 才允许标记 `status=completed`
+- `blockingIssues[].resolutionHint`：给下个会话的解决建议，而非只报问题
+
+**维护时机**：任一 phase 感知上下文接近极限时立即写入。LEARN 阶段收尾时补全 `cleanStateChecklist`。
+
+**消费时机**：
+
+- 新会话启动时，`/auto:status` 检测到未完成的 run → 读取 `session-continuity.md` → 按 `resumePrompt` 续接
+- `PHASE 1 SCAN`：检测 `.auto/runs/` 下是否有 `status!=completed` 的 `session-continuity.md`，如有则提示用户续接
+
 ### 能力快照与选择的单对象规则
 
 - `capabilitySnapshot` 与 `selection` 不是独立协议对象，而是 `RouteDecision` 的内嵌字段。
@@ -318,9 +436,10 @@ tags: [shared, protocol, handoff, agent, principles]
   "diffSummary": "+N / -N",
   "validations": [
     {
-      "name": "build | test | lint | analysis",
+      "name": "build | test | lint | analysis | skill-activation",
       "command": "<命令>",
-      "status": "pass | fail | skipped"
+      "status": "pass | fail | skipped",
+      "evidence": "<验证证据：命令输出摘要、文件路径、或具体行号范围>"
     }
   ],
   "producedOutputs": ["<输出物>"],
@@ -366,7 +485,7 @@ tags: [shared, protocol, handoff, agent, principles]
   "targetIds": ["quest-result-<id>"],
   "gateResults": [
     {
-      "name": "analysis | build | test | lint | coverage | security | adversarial | cost",
+      "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | skill-activation | knowledge-reuse | clean-state | cost",
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",

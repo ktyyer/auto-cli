@@ -157,7 +157,42 @@ go mod graph | grep indirect
 
 ---
 
-## 四、风险评级标准
+## 四、Python / pip 依赖
+
+### 4.1 安全审计
+
+```bash
+# 漏洞扫描
+pip-audit
+# 或 safety
+safety check --full-report
+
+# 查看依赖树
+pipdeptree --warn silence
+
+# 检查过期包
+pip list --outdated --format=columns
+```
+
+### 4.2 常见问题
+
+| 问题         | 症状                                                                                    | 修复                                                |
+| ------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 版本冲突     | `ERROR: Cannot install X because these package versions have conflicting dependencies.` | `pip install --upgrade X` + 检查 `requirements.txt` |
+| 依赖缺失     | `ModuleNotFoundError: No module named 'X'`                                              | `pip install X` 或检查 `requirements.txt`           |
+| 虚拟环境问题 | 全局和虚拟环境包混淆                                                                    | 确认 `which python` 在 venv 内                      |
+| 锁文件过期   | `pip install` 结果不稳定                                                                | 使用 `pip freeze > requirements-lock.txt`           |
+
+### 4.3 最佳实践
+
+- 使用 `venv` 或 `virtualenv` 隔离环境
+- `requirements.in` 放直接依赖（宽松版本），`requirements.txt` 锁定所有依赖
+- CI 中使用 `pip-audit` 做安全门禁
+- 重大版本升级前读 changelog
+
+---
+
+## 五、风险评级标准
 
 | 等级     | CVE        | 影响         | 处理               |
 | -------- | ---------- | ------------ | ------------------ |
@@ -175,7 +210,7 @@ go mod graph | grep indirect
 - [ ] 依赖升级后运行 `npm audit` 确认无新漏洞引入
 - [ ] 版本兼容性矩阵覆盖项目所有直接依赖
 
-## 五、与 auto-cli 集成
+## 六、与 auto-cli 集成
 
 - **PHASE 1 SCAN**: `_runDoctorCheck()` 集成 `npm audit --audit-level=high`
 - **PHASE 4 VERIFY**: 完整模式运行 `npm audit` 作为安全门禁

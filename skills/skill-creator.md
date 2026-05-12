@@ -157,6 +157,24 @@ Layer 3: references/         (按需加载，无限内容)
 
 ---
 
+## Agent Skills 标准兼容
+
+auto-cli 的 skill frontmatter 兼容 [Agent Skills 标准](https://agentskills.io/specification)（Anthropic 发布的行业规范）。映射关系：
+
+| 字段            | 标准要求     | auto-cli 现状 | 说明                                             |
+| --------------- | ------------ | ------------- | ------------------------------------------------ |
+| `name`          | **必填**     | **必填**      | 完全兼容                                         |
+| `description`   | **必填**     | **必填**      | 完全兼容                                         |
+| `tags`          | —            | **必填**      | auto-cli 扩展字段，用于动态发现匹配度计算        |
+| `license`       | 可选         | 可选          | 标准字段。创建分享给外部的 skill 时建议填写      |
+| `compatibility` | 可选         | 可选          | 标准字段。有环境依赖（如需要 docker/node）时填写 |
+| `metadata`      | 可选         | 可选          | 标准字段。可存放 `author`、`version` 等元信息    |
+| `allowed-tools` | 可选(实验性) | 可选          | 标准字段。限制 skill 可用工具白名单              |
+
+auto-cli 技能可发布为 Agent Skills 标准 Skill：只需在 frontmatter 中补充 `license`（如 `Apache-2.0`），其余字段按需添加。
+
+---
+
 ## Description 优化技巧
 
 Description 是主要触发机制。写法要点：

@@ -28,22 +28,118 @@ const RESULTS = {
   passed: [],
   failed: [],
   warnings: [],
-  mentioned: { agents: new Set(), skills: new Set() },
+  mentioned: { agents: new Set(), skills: new Set() }
 };
 
 // 从内容中提取显式引用（落到 RESULTS.passed / failed 的判定依据）
+
+// 校验 Skill frontmatter 格式（兼容 Agent Skills 标准 + auto-cli 扩展）
+function validateSkillFrontmatter(filePath, skillName) {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const issues = [];
+
+  // 提取 YAML frontmatter
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) {
+    RESULTS.failed.push({
+      file: path.relative(ROOT, filePath),
+      type: 'skill',
+      name: skillName,
+      message: '缺少 YAML frontmatter'
+    });
+    return;
+  }
+
+  const fm = fmMatch[1];
+  const parseLine = (key) => {
+    const m = fm.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
+    return m ? m[1].trim() : null;
+  };
+
+  // 必填字段: name
+  const nameVal = parseLine('name');
+  if (!nameVal) {
+    issues.push('缺少必填字段: name');
+  } else {
+    // name 命名规范（Agent Skills 标准: 小写字母+数字+中划线, 1-64字符）
+    if (!/^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$|^[a-z0-9]$/.test(nameVal)) {
+      issues.push(
+        `name 不符合规范: "${nameVal}" (应为小写字母+数字+中划线, 1-64字符, 首尾不能是中划线)`
+      );
+    }
+    if (nameVal.includes('--')) {
+      issues.push(`name 包含连续中划线: "${nameVal}"`);
+    }
+    // name 必须与文件名一致
+    if (nameVal !== skillName) {
+      issues.push(`name "${nameVal}" 与文件名 "${skillName}.md" 不一致`);
+    }
+  }
+
+  // 必填字段: description
+  const descVal = parseLine('description');
+  if (!descVal) {
+    issues.push('缺少必填字段: description');
+  } else {
+    if (descVal.length < 10) {
+      issues.push(`description 过短 (${descVal.length} 字符)，应 ≥ 10 字符`);
+    }
+    if (descVal.length > 1024) {
+      issues.push(`description 过长 (${descVal.length} 字符)，Agent Skills 标准限制 ≤ 1024 字符`);
+    }
+  }
+
+  // auto-cli 扩展字段: tags（推荐）
+  const tagsVal = parseLine('tags');
+  if (!tagsVal) {
+    RESULTS.warnings.push({
+      type: 'skill',
+      name: skillName,
+      message: '缺少 tags 字段（auto-cli 推荐填写，用于动态发现匹配）'
+    });
+  }
+
+  // Agent Skills 可选字段: license（如填写则校验格式）
+  const licenseVal = parseLine('license');
+  if (licenseVal && licenseVal.length > 200) {
+    issues.push(`license 过长 (${licenseVal.length} 字符)，建议 ≤ 200 字符`);
+  }
+
+  // Agent Skills 可选字段: compatibility
+  const compatVal = parseLine('compatibility');
+  if (compatVal && compatVal.length > 500) {
+    issues.push(`compatibility 过长 (${compatVal.length} 字符)，Agent Skills 标准限制 ≤ 500 字符`);
+  }
+
+  if (issues.length > 0) {
+    for (const issue of issues) {
+      RESULTS.failed.push({
+        file: path.relative(ROOT, filePath),
+        type: 'skill-frontmatter',
+        name: skillName,
+        message: issue
+      });
+    }
+  } else {
+    RESULTS.passed.push({
+      file: path.relative(ROOT, filePath),
+      type: 'skill-frontmatter',
+      name: skillName,
+      message: 'frontmatter 格式校验通过'
+    });
+  }
+}
+
 function extractReferences(content) {
   const references = [];
 
   const agentPatterns = [
     /Agent\(\s*subagent_type:\s*["']([a-zA-Z0-9-_]+)["']/gi,
     /agent:\s*["']?([a-zA-Z0-9-_]+)["']?/gi,
-    /subagent_type:\s*["']([a-zA-Z0-9-_]+)["']/gi,
+    /subagent_type:\s*["']([a-zA-Z0-9-_]+)["']/gi
   ];
 
-  const skillPatterns = [
-    /skill:\s*["']?([a-zA-Z0-9-_]+)["']?/gi,
-  ];
+  const skillPatterns = [/skill:\s*["']?([a-zA-Z0-9-_]+)["']?/gi];
 
   for (const pattern of agentPatterns) {
     let match;
@@ -93,9 +189,10 @@ function getAvailableFiles(dir) {
     return [];
   }
 
-  return fs.readdirSync(dir)
-    .filter(f => f.endsWith('.md') && !exclude.has(f))
-    .map(f => f.replace('.md', ''));
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.md') && !exclude.has(f))
+    .map((f) => f.replace('.md', ''));
 }
 
 function validateReferences() {
@@ -150,6 +247,15 @@ function validateReferences() {
 
   scanDir(commandsDir);
 
+  // Skill frontmatter 格式校验
+  const skillsDirEntries = fs.readdirSync(skillsDir, { withFileTypes: true });
+  for (const entry of skillsDirEntries) {
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      const skillName = entry.name.replace('.md', '');
+      validateSkillFrontmatter(path.join(skillsDir, entry.name), skillName);
+    }
+  }
+
   // Orphan 判定：能力文件存在，但在任何 commands/*.md 中都没有以任何形式被提及
   for (const agent of availableAgents) {
     if (!RESULTS.mentioned.agents.has(agent)) {
@@ -200,15 +306,21 @@ function main() {
 
   if (jsonOutput) {
     console.log('');
-    console.log(JSON.stringify({
-      passed: RESULTS.passed,
-      failed: RESULTS.failed,
-      warnings: RESULTS.warnings,
-      mentioned: {
-        agents: Array.from(RESULTS.mentioned.agents),
-        skills: Array.from(RESULTS.mentioned.skills),
-      },
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          passed: RESULTS.passed,
+          failed: RESULTS.failed,
+          warnings: RESULTS.warnings,
+          mentioned: {
+            agents: Array.from(RESULTS.mentioned.agents),
+            skills: Array.from(RESULTS.mentioned.skills)
+          }
+        },
+        null,
+        2
+      )
+    );
   }
 
   process.exit(success ? 0 : 1);
