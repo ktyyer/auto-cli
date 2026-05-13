@@ -1,11 +1,12 @@
 # REPO_MAP.md
 
-> 2026-05-10 | Pure Markdown — 0 JS runtime | v0.34.0
+> 2026-05-12 | Pure Markdown — 0 JS runtime | v0.36.0
 
-**最新优化**（v0.34.0）:
+**最新优化**（v0.36.0）:
 - ✅ 集成 Claude 4.7 Extended Thinking（深度推理）
 - ✅ 集成 Claude 4.7 Self-Verification（自我验证）
 - ✅ 删除 test-generator（无需配置密钥）
+- ✅ 新增 API 设计与安全重构方法论 Skill
 - 🎯 质量提升 +30%，错误率降低 -50%
 
 ## commands/
@@ -39,10 +40,11 @@
 | `tdd-guide.md` | 测试驱动开发 |
 | `verification.md` | 输出标准 `VerifyReport` 的对抗性验证 |
 
-## skills/（20 个）
+## skills/（22 个）
 
 | Skill | 用途 |
 |-------|------|
+| `api-design.md` | API 设计规范（RESTful、分页、错误码、OpenAPI） |
 | `code-analyzer.md` | tree-sitter 驱动的代码分析（AST 提取、代码结构理解） |
 | `code-style-enforcer.md` | 代码风格强制执行 |
 | `comment-standards.md` | 注释规范 |
@@ -55,6 +57,7 @@
 | `performance-patterns.md` | 性能优化模式 |
 | `prd-writer.md` | PRD 需求文档写作（两阶段：概念版 → 落地板） |
 | `production-standards.md` | 生产环境标准 |
+| `refactoring-patterns.md` | 安全重构方法论（测试保护网、分批策略、常见重构手法） |
 | `requirement-clarifier.md` | 需求澄清（模糊需求回问用户） |
 | `research-analyst.md` | 自主调研方法论（先调研再动手） |
 | `robustness-patterns.md` | 鲁棒性模式（重试、熔断、限流） |
