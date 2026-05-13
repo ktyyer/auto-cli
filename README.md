@@ -1,12 +1,12 @@
 # Auto CLI
 
-> Claude Code `/auto` 超级命令 -- 一条指令，AI 自动编排所有能力完成任务
+> Claude Code / Codex `/auto` 超级命令 -- 一条指令，AI 自动编排所有能力完成任务
 
 ---
 
 ## 这是什么？
 
-Auto CLI 是运行在 Claude Code 中的纯 Markdown 智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
+Auto CLI 是运行在 Claude Code / Codex 中的纯 Markdown 智能开发辅助工具。输入 `/auto` + 你的需求，AI 会：
 
 1. **扫描项目** -- 检测语言、框架、已有规范，产出 `RouteDecision`
 2. **编排 Quest** -- 结合 Router、Skills、历史经验生成 `QuestMap`
@@ -22,7 +22,7 @@ Auto CLI 是运行在 Claude Code 中的纯 Markdown 智能开发辅助工具。
 ## 环境要求
 
 - **Node.js** >= 18（仅用于安装脚本，运行时零依赖）
-- **Claude Code** 已安装并可用
+- **Claude Code 或 Codex** 已安装并可用
 
 ---
 
@@ -33,9 +33,10 @@ Auto CLI 是运行在 Claude Code 中的纯 Markdown 智能开发辅助工具。
 ```bash
 git clone https://github.com/ktyyer/auto-cli.git
 cd auto-cli
-npm run sync           # 同步到 ~/.claude/
+npm run sync           # 自动同步到已检测到的工具目录
 ```
 
+> `npm run sync` / `npm run install` 会自动检测已安装的 Claude Code、Codex，并同步到对应目录（`~/.claude/` / `~/.codex/`）。
 > `npm run install` 是 `sync` 的向后兼容别名（避免与 `npm install` 歧义，推荐使用 `sync`）。
 
 ### 打包分发到其他电脑
@@ -302,7 +303,7 @@ auto-cli Skill 可直接发布为 Agent Skills 标准 Skill，只需补充 `lice
 ## 常见问题
 
 **Q: 安装后命令不生效？**
-重启 Claude Code。
+重启 Claude Code 或 Codex。
 
 **Q: `/auto` 和单个命令的区别？**
 `/auto` 是超级命令，AI 会自动判断并调用合适的 Agent。单个命令（如 `/auto:route`）用于精确控制。

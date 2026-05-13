@@ -9,6 +9,30 @@ import fs from 'fs';
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const CODEX_DIR = path.join(os.homedir(), '.codex');
+const CODEX_SKILL_DIRS = [
+  'api-design',
+  'code-analyzer',
+  'code-style-enforcer',
+  'comment-standards',
+  'dependency-analyzer',
+  'error-patterns',
+  'git-workflow',
+  'init-project',
+  'java-patterns',
+  'logging-patterns',
+  'performance-patterns',
+  'prd-writer',
+  'production-standards',
+  'refactoring-patterns',
+  'requirement-clarifier',
+  'research-analyst',
+  'robustness-patterns',
+  'skill-creator',
+  'skill-evaluator',
+  'systematic-debugging',
+  'test-plan-writer',
+  'workflow-patterns',
+];
 
 // --- 工具检测 ---
 
@@ -58,6 +82,12 @@ export const COMPONENTS = [
   { src: 'rules', dest: path.join(CLAUDE_DIR, 'rules') },
   { src: 'hooks', dest: path.join(CLAUDE_DIR, 'hooks') },
 ];
+
+export const CODEX_MANAGED_FILES = {
+  prompts: ['auto.md'],
+  promptDirs: ['auto'],
+  skills: CODEX_SKILL_DIRS,
+};
 
 // Auto CLI 管理的具体文件清单（install --clean 与 uninstall 共用）
 // 仅覆盖 Claude 侧；Codex 侧由 detectTools() + 遍历清洁

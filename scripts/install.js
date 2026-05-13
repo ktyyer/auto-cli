@@ -15,7 +15,12 @@
 
 import fs from 'fs';
 import path from 'path';
-import { COMPONENTS, MANAGED_FILES, detectTools } from './manifest.js';
+import {
+  CODEX_MANAGED_FILES,
+  COMPONENTS,
+  MANAGED_FILES,
+  detectTools,
+} from './manifest.js';
 
 const cleanFlag = process.argv.includes('--clean');
 
@@ -37,7 +42,7 @@ function cleanBackups(dir) {
   }
 }
 
-function copyDir(src, dest, filterExts) {
+function copyDir(src, dest) {
   ensureDir(dest);
   const entries = fs.readdirSync(src, { withFileTypes: true });
   let copied = 0;
@@ -54,6 +59,12 @@ function copyDir(src, dest, filterExts) {
     }
   }
   return copied;
+}
+
+function cleanDir(dir) {
+  if (!fs.existsSync(dir)) return 0;
+  fs.rmSync(dir, { recursive: true, force: true });
+  return 1;
 }
 
 function copyCommands(src, tools) {
@@ -132,10 +143,9 @@ function copyReferences(src, tools) {
 
     for (const tool of tools) {
       if (tool.skillFileName) {
-        // Codex: skills/<name>.references/ is a separate dir format check
-        // Actually .references dirs go inside the skill dir in Codex
+        // Codex: map <skill>.references/ to skills/<skill>/references/
         const skillName = entry.name.replace(/\.references$/, '');
-        const refDir = path.join(tool.skillsDir, skillName, '.references');
+        const refDir = path.join(tool.skillsDir, skillName, 'references');
         ensureDir(refDir);
         const count = copyDir(path.join(src, entry.name), refDir);
         totalCopied += count;
@@ -152,7 +162,7 @@ function copyReferences(src, tools) {
   return totalCopied;
 }
 
-function cleanManagedFiles() {
+function cleanClaudeManagedFiles() {
   let removed = 0;
   for (const { dir, files, subdirs } of MANAGED_FILES) {
     for (const file of files) {
@@ -181,6 +191,38 @@ function cleanManagedFiles() {
   return removed;
 }
 
+function cleanCodexManagedFiles(tool) {
+  let removed = 0;
+  const promptsDir = path.join(tool.dir, 'prompts');
+  const skillsDir = path.join(tool.dir, 'skills');
+
+  for (const promptFile of CODEX_MANAGED_FILES.prompts) {
+    removed += cleanDir(path.join(promptsDir, promptFile));
+  }
+  for (const promptDir of CODEX_MANAGED_FILES.promptDirs) {
+    removed += cleanDir(path.join(promptsDir, promptDir));
+  }
+  for (const skillDir of CODEX_MANAGED_FILES.skills) {
+    removed += cleanDir(path.join(skillsDir, skillDir));
+  }
+
+  return removed;
+}
+
+function cleanManagedFiles(tools) {
+  let removed = 0;
+
+  for (const tool of tools) {
+    if (tool.name === 'claude') {
+      removed += cleanClaudeManagedFiles();
+    } else if (tool.name === 'codex') {
+      removed += cleanCodexManagedFiles(tool);
+    }
+  }
+
+  return removed;
+}
+
 // === Main ===
 
 const tools = detectTools();
@@ -201,7 +243,7 @@ console.log('');
 
 if (cleanFlag) {
   console.log('清理旧资源...');
-  const removed = cleanManagedFiles();
+  const removed = cleanManagedFiles(tools);
   console.log(`已清理 ${removed} 项旧资源`);
   console.log('');
 }

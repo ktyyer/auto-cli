@@ -11,7 +11,11 @@
 
 import fs from 'fs';
 import path from 'path';
-import { MANAGED_FILES, detectTools } from './manifest.js';
+import {
+  CODEX_MANAGED_FILES,
+  MANAGED_FILES,
+  detectTools,
+} from './manifest.js';
 
 let removed = 0;
 
@@ -39,7 +43,6 @@ console.log(
 console.log('');
 
 for (const tool of tools) {
-  const toolLabel = tool.name === 'claude' ? 'Claude Code' : 'Codex';
   const dir = tool.dir;
 
   if (tool.name === 'claude') {
@@ -69,16 +72,16 @@ for (const tool of tools) {
   } else {
     // Codex: remove prompts/auto.md, prompts/auto/, skills/<skillName>/
     const promptsDir = path.join(dir, 'prompts');
-    removeIfExists(path.join(promptsDir, 'auto.md'));
-    removeIfExists(path.join(promptsDir, 'auto'));
+    for (const promptFile of CODEX_MANAGED_FILES.prompts) {
+      removeIfExists(path.join(promptsDir, promptFile));
+    }
+    for (const promptDir of CODEX_MANAGED_FILES.promptDirs) {
+      removeIfExists(path.join(promptsDir, promptDir));
+    }
 
     const skillsDir = path.join(dir, 'skills');
-    const managedSkillNames = MANAGED_FILES.find((f) =>
-      f.dir.includes('skills'),
-    )?.files;
-    if (managedSkillNames && fs.existsSync(skillsDir)) {
-      for (const skillFile of managedSkillNames) {
-        const skillName = skillFile.replace(/\.md$/, '');
+    if (fs.existsSync(skillsDir)) {
+      for (const skillName of CODEX_MANAGED_FILES.skills) {
         removeIfExists(path.join(skillsDir, skillName));
       }
     }
