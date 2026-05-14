@@ -4,7 +4,6 @@
   "description": "Auto CLI - Claude Code /auto 超级命令",
   "scripts": {
     "pack": "npm pack",
-    "install": "node scripts/install.js",
     "uninstall": "node scripts/uninstall.js",
     "reinstall": "bash scripts/reinstall.sh",
     "sync": "node scripts/install.js",

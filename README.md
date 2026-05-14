@@ -54,8 +54,8 @@ cd auto-cli
 npm run sync           # 自动同步到已检测到的工具目录
 ```
 
-> `npm run sync` / `npm run install` 会自动检测已安装的 Claude Code、Codex，并同步到对应目录（`~/.claude/` / `~/.codex/`）。
-> `npm run install` 是 `sync` 的向后兼容别名（避免与 `npm install` 歧义，推荐使用 `sync`）。
+> `npm run sync` 会自动检测已安装的 Claude Code、Codex，并同步到对应目录（`~/.claude/` / `~/.codex/`）。
+> 不再提供 `npm run install` 别名，避免与 `npm install` / `npm ci` 的生命周期脚本语义冲突。
 > 安装到 Codex 时，当前会为受支持的 `/auto` 命令集合优先安装对应的 `*.codex.md` 覆盖文件，并自动去掉 `.codex` 后缀；未列入 Codex 支持矩阵的命令不会被安装。
 > 安装到 Codex 时，还会额外安装 `~/.codex/AGENTS.md` 作为入口桥接层。原因是部分 Codex 运行时对 `~/.codex/prompts/` 的展开并不稳定，桥接层负责把 `/prompts:auto` / `/auto` 显式识别成 Auto CLI 工作流入口。
 > `npm test` / `npm run check` 现在还会校验三件事：格式与引用、npm 分发包是否包含 Codex 关键文件、以及存在 `.auto/runs/` 时最近一次 run 是否具备基础闭环工件；干净环境或未启用 `.auto/` 的仓库不会因为缺少本地 run 而失败。
