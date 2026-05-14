@@ -415,6 +415,13 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 哪些 pattern 可直接复用
 - 哪些 traps 需要规避
 - 哪些 feedback 会影响 skill 选择或验证路径
+- 若本次明确复用了某条知识，优先在 `RouteDecision` 或 `QuestMap` 中留下最小引用标记：
+  - `[insight:<file>#<title>]`
+  - `[feedback:skills.json#<key>]`
+  - `[feedback:agents.json#<key>]`
+  - `[run:<runId>]`
+- 这些引用标记应优先指向真实存在的 insight 标题、feedback key 或历史 run，避免写出悬空引用
+- 若仓库已启用弱相关性校验，优先选择与当前任务文本明显同题的 `insight` 标题或历史 run goal，避免贴真实但不相干的引用
 
 ### 2.3 最小任务设计
 
@@ -515,6 +522,10 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 哪些结论来自 `git diff` / 文件内容
 - 哪些结论仍然缺少测试或运行时证据
 - 当前 run 的完整性校验结果
+- 若 `knowledge-reuse` 为 `PASS`，还要留下至少 1 个可识别知识引用：`[insight:...]` / `[feedback:...]` / `[run:...]`
+- 若仓库已启用知识引用有效性校验，这些标记还必须能解析到真实文件、标题、key 或 run 目录
+- 若仓库已启用弱相关性校验，至少应有 1 条有效 `insight` 或 `run` 引用与当前任务文本存在明显词面重合
+- 若 `verify-report.md` 中命令结果已经是 `PASS`，对应 gate 状态也必须同步收口，不能继续写 `pending`
 
 ---
 
@@ -566,6 +577,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - `quest-map.md`
 - `quest-results.md`
 - `verify-report.md`
+- `learn-cards.md`
 - `index.md`
 
 轻量任务可不额外生成复杂卡片，但不能完全缺失这些基础工件。

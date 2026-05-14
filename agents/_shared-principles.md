@@ -118,6 +118,27 @@ tags: [shared, protocol, handoff, agent, principles]
 - `PHASE 2.1` 知识检索：先按 `by_keyword` 反查，再按 `by_tag` 命中
 - `PHASE 4` knowledge-reuse gate：核对 `QuestMap.routeHintsUsed` 中的 `[insight:<file>#<title>]` 引用数 ≥ 索引命中数 × 0.5
 
+**最小证据格式**：
+
+- Route / Plan 侧引用统一使用以下标记之一：
+  - `[insight:<file>#<title>]`
+  - `[feedback:skills.json#<skill-or-key>]`
+  - `[feedback:agents.json#<agent-or-key>]`
+  - `[run:<runId>]`
+- VERIFY 侧若 `knowledge-reuse` gate 为 `pass`，`gateResults[].evidence` 或人类可读 verify 摘要中至少要出现 1 个上述标记。
+- 这是“知识已被消费”的最小可执行证据；不要求脚本一次性理解引用语义，但要求能证明 run 不是纯口头声称“我复用了知识”。
+- 下一层弱校验要求这些标记必须可解析到真实目标：
+  - `insight` → `.auto/insights/<file>.md` 中真实存在的 heading
+  - `feedback` → `.auto/feedback/*.json` 中真实存在的顶层 key
+  - `run` → `.auto/runs/<runId>/` 真实存在
+- 再下一层弱相关性校验只拦截“真实但明显不相干”的引用：
+  - 至少 1 条有效 `insight` 或 `run` 标记应与当前任务文本存在明显词面重合
+  - `feedback` 标记默认只做存在性校验，不参与弱相关性打分
+  - 该规则是启发式门禁，不等价于深语义相关性证明
+- Verify 一致性校验要求人类可读结论与命令结果不冲突：
+  - 若 `npm run check` 已为 `PASS`，`lint` / `regression` 不得仍为 `pending`
+  - 若当前 run 的 `validate-run-completeness --run <runId>` 已为 `PASS`，`run-completeness` 不得仍为 `pending`
+
 ### quest-status 派生对象
 
 `.auto/runs/<runId>/quest-status.json` 是 EXECUTE 阶段维护的 Quest 级状态追踪文件，提供机器可读的进度快照。借鉴 harness engineering 的 `feature_list.json` 模式——状态枚举 + evidence 字段 + "一次一关"约束。
@@ -295,7 +316,7 @@ tags: [shared, protocol, handoff, agent, principles]
         "reason": "<why not selected>"
       }
     ],
-    "routeHintsUsed": ["<hint>"]
+    "routeHintsUsed": ["<hint>", "[insight:patterns.md#<title>]", "[run:run-<id>]"]
   },
   "userIntent": "<原始输入>",
   "normalizedTask": "<归一化任务摘要>",
@@ -489,7 +510,7 @@ tags: [shared, protocol, handoff, agent, principles]
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",
-      "evidence": "<输出摘要；可附带 analysis-only / no-code-change / relevant / full 等范围信息>",
+      "evidence": "<输出摘要；knowledge-reuse=pass 时至少包含一个 [insight:...] / [feedback:...] / [run:...] 标记>",
       "owner": "main | verification",
       "fixHint": "<修复建议>"
     }
