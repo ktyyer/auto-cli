@@ -13,6 +13,9 @@ permissions:
   contents: read
   security-events: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   dependency-review:
     name: Dependency Review
@@ -20,7 +23,7 @@ jobs:
     # 只在 PR 时运行，因为 push 事件没有 base ref
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/dependency-review-action@v4
         with:
@@ -31,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: github/codeql-action/init@v4
         with:
@@ -45,11 +48,11 @@ jobs:
     name: npm Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - run: npm ci
@@ -63,7 +66,7 @@ jobs:
 
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: audit-report
           path: audit-report.json
