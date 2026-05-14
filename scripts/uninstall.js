@@ -70,7 +70,11 @@ for (const tool of tools) {
       }
     }
   } else {
-    // Codex: remove prompts/auto.md, prompts/auto/, skills/<skillName>/
+    // Codex: remove AGENTS.md, prompts/auto.md, prompts/auto/, skills/<skillName>/
+    for (const rootFile of CODEX_MANAGED_FILES.rootFiles || []) {
+      removeIfExists(path.join(dir, rootFile));
+    }
+
     const promptsDir = path.join(dir, 'prompts');
     for (const promptFile of CODEX_MANAGED_FILES.prompts) {
       removeIfExists(path.join(promptsDir, promptFile));

@@ -6,6 +6,8 @@ description: 智能超级命令 - 上下文扫描 + Quest 设计 + 逐关执行 
 # /auto — 智能超级命令
 
 > SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN
+>
+> 运行时说明：本文件面向 Claude Code 原生 slash command 工作流；安装到 Codex 时，如存在 `commands/auto.codex.md`，应以 Codex 覆盖版为准。
 
 ---
 

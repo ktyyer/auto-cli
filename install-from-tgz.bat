@@ -1,40 +1,69 @@
 @echo off
-chcp 65001 >nul 2>&1
+setlocal EnableExtensions EnableDelayedExpansion
+
 echo ========================================
-echo   Auto CLI v0.31.0 - 安装脚本
+echo   Auto CLI - TGZ Installer
 echo ========================================
 echo.
 
-set "TGZ=%~dp0auto-cli-0.31.0.tgz"
+set "SCRIPT_DIR=%~dp0"
 set "TMPDIR=%TEMP%\auto-cli-install"
+set "TGZ="
 
-if not exist "%TGZ%" (
-    echo [错误] 找不到 %TGZ%
-    pause
+where tar >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] tar was not found. Please use a system with tar support.
     exit /b 1
 )
 
-echo [1/4] 清理旧版...
-if exist "%USERPROFILE%\.claude\commands\auto.md" (
-    node "%~dp0package\scripts\uninstall.js" 2>nul
-    if errorlevel 1 (
-        node "%TMPDIR%\package\scripts\uninstall.js" 2>nul
-    )
+where node >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] node was not found. Please install Node.js first.
+    exit /b 1
 )
 
-echo [2/4] 解压安装包...
+for /f "delims=" %%F in ('dir /b /a:-d /o-d "%SCRIPT_DIR%auto-cli-*.tgz" 2^>nul') do (
+    if not defined TGZ set "TGZ=%SCRIPT_DIR%%%F"
+)
+
+if not defined TGZ (
+    echo [ERROR] No auto-cli-*.tgz package was found in:
+    echo %SCRIPT_DIR%
+    exit /b 1
+)
+
+echo [INFO] Using package: %TGZ%
+
+echo [1/4] Uninstalling previous version...
+node "%SCRIPT_DIR%scripts\uninstall.js"
+if errorlevel 1 (
+    echo [ERROR] Failed to uninstall the previous version.
+    exit /b 1
+)
+
+echo [2/4] Extracting package...
 if exist "%TMPDIR%" rmdir /s /q "%TMPDIR%"
 mkdir "%TMPDIR%"
 tar -xzf "%TGZ%" -C "%TMPDIR%"
+if errorlevel 1 (
+    echo [ERROR] Failed to extract the package.
+    if exist "%TMPDIR%" rmdir /s /q "%TMPDIR%"
+    exit /b 1
+)
 
-echo [3/4] 安装...
+echo [3/4] Installing new version...
 node "%TMPDIR%\package\scripts\install.js" --clean
+if errorlevel 1 (
+    echo [ERROR] Failed to install the new version.
+    if exist "%TMPDIR%" rmdir /s /q "%TMPDIR%"
+    exit /b 1
+)
 
-echo [4/4] 清理临时文件...
-rmdir /s /q "%TMPDIR%"
+echo [4/4] Cleaning temporary files...
+if exist "%TMPDIR%" rmdir /s /q "%TMPDIR%"
 
 echo.
 echo ========================================
-echo   安装完成！重启 Claude Code 生效
+echo   Installation completed successfully
 echo ========================================
-pause
+exit /b 0

@@ -183,3 +183,33 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 
 **反模式**: 一开始就用 Pinecone，导致 MVP 阶段成本过高  
 **来源**: run-20260510-114612
+
+---
+
+### Codex 覆盖安装不能只替换主命令，还要处理 Claude-only 子命令泄漏
+
+**日期**: 2026-05-13
+**标签**: codex-runtime, install, command-leak, runtime-boundary
+**置信度**: high
+
+当仓库开始使用 `commands/*.codex.md` 为 Codex 提供覆盖 prompt 时，如果安装脚本仍默认复制所有未覆盖的子命令，就会把 `create-hook` 这类 Claude-only 命令继续暴露到 Codex，形成 README/Prompt 叙事与实际安装产物不一致。
+
+**触发条件**: 为 Codex 引入覆盖版 prompt，但 `copyCommands` 仍按“无覆盖则原样复制”处理子命令
+**推荐动作**: 为 Codex 增加 allowlist 或显式 denylist；至少把 `create-hook` 排除，或补 `create-hook.codex.md` 声明不支持
+**反模式**: 只修主 `/auto`，忽略同目录子命令的运行时边界
+**来源**: run-20260513-review-codex-runtime
+
+---
+
+### 发布链路命令不能并行执行
+
+**日期**: 2026-05-13
+**标签**: release, install, race-condition, verification
+**置信度**: high
+
+`uninstall`、`pack`、`install` 之间存在明确依赖关系。即使三个命令各自成功，并行执行也会造成安装结果被卸载覆盖、目录状态短暂为空，最后把“执行顺序错误”误诊成“安装脚本损坏”。
+
+**触发条件**: 使用并行工具同时运行卸载、打包、安装或重装相关命令
+**推荐动作**: 发布回归只允许串行执行：先卸载，再打包，再安装，最后核对落盘产物
+**反模式**: 把发布链路视为可并行的独立命令
+**来源**: run-20260513-185511-release-refresh

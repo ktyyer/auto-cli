@@ -23,6 +23,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
+const SCAN_FILES = [path.join(ROOT, 'AGENTS.md')];
+const LOCAL_ABSOLUTE_LINK_PATTERN = /\[[^\]]+\]\(([A-Za-z]:\/[^)\s]+)(?::\d+)?\)/g;
 
 const RESULTS = {
   passed: [],
@@ -158,6 +160,18 @@ function extractReferences(content) {
   return references;
 }
 
+function validatePortableLinks(filePath, content) {
+  let match;
+  while ((match = LOCAL_ABSOLUTE_LINK_PATTERN.exec(content)) !== null) {
+    RESULTS.failed.push({
+      file: path.relative(ROOT, filePath),
+      type: 'portable-link',
+      name: match[1],
+      message: '包含开发机绝对路径链接，安装到其他机器后会失效'
+    });
+  }
+}
+
 // 记录"文档中出现过该 agent/skill 名称"（任何形式，含表格/反引号/纯文本）
 // 用于消除 agent/skill 已在 auto.md 表格中登记但被判为 orphan 的假阳性
 function recordMentions(content, availableAgents, availableSkills) {
@@ -210,6 +224,32 @@ function validateReferences() {
   console.log(`可用 Skills: ${availableSkills.size}`);
   console.log('');
 
+  const scanFile = (filePath) => {
+    if (!fs.existsSync(filePath)) return;
+
+    const relativePath = path.relative(ROOT, filePath);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    recordMentions(content, availableAgents, availableSkills);
+    validatePortableLinks(filePath, content);
+    const refs = extractReferences(content);
+
+    if (refs.length === 0) return;
+
+    console.log(`扫描: ${relativePath}`);
+
+    for (const ref of refs) {
+      const availableSet = ref.type === 'agent' ? availableAgents : availableSkills;
+      const exists = availableSet.has(ref.name);
+
+      if (exists) {
+        RESULTS.passed.push({ file: relativePath, ...ref });
+      } else {
+        RESULTS.failed.push({ file: relativePath, ...ref });
+        console.log(`  ❌ ${ref.type}:${ref.name} - 文件不存在`);
+      }
+    }
+  };
+
   const scanDir = (dir) => {
     if (!fs.existsSync(dir)) return;
 
@@ -222,30 +262,15 @@ function validateReferences() {
       if (entry.isDirectory()) {
         scanDir(fullPath);
       } else if (entry.name.endsWith('.md')) {
-        const content = fs.readFileSync(fullPath, 'utf-8');
-        recordMentions(content, availableAgents, availableSkills);
-        const refs = extractReferences(content);
-
-        if (refs.length === 0) continue;
-
-        console.log(`扫描: ${relativePath}`);
-
-        for (const ref of refs) {
-          const availableSet = ref.type === 'agent' ? availableAgents : availableSkills;
-          const exists = availableSet.has(ref.name);
-
-          if (exists) {
-            RESULTS.passed.push({ file: relativePath, ...ref });
-          } else {
-            RESULTS.failed.push({ file: relativePath, ...ref });
-            console.log(`  ❌ ${ref.type}:${ref.name} - 文件不存在`);
-          }
-        }
+        scanFile(fullPath);
       }
     }
   };
 
   scanDir(commandsDir);
+  for (const filePath of SCAN_FILES) {
+    scanFile(filePath);
+  }
 
   // Skill frontmatter 格式校验
   const skillsDirEntries = fs.readdirSync(skillsDir, { withFileTypes: true });

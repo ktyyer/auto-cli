@@ -8,6 +8,10 @@
  *   Claude (~/.claude/): commands/*.md  agents/*.md  skills/<name>.md  rules/*.md  hooks/*
  *   Codex  (~/.codex/):  prompts/*.md   (skip)       skills/<name>/SKILL.md  (skip)  (skip)
  *
+ * 命令覆盖规则：
+ *   若存在 *.codex.md，则仅安装到 Codex，目标文件名会去掉 .codex 后缀。
+ *   例如 commands/auto.codex.md -> ~/.codex/prompts/auto.md
+ *
  * 用法：
  *   node scripts/install.js          # 安装到所有检测到的工具
  *   node scripts/install.js --clean  # 清理旧资源后安装
@@ -17,6 +21,8 @@ import fs from 'fs';
 import path from 'path';
 import {
   CODEX_MANAGED_FILES,
+  CODEX_ALLOWED_COMMAND_FILES,
+  CODEX_ALLOWED_COMMAND_SUBDIR_FILES,
   COMPONENTS,
   MANAGED_FILES,
   detectTools,
@@ -67,7 +73,92 @@ function cleanDir(dir) {
   return 1;
 }
 
+function resetManagedCommandTargets(tools) {
+  for (const tool of tools) {
+    if (tool.name === 'codex') {
+      for (const file of CODEX_MANAGED_FILES.rootFiles || []) {
+        cleanDir(path.join(tool.dir, file));
+      }
+    }
+
+    if (!tool.commandsDir) continue;
+
+    if (tool.name === 'codex') {
+      for (const file of CODEX_MANAGED_FILES.prompts) {
+        cleanDir(path.join(tool.commandsDir, file));
+      }
+      for (const subdir of CODEX_MANAGED_FILES.promptDirs) {
+        cleanDir(path.join(tool.commandsDir, subdir));
+      }
+      continue;
+    }
+
+    const managedCommands = MANAGED_FILES.find(
+      ({ dir }) => dir === tool.commandsDir,
+    );
+    if (!managedCommands) continue;
+
+    for (const file of managedCommands.files) {
+      cleanDir(path.join(tool.commandsDir, file));
+    }
+    for (const subdir of managedCommands.subdirs || []) {
+      cleanDir(path.join(tool.commandsDir, subdir));
+    }
+  }
+}
+
+function copyCodexRootFiles(srcRoot, tools) {
+  let totalCopied = 0;
+
+  for (const tool of tools) {
+    if (tool.name !== 'codex') continue;
+
+    for (const file of CODEX_MANAGED_FILES.rootFiles || []) {
+      const srcPath = path.join(srcRoot, file);
+      if (!fs.existsSync(srcPath)) continue;
+      fs.copyFileSync(srcPath, path.join(tool.dir, file));
+      totalCopied++;
+    }
+  }
+
+  return totalCopied;
+}
+
 function copyCommands(src, tools) {
+  const toDestName = (fileName) => fileName.replace(/\.codex\.md$/, '.md');
+
+  const isCodexAllowed = (relativeDir, destName) => {
+    if (!relativeDir) {
+      return CODEX_ALLOWED_COMMAND_FILES.includes(destName);
+    }
+    const allowedInDir = CODEX_ALLOWED_COMMAND_SUBDIR_FILES[relativeDir] || [];
+    return allowedInDir.includes(destName);
+  };
+
+  const listCommandFiles = (dir, toolName) => {
+    const dirEntries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = dirEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.md'));
+    const codexOverrides = new Set(
+      files
+        .filter((file) => file.name.endsWith('.codex.md'))
+        .map((file) => file.name.replace(/\.codex\.md$/, '.md')),
+    );
+
+    return files.filter((file) => {
+      const destName = toDestName(file.name);
+      if (file.name.endsWith('.codex.md')) {
+        return toolName === 'codex' && isCodexAllowed(path.basename(dir), destName);
+      }
+      if (toolName === 'codex' && codexOverrides.has(file.name)) {
+        return false;
+      }
+      if (toolName === 'codex') {
+        return isCodexAllowed(path.basename(dir), destName);
+      }
+      return true;
+    });
+  };
+
   // 读取源 commands/ 下的所有 .md 及 auto/ 子目录
   const entries = fs.readdirSync(src, { withFileTypes: true });
   let totalCopied = 0;
@@ -76,26 +167,35 @@ function copyCommands(src, tools) {
     const srcPath = path.join(src, entry.name);
 
     if (entry.isDirectory()) {
-      // commands/auto/ → prompts/auto/ or commands/auto/
-      const subEntries = fs.readdirSync(srcPath, { withFileTypes: true });
-
       for (const tool of tools) {
         const toolSubDir = path.join(tool.commandsDir, entry.name);
         ensureDir(toolSubDir);
-        for (const sub of subEntries) {
-          if (sub.isFile() && sub.name.endsWith('.md')) {
-            fs.copyFileSync(
-              path.join(srcPath, sub.name),
-              path.join(toolSubDir, sub.name),
-            );
-            totalCopied++;
-          }
+        const subFiles = listCommandFiles(srcPath, tool.name);
+        for (const sub of subFiles) {
+          fs.copyFileSync(
+            path.join(srcPath, sub.name),
+            path.join(toolSubDir, toDestName(sub.name)),
+          );
+          totalCopied++;
         }
       }
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
       for (const tool of tools) {
+        if (entry.name.endsWith('.codex.md') && tool.name !== 'codex') {
+          continue;
+        }
+        if (
+          tool.name === 'codex' &&
+          !entry.name.endsWith('.codex.md') &&
+          fs.existsSync(path.join(src, entry.name.replace(/\.md$/, '.codex.md')))
+        ) {
+          continue;
+        }
+        if (tool.name === 'codex' && !isCodexAllowed('', toDestName(entry.name))) {
+          continue;
+        }
         ensureDir(tool.commandsDir);
-        fs.copyFileSync(srcPath, path.join(tool.commandsDir, entry.name));
+        fs.copyFileSync(srcPath, path.join(tool.commandsDir, toDestName(entry.name)));
         totalCopied++;
       }
     }
@@ -250,6 +350,14 @@ if (cleanFlag) {
 
 const srcRoot = process.cwd();
 let totalFiles = 0;
+
+// 0. Codex root bridge files
+resetManagedCommandTargets(tools);
+const codexRootCount = copyCodexRootFiles(srcRoot, tools);
+if (codexRootCount > 0) {
+  console.log(`  codex root → ${codexRootCount} 文件`);
+  totalFiles += codexRootCount;
+}
 
 // 1. Commands → Prompts (for Codex) / Commands (for Claude)
 const commandsSrc = path.join(srcRoot, 'commands');

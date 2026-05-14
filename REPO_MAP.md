@@ -92,6 +92,9 @@
 - `install.js` / `install.sh` / `install.bat` — 安装脚本
 - `uninstall.js` / `uninstall.bat` — 卸载脚本
 - `reinstall.sh` / `reinstall.bat` — 一键重装
+- `validate-references.js` — Markdown 引用完整性校验
+- `validate-run-completeness.js` — `.auto/runs/<runId>/` 基础闭环校验
+- `validate-package-contents.js` — npm 分发包内 Codex 关键文件校验
 
 ## .auto/
 

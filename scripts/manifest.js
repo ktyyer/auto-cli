@@ -33,6 +33,11 @@ const CODEX_SKILL_DIRS = [
   'test-plan-writer',
   'workflow-patterns',
 ];
+const CODEX_ALLOWED_COMMAND_FILES = ['auto.md'];
+const CODEX_ALLOWED_COMMAND_SUBDIR_FILES = {
+  auto: ['doctor.md', 'learn.md', 'route.md', 'status.md'],
+};
+const CODEX_MANAGED_ROOT_FILES = ['AGENTS.md'];
 
 // --- 工具检测 ---
 
@@ -84,7 +89,8 @@ export const COMPONENTS = [
 ];
 
 export const CODEX_MANAGED_FILES = {
-  prompts: ['auto.md'],
+  rootFiles: CODEX_MANAGED_ROOT_FILES,
+  prompts: CODEX_ALLOWED_COMMAND_FILES,
   promptDirs: ['auto'],
   skills: CODEX_SKILL_DIRS,
 };
@@ -181,4 +187,10 @@ export const MANAGED_FILES = [
   },
 ];
 
-export { CLAUDE_DIR, CODEX_DIR };
+export {
+  CLAUDE_DIR,
+  CODEX_ALLOWED_COMMAND_FILES,
+  CODEX_ALLOWED_COMMAND_SUBDIR_FILES,
+  CODEX_MANAGED_ROOT_FILES,
+  CODEX_DIR,
+};
