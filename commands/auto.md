@@ -113,6 +113,7 @@ Phase 交接时只输出（不输出完整 JSON）：
 - `/auto:route`：显式输出 `RouteDecision`
 - `/auto:doctor`：提供 `preflight` 辅助信息，挂入 `RouteDecision.preflight`
 - `/auto:status`：读取 `.auto/` canonical 结构，展示运行记录、缓存、知识与反馈状态
+- `/auto:dashboard`：聚合 `.auto/runs/` 历史数据，展示策略分布、gate 通过率、skill 激活频率等长期趋势
 - `/auto:learn`：输出 `LearnCard` 视图并更新 insights/feedback
 - `/auto:create-hook`：生成 Hook 模板建议，辅助手动补全配置
 - `quest-designer`：消费 `RouteDecision`，产出 `QuestMap`
@@ -162,6 +163,12 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 使用 `/auto:route` 分析用户意图，输出主 Agent、回退链、执行策略和安全敏感度。
 路由结果必须作为 `RouteDecision` 流入 PHASE 2。
+
+路由时优先读取 `.auto/feedback/agents.json` 中的 `preferences` 和 `successRate`：
+
+- `successRate < 0.5` 的 agent 排除出候选列表
+- 有 `knownIssues` 的 agent 降优先
+- `preferences` 字段注入到 agent 调度 prompt（如 `questGranularity: fine` → Quest 拆分更细）
 
 在标准 `RouteDecision` 内，必须内嵌以下能力快照字段：
 
@@ -225,7 +232,7 @@ fi
 
 **输出**：每条命中以 `[insight:<file>#<section>]` 格式记入 `selection.routeHintsUsed`，并写入 `matched-insights.txt` 供 PHASE 4 `knowledge-reuse` gate 核对。
 
-**反馈叠加**：读取 `.auto/feedback/agents.json` 与 `.auto/feedback/skills.json`，已有负向信号的 agent/skill 降优先。
+**反馈叠加**：读取 `.auto/feedback/agents.json` 与 `.auto/feedback/skills.json`，已有负向信号的 agent/skill 降优先。读取 `agents.json` 中每个 agent 的 `preferences` 字段，注入到 Quest 设计约束（如 `questGranularity: fine` → 更细的 Quest 拆分）。
 
 **置信度规则**：confidence=low 的条目仅参考不强制注入。
 
@@ -280,6 +287,7 @@ f. **Phase 敏感性调整**：实现/探索策略下，code-style-enforcer、co
 | 评估 skill / skill 健康度 / skill 触发诊断       | `skill-evaluator`       |
 | 重构 / 代码整理 / 拆分大文件 / 消除重复          | `refactoring-patterns`  |
 | API 设计 / REST / 接口规范 / OpenAPI             | `api-design`            |
+| 需求明确但验收标准模糊 / 接口设计 / 契约驱动     | `spec-driven`           |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
@@ -502,6 +510,39 @@ f. **Phase 敏感性调整**：实现/探索策略下，code-style-enforcer、co
 - 落盘到 `.auto/runs/<runId>/quest-results.md`
 
 > **角色快检（D+B+O+T）**：每关执行后自问 — `[D]` 每行变更可追溯到需求吗？有 console.log/注释残留？错误处理覆盖所有路径？`[B]` SQL 参数化吗？索引覆盖查询？事务边界合理？N+1 查询？`[O]` graceful shutdown？配置走环境变量（不硬编码）？健康检查端点？`[T]` 红测试在绿之前真的失败过？测试独立可重入？严重命中应阻断本关 success。
+
+### 3.4 中断恢复
+
+SCAN 阶段检测到 `.auto/runs/<latestRunId>/session-continuity.md` 存在且 `status=interrupted` 时：
+
+1. 读取 `interruptPoint`，向用户展示一行摘要："上次在 Quest X/Y 中断（<lastSuccessfulAction>，待 <pendingActions>）"
+2. 默认续接（不等确认），除非用户显式说"重新开始"
+3. 跳过已完成的 Quest，从 `interruptPoint.stepWithinQuest` 继续
+4. 按 `interruptPoint.contextSnapshot` 重新加载关键文件到上下文
+
+续接时 EXECUTE 不重新生成 QuestMap，而是从 `session-continuity.md` 中读取 `lastCheckpoint` 和 `interruptPoint`，直接从中断点继续执行。
+
+### 3.5 条件分支执行
+
+当 QuestMap 中 Quest 含 `conditionalNext` 时：
+
+1. 当前 Quest 完成后检查 `QuestResult.status`
+2. 按 `conditionalNext` 映射跳转到对应 questId：
+   - `on_success` → 正常下一关
+   - `on_fail` → fallback Quest（降级方案）
+   - `on_partial` → 重试简化版
+3. `isFallback=true` 的 Quest 的 acceptance 可以比主路径宽松（降级是合理的）
+4. 条件分支不增加用户交互——AI 自主判断走哪条路
+5. Fallback Quest 完成后，如无 `conditionalNext`，默认按线性顺序继续
+
+### 3.6 压缩防护
+
+当感知上下文接近 70% 时（连续 3+ 关后自动触发）：
+
+1. 立即将当前 Quest 的 `interruptPoint` 写入 `session-continuity.md`
+2. 将已完成关的 QuestResult 合并为 checkpoint 写盘
+3. 上下文中只保留：当前关的 questId + inputs + acceptance + 最近 1 关的 status
+4. 如上下文接近极限，立即写入 `session-continuity.md(status=suspended)` 并提示用户开新会话续接
 
 ---
 

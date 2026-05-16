@@ -75,6 +75,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - `/auto:route` 的任务路由与 skill 选择
 - `/auto:status` 的运行状态感知
 - `/auto:learn` 的知识沉淀与反馈回写
+- `/auto:dashboard` 的历史数据聚合（用户显式调用时可用）
 
 除非用户显式调用子命令，否则不要把关键流程推给子命令手动完成。
 
@@ -255,6 +256,19 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 若 snapshot 缺失、过期或与目录事实不一致，回退到实时枚举能力清单，而不是直接按通用经验路由
 - 在进入 Route 前，至少能回答：当前项目有哪些本地命令、有哪些本地 skills、哪些能力只属于 Claude、哪些能力 Codex 可直接使用
 
+**缓存检测**（新增）：
+
+- 若 `.auto/cache/skill-extracts/` 不存在或为空 → 首次 run 自动运行 `node scripts/rebuild-skill-extracts.js` 生成
+- 若 `.auto/cache/insight-index.json` 不存在或过期（超过 7 天）→ 自动运行 `node scripts/rebuild-insight-index.js` 重建
+- 缓存就绪后，Skill 激活优先读缓存而非 skill 全文，减少 Read 调用
+
+**中断恢复检测**（新增）：
+
+- 检测 `.auto/runs/` 下是否存在 `status=interrupted` 或 `status=suspended` 的 `session-continuity.md`
+- 如存在，向用户展示一行摘要：”上次 run 在 Quest X/Y 中断（<lastSuccessfulAction>），是否续接？”
+- 默认续接（不等确认），除非用户显式说“重新开始”
+- 续接时从 `interruptPoint` 继续，跳过已完成的 Quest
+
 如果只是缺失辅助文件，不阻断；
 如果缺失会直接影响执行或验证的关键前提，必须先告知。
 
@@ -415,6 +429,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 哪些 pattern 可直接复用
 - 哪些 traps 需要规避
 - 哪些 feedback 会影响 skill 选择或验证路径
+- 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：`successRate < 0.5` 的 agent 排除；有 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
 - 若本次明确复用了某条知识，优先在 `RouteDecision` 或 `QuestMap` 中留下最小引用标记：
   - `[insight:<file>#<title>]`
   - `[feedback:skills.json#<key>]`
@@ -481,6 +496,12 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 当前验证状态
 - 是否需要把失败经验记入 `trap`
 
+**条件分支执行**：当 QuestMap 中 Quest 含 `conditionalNext` 时，按 `QuestResult.status` 自动路由到 `on_success` / `on_fail` / `on_partial` 对应的 questId。Fallback Quest（`isFallback=true`）的验收标准可适当放宽。
+
+**中断恢复**：如当前 run 是从 `session-continuity.md(status=interrupted)` 续接，从 `interruptPoint` 继续，跳过已完成 Quest。
+
+**压缩防护**：连续 3+ 关后，将当前 Quest 进度写入 `session-continuity.md`，上下文中只保留当前关关键信息。
+
 ---
 
 ## PHASE 4: VERIFY
@@ -499,8 +520,9 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 1. **skill-activation**：说明哪些 skill 真被用了，分别影响了什么
 2. **knowledge-reuse**：若用了 `.auto/insights` / `.auto/feedback`，说明复用了什么
 3. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
-4. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-5. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+4. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
+5. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+6. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：

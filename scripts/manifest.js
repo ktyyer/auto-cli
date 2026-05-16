@@ -29,13 +29,14 @@ const CODEX_SKILL_DIRS = [
   'robustness-patterns',
   'skill-creator',
   'skill-evaluator',
+  'spec-driven',
   'systematic-debugging',
   'test-plan-writer',
-  'workflow-patterns',
+  'workflow-patterns'
 ];
 const CODEX_ALLOWED_COMMAND_FILES = ['auto.md'];
 const CODEX_ALLOWED_COMMAND_SUBDIR_FILES = {
-  auto: ['doctor.md', 'learn.md', 'route.md', 'status.md'],
+  auto: ['dashboard.md', 'doctor.md', 'learn.md', 'route.md', 'status.md']
 };
 const CODEX_MANAGED_ROOT_FILES = ['AGENTS.md'];
 
@@ -57,7 +58,7 @@ export function detectTools() {
       // agents / rules / hooks 是否支持
       hasAgents: true,
       hasRules: true,
-      hasHooks: true,
+      hasHooks: true
     });
   }
   if (fs.existsSync(CODEX_DIR)) {
@@ -73,7 +74,7 @@ export function detectTools() {
       skillFileName: 'SKILL.md',
       hasAgents: false,
       hasRules: false,
-      hasHooks: false,
+      hasHooks: false
     });
   }
   return tools;
@@ -85,14 +86,14 @@ export const COMPONENTS = [
   { src: 'agents', dest: path.join(CLAUDE_DIR, 'agents') },
   { src: 'skills', dest: path.join(CLAUDE_DIR, 'skills') },
   { src: 'rules', dest: path.join(CLAUDE_DIR, 'rules') },
-  { src: 'hooks', dest: path.join(CLAUDE_DIR, 'hooks') },
+  { src: 'hooks', dest: path.join(CLAUDE_DIR, 'hooks') }
 ];
 
 export const CODEX_MANAGED_FILES = {
   rootFiles: CODEX_MANAGED_ROOT_FILES,
   prompts: CODEX_ALLOWED_COMMAND_FILES,
   promptDirs: ['auto'],
-  skills: CODEX_SKILL_DIRS,
+  skills: CODEX_SKILL_DIRS
 };
 
 // Auto CLI 管理的具体文件清单（install --clean 与 uninstall 共用）
@@ -101,7 +102,7 @@ export const MANAGED_FILES = [
   {
     dir: path.join(CLAUDE_DIR, 'commands'),
     files: ['auto.md'],
-    subdirs: ['auto'],
+    subdirs: ['auto']
   },
   {
     dir: path.join(CLAUDE_DIR, 'agents'),
@@ -116,8 +117,8 @@ export const MANAGED_FILES = [
       'refactor-cleaner.md',
       'security-reviewer.md',
       'tdd-guide.md',
-      'verification.md',
-    ],
+      'verification.md'
+    ]
   },
   {
     dir: path.join(CLAUDE_DIR, 'skills'),
@@ -144,6 +145,7 @@ export const MANAGED_FILES = [
       'code-analyzer.md',
       'api-design.md',
       'refactoring-patterns.md',
+      'spec-driven.md'
     ],
     subdirs: [
       'api-design.references',
@@ -159,8 +161,8 @@ export const MANAGED_FILES = [
       'refactoring-patterns.references',
       'robustness-patterns.references',
       'systematic-debugging.references',
-      'workflow-patterns.references',
-    ],
+      'workflow-patterns.references'
+    ]
   },
   {
     dir: path.join(CLAUDE_DIR, 'rules'),
@@ -174,17 +176,17 @@ export const MANAGED_FILES = [
       'performance.md',
       'security.md',
       'testing.md',
-      'version-and-release.md',
-    ],
+      'version-and-release.md'
+    ]
   },
   {
     dir: path.join(CLAUDE_DIR, 'hooks'),
-    files: ['hooks.json'],
+    files: ['hooks.json']
   },
   {
     dir: path.join(CLAUDE_DIR, 'hooks', 'lib'),
-    files: ['codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js'],
-  },
+    files: ['codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js']
+  }
 ];
 
 export {
@@ -192,5 +194,5 @@ export {
   CODEX_ALLOWED_COMMAND_FILES,
   CODEX_ALLOWED_COMMAND_SUBDIR_FILES,
   CODEX_MANAGED_ROOT_FILES,
-  CODEX_DIR,
+  CODEX_DIR
 };

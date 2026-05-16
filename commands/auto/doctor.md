@@ -76,7 +76,19 @@ Glob("package.json")
   -> 不存在 -> INFO: "非 Node.js 项目，跳过"
 ```
 
-### 5. 输出诊断报告
+### 5. 缓存检查
+
+```
+Bash("test -d .auto/cache/skill-extracts && ls .auto/cache/skill-extracts/*.md 2>/dev/null | wc -l")
+  -> >= 10 -> PASS
+  -> < 10 -> WARN: "skill-extracts 缓存不完整，建议 npm run rebuild:cache"
+
+Bash("test -f .auto/cache/insight-index.json && echo EXISTS || echo MISSING")
+  -> EXISTS -> PASS
+  -> MISSING -> WARN: "insight-index.json 缺失，知识检索将降级为 grep。建议 npm run rebuild:cache"
+```
+
+### 6. 输出诊断报告
 
 ```markdown
 ## Auto CLI 环境诊断报告

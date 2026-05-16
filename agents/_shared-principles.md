@@ -78,6 +78,22 @@ tags: [shared, protocol, handoff, agent, principles]
 5. 任一阶段如发现上游对象缺失，必须显式输出 `blockingIssues`，而不是静默续行。
 6. 当 run 需要跨阶段或跨会话继续时，当前 phase 必须立即写入 `.auto/runs/<runId>/session-continuity.md`；LEARN 仅负责收尾时补全或更新。
 
+### Gate 自适应规则
+
+SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
+
+| 技术栈信号                               | 可执行 gate                                                                  | 不可执行（自动 elide，不输出）               |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------- |
+| 纯 Markdown（无 src/、无 test/）         | lint(prettier) + analysis + skill-activation + knowledge-reuse + clean-state | build, test, coverage, security, adversarial |
+| Node.js（有 package.json + test script） | 全部                                                                         | —                                            |
+| Java/Go/Rust（有构建文件）               | 全部                                                                         | —                                            |
+| 其他（有构建文件但无 test script）       | build + lint + analysis + skill-activation + knowledge-reuse + clean-state   | test, coverage, security, adversarial        |
+
+`elided` gate 不写入 `VerifyReport`，不占上下文。与 `status=skipped` 的区别：
+
+- `skipped` = 本应执行但因条件不满足而跳过（需记录原因）
+- `elided` = 当前技术栈根本不适用（静默省略）
+
 ### 真源与缓存边界
 
 - `.auto/runs/<runId>/` 是单次 run 的协议真源。
@@ -234,6 +250,13 @@ tags: [shared, protocol, handoff, agent, principles]
   ],
   "resumePrompt": "<新会话可直接使用的续接 prompt，含 runId + 已完成 Quest + 下一步动作>",
   "lastCheckpoint": "<最后一关完成的 questId 或 phase 出口>",
+  "interruptPoint": {
+    "questId": "<中断时所在 Quest>",
+    "stepWithinQuest": "<中断时 Quest 内步骤: write-tests | implement | verify | review>",
+    "lastSuccessfulAction": "<中断前最后成功的动作>",
+    "pendingActions": ["<待执行的下一步动作>"],
+    "contextSnapshot": ["<需在新会话中重新加载的关键文件路径>"]
+  },
   "cleanStateChecklist": {
     "startupAndTestsPass": true,
     "progressLogReflectsReality": true,
@@ -415,6 +438,12 @@ tags: [shared, protocol, handoff, agent, principles]
       "outputs": ["<输出物>"],
       "touchFiles": ["<文件路径>"],
       "acceptance": ["<验收标准1>", "<验收标准2>"],
+      "conditionalNext": {
+        "on_success": "quest-<nextId>",
+        "on_fail": "quest-<fallbackId>",
+        "on_partial": "quest-<retryId>"
+      },
+      "isFallback": false,
       "risk": "low | medium | high",
       "rollback": "<当前 Quest 的回滚范围和方式>",
       "decisionNotes": ["<决策1>", "<决策2>"],
@@ -710,3 +739,71 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 5. VERIFY 检查已完成的 Quest 是否满足验收标准，未完成的部分标记 `deferred`
 
 - 不把 `cache/` 当作知识真源，长期复用只写入 `.auto/insights/`、`.auto/feedback/` 或 `.auto/memory/`
+
+### `cost` gate
+
+估算本次 run 的资源消耗，纯信息性 gate，不阻断执行：
+
+```json
+{
+  "gate": "cost",
+  "status": "pass | warning",
+  "metrics": {
+    "readCalls": 12,
+    "writeCalls": 5,
+    "agentCalls": 2,
+    "totalQuests": 4,
+    "estimatedContextUsage": "45%"
+  },
+  "warning": "上下文使用超过 70%，建议下次拆分任务"
+}
+```
+
+**处置**：
+
+- `pass`：上下文使用 < 70%，资源消耗正常
+- `warning`：上下文使用 > 70%，在 SUMMARIZE 中提示用户，不阻断执行
+- 不设 `fail` 状态——成本是信息，不是门禁
+
+**计量维度**：
+
+- Read 调用次数（估算上下文占用）
+- Write/Edit 调用次数
+- Agent 子调度次数
+- 总 Quest 数
+- 估算上下文使用率（基于当前会话已读取文件量）
+
+### Agent Preference Memory 协议
+
+`.auto/feedback/agents.json` 是跨 run 的 Agent 偏好记忆存储，SCAN 阶段路由时读取以优化 Agent 选择：
+
+```json
+{
+  "version": "auto-md/v1",
+  "lastUpdated": "YYYY-MM-DD",
+  "agents": {
+    "<agent-name>": {
+      "totalCalls": 0,
+      "lastUsed": "YYYY-MM-DD | null",
+      "successRate": 0.85,
+      "avgQuality": 4.2,
+      "knownIssues": [],
+      "priority": "normal | promote | demote",
+      "preferences": {
+        "questGranularity": "fine | normal | coarse",
+        "codeStyle": "minimal-abstraction | moderate | rich",
+        "prSize": "small | medium | large"
+      },
+      "notes": "该项目偏好 3-5 关的细粒度拆分"
+    }
+  }
+}
+```
+
+**消费时机**：
+
+- SCAN 1.4 Agent 路由时读取 `preferences` 注入到 agent 调度 prompt
+- PLAN 2.1 知识检索时按 `feedback/agents.json` 调整 agent 优先级
+- 已知 `knownIssues` 的 agent 自动降优先，`successRate < 0.5` 的 agent 排除出候选列表
+
+**维护时机**：每次 LEARN 6.2 阶段记录 Agent 调用结果后更新。`totalCalls` 递增，`successRate` 重新计算。

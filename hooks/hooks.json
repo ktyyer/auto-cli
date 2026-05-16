@@ -135,9 +135,9 @@
         "description": "Skill health reminder: suggest skill-evaluator after editing skills/*.md or SKILL.md (warn never block)"
       }
     ],
-    "PostCompaction": [
+    "PostCompact": [
       {
-        "matcher": "*",
+        "matcher": "auto",
         "hooks": [
           {
             "type": "command",
@@ -145,6 +145,18 @@
           }
         ],
         "description": "Re-inject critical project context after context window compaction"
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Save current quest progress before context compaction\ninput=$(cat)\n\necho '[Hook] Context compaction imminent - save quest progress NOW' >&2\necho '[Hook] 1. Write current Quest interruptPoint to .auto/runs/<runId>/session-continuity.md' >&2\necho '[Hook] 2. Merge completed QuestResults into checkpoint' >&2\necho '[Hook] 3. Clear completed Quest details from context' >&2\necho '[Hook] See commands/auto.md PHASE 3.6 for full compression protocol' >&2\n\necho \"$input\""
+          }
+        ],
+        "description": "Save quest progress before context compaction - ensures interrupt-resume continuity"
       }
     ],
     "UserPromptSubmit": [

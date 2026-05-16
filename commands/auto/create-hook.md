@@ -32,7 +32,8 @@ description: 生成 Claude Code Hook 模板建议。基于项目配置（TypeScr
 | -------------------- | -------------- | ------------------------ |
 | **PreToolUse**       | 工具调用前     | 验证、修改输入、阻止操作 |
 | **PostToolUse**      | 工具调用后     | 自动格式化、检查、通知   |
-| **PostCompaction**   | 上下文压缩后   | 重新注入关键上下文       |
+| **PreCompact**       | 上下文压缩前   | 保存关键进度、备份转录   |
+| **PostCompact**      | 上下文压缩后   | 重新注入关键上下文       |
 | **UserPromptSubmit** | 用户提交提示后 | 验证提示、注入上下文     |
 | **TeammateIdle**     | 队友空闲时     | 分配新任务               |
 | **TaskCompleted**    | 任务完成时     | 质量门禁、验证           |

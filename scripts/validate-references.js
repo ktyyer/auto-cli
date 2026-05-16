@@ -137,11 +137,11 @@ function extractReferences(content) {
 
   const agentPatterns = [
     /Agent\(\s*subagent_type:\s*["']([a-zA-Z0-9-_]+)["']/gi,
-    /agent:\s*["']?([a-zA-Z0-9-_]+)["']?/gi,
-    /subagent_type:\s*["']([a-zA-Z0-9-_]+)["']/gi
+    /agent:[ \t]*["']?([a-zA-Z0-9-_]+)["']?/gi,
+    /subagent_type:[ \t]*["']([a-zA-Z0-9-_]+)["']/gi
   ];
 
-  const skillPatterns = [/skill:\s*["']?([a-zA-Z0-9-_]+)["']?/gi];
+  const skillPatterns = [/skill:[ \t]*["']?([a-zA-Z0-9-_]+)["']?/gi];
 
   for (const pattern of agentPatterns) {
     let match;

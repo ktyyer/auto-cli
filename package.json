@@ -1,6 +1,6 @@
 {
   "name": "auto-cli",
-  "version": "0.36.0",
+  "version": "0.40.0",
   "description": "Auto CLI - Claude Code /auto 超级命令",
   "scripts": {
     "pack": "npm pack",
@@ -12,6 +12,7 @@
     "validate:references": "node scripts/validate-references.js",
     "validate:package": "node scripts/validate-package-contents.js",
     "validate:run": "node scripts/validate-run-completeness.js --latest --allow-missing",
+    "rebuild:cache": "node scripts/rebuild-skill-extracts.js && node scripts/rebuild-insight-index.js",
     "check": "npm run format:check && npm run validate:references && npm run validate:package && npm run validate:run",
     "test": "npm run check"
   },

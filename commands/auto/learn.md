@@ -1,5 +1,5 @@
 ---
-name: learn
+name: auto:learn
 description: 将 Git 历史模式、执行经验和路由反馈统一输出为 LearnCard，并分发到 insights / feedback
 allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 ---
