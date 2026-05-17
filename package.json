@@ -1,6 +1,6 @@
 {
   "name": "auto-cli",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "description": "Auto CLI - Claude Code /auto 超级命令",
   "scripts": {
     "pack": "npm pack",
@@ -36,6 +36,7 @@
   "homepage": "https://github.com/ktyyer/auto-cli#readme",
   "files": [
     "AGENTS.md",
+    ".claude-plugin",
     "scripts",
     "agents",
     "rules",

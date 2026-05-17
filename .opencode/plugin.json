@@ -1,0 +1,20 @@
+{
+  "name": "auto-cli",
+  "description": "Auto CLI - /auto super command for OpenCode (experimental bridge, mirrors .claude-plugin/)",
+  "version": "0.41.0",
+  "author": {
+    "name": "Auto CLI Team"
+  },
+  "keywords": [
+    "opencode",
+    "ai",
+    "agents",
+    "workflow",
+    "automation",
+    "slash-command",
+    "skills",
+    "orchestration"
+  ],
+  "experimental": true,
+  "note": "OpenCode plugin schema is still evolving. This file mirrors .claude-plugin/plugin.json as a placeholder. When OpenCode publishes a stable plugin spec, this will be updated to match."
+}

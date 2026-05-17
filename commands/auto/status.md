@@ -29,7 +29,7 @@ description: 查看项目状态、能力安装情况与 .auto 协议落盘状态
 Read package.json / pom.xml / go.mod → 提取 name, version
 Glob commands/*.md + commands/**/*.md → 统计命令数量
 Glob agents/*.md → 统计 Agent 数量
-Glob skills/*.md → 统计 Skill 数量
+Glob skills/*/SKILL.md → 统计 Skill 数量
 Bash: git status --short | wc -l → 未提交变更数
 Bash: git rev-parse --short HEAD → 当前 commit
 Bash: git branch --show-current → 当前分支

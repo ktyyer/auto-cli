@@ -332,7 +332,18 @@ function resolveRunId({ runId, latest }) {
   if (runs.length === 0) return null;
 
   if (latest || !runId) {
-    return runs[runs.length - 1];
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const runPath = path.join(RUNS_DIR, runs[i]);
+      const isComplete = REQUIRED_FILES.every((file) => {
+        const filePath = path.join(runPath, file);
+        if (!fs.existsSync(filePath)) return false;
+        const content = fs.readFileSync(filePath, 'utf-8').toLowerCase();
+        const tokens = REQUIRED_CONTENT[file] || [];
+        return tokens.every((token) => content.includes(token));
+      });
+      if (isComplete) return runs[i];
+    }
+    return null;
   }
 
   return null;
@@ -340,13 +351,18 @@ function resolveRunId({ runId, latest }) {
 
 function validateRun(runId) {
   if (!runId) {
+    const allRuns = listRuns();
+    const message =
+      allRuns.length > 0
+        ? `未找到完整闭环 run（${allRuns.length} 个 in-progress 或不达标 run 已跳过）`
+        : '未找到任何 run 目录';
     return {
       ok: false,
       runId: null,
       runPath: RUNS_DIR,
       missingFiles: [],
       presentFiles: [],
-      message: '未找到任何 run 目录'
+      message
     };
   }
 
@@ -522,7 +538,7 @@ function main() {
     if (shouldAllowMissing) {
       console.log('');
       console.log('allow-missing: PASS');
-      console.log('message: 当前仓库没有本地 run 工件，跳过 run 完整性门禁');
+      console.log(`message: ${result.message}，跳过 run 完整性门禁`);
     }
   }
 

@@ -11,6 +11,7 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const CODEX_DIR = path.join(os.homedir(), '.codex');
 const CODEX_SKILL_DIRS = [
   'api-design',
+  'brainstorming',
   'code-analyzer',
   'code-style-enforcer',
   'comment-standards',
@@ -32,6 +33,7 @@ const CODEX_SKILL_DIRS = [
   'spec-driven',
   'systematic-debugging',
   'test-plan-writer',
+  'using-git-worktrees',
   'workflow-patterns'
 ];
 const CODEX_ALLOWED_COMMAND_FILES = ['auto.md'];
@@ -123,29 +125,31 @@ export const MANAGED_FILES = [
   {
     dir: path.join(CLAUDE_DIR, 'skills'),
     files: [
+      'api-design.md',
+      'brainstorming.md',
+      'code-analyzer.md',
       'code-style-enforcer.md',
+      'comment-standards.md',
       'dependency-analyzer.md',
       'error-patterns.md',
       'git-workflow.md',
       'init-project.md',
       'java-patterns.md',
+      'logging-patterns.md',
       'performance-patterns.md',
       'prd-writer.md',
-      'skill-creator.md',
-      'skill-evaluator.md',
-      'systematic-debugging.md',
-      'workflow-patterns.md',
-      'logging-patterns.md',
+      'production-standards.md',
+      'refactoring-patterns.md',
       'requirement-clarifier.md',
       'research-analyst.md',
-      'comment-standards.md',
       'robustness-patterns.md',
-      'production-standards.md',
+      'skill-creator.md',
+      'skill-evaluator.md',
+      'spec-driven.md',
+      'systematic-debugging.md',
       'test-plan-writer.md',
-      'code-analyzer.md',
-      'api-design.md',
-      'refactoring-patterns.md',
-      'spec-driven.md'
+      'using-git-worktrees.md',
+      'workflow-patterns.md'
     ],
     subdirs: [
       'api-design.references',

@@ -252,7 +252,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 并优先完成**能力预热**：
 
 - 若存在 `.auto/cache/capability-snapshot.json`，先把它当成项目命令、skills、feedback 的快速索引
-- 若当前项目存在 `commands/` 或 `skills/`，把它识别为“能力仓库”信号，继续读取 `commands/**/*.md` 与 `skills/*.md`
+- 若当前项目存在 `commands/` 或 `skills/`，把它识别为“能力仓库”信号，继续读取 `commands/**/*.md` 与 `skills/*/SKILL.md`
 - 若 snapshot 缺失、过期或与目录事实不一致，回退到实时枚举能力清单，而不是直接按通用经验路由
 - 在进入 Route 前，至少能回答：当前项目有哪些本地命令、有哪些本地 skills、哪些能力只属于 Claude、哪些能力 Codex 可直接使用
 
@@ -364,7 +364,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 2. 技术栈文件：`package.json` / `pom.xml` / `go.mod` / `requirements.txt` / `Cargo.toml`
 3. `git status --short`、必要目录结构、最近相关测试文件
 4. 与任务直接相关的源码、配置、测试文件
-5. 仓库内 `skills/*.md`
+5. 仓库内 `skills/*/SKILL.md`（每个 skill 是独立目录，含 SKILL.md + 可选 references/，对齐 Anthropic 开放标准）
 6. `.auto/insights/*`、`.auto/feedback/*`、`.auto/cache/*`、最近 run 工件（若存在）
 
 同时完成：
@@ -406,6 +406,8 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 修 bug / 构建失败 / 测试失败：`systematic-debugging` + `error-patterns`
 - 新功能 / 重构：`test-plan-writer`
 - 需求不清：`requirement-clarifier`
+- 实现 / 重构策略下存在 ≥ 2 条合理实现路径（OAuth/JWT/Session、Redis/本地缓存、新建/重构等）：`brainstorming`（在 PLAN 阶段强制前置，列 2-3 个方案让用户选向后再写代码）
+- Quest 数 ≥ 3 且无 touchFiles 交集且可独立测试：`using-git-worktrees`（多 agent 并行隔离开发）
 - skill 触发诊断或 skill 质量优化：`skill-evaluator`
 - 新技术、第三方库、版本兼容：`research-analyst`
 - API 设计：`api-design`
@@ -519,10 +521,11 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 1. **skill-activation**：说明哪些 skill 真被用了，分别影响了什么
 2. **knowledge-reuse**：若用了 `.auto/insights` / `.auto/feedback`，说明复用了什么
-3. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
-4. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
-5. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-6. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+3. **knowledge-distribution**：本 run 产出的 LearnCard 是否已分发到 `.auto/insights/<category>.md`（详见 PHASE 6 硬约束）
+4. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
+5. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
+6. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+7. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：
@@ -609,6 +612,44 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 本次 route 判断
 - 校验路径是否有效
 - 是否暴露出新的 trap / pattern
+
+### `knowledge-distribution` 硬约束（必检 · 所有策略）
+
+LearnCard 仅写到 `runs/<runId>/learn-cards.md` **不算沉淀**，必须按 category 分发到 `.auto/insights/<category>.md`，否则下次 SCAN 反查不到，等同未沉淀。
+
+分发映射：
+
+| LearnCard.category | 目标文件                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `trap`             | `.auto/insights/traps.md`                                                          |
+| `pattern`          | `.auto/insights/patterns.md`                                                       |
+| `decision`         | `.auto/insights/decisions.md`                                                      |
+| `prompt`           | `.auto/insights/prompts.md`                                                        |
+| `feedback`         | `.auto/insights/agent-feedback.md` + `.auto/feedback/agents.json` 或 `skills.json` |
+
+每张 LearnCard append 时必须包含**硬锚点**：
+
+```markdown
+### <标题>
+
+**日期**: YYYY-MM-DD | **置信度**: high|medium|low | **来源**: run-<runId>
+
+<2-3 句核心描述 + 推荐动作>
+```
+
+`来源: run-<runId>` 是 grep 核对依据，缺失则视为未分发。
+
+处置规则：
+
+- **pass**: 所有 LearnCard 已 append 到对应 insights 文件
+- **warning**: < 50% 未分发，但 trap / critical decision 已分发
+- **fail**: ≥ 50% 未分发，或任意 `category=trap` 未进 traps.md → 回流 LEARN 补分发后再 verify
+
+反模式：
+
+- 把 `runs/<id>/learn-cards.md` 视为沉淀终点
+- LearnCard 写完不分发就跑 SUMMARIZE
+- 分发时省略 "来源" 行
 
 ---
 

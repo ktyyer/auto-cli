@@ -213,3 +213,63 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 **推荐动作**: 发布回归只允许串行执行：先卸载，再打包，再安装，最后核对落盘产物
 **反模式**: 把发布链路视为可并行的独立命令
 **来源**: run-20260513-185511-release-refresh
+
+### validator "取最新者" 不区分 in-progress 与 broken run
+
+**日期**: 2026-05-17
+**标签**: validator, scripts, cache-runs, ci-stability
+**置信度**: high
+
+`validate-run-completeness.js` 原 `resolveRunId` 用 mtime 取最新目录，永远命中 in-progress 或半成品 run，导致 `npm run check` 在任何一次 /auto 中断后红。`.auto/runs/` 是 cache 性质（不入 git），半成品自然累积。
+
+**触发条件**: 中断 /auto 留下半成品 run；历史协议升级遗留旧 run；用户手动放笔记到 .auto/runs/ 下
+**推荐动作**: 任何"取最新者校验"的脚本预设"最新者可能未完成"，倒序找完整对象，找不到则视同空触发 --allow-missing
+**反模式**: 简单返回 `runs[runs.length - 1]` 当作"权威 latest"
+**来源**: run-20260517-fix-consistency
+
+### 工具能力强但脱离生态等于隐形
+
+**日期**: 2026-05-17 | **置信度**: high | **来源**: run-20260517-strategic-optimization
+
+评估开源工具时不仅看功能完备性，更要看"是否在用户安装/发现路径上"：未被 awesome 列表收录 + 未上 plugin marketplace + 无英文文档 → 等同隐形。优化生态接入比新增功能 ROI 更高。
+**反模式**: 把工具内部能力对标当成竞品评估的全部维度
+
+### validate 通过不等于校验完整
+
+**日期**: 2026-05-17 | **置信度**: high | **来源**: run-20260517-skills-standardize
+
+改造扫描函数后立即跑 validate 并**核对"可用 X: N"计数**。如果计数变成 0 但 EXIT=0，说明 validate 静默失去了对该类资源的覆盖（failed=0 因为根本没扫到东西）。本仓库重组 skills 时 validate-references 一度报"可用 Skills: 0 / 通过: 20 / 失败: 0 / EXIT=0"，误导性极强。
+**反模式**: 仅看 EXIT code 不看计数
+
+### 知识沉淀闭环失败 — LearnCard 停在 run 目录
+
+**日期**: 2026-05-17 | **置信度**: high | **来源**: run-20260517-modifications-audit
+
+`/auto` PHASE 6.1 规定 LearnCard 必须**分发到 `.auto/insights/{patterns,decisions,traps,prompts}.md`**，但实际本会话 7 个 run 一度仅 1/7 真分发。AI 容易把"learn-cards.md 已写"误判为"知识已沉淀"。
+**触发条件**: 连续多 run 任务时主流程焦虑于推进，忽略 LEARN phase 的"再分发"步骤
+**推荐动作**: VERIFY 阶段新增 `knowledge-distribution` 子检查，确认 LearnCard 真 append 到 insights/
+**反模式**: 把 `runs/<id>/learn-cards.md` 视为知识沉淀的终点
+
+### 大版本结构迁移时漏掉 .codex.md 镜像同步
+
+**日期**: 2026-05-17 | **置信度**: high | **来源**: run-2026-05-17-audit-codex-sync
+
+源代码结构升级（如 `skills/<name>.md` → `skills/<name>/SKILL.md`）时，开发者通常只更新 Claude 主命令（commands/auto.md），**遗漏 Codex 镜像**（commands/auto.codex.md + 4 个子命令 .codex.md + manifest.js 的 CODEX_SKILL_DIRS 数组）。结果 Codex 端 glob `skills/*.md` 在新结构下找不到任何文件，skill 动态发现彻底失效。
+**触发条件**: Codex 端配置分散在 5+ 文件，手动同步易漏
+**推荐动作**:
+1. 任何 skill 结构变更必须**同时**修改所有 5 个 .codex.md 文件 + manifest.js
+2. 推荐写 `validate-codex-sync.js` 自动核对路径一致性
+3. 大版本变更后必须跑 `grep -rn "skills/\*\.md" commands/` 确认无旧路径残留
+**反模式**: 只验证 Claude 端通过就发布；以为 install.js 正确就万事大吉（实际是命令文件内嵌的 Glob 模式也要同步）
+
+### 跨平台脚本的"静默失败" — exit 0 + 0 产出
+
+**日期**: 2026-05-17 | **置信度**: high | **来源**: run-2026-05-17-fix-codex-sync
+
+`scripts/rebuild-skill-extracts.js` 在 skill 结构从 flat 迁移到 nested 后旧逻辑 `readdirSync(SKILLS_DIR).filter(f => f.endsWith('.md'))` 在新结构下匹配 0 个文件，但脚本仍 exit 0 + 输出 "0 extracted, 0 placeholder, 0 total"。看起来"成功"但实际完全失败。同类反模式：validate-references 显示 "0 通过 0 失败 EXIT 0" 也算成功。
+**触发条件**: 枚举型脚本统计字段为 0 不触发告警
+**推荐动作**:
+1. 脚本若预期产出数 > 0，应主动检查并 exit 1 告警
+2. 在 CI 中加 `[ "$(ls $DIR | wc -l)" -ge $EXPECTED ] || exit 1`
+3. 注释中明确"预期产出数 ≈ 实际 skill 目录数"
+**反模式**: 任何"枚举 → 处理"型脚本可以"成功完成 0 工作"

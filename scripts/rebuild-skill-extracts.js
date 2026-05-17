@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// Rebuild .auto/cache/skill-extracts/ from skills/*.md
-// Extracts the "## 激活摘要" section from each skill file.
+// Rebuild .auto/cache/skill-extracts/ from skills/<name>/SKILL.md
+// Extracts the "## 激活摘要" section from each SKILL.md file.
 // If no activation digest exists, generates a minimal placeholder from frontmatter.
 
 import fs from 'fs';
@@ -59,7 +59,7 @@ function generatePlaceholder(fm, skillName) {
 - [ ] 参考 ${skillName} skill 全文
 
 ### constraints
-- 见 skills/${skillName}.md
+- 见 skills/${skillName}/SKILL.md
 
 ### anti-patterns
 - 待补充
@@ -76,16 +76,22 @@ function main() {
     return;
   }
 
-  const files = fs
-    .readdirSync(SKILLS_DIR)
-    .filter((f) => f.endsWith('.md') && !f.startsWith('.'));
+  // 新结构: skills/<name>/SKILL.md（对齐 Anthropic 开放标准）
+  const entries = fs
+    .readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'community');
 
   let extracted = 0;
   let placeholder = 0;
+  let total = 0;
 
-  for (const file of files) {
-    const skillName = file.replace('.md', '');
-    const content = fs.readFileSync(path.join(SKILLS_DIR, file), 'utf-8');
+  for (const entry of entries) {
+    const skillFile = path.join(SKILLS_DIR, entry.name, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) continue;
+    total++;
+
+    const skillName = entry.name;
+    const content = fs.readFileSync(skillFile, 'utf-8');
     const fm = extractFrontmatter(content);
 
     let digest = extractActivationDigest(content);
@@ -101,7 +107,7 @@ function main() {
   }
 
   console.log(
-    `skill-extracts rebuilt: ${extracted} extracted, ${placeholder} placeholder, ${files.length} total`
+    `skill-extracts rebuilt: ${extracted} extracted, ${placeholder} placeholder, ${total} total`
   );
 }
 

@@ -205,26 +205,28 @@ function copyCommands(src, tools) {
 }
 
 function copySkills(src, tools) {
-  // 读取 skills/*.md 源文件
+  // 读取 skills/<name>/SKILL.md 源结构（Anthropic 开放标准对齐）
   const entries = fs.readdirSync(src, { withFileTypes: true });
   let totalCopied = 0;
 
   for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    if (!entry.isDirectory() || entry.name === 'community') continue;
 
-    const srcPath = path.join(src, entry.name);
+    const skillFile = path.join(src, entry.name, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) continue;
+
+    const skillName = entry.name;
 
     for (const tool of tools) {
       if (tool.skillFileName) {
-        // Codex: skills/<name>/SKILL.md
-        const skillName = entry.name.replace(/\.md$/, '');
+        // Codex: skills/<name>/SKILL.md（与源结构一致）
         const skillDir = path.join(tool.skillsDir, skillName);
         ensureDir(skillDir);
-        fs.copyFileSync(srcPath, path.join(skillDir, tool.skillFileName));
+        fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
       } else {
-        // Claude: skills/<name>.md (flat)
+        // Claude: skills/<name>.md (flat，兼容旧用户路径，无需迁移)
         ensureDir(tool.skillsDir);
-        fs.copyFileSync(srcPath, path.join(tool.skillsDir, entry.name));
+        fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
       }
       totalCopied++;
     }
@@ -234,27 +236,29 @@ function copySkills(src, tools) {
 }
 
 function copyReferences(src, tools) {
-  // 读取 skills/ 下的 .references/ 子目录
+  // 读取 skills/<name>/references/ 子目录（Anthropic 开放标准对齐）
   const entries = fs.readdirSync(src, { withFileTypes: true });
   let totalCopied = 0;
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.endsWith('.references')) continue;
+    if (!entry.isDirectory() || entry.name === 'community') continue;
+
+    const refSrc = path.join(src, entry.name, 'references');
+    if (!fs.existsSync(refSrc)) continue;
+
+    const skillName = entry.name;
 
     for (const tool of tools) {
       if (tool.skillFileName) {
-        // Codex: map <skill>.references/ to skills/<skill>/references/
-        const skillName = entry.name.replace(/\.references$/, '');
+        // Codex: skills/<name>/references/（与源结构一致）
         const refDir = path.join(tool.skillsDir, skillName, 'references');
         ensureDir(refDir);
-        const count = copyDir(path.join(src, entry.name), refDir);
-        totalCopied += count;
+        totalCopied += copyDir(refSrc, refDir);
       } else {
-        // Claude: skills/<name>.references/ (flat alongside .md)
-        const destRefDir = path.join(tool.skillsDir, entry.name);
+        // Claude: skills/<name>.references/（flat 兼容）
+        const destRefDir = path.join(tool.skillsDir, `${skillName}.references`);
         ensureDir(destRefDir);
-        const count = copyDir(path.join(src, entry.name), destRefDir);
-        totalCopied += count;
+        totalCopied += copyDir(refSrc, destRefDir);
       }
     }
   }

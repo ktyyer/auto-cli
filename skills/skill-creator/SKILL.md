@@ -214,7 +214,7 @@ Description 是主要触发机制。写法要点：
 - 效果分（D8）由 `Task(subagent_type: "verification")` 独立 A/B 跑出
 - 单轮只改一维，保留改进、回滚回归
 
-详见 `skills/skill-evaluator.md`。
+详见 `skills/skill-evaluator/SKILL.md`。
 
 ---
 

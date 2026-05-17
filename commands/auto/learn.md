@@ -185,7 +185,7 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 - `ignore_rate`
 - `usage_frequency`
 
-字段定义详见 `commands/auto.md` 6.2 节与 `skills/skill-evaluator.md`。
+字段定义详见 `commands/auto.md` 6.2 节与 `skills/skill-evaluator/SKILL.md`。
 
 ---
 

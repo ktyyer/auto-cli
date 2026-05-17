@@ -273,3 +273,62 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
 
 - **error-patterns** — 常见错误模式库（边界值、并发、幂等性验证模式）
 - **code-style-enforcer** — 代码风格规则（不可变模式检测、可变操作识别）
+
+---
+
+## Quest-Designer 产出质量评估（v0.40.x 新增能力）
+
+verification 除红蓝对抗外，**周期性评估 quest-designer 产出的 QuestMap 质量**，沉淀到 `.auto/feedback/agents.json` 用于下次路由决策。
+
+### 触发条件
+
+- 显式：`verification --evaluate-quest-designer`
+- 隐式：每完成 5 个使用 quest-designer 的 run，自动触发一次评估
+- 路由层：`/auto:route` 读 feedback 时如发现 quest-designer 评分 < 0.7 自动降级
+
+### 6 维度评估（每维 0-1 分）
+
+| 维度                  | 评估问题                                              |
+| --------------------- | ----------------------------------------------------- |
+| **acceptance 可执行** | 验收标准是可执行命令而非"功能正常"等弱描述吗？        |
+| **touchFiles 精确**   | 每个 Quest 的触及文件是否精确到具体路径？             |
+| **依赖拓扑正确**      | Quest 间的 blocks/blockedBy 关系合理无环？            |
+| **失败策略明确**      | 每关有明确的失败回滚边界（Quest 级而非仓库级）？      |
+| **粒度合理**          | 每关产出可独立交付，2-5 分钟可完成？                  |
+| **测试关显式**        | test-plan-writer 产出的 6 维矩阵是否真嵌入 QuestMap？ |
+
+### 输出格式（写入 `.auto/feedback/agents.json`）
+
+```json
+{
+  "quest-designer": {
+    "successRate": 0.85,
+    "evaluatedRuns": 15,
+    "lastEvaluatedAt": "2026-05-17",
+    "dimensions": {
+      "acceptance-executable": 0.9,
+      "touchfiles-precise": 0.95,
+      "dependency-topology": 0.85,
+      "failure-strategy": 0.8,
+      "granularity-reasonable": 0.85,
+      "test-quest-explicit": 0.75
+    },
+    "preferences": {
+      "questGranularity": "fine"
+    },
+    "knownIssues": ["在重构策略下偶尔遗漏 cleanup Quest 关"]
+  }
+}
+```
+
+### 处置规则
+
+- **总分 ≥ 0.8**：保持 quest-designer 为实现/重构策略主路径
+- **0.5-0.8**：写入 `knownIssues`，路由时**降优先**（仍可用但 prompt 加注意事项）
+- **< 0.5**：触发 trap LearnCard，路由时**排除**，改为 Claude 主窗口直接产出 QuestMap
+
+### 与 skill-evaluator 的关系
+
+- `skill-evaluator` 评估 **skill** 质量
+- 本评估机制评估 **agent** 质量
+- 两者输出格式对齐，分别写入 `.auto/feedback/skills.json` 和 `.auto/feedback/agents.json`，被 `/auto:route` 共同读取作为路由权重

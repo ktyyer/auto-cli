@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "auto-cli",
+  "description": "auto-cli 自托管市场 - 单 plugin marketplace，提供 /auto 超级命令、10 agents、23 skills、19 hooks、10 rules",
+  "owner": {
+    "name": "Auto CLI Team"
+  },
+  "plugins": [
+    {
+      "name": "auto-cli",
+      "description": "Claude Code /auto 超级命令 - 6 PHASE 工作流 + 协议驱动 + 知识闭环 + 跨会话续接。一个命令统一编排 Agent / Skill / Hook，越用越懂你的项目。",
+      "source": ".",
+      "category": "workflow",
+      "homepage": "https://github.com/ktyyer/auto-cli"
+    }
+  ]
+}

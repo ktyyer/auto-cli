@@ -8,7 +8,7 @@
 
 ## 项目结构
 - `commands/auto.md`：`/auto` 主命令，定义 6 PHASE 工作流
-- `commands/auto/`：子命令（doctor、learn、status、route、create-hook）
+- `commands/auto/`：子命令（doctor、learn、status、route、create-hook、dashboard）
 - `agents/`：内置 agent 清单与说明
 - `skills/`：可复用技能知识
 - `rules/`：编码规范
@@ -31,7 +31,6 @@
 
 ## 安装与卸载
 - `npm run sync` — 复制 commands/agents/skills/hooks 到 ~/.claude/（主推路径）
-- `npm run install` — `sync` 的向后兼容别名（与 `npm install` 名字易混，新脚本请用 sync）
 - `npm run uninstall` — 移除已安装的文件
 
 ## Git 与发布
@@ -62,17 +61,26 @@
 ### 进行中
 
 - [ ] `commands/auto.md` 精简：将 Skill 注入映射表等细节下沉到 skill 文件
-- [ ] `.auto/runs/` 示例索引：沉淀典型 `/auto` 运行作为使用教程
 - [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
 
-### 计划中
+### 计划中（v0.41 候选）
 
-- [ ] 多语言 README（英文版）
-- [ ] Agent 效果分自动化：verification agent 定期评估 quest-designer 产出质量
-- [ ] skills 自动发现：SCAN 阶段按标签自动匹配而非硬编码映射表
+- 暂无（v0.41 候选区已全部完成，可发布 v0.41 版本）
 
 ### 已完成
 
+- [x] v0.40.x: **`knowledge-distribution` gate 落地**：PHASE 4 新增第 13 个 gate，把"LearnCard 分发到 .auto/insights/"从软建议升为硬约束。所有策略（探索/修复/实现/重构）必检；不分发或 `category=trap` 未进 traps.md → VERIFY status=fail 回流 LEARN 补分发
+- [x] v0.40.x: **O4 · Git Worktree 多 Agent 并行**：新增 `skills/using-git-worktrees/SKILL.md`，触发条件为 Quest 数 ≥ 3 + 无 touchFiles 交集 + 独立可测试，5 步流程含创建 worktree / 并行实施 / 顺序合并 / 清理
+- [x] v0.40.x: **多语言 README（英文版）**：新增 `README.en.md` 核心翻译（标题 + USP + 安装 + 使用 + Agent Skills 标准），README.md 顶部加语言切换
+- [x] v0.40.x: **Agent 效果分自动化**：agents/verification.md 加 quest-designer 产出质量评估章节（6 维度评分 → 写入 `.auto/feedback/agents.json` → 影响下次路由）
+- [x] v0.40.x: **跨平台扩展**：新增 `.cursor-plugin/plugin.json` + `.opencode/plugin.json` 实验性桥接占位（标注 experimental，等 Cursor/OpenCode 公开 schema 后完善）
+- [x] v0.40.x: **O3 · Brainstorming 强制前置**：新增 `skills/brainstorming/SKILL.md`（仿 Superpowers），实现/重构策略下强制 Socratic 提问 2-3 种方案。`requirement-clarifier` 仍作为歧义触发兜底
+- [x] v0.40.x: **O1 · Skills 结构对齐 Anthropic 开放标准**：`skills/<name>.md` → `skills/<name>/SKILL.md` + `references/`。install.js 适配新源结构，Claude 端仍写 flat `~/.claude/skills/<name>.md` 兼容旧用户路径，Codex 端 `<name>/SKILL.md` 与源结构一致
+- [x] v0.40.x: **O2 · Plugin Marketplace 发布**：新增 `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`，用户可 `/plugin marketplace add ktyyer/auto-cli` + `/plugin install auto-cli@auto-cli` 一键安装，与 npm 路径并存
+- [x] v0.40.x: README 加「为什么 auto-cli 用过回不去」专章 + 示例 runs 章节（v0.40 增量打磨）
+- [x] v0.40.x: `.auto/runs/` 示例索引：通过 README 引用本仓库历次 run 实现使用教程
+- [x] v0.40.x: `validate-run-completeness.js` 健壮化：跳过 in-progress / 内容不达标 run，文案精确反映"N 个已跳过"
+- [x] skills 自动发现：SCAN 阶段按 frontmatter tags + description 动态匹配，硬编码映射表降级为兜底
 - [x] v0.32.0: scripts 抽 manifest + validator 识别表格
 - [x] v0.32.0: skill-evaluator skill 集成
 - [x] v0.31.0: 从 JS 运行时迁移到纯 Markdown 指令系统
@@ -81,3 +89,4 @@
 - `commands/auto.md` 是统一动作入口。
 - 子命令 md 中的能力描述需要持续与实际行为同步。
 - 包产物只保留当前需要的版本，旧 tgz 可在确认无用后删除。
+- **核心不变量**：用户只使用 `/auto` 一个命令就能完美完成任务。所有新增能力优先以 skill 形式被 `/auto` 自动激活，不引入并列入口。

@@ -1,0 +1,20 @@
+{
+  "name": "auto-cli",
+  "description": "Auto CLI - /auto super command for Cursor (experimental bridge, mirrors .claude-plugin/)",
+  "version": "0.41.0",
+  "author": {
+    "name": "Auto CLI Team"
+  },
+  "keywords": [
+    "cursor",
+    "ai",
+    "agents",
+    "workflow",
+    "automation",
+    "slash-command",
+    "skills",
+    "orchestration"
+  ],
+  "experimental": true,
+  "note": "Cursor plugin schema is still evolving. This file mirrors .claude-plugin/plugin.json as a placeholder. When Cursor publishes a stable plugin spec, this will be updated to match."
+}

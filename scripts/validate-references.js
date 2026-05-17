@@ -209,6 +209,21 @@ function getAvailableFiles(dir) {
     .map((f) => f.replace('.md', ''));
 }
 
+// 获取可用 Skill 列表（dir 结构：skills/<name>/SKILL.md）
+function getAvailableSkills(dir) {
+  const exclude = new Set(['community']);
+
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !exclude.has(entry.name))
+    .filter((entry) => fs.existsSync(path.join(dir, entry.name, 'SKILL.md')))
+    .map((entry) => entry.name);
+}
+
 function validateReferences() {
   console.log('引用完整性校验');
   console.log('='.repeat(50));
@@ -218,7 +233,7 @@ function validateReferences() {
   const commandsDir = path.join(ROOT, 'commands');
 
   const availableAgents = new Set(getAvailableFiles(agentsDir));
-  const availableSkills = new Set(getAvailableFiles(skillsDir));
+  const availableSkills = new Set(getAvailableSkills(skillsDir));
 
   console.log(`可用 Agents: ${availableAgents.size}`);
   console.log(`可用 Skills: ${availableSkills.size}`);
@@ -272,12 +287,13 @@ function validateReferences() {
     scanFile(filePath);
   }
 
-  // Skill frontmatter 格式校验
+  // Skill frontmatter 格式校验（dir 结构：skills/<name>/SKILL.md）
   const skillsDirEntries = fs.readdirSync(skillsDir, { withFileTypes: true });
   for (const entry of skillsDirEntries) {
-    if (entry.isFile() && entry.name.endsWith('.md')) {
-      const skillName = entry.name.replace('.md', '');
-      validateSkillFrontmatter(path.join(skillsDir, entry.name), skillName);
+    if (!entry.isDirectory() || entry.name === 'community') continue;
+    const skillFile = path.join(skillsDir, entry.name, 'SKILL.md');
+    if (fs.existsSync(skillFile)) {
+      validateSkillFrontmatter(skillFile, entry.name);
     }
   }
 
