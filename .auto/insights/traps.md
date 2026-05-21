@@ -273,3 +273,26 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 2. 在 CI 中加 `[ "$(ls $DIR | wc -l)" -ge $EXPECTED ] || exit 1`
 3. 注释中明确"预期产出数 ≈ 实际 skill 目录数"
 **反模式**: 任何"枚举 → 处理"型脚本可以"成功完成 0 工作"
+
+### auto.md 存在两个 2.4 节标题冲突（历史遗留）
+
+**日期**: 2026-05-21 | **置信度**: medium | **来源**: run-20260521-prompt-tricks-merge
+
+`commands/auto.md` 行 329 与行 343 同时使用 `### 2.4` 标题（"假设声明" 与 "推理摘要"），属历史遗留 bug。本 run 在 Scope Contract 中显式延后修复（用户原话只要求加提示词技巧，不含编号修复），符合"变更洁癖"。
+
+**推荐动作**: 下次有人触及 PHASE 2 章节时顺手把第二个 `2.4` 改为 `2.5`，并将后续 `2.5 Quest 设计` 重编号至 `2.6`、`2.6 Micro QuestMap` 至 `2.7`。或将 `2.4 假设声明` 合并到 `2.3`。最小 diff 优先。
+**反模式**: 在不相关的 PR 里"顺手修"——会扩大 diff 范围，违反变更洁癖；正确做法是单独开一个 chore PR 处理编号统一。
+
+### 已沉淀的知识不被自动复用——knowledge-reuse gate 在元任务上失效
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-codex-mirror-sync
+
+上一个 run（`run-20260521-prompt-tricks-merge`）违反了 patterns.md 已沉淀的"auto.md / auto.codex.md 双端镜像必须同步"硬约束——而那条 pattern 就是同 run 自己沉淀的。证明现有 `knowledge-reuse` gate 只检查 `[insight:xxx]` 标记数 ≥ 期望，**不检查最相关 pattern 是否被真正读到并应用**。根因：SCAN 没用关键词 "codex/双端/sync" 触发检索；PLAN `outOfScope` 没显式列双端核查；EXECUTE 只改了 claude 端。
+
+**推荐动作**:
+1. `knowledge-reuse` gate 增加"语义相关性检查"——不只看注入数，还要看是否覆盖了"与本次 touchFiles 高度相关"的已有 pattern
+2. PLAN 阶段加入"双端核查清单"：若 touchFiles 含 `commands/auto*.md` → 强制 grep 另一端确认对齐
+3. 在 `outOfScope` 模板中加入"双端镜像"作为默认提醒项
+
+**反模式**: 把 `[insight:xxx]` 标记数 ≥ N 当作"知识已复用"——可能只复用了 N 条不相干的，最关键那条仍然缺席。
+

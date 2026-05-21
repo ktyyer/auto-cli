@@ -735,3 +735,46 @@ PHASE 6 LEARN 仅产 LearnCard 不够，必须用 PHASE 4 的 `knowledge-distrib
 
 **推荐动作**: 修改主命令的任何"硬约束 / 触发表 / 路径模式"时，必须在同 commit 内同步双端镜像。`grep -l "skills/\*\.md" commands/` 可一键找出未同步遗留。
 **反模式**: 只改 Claude 端不改 Codex 端 — Codex 用户拿到的 `/auto` 行为偏离最新设计，且因镜像漂移持续累积分歧。
+
+### auto.md 提示词技巧的四类窗口分布法
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-prompt-tricks-merge
+
+把"防错"类一行 quote block 提示词按四类时机分布到对应 PHASE 窗口，比塞进单一守则集中地更有效。四类窗口：**反幻觉**（防胡话）→ SCAN 出口作为全 PHASE 全局守则；**防漂移**（长线跑偏）→ PLAN/EXECUTE 局部锚点 + VERIFY 入口全局回顾；**防偷懒**（让 AI 专业）→ VERIFY gate evidence 强制要求；**防偏移**（单关跑偏）→ 每关产出前 Reverse Diff 自检。
+
+**推荐动作**: 未来想加新"防错"提示词时，先归类到这四类，再找对应 PHASE 窗口插入，避免散落和重复。
+
+### Quote block 提示词的格式不变量
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-prompt-tricks-merge
+
+在 auto.md 加新"防错" quote 时必须满足三个不变量才能通过 Prettier + 与现有风格一致：(1) 开头 `> **名字（英文别名）**`（全角括号）；(2) 主体限 2-3 行（Prettier 不强制换长行）；(3) 结尾"——"破折号引出"为什么"解释。
+
+**推荐动作**: 新增 quote 前 grep 已有 `> \*\*` 开头的 quote 找最近邻样本仿写，不要凭记忆造格式。
+**反模式**: 用 `> - bullet` 嵌套列表会被 Prettier 改写为单行，破坏可读性。
+
+### 单文件多锚点编辑应判定为"实现"策略
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-prompt-tricks-merge
+
+fast-path 阈值 `≤ 2 文件 + < 20 行` 只看文件数会误判。本 run 单文件 + 29 行变更 + 9 个独立锚点，按"修复"走 fast-path 会跳过 QuestMap，9 个 Edit 失去逐点 acceptance 跟踪；判定为"实现"产出 Micro QuestMap 才能精确核对每个插入点。
+
+**推荐动作**: 单文件 + 多独立锚点 + 行数 > 20 的任务都应判定为"实现"，即使只改一个文件。fast-path 不该按文件数硬切，应同时看锚点数。
+
+### Claude/Codex 双端同步：按硬约束级筛选 + codex 风格适配
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-codex-mirror-sync
+
+Claude 端 quote block 风格的提示词技巧同步到 Codex 时不应 1:1 复制。**必须同步**：跨 runtime 的硬约束级（反幻觉守则 / Scope Contract / 实施纪律 / 验证证据要求）；**可选适配**：弱约束（Premortem / Rubber Duck / Reverse Diff / Echo the Ask）按需简化；**专属保留**：Claude 特性概念（Subagent 调度）不强译到 Codex。格式差异：Claude 用 `> **名字**：...` quote block，Codex 用 `**名字**：...` 普通段落 + bullet（符合 codex 精简哲学）。
+
+**推荐动作**: 未来在 auto.md 加新机制时，先按"硬/弱/专属"分级，再用本 run 的适配模板同步 codex 端。
+
+### 双端镜像 PLAN 阶段必查项
+
+**日期**: 2026-05-21 | **置信度**: high | **来源**: run-20260521-codex-mirror-sync
+
+PLAN 阶段编辑 `commands/auto.md` 或 `commands/auto.codex.md` 时强制执行三步：(1) `ls commands/auto*.md` 双端文件确认；(2) 用新增关键词在另一端 grep 核查同步度；(3) `outOfScope` 必填项"本次是否同步双端？若否，原因/延后到何时"。
+
+**推荐动作**: 在 `/auto:create-hook` 中生成 PreToolUse hook：检测 Edit 命中 `commands/auto.md` 时主动提示"是否需要同步 auto.codex.md"，避免依赖 AI 自觉。
+**反模式**: 改 auto.md 不查 auto.codex.md（本仓库连续两个 run 都犯过）；把"双端核查"留在脑中不写入 outOfScope（看不见即等于不存在）。
+
