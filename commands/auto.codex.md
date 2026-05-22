@@ -390,6 +390,24 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 不要引用 `~/.claude/*` 路径作为 Codex 的能力来源。
 
+**上下文预算初始化**（2026 Context Engineering）：
+
+SCAN 完成后立即建立预算感知：
+
+1. 估算当前会话已消耗上下文占比，判定预算区间：
+   - **绿区**（< 40%）：正常加载，允许深度级 Skill 激活
+   - **黄区**（40-70%）：切换摘要级激活，Phase 交接只传路径引用
+   - **红区**（> 70%）：强制压缩，写 `session-continuity.md`，提示续接
+2. 在 `RouteDecision` 中记录 `contextBudget.zone` 字段，供下游 Phase 参考
+3. 不同模型窗口容量下动态调整阈值（大窗口 40/70，中窗口 30/55，小窗口 20/40）
+
+**相似历史 run 预匹配**（知识复用加速）：
+
+- 若 `.auto/runs/` 存在，扫描最近 5 个 run 的 `route-decision.md`，提取 `userIntent` + `strategy`
+- 当前任务与历史 run 语义相似度 > 0.7 时，预加载该 run 的 `learn-cards.md` 中的 trap/pattern
+- 收益：避免重复踩同样的坑，起手就有历史经验注入
+- 限制：最多预加载 3 条历史 LearnCard，避免上下文污染
+
 ---
 
 ## PHASE 2: PLAN
@@ -405,6 +423,36 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 3. 同时命中多个 skill 时，选最小必要集合
 4. 每个激活 skill 都要先读 `SKILL.md` 或仓库内对应 skill 文件，再继续执行
 
+**四信号匹配算法**（2026 增强版，用于多 Skill 优先级排序）：
+
+```
+匹配度 = (tags 命中数 × 2)
+       + (description 与用户意图的语义相似度 × 1)
+       + (历史反馈信号 × 1.5)
+       + (上下文预算调节 × -0.5 ~ +0.5)
+
+历史反馈（来自 .auto/feedback/skills.json）：
+  successRate > 0.8 → +1.5
+  successRate 0.5-0.8 → +0.5
+  successRate < 0.5 → -1.0
+
+预算调节：
+  绿区(<40%) → +0.5 | 黄区(40-70%) → 0 | 红区(>70%) → -0.5
+
+激活列表: 匹配度 ≥ 3（top-5）
+备选列表: 匹配度 1-2（遇到特定场景时补充）
+```
+
+**Phase 敏感性调整**：实现/探索策略下，`code-style-enforcer`、`comment-standards` 匹配度 -1（其核心价值在 VERIFY 而非 PLAN/EXECUTE）；重构策略下所有 Skill 正常权重。
+
+**渐进式加载**（控制上下文占用）：
+
+- **摘要级**：仅读 `## 激活摘要` 段落（~20 行），提取 checklist + constraints + anti-patterns
+- **全文级**：摘要级 + 按需读具体 `###` 子段落
+- **深度级**：全文级 + 读 `.references/` 目录文件
+- 缓存优先：若 `.auto/cache/skill-extracts/<skill>.md` 存在，直接读缓存跳过全文读取
+- **上下文预算联动**：当上下文进入黄区(40-70%)时所有 Skill 降级一档；红区(>70%)时强制摘要级
+
 激活时至少产出这四项内部结论：
 
 - 这个 skill 为什么命中
@@ -414,11 +462,12 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 高频硬规则：
 
-- 修 bug / 构建失败 / 测试失败：`systematic-debugging` + `error-patterns`
+- 任务涉及 bug / 构建失败 / 测试失败：`systematic-debugging` + `error-patterns`
 - 新功能 / 重构：`test-plan-writer`
 - 需求不清：`requirement-clarifier`
 - 实现 / 重构策略下存在 ≥ 2 条合理实现路径（OAuth/JWT/Session、Redis/本地缓存、新建/重构等）：`brainstorming`（在 PLAN 阶段强制前置，列 2-3 个方案让用户选向后再写代码）
 - Quest 数 ≥ 3 且无 touchFiles 交集且可独立测试：`using-git-worktrees`（多 agent 并行隔离开发）
+- 复杂任务 / 上下文接近极限 / 跨会话续接：`context-engineering`
 - skill 触发诊断或 skill 质量优化：`skill-evaluator`
 - 新技术、第三方库、版本兼容：`research-analyst`
 - API 设计：`api-design`
@@ -475,6 +524,22 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 如存在明显歧义，先停下来提问，不要继续。
 
+### 2.4 假设声明与事前验尸（Think Before Coding）
+
+产出计划前必须显式声明：
+
+- **我的假设是**：列出对需求的理解（多种理解时列选项让用户选，不偷选）
+- **更简方案**：如有更简单的实现路径，主动指出
+- **不确定项**：有不清楚的先停下问，不猜
+
+**假设证伪**：列完假设必须主动找反例 — "我的假设可能错在哪？" 至少 1 个反例 + 1 个备选方案。
+
+**Premortem（事前验尸）**：“假设 6 个月后本次改动引发 P0，复盘报告最可能写哪 3 个原因？”—— 把这 3 条塞进计划的风险缓解中。
+
+**白话复述（Rubber Duck）**：调 quest-designer 或写代码**之前**，用 ≤ 3 句不含技术术语的白话把方案讲给“完全不懂技术的用户”听。讲不顺 = 自己也没真懂 → 回头重新整理再继续。
+
+> **30 秒 Reflexion**（PLAN→EXECUTE 必做）：自问——“这个计划最不放心的是哪一步？该步验收标准是不是含糊的？”如不放心 → 回头加固再进 EXECUTE。
+
 计划结果至少应在内部形成：
 
 - `RouteDecision`
@@ -495,6 +560,20 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
    - 体现在计划
    - 体现在代码或文档修改
    - 或体现在验证选择
+
+**每关启动时预算快检**（2026 Context Engineering）：
+
+每关 EXECUTE 开始前先做轻量级上下文预算检测：
+
+```
+预算快检流程：
+  1. 估算当前上下文占用（基于已读取文件量 + 已产出内容量）
+  2. 预估本关需要消耗（基于 touchFiles 数量 + estimatedLines）
+  3. 判断是否会进入下一个预算区间：
+     - 当前绿区 + 本关预估进入黄区 → 提前降级 Skill 激活级别
+     - 当前黄区 + 本关预估进入红区 → 先写 session-continuity.md 再执行
+     - 当前已红区 → 强制写 session-continuity.md，提示用户续接
+```
 
 **实施纪律三件套**（执行中持续生效）：
 
@@ -522,6 +601,12 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 **压缩防护**：连续 3+ 关后，将当前 Quest 进度写入 `session-continuity.md`，上下文中只保留当前关关键信息。
 
+**漂移防护三机制**（2026 Context Engineering 核心实践）：
+
+1. **复读原话（Echo the Ask）**：连续 3+ 关后，把 `RouteDecision.userIntent` 一字不差复读到上下文，再决定下一关方向。长 run 最大风险是“AI 只记得最近的 Quest，忘了用户原话”——复读成本极低但能拉回 mainline。
+2. **反向翻译（Reverse Diff）**：每关 QuestResult 落盘前，把本关 diff 反向翻译成一段需求描述，再与本关 `objective` 对照。翻译出的需求 ≠ objective（多了或少了），说明本关偏移，回头修。
+3. **扩张词刹车（Expansion-Word Stop）**：执行中出现“顺手”“既然”“不如”“一并”“趁机”“索性”等词，立即停下自问“这在用户原话里吗？” 不在 → 加入 `outOfScope`，不做。
+
 ---
 
 ## PHASE 4: VERIFY
@@ -534,6 +619,16 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 | 修复 | 相关测试 / 构建 / 最小回归       |
 | 实现 | build + test + 必要 lint         |
 | 重构 | test + regression + 关键边界检查 |
+
+**Subagent 上下文隔离**（2026 Context Engineering 核心实践）：
+
+每个验证 subagent 只接收完成其任务所需的**最小上下文**：
+
+- `verification`：当前 Quest 的 `touchFiles` + `objective` + `acceptance` + diff
+- `code-reviewer`：变更文件内容 + 编码规范摘要 + anti-patterns
+- `security-reviewer`：安全敏感文件 + 威胁模型上下文
+- **禁止**将完整 QuestMap、历史 run 详情、或无关 Quest 的 QuestResult 传给验证 subagent
+- **收益**：减少 subagent 幻觉、降低 token 消耗 40-60%、提升验证精度
 
 额外必须检查：
 
@@ -603,6 +698,19 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 ---
 
 ## PHASE 6: LEARN
+
+### 知识蒸馏原则（2026 Context Engineering 增强）
+
+沉淀的知识必须是**原子化、可检索、跨会话可用**的：
+
+1. **压缩**：从 QuestResult + VerifyReport 提取可复用模式，每条 ≤ 5 行
+2. **标记可迁移性**：为每条知识标注 `scope: project | stack | universal`
+   - `project` — 仅当前项目（特定配置/约定）
+   - `stack` — 同技术栈通用（如 Spring Boot 最佳实践）
+   - `universal` — 跨项目通用（如错误处理模式、调试方法论）
+3. **去重合并**：与 `.auto/insights/` 已有条目对比，同主题则更新而非追加
+
+**跨项目复用**：`scope: stack|universal` 的 LearnCard 额外写入 `.auto/feedback/skills.json` 的 `portablePatterns` 字段，供同技术栈新项目复用。
 
 当任务较大、仓库本身在使用 `.auto/`，或用户明确要求沉淀时：
 
@@ -709,3 +817,5 @@ LearnCard 仅写到 `runs/<runId>/learn-cards.md` **不算沉淀**，必须按 c
 - 会把验证结果说清楚，不拿推测冒充执行
 - 会在项目已启用 `.auto/` 时持续写入并复用知识
 - 对用户来说，`/auto` 是稳定的工作方式，而不是一次性的长 prompt
+- 会主动管理上下文预算，在接近极限时压缩降级而非崩溃
+- 知识沉淀是原子化、有 scope 标记、可跨项目复用的，而非大段原始日志

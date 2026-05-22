@@ -88,7 +88,31 @@ Bash("test -f .auto/cache/insight-index.json && echo EXISTS || echo MISSING")
   -> MISSING -> WARN: "insight-index.json 缺失，知识检索将降级为 grep。建议 npm run rebuild:cache"
 ```
 
-### 6. 输出诊断报告
+### 6. 上下文健康诊断（2026 Context Engineering 增强）
+
+```
+# 中断恢复检测
+Glob(".auto/runs/*/session-continuity.md")
+  -> 存在且含 status=interrupted|suspended -> WARN: "检测到未完成的 run，建议续接"
+  -> 不存在或全部 completed -> PASS
+
+# 缓存新鲜度检测
+Bash("stat -c %Y .auto/cache/insight-index.json 2>/dev/null")
+  -> 超过 7 天未更新 -> WARN: "insight-index.json 已过期，建议重建"
+  -> 7 天内 -> PASS
+
+# Skill 缓存完整性
+Bash("ls skills/*/SKILL.md | wc -l") vs Bash("ls .auto/cache/skill-extracts/*.md 2>/dev/null | wc -l")
+  -> Skill 数 > 缓存数 -> WARN: "新增 Skill 未缓存，建议 npm run rebuild:cache"
+  -> 相等 -> PASS
+
+# Portable Patterns 检测
+Bash("test -f .auto/feedback/skills.json && jq '.portablePatterns | length' .auto/feedback/skills.json")
+  -> >= 1 -> INFO: "<N> 条可复用模式已沉淀"
+  -> 0 或不存在 -> INFO: "暂无跨项目可复用模式"
+```
+
+### 7. 输出诊断报告
 
 ```markdown
 ## Auto CLI 环境诊断报告

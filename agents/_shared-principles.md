@@ -555,7 +555,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### LearnCard 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`。
+必填：`id`, `runId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`。
 选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`, `failureClass`。
 
 ```json
@@ -581,6 +581,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   },
   "category": "trap | pattern | decision | prompt | feedback",
   "title": "<标题>",
+  "scope": "project | stack | universal",
   "context": "<上下文>",
   "trigger": "<触发条件>",
   "recommendedAction": "<推荐动作>",
@@ -596,6 +597,14 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "targetInsightFile": ".auto/insights/<file>.md"
 }
 ```
+
+**`scope` 字段语义**（2026 Context Engineering 增强）：
+
+| scope | 含义 | 典型场景 | 跨项目复用 |
+|-------|------|----------|------------|
+| `project` | 仅当前项目适用 | 特定配置路径、项目约定、本地 CI 差异 | 不复用 |
+| `stack` | 同技术栈项目通用 | Spring Boot 最佳实践、React 组件模式 | 写入 `portablePatterns` |
+| `universal` | 跨项目跨栈通用 | 错误处理方法论、调试流程、测试策略 | 写入 `portablePatterns` |
 
 ## Agent 间交接协议
 
@@ -807,3 +816,47 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 - 已知 `knownIssues` 的 agent 自动降优先，`successRate < 0.5` 的 agent 排除出候选列表
 
 **维护时机**：每次 LEARN 6.2 阶段记录 Agent 调用结果后更新。`totalCalls` 递增，`successRate` 重新计算。
+
+### Skill 反馈与 Portable Patterns 协议
+
+`.auto/feedback/skills.json` 是跨 run 的 Skill 效果反馈存储，同时承载跨项目可复用模式：
+
+```json
+{
+  "version": "auto-md/v1",
+  "lastUpdated": "YYYY-MM-DD",
+  "skills": {
+    "<skill-name>": {
+      "totalActivations": 0,
+      "lastUsed": "YYYY-MM-DD | null",
+      "successRate": 0.85,
+      "triggerAccuracy": 0.9,
+      "adoptionRate": 0.8,
+      "correctionCount": 0,
+      "ignoreRate": 0.1,
+      "usageFrequency": "high | medium | low",
+      "notes": ""
+    }
+  },
+  "portablePatterns": [
+    {
+      "pattern": "<原子化描述，≤ 5 行>",
+      "scope": "stack | universal",
+      "stack": "spring-boot | react | go | python | any",
+      "source": "run-<runId>",
+      "confidence": "high | medium",
+      "tags": ["<tag1>", "<tag2>"],
+      "createdAt": "YYYY-MM-DD"
+    }
+  ]
+}
+```
+
+**`portablePatterns` 语义**：
+
+- LEARN 阶段产出 `scope: stack|universal` 的 LearnCard 时，同步写入此数组
+- SCAN 阶段读取 `skills.json` 时，按 `stack` 字段筛选与当前项目技术栈匹配的 patterns 注入 `RouteDecision.knowledgeHints`
+- 冷启动加速：新项目首次 run 时，可从用户其他项目的 `portablePatterns` 导入 `scope: universal` 条目
+- 去重规则：同 `pattern` 文本不重复追加，以最新 `source` 为准
+
+**维护时机**：LEARN 6.1 产出 LearnCard 后检查 scope 字段，符合条件即追加。
