@@ -62,5 +62,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Prepare environment
+        run: mkdir -p ~/.claude ~/.codex
+        shell: bash
+
       - name: Verify install script
         run: node scripts/install.js

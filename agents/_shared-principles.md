@@ -600,11 +600,11 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 **`scope` 字段语义**（2026 Context Engineering 增强）：
 
-| scope | 含义 | 典型场景 | 跨项目复用 |
-|-------|------|----------|------------|
-| `project` | 仅当前项目适用 | 特定配置路径、项目约定、本地 CI 差异 | 不复用 |
-| `stack` | 同技术栈项目通用 | Spring Boot 最佳实践、React 组件模式 | 写入 `portablePatterns` |
-| `universal` | 跨项目跨栈通用 | 错误处理方法论、调试流程、测试策略 | 写入 `portablePatterns` |
+| scope       | 含义             | 典型场景                             | 跨项目复用              |
+| ----------- | ---------------- | ------------------------------------ | ----------------------- |
+| `project`   | 仅当前项目适用   | 特定配置路径、项目约定、本地 CI 差异 | 不复用                  |
+| `stack`     | 同技术栈项目通用 | Spring Boot 最佳实践、React 组件模式 | 写入 `portablePatterns` |
+| `universal` | 跨项目跨栈通用   | 错误处理方法论、调试流程、测试策略   | 写入 `portablePatterns` |
 
 ## Agent 间交接协议
 

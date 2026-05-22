@@ -201,11 +201,11 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 不同 AI 模型的上下文窗口容量差异显著，预算阈值应动态调整：
 
-| 模型容量信号 | 绿区上限 | 黄区上限 | 调整策略 |
-|----------------|----------|----------|----------|
-| 大窗口（≥ 200K tokens） | 40% | 70% | 默认阈值，允许深度级激活 |
-| 中窗口（100-200K） | 30% | 55% | 提前降级，减少每关加载文件数 |
-| 小窗口（< 100K） | 20% | 40% | 默认摘要级，最多 3 个 Skill 激活 |
+| 模型容量信号            | 绿区上限 | 黄区上限 | 调整策略                         |
+| ----------------------- | -------- | -------- | -------------------------------- |
+| 大窗口（≥ 200K tokens） | 40%      | 70%      | 默认阈值，允许深度级激活         |
+| 中窗口（100-200K）      | 30%      | 55%      | 提前降级，减少每关加载文件数     |
+| 小窗口（< 100K）        | 20%      | 40%      | 默认摘要级，最多 3 个 Skill 激活 |
 
 探测方式：通过当前会话的已知特征（如模型名称、运行时环境、历史行为）推断窗口容量，无法确定时默认使用大窗口阈值。
 
@@ -286,14 +286,15 @@ fi
 a. 从 SCAN 1.1 已读取的所有 Skill frontmatter 中提取 `name` + `description` + `tags`
 b. 以 `RouteDecision.userIntent` + 技术栈 + 策略提取 3-5 个语义关键词
 c. 逐 Skill 计算匹配度（四信号加权）：
-   - `tags` 命中数 × 2（基础信号）
-   - `description` 与用户意图的语义相似度 × 1（语义信号）
-   - 历史反馈信号 × 1.5（successRate > 0.8 → +1.5；0.5-0.8 → +0.5；< 0.5 → -1.0）（效果信号，来自 `.auto/feedback/skills.json`）
-   - 上下文预算调节 × (-0.5 ~ +0.5)（绿区 +0.5 / 黄区 0 / 红区 -0.5）（预算信号）
-d. 排序产出 **激活列表**（top-5，匹配度 ≥ 3）和 **备选列表**（匹配度 1-2）。激活列表按匹配度分三级：摘要级(3-4) | 全文级(5-6) | 深度级(7+)
-e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
-f. **Phase 敏感性调整**：实现/探索策略下，code-style-enforcer、comment-standards 的匹配度 -1（这些 Skill 的核心价值在 VERIFY 阶段，PLAN/EXECUTE 阶段降权）；重构策略下所有 Skill 恢复正常权重。
-g. **上下文预算联动**：红区时强制所有 Skill 降级为摘要级；黄区时深度级降为全文级。
+
+- `tags` 命中数 × 2（基础信号）
+- `description` 与用户意图的语义相似度 × 1（语义信号）
+- 历史反馈信号 × 1.5（successRate > 0.8 → +1.5；0.5-0.8 → +0.5；< 0.5 → -1.0）（效果信号，来自 `.auto/feedback/skills.json`）
+- 上下文预算调节 × (-0.5 ~ +0.5)（绿区 +0.5 / 黄区 0 / 红区 -0.5）（预算信号）
+  d. 排序产出 **激活列表**（top-5，匹配度 ≥ 3）和 **备选列表**（匹配度 1-2）。激活列表按匹配度分三级：摘要级(3-4) | 全文级(5-6) | 深度级(7+)
+  e. 未匹配的 Skill 记录到 `selection.rejectedCapabilities`（含原因）
+  f. **Phase 敏感性调整**：实现/探索策略下，code-style-enforcer、comment-standards 的匹配度 -1（这些 Skill 的核心价值在 VERIFY 阶段，PLAN/EXECUTE 阶段降权）；重构策略下所有 Skill 恢复正常权重。
+  g. **上下文预算联动**：红区时强制所有 Skill 降级为摘要级；黄区时深度级降为全文级。
 
 **阶段 B — 激活执行（三级激活，分段读取，控制上下文占用）**：
 
@@ -307,33 +308,33 @@ g. **上下文预算联动**：红区时强制所有 Skill 降级为摘要级；
 
 **兜底索引**（动态发现不可用时的回退路径 — SCAN 未读到任何 frontmatter 或全部 Skill 匹配度 < 3）：
 
-| 触发条件                                         | 激活 Skill              |
-| ------------------------------------------------ | ----------------------- |
-| Java / Spring Boot                               | `java-patterns`         |
-| 性能优化相关                                     | `performance-patterns`  |
-| 错误处理 / 异常                                  | `error-patterns`        |
-| Git 操作 / 提交 / PR                             | `git-workflow`          |
-| 代码风格 / 格式化                                | `code-style-enforcer`   |
-| 依赖分析 / 升级                                  | `dependency-analyzer`   |
-| 多 Agent 编排                                    | `workflow-patterns`     |
-| 新项目初始化                                     | `init-project`          |
-| Bug / 调试 / 测试失败 / 构建失败                 | `systematic-debugging`  |
-| PRD / 需求文档 / 产品需求                        | `prd-writer`            |
-| 模糊需求 / 多种合理理解 / 关键名词缺定义         | `requirement-clarifier` |
-| 需求明确但实现路径多选 / 架构决策 / 技术选型未定 | `brainstorming`         |
-| 多并行 Quest / 多模块独立开发 / 隔离需求         | `using-git-worktrees`   |
-| 不熟悉的库 / 新技术栈 / 显式 `--research`        | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2                      | `test-plan-writer`      |
-| 日志 / log / tracing / 可观测性                  | `logging-patterns`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发          | `robustness-patterns`   |
-| 上线 / 部署 / 生产环境 / production              | `production-standards`  |
-| 代码注释 / 注释规范 / JSDoc                      | `comment-standards`     |
-| 创建 skill / 编写 skill / 优化 skill             | `skill-creator`         |
-| 代码结构分析 / AST / tree-sitter（非纯 MD 项目） | `code-analyzer`         |
-| 评估 skill / skill 健康度 / skill 触发诊断       | `skill-evaluator`       |
-| 重构 / 代码整理 / 拆分大文件 / 消除重复          | `refactoring-patterns`  |
-| API 设计 / REST / 接口规范 / OpenAPI             | `api-design`            |
-| 需求明确但验收标准模糊 / 接口设计 / 契约驱动     | `spec-driven`           |
+| 触发条件                                          | 激活 Skill              |
+| ------------------------------------------------- | ----------------------- |
+| Java / Spring Boot                                | `java-patterns`         |
+| 性能优化相关                                      | `performance-patterns`  |
+| 错误处理 / 异常                                   | `error-patterns`        |
+| Git 操作 / 提交 / PR                              | `git-workflow`          |
+| 代码风格 / 格式化                                 | `code-style-enforcer`   |
+| 依赖分析 / 升级                                   | `dependency-analyzer`   |
+| 多 Agent 编排                                     | `workflow-patterns`     |
+| 新项目初始化                                      | `init-project`          |
+| Bug / 调试 / 测试失败 / 构建失败                  | `systematic-debugging`  |
+| PRD / 需求文档 / 产品需求                         | `prd-writer`            |
+| 模糊需求 / 多种合理理解 / 关键名词缺定义          | `requirement-clarifier` |
+| 需求明确但实现路径多选 / 架构决策 / 技术选型未定  | `brainstorming`         |
+| 多并行 Quest / 多模块独立开发 / 隔离需求          | `using-git-worktrees`   |
+| 不熟悉的库 / 新技术栈 / 显式 `--research`         | `research-analyst`      |
+| 实现 / 重构策略下的 PHASE 2                       | `test-plan-writer`      |
+| 日志 / log / tracing / 可观测性                   | `logging-patterns`      |
+| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发           | `robustness-patterns`   |
+| 上线 / 部署 / 生产环境 / production               | `production-standards`  |
+| 代码注释 / 注释规范 / JSDoc                       | `comment-standards`     |
+| 创建 skill / 编写 skill / 优化 skill              | `skill-creator`         |
+| 代码结构分析 / AST / tree-sitter（非纯 MD 项目）  | `code-analyzer`         |
+| 评估 skill / skill 健康度 / skill 触发诊断        | `skill-evaluator`       |
+| 重构 / 代码整理 / 拆分大文件 / 消除重复           | `refactoring-patterns`  |
+| API 设计 / REST / 接口规范 / OpenAPI              | `api-design`            |
+| 需求明确但验收标准模糊 / 接口设计 / 契约驱动      | `spec-driven`           |
 | 复杂任务 / 上下文接近极限 / 跨会话续接 / 多 Agent | `context-engineering`   |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
