@@ -565,6 +565,7 @@ c. 逐 Skill 计算匹配度（四信号加权）：
 2. `alternative_path_or_agent` — 切换替代路径或替代 Agent
 3. `build-error-resolver` — 两次尝试后升级构建修复 Agent
 4. `quest rollback / abort` — 若仍失败，仅回滚当前 Quest 触及文件并终止当前 run
+5. `budget_exhausted` — run 级 budget 超限（默认 maxIterations 25 / maxToolCallsPerQuest 15 / 同动作 3 次去重）→ 立即产出 `LearnCard(category=trap, failureClass=resource)` + 写 `session-continuity.md(status=suspended)` + 不自动重启。详见 `agents/_shared-principles.md` 「运行级 Budget 与循环检测」节。
 
 每关完成后立即写盘到 `.auto/runs/<runId>/quest-results.md`，上下文中只保留 `questId` + `status`。
 连续 3+ 关后主动压缩：合并已完关为一段 checkpoint 写入文件，上下文中清除已完关详情。

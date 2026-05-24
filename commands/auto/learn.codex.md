@@ -104,6 +104,25 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 
 ---
 
+## 知识库 Decay 规则（防膨胀，与 Claude 端对齐）
+
+长期项目 `.auto/insights/` 单调增长会导致检索噪音上升与 Skill 激活污染。`/auto:learn --decay` 触发时按以下三条规则处理：
+
+| 规则             | 触发条件                                                                  | 处置                                                      |
+| ---------------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `age-prune`      | `confidence: low` + 最后命中 > 6 个月（无 LearnCard 引用、无 index 命中） | 末尾追加 `**状态**: archived`；不删除                     |
+| `dedup-merge`    | 同 insight 文件连续 3 条同主题（标题前 10 字符相似度 > 0.7）              | 合并为一条，保留最新置信度，旧条目追加 `**状态**: merged` |
+| `scope-outdated` | `scope: project` 且引用的文件 / 路径已 grep 不到                          | 追加 `**状态**: outdated`；保留历史决策                   |
+
+规则纪律：
+
+- 标记类操作（archived / merged / outdated）以末尾追加方式写，不修改原内容
+- 同时更新 `.auto/cache/insight-index.json`，对应条目 confidence 降级
+- 默认 `/auto:learn` 不扫描全量；只有显式 `--decay` 才触发
+- 反模式：直接 `rm` 删除条目 / 用硬时间阈值一刀切 / 不区分 `scope` 一律 decay
+
+---
+
 ## 典型提炼方向
 
 ### 从 run 提炼

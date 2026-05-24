@@ -2,6 +2,17 @@
 
 > LEARN 阶段自动维护，记录已验证有效的模式。
 
+### Claude/Codex 双端对齐用关键术语 grep 而非字面 1:1
+
+**日期**: 2026-05-24 | **置信度**: high | **标签**: cross-runtime, alignment, codex
+**scope**: project
+
+Claude 端与 Codex 端两套 `/auto` 主命令文件本质是同一套行为协议的不同 runtime 表达；强制字面 1:1 同步会破坏 Codex 端"简化精炼"的设计理念。**正确对齐 = 行为对齐**：定义一套关键术语清单（如 maxIterations / budget_exhausted / age-prune），用 grep 核对两端均覆盖即可。Codex 端术语次数允许少于 Claude 端，但每个核心术语必须存在。
+
+**来源**: run-20260524-budget-decay-codex-align
+
+---
+
 ### install/uninstall 抽 manifest.js 实测收益
 
 **日期**: 2026-04-19

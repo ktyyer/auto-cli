@@ -2,6 +2,48 @@
 
 > LEARN 阶段自动维护，记录关键架构决策及理由。
 
+### 全网调研后决定引入 Run 级 Budget + Loop Detector
+
+**日期**: 2026-05-24 | **置信度**: high | **标签**: safety, runaway-protection, agent-budget
+**scope**: universal
+
+调研 Anthropic Agent SDK / AI SDK / Towards AI 等多源后确认：runaway loop 是生产环境 AI agent 最常见的失败模式。当前项目仅有 Quest 级 `attempt 1/2/escalate`（见 `_shared-principles.md:639`），缺 run 级总迭代上限与 de-duplication 检测。
+
+**推荐动作**: `agents/_shared-principles.md` 失败状态机节追加 `runBudget` 子节（maxIterations 25/15、maxToolCallsPerQuest 15、noProgressThreshold 3），`commands/auto.md` PHASE 3 失败协议新增第 5 步 `budget_exhausted → abort + LearnCard(category=trap)`。
+**备选方案**: 引入 Mem0/Letta 框架自带 budget — 拒绝，需 Postgres 与零依赖冲突。
+**来源**: run-20260524-research-external-methods
+
+---
+
+### 全网调研后决定引入知识库 Decay 规则（轻量版）
+
+**日期**: 2026-05-24 | **置信度**: medium | **标签**: knowledge-hygiene, prune, long-term
+**scope**: project
+
+调研 Mem0 2026 State of Agent Memory 报告确认 "Forgetting as a Feature" 是长期记忆系统的健康度关键。当前 `.auto/insights/` 无衰减机制，长期项目存在膨胀与误用风险。
+
+**推荐动作**: `commands/auto/learn.md` 新增 decay 规则小节（confidence=low + 6 月未命中→archived、同主题 3 次更新→合并、scope=project 已重构→outdated）。复用现有 `/auto:learn` 入口，不引入新 skill。
+**备选方案**: 引入完整记忆衰减 skill — 拒绝，项目早期还不痛，避免过度工程化。
+**来源**: run-20260524-research-external-methods
+
+---
+
+### 全网调研后明确拒绝的 13 项候选
+
+**日期**: 2026-05-24 | **置信度**: high | **标签**: scope-discipline, anti-scope-creep
+**scope**: project
+
+调研 30+ 外部方法后系统性拒绝清单（保护单入口与零依赖约束）：
+
+- **已等价覆盖**：Subagent Guardrails skill、Spec Kit 完整链、Continuous-Claude-v2 ledger、Plan-Validate-Execute 独立步、Trellis 自动注入、Planner/Generator/Evaluator 分工
+- **违背架构约束**：Mem0/Letta 记忆框架（需 Postgres）、Cross-Model Workflow（违背单入口）、Karpathy 单文件 CLAUDE.md（与模块化方向相反）
+- **风险大于收益**：Procedural Memory 自改 system prompt（drift 风险）、Get Shit Done XML wave（弃 LearnCard 闭环）
+- **时机未到**：AGENTS.md 跨平台完整化（Claude Code 暂不原生支持）
+- **方向冲突**：caveman 强制 token diet 风格
+
+**推荐动作**: 未来同类调研直接引用本条避免重复评估；新增功能必须满足"必要性高 + 已有度 < 50% + 与单入口约束兼容"三条同时成立。
+**来源**: run-20260524-research-external-methods
+
 ### `npm run install` 让位于 `npm run sync` 作为主入口
 
 **日期**: 2026-04-19

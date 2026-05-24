@@ -581,6 +581,24 @@ SCAN 完成后立即建立预算感知：
 - **扩张词刹车（Expansion-Word Stop）**：执行中出现"顺手""既然""不如""一并""趁机""索性"等扩张词，立即停下自问"这在用户原话里吗？" 不在 → 加入 `outOfScope`，不做。
 - **不偷工捷径声明（No-Shortcut Pledge）**：任何时刻想 mock 数据库 / skip 测试 / 用 `--no-verify` / `@ts-ignore` / `eslint-disable` / 改测试让它通过 / 删失败用例时，先记一行 `[shortcut-attempt]` 到 quest-results 说明诱惑来源与不走捷径的替代方案，再决定。多数捷径写下来那一刻自己就会放弃。
 
+**运行级 Budget 与循环检测**（2026 防 runaway，与 Claude 端对齐）：
+
+`RouteDecision.budgets` 在 SCAN 初始化，EXECUTE 持续核对：
+
+- `maxIterations`：大窗口 25 / 中窗口 20 / 小窗口 15。run 内主循环超限 → 触发 `budget_exhausted`
+- `maxToolCallsPerQuest`：默认 15。单 Quest 工具调用超限 → 强制切换替代路径
+- `noProgressThreshold`：默认 3。同一文件 + 同一错误连续 3 次 → 强制 escalate，不允许沿原路径再试
+- `maxLearnCardTrapPerRun`：默认 5。同 run trap 超限 → 写 `session-continuity.md` 提示"模式异常"
+
+触发 `budget_exhausted` 时硬约束：
+
+1. 立即产出 `LearnCard(category=trap, failureClass=resource)`，记录已用次数 / 触发位置
+2. 当前 Quest 回滚（不做仓库级回滚）
+3. 写 `session-continuity.md(status=suspended, blockingIssues:["run-budget-exhausted"])`
+4. 不自动重启 run；用户显式确认后再续接
+
+安全敏感任务（`riskLevel=high`）默认 `maxIterations` 减半。阈值可由 `RouteDecision.budgets` 显式覆盖。
+
 多 agent 规则：
 
 - 默认不用

@@ -640,8 +640,29 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 2. **attempt 2 — alternative_path_or_agent**：切换实现路径或更换 Agent
 3. **escalate — build-error-resolver**：仍失败时升级到 `build-error-resolver`
 4. **fail — quest rollback / abort**：若升级后仍失败，只回滚当前 Quest 触及的文件并终止当前 run
+5. **budget_exhausted — run abort**：run 级 budget 超限触发，按 `## 运行级 Budget 与循环检测` 处置
 
 禁止默认使用仓库级全局回滚作为常规失败策略。
+
+## 运行级 Budget 与循环检测
+
+Quest 级 attempt 1/2/escalate 只控制单关；run 级失控（无限循环、同动作反复、token 失控）需独立 budget 兜底。SCAN 阶段在 `RouteDecision.budgets` 初始化以下字段，PHASE 3 持续核对：
+
+| 字段                     | 默认值（可被 RouteDecision.budgets 覆盖） | 触发动作                                                      |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------------------- |
+| `maxIterations`          | 大窗口 25 / 中窗口 20 / 小窗口 15         | run 内 LLM 主循环超限 → `budget_exhausted`                    |
+| `maxToolCallsPerQuest`   | 15                                        | 单 Quest 工具调用超限 → 强制 escalate / 切 alternative_path   |
+| `noProgressThreshold`    | 3                                         | 同一 `touchFile` + 同一 `errorType` 连续 3 次 → 强制 escalate |
+| `maxLearnCardTrapPerRun` | 5                                         | 同 run trap 数超限 → 提示"模式异常"，写 `session-continuity`  |
+
+触发 `budget_exhausted` 时必须：
+
+1. 立即产出 `LearnCard(category=trap, failureClass=resource)`，记录已用 iterations / 同动作次数 / 触发位置
+2. 当前 Quest 回滚（不做仓库级回滚）
+3. 写 `session-continuity.md(status=suspended, blockingIssues:["run-budget-exhausted"])`
+4. 不允许自动重启 run；新会话由用户显式确认后再续接
+
+> 阈值由 `RouteDecision.budgets` 显式覆盖时以覆盖值为准。安全敏感任务（`riskLevel=high`）默认 `maxIterations` 减半。
 
 ## 失败学习闭环
 
