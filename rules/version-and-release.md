@@ -1,3 +1,9 @@
+---
+name: version-and-release
+description: 版本号 semver + 发布流程 + npm pack 产物管理
+paths: ["package.json", "CHANGELOG*", "**/*.tgz", ".npmrc"]
+---
+
 # 版本与发布规范
 
 ## 版本号

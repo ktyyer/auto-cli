@@ -727,6 +727,7 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 - 遵守 `.claude/rules/` 中的编码规范
 - 不伪造协议字段；没有证据的字段必须留空或显式标记 `unknown`
 - `/auto` 主流程中，不跳过 `VerifyReport` 直接沉淀 `LearnCard`；唯一例外是独立 `/auto:learn --git` 可基于 `git-log:<range>` 等 Git 证据直接生成 `LearnCard`
+- **工具白名单（tools 字段）**：每个 agent frontmatter 的 `tools:` 字段即 Anthropic Agent SDK 中的 `allowedTools`（Claude Code 标准命名）。subagent 仅能调用声明的工具；未声明的工具调用应直接拒绝。修订工具范围需更新该 agent frontmatter，并在 `.auto/insights/decisions.md` 记录变更原因。
 
 ## Cost-Caps 协议
 

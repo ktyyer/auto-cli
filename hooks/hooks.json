@@ -61,6 +61,16 @@
           }
         ],
         "description": "TDD Guard: Enforce Test-Driven Development - uses tdd-guard.js for multi-language support with bash fallback"
+      },
+      {
+        "matcher": "(tool == \"Write\" || tool == \"Edit\")",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Auto-snapshot: create non-destructive git ref before risky multi-file edits\ninput=$(cat)\n\n# Skip if not in a git repo\nif ! git rev-parse --git-dir >/dev/null 2>&1; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count dirty files (untracked + modified, excluding .auto/)\ndirty=$(git status --porcelain 2>/dev/null | grep -v ' \\.auto/' | wc -l | tr -d ' ')\n\n# Only snapshot when working tree already has >= 3 dirty files\nif [ \"${dirty:-0}\" -ge 3 ]; then\n  ts=$(date +%s)\n  sha=$(git stash create -u \"auto-snapshot-$ts\" 2>/dev/null)\n  if [ -n \"$sha\" ]; then\n    git update-ref \"refs/auto-snapshots/$ts\" \"$sha\" 2>/dev/null\n    mkdir -p .auto 2>/dev/null\n    echo \"$ts $sha $dirty files\" >> .auto/snapshots.log 2>/dev/null\n    echo \"[Hook] Auto-snapshot created: refs/auto-snapshots/$ts (recover via 'git stash apply $sha')\" >&2\n  fi\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "Auto-snapshot: create non-destructive git ref refs/auto-snapshots/<ts> before Write/Edit when working tree already has >= 3 dirty files. Recover via 'git stash apply <sha>' or 'git stash apply refs/auto-snapshots/<ts>'. No working-tree mutation."
       }
     ],
     "PostToolUse": [
@@ -133,6 +143,28 @@
           }
         ],
         "description": "Skill health reminder: suggest skill-evaluator after editing skills/*.md or SKILL.md (warn never block)"
+      },
+      {
+        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx|java|py|go|rs|md)$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Incremental review: accumulate dirty file list per latest run (no blocking)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif [ -z \"$fp\" ]; then echo \"$input\"; exit 0; fi\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ] && [ -d \".auto/runs/$latest_run\" ]; then\n  touch \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\n  grep -qxF \"$fp\" \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null || echo \"$fp\" >> \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\nfi\necho \"$input\""
+          }
+        ],
+        "description": "Incremental review: accumulate dirty file list at .auto/runs/<latest>/dirty.txt for per-run incremental code review. See skills/incremental-review/SKILL.md"
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Cold-start: surface critical project knowledge so the new session opens with context\nfiles=()\n[ -f 'CLAUDE.md' ] && files+=('CLAUDE.md (project instructions)')\n[ -f '.auto/constitution.md' ] && files+=('.auto/constitution.md (non-negotiable hard constraints)')\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ]; then\n  cont=\".auto/runs/$latest_run/session-continuity.md\"\n  [ -f \"$cont\" ] && files+=(\"$cont (last run continuity)\")\nfi\nif [ ${#files[@]} -gt 0 ]; then\n  echo '[Hook] SessionStart - consider Read on:' >&2\n  for f in \"${files[@]}\"; do echo \"[Hook]   - $f\" >&2; done\nfi\nexit 0"
+          }
+        ],
+        "description": "SessionStart: surface CLAUDE.md / .auto/constitution.md / last-run session-continuity.md on cold start (informational, never blocks)"
       }
     ],
     "PostCompact": [

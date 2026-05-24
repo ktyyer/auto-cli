@@ -1,3 +1,9 @@
+---
+name: hooks
+description: Claude Code Hook 系统规范 — PreToolUse/PostToolUse/PreCompact 等事件钩子配置
+paths: ["hooks/**/*", ".claude/settings.json", ".claude/hooks.json"]
+---
+
 # Hook 系统
 
 ## Hook 类型
@@ -6,6 +12,7 @@
 - **PostToolUse**: 工具执行后（自动格式化、检查、结果分析）
 - **PreCompact**: 上下文窗口压缩前（保存关键进度）
 - **PostCompact**: 上下文窗口压缩后（重新注入关键上下文）
+- **SessionStart**: 会话冷启动时（注入项目知识 / 续接上次中断）
 - **UserPromptSubmit**: 用户提交 prompt 时（输入安全检查）
 - **TeammateIdle**: 多 Agent 团队中队友空闲时（任务分配提醒）
 - **TaskCompleted**: 任务完成时（质量门禁）
@@ -21,6 +28,7 @@
 - **文档阻止器**: 阻止创建不必要的 .md/.txt 文件（允许 README、CLAUDE、AGENTS、CONTRIBUTING 和 skills 目录下的 .md）
 - **大文件警告**: 编辑超过 500 行的源码文件时警告，建议拆分为更小模块
 - **TDD 守卫**: 强制测试驱动开发，编辑源码文件时检查是否存在对应的测试文件
+- **自动快照**: 工作树已有 ≥ 3 个 dirty 文件时，Write/Edit 前用 `git stash create -u` 创建非破坏性快照，落 ref `refs/auto-snapshots/<ts>` 并记录到 `.auto/snapshots.log`，零工作树侵入。恢复：`git stash apply refs/auto-snapshots/<ts>`
 
 ### PostToolUse
 
@@ -30,6 +38,7 @@
 - **console.log 警告**: 编辑文件后检查 console.log 语句并警告
 - **频繁提交提醒**: 5+ 文件有未提交变更时提醒提交，鼓励频繁增量提交
 - **覆盖率检查**: 测试运行后检查覆盖率，低于 80% 时发出警告
+- **增量 dirty 清单**: Write/Edit 源码后将文件路径追加到 `.auto/runs/<latest>/dirty.txt`，供 `incremental-review` skill 在会话末按需触发增量审查（仅累积不阻塞）
 
 ### PreCompact
 
@@ -38,6 +47,10 @@
 ### PostCompact
 
 - **上下文重注入**: 上下文窗口压缩后提醒重新加载关键文件（CLAUDE.md、settings.json、loop-state.json），防止压缩丢失项目上下文
+
+### SessionStart
+
+- **项目知识冷启动注入**: 新会话开始时提示 Read CLAUDE.md / `.auto/constitution.md` / 最新 run 的 session-continuity.md，零阻塞的项目上下文唤醒
 
 ### UserPromptSubmit
 

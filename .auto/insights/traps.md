@@ -258,6 +258,16 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 **触发条件**: Codex 端配置分散在 5+ 文件，手动同步易漏
 **推荐动作**:
 1. 任何 skill 结构变更必须**同时**修改所有 5 个 .codex.md 文件 + manifest.js
+
+### 巨型技能市场直接塞进主仓会破坏上下文预算和核心简洁性
+
+**日期**: 2026-05-23 | **置信度**: high | **来源**: 20260523-ecosystem-enhancement-scan
+
+大型 skills 集合虽然有吸引力，但会立刻引入发现噪音、安装复杂度和维护压力，削弱 auto-cli 的“root 简洁、skills 渐进加载”结构。
+
+**触发条件**: 看到外部 mega-skill 仓后，想把大量第三方 skill 一次性收进本仓
+**推荐动作**: 把社区生态做成索引和依赖层，不要把社区仓直接并入 `commands/` 或主 skills 集合
+**反模式**: 为了“能力看起来更多”把大市场直接并入 core，结果主命令变复杂、上下文预算被吃掉、双端同步成本爆炸
 2. 推荐写 `validate-codex-sync.js` 自动核对路径一致性
 3. 大版本变更后必须跑 `grep -rn "skills/\*\.md" commands/` 确认无旧路径残留
 **反模式**: 只验证 Claude 端通过就发布；以为 install.js 正确就万事大吉（实际是命令文件内嵌的 Glob 模式也要同步）
@@ -273,6 +283,21 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 2. 在 CI 中加 `[ "$(ls $DIR | wc -l)" -ge $EXPECTED ] || exit 1`
 3. 注释中明确"预期产出数 ≈ 实际 skill 目录数"
 **反模式**: 任何"枚举 → 处理"型脚本可以"成功完成 0 工作"
+
+---
+
+### 并行 Edit + Read 同一文件时序错位
+
+**日期**: 2026-05-17 | **置信度**: medium | **来源**: run-20260517-release-v0.41.0
+
+发布 v0.41.0 升级 4 个 version 字段时，把 `Edit package.json` 与 `Read .claude-plugin/plugin.json` 放在同一 message 并行。Edit 报告 success，但后续 Read 看到的是 0.40.0 旧值，需重新 Edit 一次才生效。推测原因：harness 对同一 file 的 file_state 缓存 + 并行调度可能丢更新。
+
+**触发条件**: 一次 message 内含多个 Edit + 多个 Read，且涉及相同或邻近文件
+**推荐动作**:
+1. 升级类批量改 version 字段应**串行**而非并行（小成本，避免错位）
+2. 批量编辑后**必须**用 Bash `grep -H '"version"'` 等命令独立核对实际文件状态
+3. 不要相信单一 Edit success 报告 = 真实落盘
+**反模式**: 看到所有 Edit success 就跳过验证步骤
 
 ### auto.md 存在两个 2.4 节标题冲突（历史遗留）
 
@@ -295,4 +320,24 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 3. 在 `outOfScope` 模板中加入"双端镜像"作为默认提醒项
 
 **反模式**: 把 `[insight:xxx]` 标记数 ≥ N 当作"知识已复用"——可能只复用了 N 条不相干的，最关键那条仍然缺席。
+
+---
+
+### 拒绝运行时依赖能力是纯 MD 项目的第一道闸口
+
+**日期**: 2026-05-24 | **置信度**: high | **来源**: run-20260524-external-research
+
+调研发现多个高价值能力（Programmatic Tool Calling、Memory Tool、Tool Search Tool、MCP 向量库、wave pipeline）均需 JS/Python 运行时或破坏单一入口约束。**纪律**：能力评估第一道闸口是"是否需要运行时"，是即拒绝，无论 star/价值多高。auto-cli 的纯 Markdown 定位是反脆弱关键——任何运行时引入都会增加用户安装成本和环境分歧。
+
+**避坑动作**: 调研新能力时先问"它能在 0 个 JS 进程下工作吗？"否则不引入。
+
+---
+
+### GitHub 高 star agents 库不等于适合 fork
+
+**日期**: 2026-05-24 | **置信度**: high | **来源**: run-20260524-external-research
+
+wshobson/agents (34.8K star) / VoltAgent (1K+ skills) 规模庞大但混入大量 MCP/JS 依赖，且违反 auto-cli "用户只用 `/auto` 一个命令"不变量。即使想"借鉴一个 skill"，也常因隐式依赖链而无法干净抽取。
+
+**避坑动作**: 评估高 star agent/skill 库时，第一步看是否需要 MCP server 或 JS 运行时，是即放弃；第二步看是否破坏单一入口设计，是即放弃。
 

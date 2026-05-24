@@ -1,3 +1,9 @@
+---
+name: coding-style
+description: 通用编码风格 — 不可变性、文件组织、错误处理、输入验证
+paths: ["**/*.{ts,tsx,js,jsx,py,go,rs}"]
+---
+
 # 编码风格
 
 ## 不可变性（关键）

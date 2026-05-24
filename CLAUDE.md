@@ -69,6 +69,15 @@
 
 ### 已完成
 
+- [x] v0.44.0: **B5 收尾 · PHASE 3.3 self-critique 触发钩子**：`commands/auto.md` PHASE 3.3 QuestResult 节追加每关 self-critique 强制触发说明，达成度 < 70 阻断进入下一关。补足 v0.43 留下的 EXECUTE 触发链
+- [x] v0.44.0: **C2 · SessionStart hook**：新会话冷启动时提示 Read `CLAUDE.md` / `.auto/constitution.md` / 最新 run 的 `session-continuity.md`，零阻塞项目知识唤醒。PostToolUseFailure / SubagentStart 待 Claude Code 官方 schema 稳定再补
+- [x] v0.44.0: **C3 · agent tools 字段标准化**：确认 11 个 agents 已声明 `tools:` 字段（Claude Code 中等价于 Anthropic Agent SDK 的 `allowedTools`）；`agents/_shared-principles.md` 边界约束章节新增 tools 字段规范条目
+- [x] v0.43.0: **B1 · Constitution skill**：新增 `skills/constitution/SKILL.md`（仿 Spec Kit），SCAN 自动检测 `.auto/constitution.md` 注入为项目级硬约束；PLAN/EXECUTE/VERIFY 三 phase 强制遵守
+- [x] v0.43.0: **B2 · PreToolUse 自动快照 hook**：工作树已有 ≥ 3 dirty 文件时，Write/Edit 前用 `git stash create -u` 创建非破坏性 ref `refs/auto-snapshots/<ts>`，落 `.auto/snapshots.log`，零工作树侵入
+- [x] v0.43.0: **B3 · incremental-review skill + dirty hook**：新增 `skills/incremental-review/SKILL.md`，PostToolUse 累积 `.auto/runs/<latest>/dirty.txt` 供会话末按需触发增量审查
+- [x] v0.43.0: **B4 · rules paths glob frontmatter**：5 个 rules（coding-style / commands / hooks / markdown-authoring / version-and-release）加 `paths` glob，SCAN 按当前文件类型按需注入，减少无关上下文
+- [x] v0.43.0: **B5 · self-critique gate**：新增 `skills/self-critique/SKILL.md` 与 VERIFY 第 14 个 gate `self-critique`，实现/重构策略下每关完成强制 Reflexion 自纠，防主线漂移
+
 - [x] v0.40.x: **`knowledge-distribution` gate 落地**：PHASE 4 新增第 13 个 gate，把"LearnCard 分发到 .auto/insights/"从软建议升为硬约束。所有策略（探索/修复/实现/重构）必检；不分发或 `category=trap` 未进 traps.md → VERIFY status=fail 回流 LEARN 补分发
 - [x] v0.40.x: **O4 · Git Worktree 多 Agent 并行**：新增 `skills/using-git-worktrees/SKILL.md`，触发条件为 Quest 数 ≥ 3 + 无 touchFiles 交集 + 独立可测试，5 步流程含创建 worktree / 并行实施 / 顺序合并 / 清理
 - [x] v0.40.x: **多语言 README（英文版）**：新增 `README.en.md` 核心翻译（标题 + USP + 安装 + 使用 + Agent Skills 标准），README.md 顶部加语言切换

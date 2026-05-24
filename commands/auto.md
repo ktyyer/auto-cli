@@ -139,6 +139,8 @@ Glob("CLAUDE.md") → Read（如存在）
 Glob("~/.claude/agents/*.md") → 提取可用 Agent 列表
 Glob("skills/*/SKILL.md") → 提取项目 Skill 列表（每个 skill 是独立目录，含 SKILL.md，对齐 Anthropic 开放标准）；读每个 Skill 的 frontmatter（name, description, tags），注意 tags 可能为多行数组格式
 Glob("~/.claude/skills/*.md") → 提取全局 Skill 列表（补充，Claude 端 flat 安装为兼容旧用户），与项目 Skill 按 name 去重（项目 Skill 优先）
+Glob("~/.claude/rules/*.md") + Glob("rules/*.md") → 读取 rules frontmatter；如 frontmatter 含 `paths` 字段，仅当本 run 触及文件命中该 glob 时注入（按需加载，减少无关上下文）；**无 `paths` 字段视为通用规则始终加载**（如 `git-workflow` / `performance` / `security` / `testing` / `agents` 这些不限技术栈的规则）
+Glob(".auto/constitution.md") → 如存在则 Read 全文，作为项目级硬约束注入 RouteDecision.notes.constitution；PLAN/EXECUTE/VERIFY 三 phase 必须遵守（违反即 VERIFY fail）。详见 `skills/constitution/SKILL.md`
 ```
 
 ### 1.2 环境快检
@@ -308,34 +310,37 @@ c. 逐 Skill 计算匹配度（四信号加权）：
 
 **兜底索引**（动态发现不可用时的回退路径 — SCAN 未读到任何 frontmatter 或全部 Skill 匹配度 < 3）：
 
-| 触发条件                                          | 激活 Skill              |
-| ------------------------------------------------- | ----------------------- |
-| Java / Spring Boot                                | `java-patterns`         |
-| 性能优化相关                                      | `performance-patterns`  |
-| 错误处理 / 异常                                   | `error-patterns`        |
-| Git 操作 / 提交 / PR                              | `git-workflow`          |
-| 代码风格 / 格式化                                 | `code-style-enforcer`   |
-| 依赖分析 / 升级                                   | `dependency-analyzer`   |
-| 多 Agent 编排                                     | `workflow-patterns`     |
-| 新项目初始化                                      | `init-project`          |
-| Bug / 调试 / 测试失败 / 构建失败                  | `systematic-debugging`  |
-| PRD / 需求文档 / 产品需求                         | `prd-writer`            |
-| 模糊需求 / 多种合理理解 / 关键名词缺定义          | `requirement-clarifier` |
-| 需求明确但实现路径多选 / 架构决策 / 技术选型未定  | `brainstorming`         |
-| 多并行 Quest / 多模块独立开发 / 隔离需求          | `using-git-worktrees`   |
-| 不熟悉的库 / 新技术栈 / 显式 `--research`         | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2                       | `test-plan-writer`      |
-| 日志 / log / tracing / 可观测性                   | `logging-patterns`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发           | `robustness-patterns`   |
-| 上线 / 部署 / 生产环境 / production               | `production-standards`  |
-| 代码注释 / 注释规范 / JSDoc                       | `comment-standards`     |
-| 创建 skill / 编写 skill / 优化 skill              | `skill-creator`         |
-| 代码结构分析 / AST / tree-sitter（非纯 MD 项目）  | `code-analyzer`         |
-| 评估 skill / skill 健康度 / skill 触发诊断        | `skill-evaluator`       |
-| 重构 / 代码整理 / 拆分大文件 / 消除重复           | `refactoring-patterns`  |
-| API 设计 / REST / 接口规范 / OpenAPI              | `api-design`            |
-| 需求明确但验收标准模糊 / 接口设计 / 契约驱动      | `spec-driven`           |
-| 复杂任务 / 上下文接近极限 / 跨会话续接 / 多 Agent | `context-engineering`   |
+| 触发条件                                                 | 激活 Skill              |
+| -------------------------------------------------------- | ----------------------- |
+| Java / Spring Boot                                       | `java-patterns`         |
+| 性能优化相关                                             | `performance-patterns`  |
+| 错误处理 / 异常                                          | `error-patterns`        |
+| Git 操作 / 提交 / PR                                     | `git-workflow`          |
+| 代码风格 / 格式化                                        | `code-style-enforcer`   |
+| 依赖分析 / 升级                                          | `dependency-analyzer`   |
+| 多 Agent 编排                                            | `workflow-patterns`     |
+| 新项目初始化                                             | `init-project`          |
+| Bug / 调试 / 测试失败 / 构建失败                         | `systematic-debugging`  |
+| PRD / 需求文档 / 产品需求                                | `prd-writer`            |
+| 模糊需求 / 多种合理理解 / 关键名词缺定义                 | `requirement-clarifier` |
+| 需求明确但实现路径多选 / 架构决策 / 技术选型未定         | `brainstorming`         |
+| 多并行 Quest / 多模块独立开发 / 隔离需求                 | `using-git-worktrees`   |
+| 不熟悉的库 / 新技术栈 / 显式 `--research`                | `research-analyst`      |
+| 实现 / 重构策略下的 PHASE 2                              | `test-plan-writer`      |
+| 日志 / log / tracing / 可观测性                          | `logging-patterns`      |
+| 重试 / 熔断 / 限流 / 降级 / 幂等 / 并发                  | `robustness-patterns`   |
+| 上线 / 部署 / 生产环境 / production                      | `production-standards`  |
+| 代码注释 / 注释规范 / JSDoc                              | `comment-standards`     |
+| 创建 skill / 编写 skill / 优化 skill                     | `skill-creator`         |
+| 代码结构分析 / AST / tree-sitter（非纯 MD 项目）         | `code-analyzer`         |
+| 评估 skill / skill 健康度 / skill 触发诊断               | `skill-evaluator`       |
+| 重构 / 代码整理 / 拆分大文件 / 消除重复                  | `refactoring-patterns`  |
+| API 设计 / REST / 接口规范 / OpenAPI                     | `api-design`            |
+| 需求明确但验收标准模糊 / 接口设计 / 契约驱动             | `spec-driven`           |
+| 复杂任务 / 上下文接近极限 / 跨会话续接 / 多 Agent        | `context-engineering`   |
+| 项目硬约束 / 非协商原则 / `.auto/constitution.md` 存在   | `constitution`          |
+| 会话末增量代码审查 / dirty files 累积 / Stop hook review | `incremental-review`    |
+| 每关完成自纠 / Reflexion / 主线漂移防范 / quest critique | `self-critique`         |
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
@@ -573,6 +578,8 @@ c. 逐 Skill 计算匹配度（四信号加权）：
 - 失败上下文供 `verification` 和 `build-error-resolver` 直接消费
 - 落盘到 `.auto/runs/<runId>/quest-results.md`
 
+> **Self-Critique 触发**（策略 = 实现/重构，每关必做）：`QuestResult` 落盘后立即调用 `self-critique` skill，产出 `.auto/runs/<runId>/quest-<N>-critique.md`（含 objective 复述 / diff 反向翻译 / 达成度评分 0-100 / 盲点清单 / 下一动作建议）。**达成度 < 70 必须修补或回流 PLAN**，禁止直接进入下一关。修复策略下单关 ≤ 20 行变更可跳过。详见 `skills/self-critique/SKILL.md`。
+
 > **反向翻译（Reverse Diff）**：QuestResult 落盘前，把本关 diff 反向翻译成一段需求描述，再与本关 `objective` 对照。如果翻译出的需求 ≠ objective（多了或少了），说明本关偏移，回头修。能抓住"功能做对了但顺手改了无关的"那一类——和 PHASE 4 全局主线回顾形成单关级 + 全局级双层防漂移。
 
 > **角色快检（D+B+O+T）**：每关执行后自问 — `[D]` 每行变更可追溯到需求吗？有 console.log/注释残留？错误处理覆盖所有路径？`[B]` SQL 参数化吗？索引覆盖查询？事务边界合理？N+1 查询？`[O]` graceful shutdown？配置走环境变量（不硬编码）？健康检查端点？`[T]` 红测试在绿之前真的失败过？测试独立可重入？严重命中应阻断本关 success。
@@ -627,16 +634,16 @@ SCAN 阶段检测到 `.auto/runs/<latestRunId>/session-continuity.md` 存在且 
 > - **禁止**将完整 QuestMap、历史 run 详情、或无关 Quest 的 QuestResult 传递给验证 subagent
 > - **收益**：减少 subagent 幻觉（无关上下文是 hallucination 首因）、降低 token 消耗 40-60%、提升验证精度
 
-门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`self-verification`、`skill-activation`、`knowledge-reuse`、`knowledge-distribution`、`clean-state`、`cost`。
+门禁 taxonomy：`analysis`、`build`、`test`、`lint`、`coverage`、`security`、`adversarial`、`self-verification`、`self-critique`、`skill-activation`、`knowledge-reuse`、`knowledge-distribution`、`clean-state`、`cost`。
 
 各策略最少 gate 要求：
 
-| 策略 | 必需 gate                                                                                                                                                                               |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `skill-activation`（evidence: `read-only`）+ `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）+ `knowledge-distribution` + `clean-state`                   |
-| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`（evidence: `relevant`）+ `knowledge-distribution` + `clean-state`                                       |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                        |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `skill-activation` + `knowledge-reuse`（evidence: `full`）+ `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                 |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`（evidence: `read-only`）+ `knowledge-reuse`（evidence: `analysis-only` / `no-code-change`）+ `knowledge-distribution` + `clean-state`                                     |
+| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`（evidence: `relevant`）+ `knowledge-distribution` + `clean-state`                                                         |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                        |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `skill-activation` + `knowledge-reuse`（evidence: `full`）+ `knowledge-distribution` + `clean-state` |
 
 #### `self-verification` gate（Claude 4.7 自我验证）
 
@@ -687,6 +694,32 @@ SCAN 阶段检测到 `.auto/runs/<latestRunId>/session-continuity.md` 存在且 
 - `fail`：有关键问题且无法自动修正，回流 EXECUTE
 
 > **Self-Verification 是 Claude 4.7 的核心能力**，可减少 50% 错误率，降低 60% 人工审查时间。
+
+#### `self-critique` gate（Reflexion 当 run 自纠）
+
+**触发条件**（策略 = 实现/重构）：每个 Quest 完成后立即触发，产出 `.auto/runs/<runId>/quest-<N>-critique.md`。修复策略下可选。详见 `skills/self-critique/SKILL.md`。
+
+**与 `self-verification` 的差异**：
+
+| Gate                | 关注层次                                             | 输出                              |
+| ------------------- | ---------------------------------------------------- | --------------------------------- |
+| `self-verification` | 代码语法 / 逻辑 / 边界 / 错误处理（Claude 4.7 自动） | 代码缺陷修正                      |
+| `self-critique`     | 本关是否真满足 objective（主线漂移防范）             | 达成度评分 + 盲点 + 是否回退 PLAN |
+
+**验证维度**：
+
+1. **objective 满足度**：本关 diff 反向翻译后是否与 objective 等价（参考 PHASE 3.3 反向翻译）
+2. **盲点暴露**：主动列 ≥ 1 条「最不放心的事」
+3. **outOfScope 合规**：是否引入了 PLAN 阶段声明的 outOfScope 内容
+4. **达成度评分**：0-100，< 70 触发修补或回流
+
+**处置规则**：
+
+- `pass`：critique 达成度 ≥ 70 且盲点已处理 → 继续下一关
+- `warning`：达成度 70-85 但盲点未完全处理 → 记录到 `agent-feedback.md`，放行
+- `fail`：达成度 < 70 或发现 outOfScope 违规 → 回流 PLAN 修订 QuestMap
+
+**跳过条件**：策略=探索（无代码变更）；策略=修复且单关 < 20 行（快速通道）。
 
 #### `skill-activation` gate（必检）
 

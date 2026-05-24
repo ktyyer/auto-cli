@@ -1,3 +1,9 @@
+---
+name: commands
+description: Claude Code slash command 编写规范 — frontmatter、自包含、引用校验
+paths: ["commands/**/*.md", ".claude/commands/**/*.md"]
+---
+
 # Commands 编写规范
 
 ## 主命令

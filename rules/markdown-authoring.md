@@ -1,3 +1,9 @@
+---
+name: markdown-authoring
+description: Markdown 编写规范 — 最小 diff、文档与行为一致、格式校验、子命令自包含
+paths: ["**/*.md"]
+---
+
 # Markdown 文件编写规范
 
 本仓库是纯 Markdown 指令仓库，所有产物均为 .md 文件。
