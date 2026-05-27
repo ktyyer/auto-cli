@@ -129,7 +129,13 @@ tags:
 
 ## `knowledge-distribution` gate
 
-**验证逻辑**：核对 LearnCard 是否分发到 `.auto/insights/` 对应文件，而非仅停留在 `runs/<runId>/learn-cards.md`。
+**验证逻辑**：核对 LearnCard 是否已从 `learn-cards.md` 分发（Edit append）到 `.auto/insights/` 对应文件。只停留在 `learn-cards.md` 未 append = 未分发。
+
+**验证步骤**：
+
+1. Read `learn-cards.md`，提取所有 `category` 字段
+2. 对每张有 category 的 LearnCard，Grep 其 `title` 在对应 insights 文件中是否存在
+3. 未找到 → 未分发
 
 **分发清单（硬约束）**：
 
