@@ -4,7 +4,7 @@
 
 **给 Claude Code / Codex 装一个"超级司令官" — 一句话需求，自动走完 6 步流水线，并把这次的经验写进项目记忆。**
 
-[![npm version](https://img.shields.io/badge/version-0.44.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.45.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -182,7 +182,7 @@ flowchart LR
 
 | 策略     | 适用               | 完整路径                                                            |
 | -------- | ------------------ | ------------------------------------------------------------------- |
-| **探索** | 分析/咨询/代码审查 | SCAN → PLAN → EXECUTE（只读）→ VERIFY（skipped）→ SUMMARIZE → LEARN |
+| **探索** | 分析/咨询/代码审查 | SCAN → 直接回答（快速通道）；复杂分析可走完整 PHASE |
 | **修复** | bug/小调整         | + build/test/self-verification gate                                 |
 | **实现** | 新功能/多文件      | + lint/coverage/self-critique + quest-designer 拆关                 |
 | **重构** | 架构级变更         | + security/adversarial 红蓝对抗验证                                 |
@@ -336,7 +336,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 29 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 31 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>
@@ -372,6 +372,8 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `constitution`          | `.auto/constitution.md` 硬约束载体           |
 | `incremental-review`    | 会话末增量审查                               |
 | `self-critique`         | 每关 Reflexion 自纠                          |
+| `quality-gates`        | VERIFY 14 Gate 门禁定义                      |
+| `knowledge-management` | LEARN 知识蒸馏 + 分发 + 归档全流程           |
 
 </details>
 

@@ -1,6 +1,6 @@
 {
   "name": "auto-cli",
-  "version": "0.44.0",
+  "version": "0.45.0",
   "description": "Auto CLI - Claude Code /auto 超级命令",
   "scripts": {
     "pack": "npm pack",

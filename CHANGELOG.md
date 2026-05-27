@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.0] - 2026-05-27
+
+### Added
+
+- **探索快速通道**：分析/咨询类任务跳过全部协议开销（QuestMap/QuestResult/VerifyReport/SUMMARIZE），SCAN 后直接回答 + 可选 LEARN
+- **Skill 分层机制**：核心层（8 个活跃 skill 正常扫描）vs 储备层（21 个零使用 skill 跳过 frontmatter），自动升降（连续 10 run 未激活降级，激活 1 次升级）
+- **`quality-gates` skill**：14 个 VERIFY Gate 完整定义从 auto.md 提取为独立 skill，含 Phase 交接自检原则表
+- **`knowledge-management` skill**：LEARN Phase 全流程从 auto.md 提取为独立 skill（蒸馏原则 / 分发 / feedback 真实化 / Session Continuity / Run 归档）
+- **Run 归档机制**：运行超过 30 天的 run 移入 `.auto/runs/archive/`，SCAN 预匹配只扫描未归档 run
+- **Constitution enforcement clause**：SCAN 显式声明"PLAN/EXECUTE/VERIFY 违反即 VERIFY fail"
+
+### Changed
+
+- **auto.md 精简**：1007 行 → 499 行（细节下沉到 quality-gates + knowledge-management 两个 skill）
+- **知识注入简化**：移除 `[insight:]` 格式标记要求（实践证明 0% 遵守率），改为自动注入 `RouteDecision.notes.relevantInsights`
+- **Feedback 真实化**：每次 run 结束后必须更新 agents.json / skills.json（totalCalls/usageCount/lastUsed/successRate），>30 天未更新标记 `stale`
+- **PLAN 章节重编号**：修复原版双 2.4 编号碰撞（假设声明 → 2.4，推理摘要 → 2.5，Quest 设计 → 2.6，Micro QuestMap → 2.7）
+- **策略表与快速通道一致性**：探索策略表更新为引用 1.3 快速通道，消除原有矛盾
+
+### Fixed
+
+- **调研前置断档**：补回 research-analyst 先产出 research-brief.md 再进 quest-designer 的操作指令
+- **反馈叠加 + 置信度规则缺失**：PLAN 2.1 补回 agents.json preferences 注入 Quest 设计约束 + confidence=low 过滤
+- **备选 Skill 级别缺失**：PLAN 2.2 补回匹配度 1-2 的备选 Skill 行为说明
+- **模型容量探测方式缺失**：SCAN 1.5 补回通过已知特征推断窗口容量的方法
+
+### Technical Details
+
+- 纯 Markdown 变更，无运行时依赖
+- format:check 通过，validate:references 通过
+- Skill 总数 29 → 31
+
 ## [0.32.0] - 2026-04-18
 
 ### Added

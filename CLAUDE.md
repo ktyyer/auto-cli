@@ -60,15 +60,15 @@
 
 ### 进行中
 
-- [ ] `commands/auto.md` 精简：将 Skill 注入映射表等细节下沉到 skill 文件
 - [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
 
-### 计划中（v0.41 候选）
+### 计划中（v0.46 候选）
 
-- 暂无（v0.41 候选区已全部完成，可发布 v0.41 版本）
+- 暂无
 
 ### 已完成
 
+- [x] v0.45.0: **auto.md 精简 + 细节下沉**：1007 行 → 499 行；新增 `skills/quality-gates/SKILL.md`（14 Gate 定义 + Phase 交接自检表）+ `skills/knowledge-management/SKILL.md`（LEARN 全流程）；探索快速通道 / Skill 分层 / 知识注入简化 / Feedback 真实化 / Run 归档 / 编号修复 / 7 项断档补回
 - [x] v0.44.0: **B5 收尾 · PHASE 3.3 self-critique 触发钩子**：`commands/auto.md` PHASE 3.3 QuestResult 节追加每关 self-critique 强制触发说明，达成度 < 70 阻断进入下一关。补足 v0.43 留下的 EXECUTE 触发链
 - [x] v0.44.0: **C2 · SessionStart hook**：新会话冷启动时提示 Read `CLAUDE.md` / `.auto/constitution.md` / 最新 run 的 `session-continuity.md`，零阻塞项目知识唤醒。PostToolUseFailure / SubagentStart 待 Claude Code 官方 schema 稳定再补
 - [x] v0.44.0: **C3 · agent tools 字段标准化**：确认 11 个 agents 已声明 `tools:` 字段（Claude Code 中等价于 Anthropic Agent SDK 的 `allowedTools`）；`agents/_shared-principles.md` 边界约束章节新增 tools 字段规范条目
