@@ -60,7 +60,7 @@ paths: ["hooks/**/*", ".claude/settings.json", ".claude/hooks.json"]
 
 ### PostCompact
 
-- **上下文重注入**: 上下文窗口压缩后提醒重新加载关键文件（CLAUDE.md、settings.json、loop-state.json），防止压缩丢失项目上下文
+- **上下文重注入**: 上下文窗口压缩后提醒重新加载关键文件（CLAUDE.md、settings.json、最新 run 的 session-continuity.md），防止压缩丢失项目上下文
 
 ### SessionStart
 
