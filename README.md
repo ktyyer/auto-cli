@@ -25,7 +25,7 @@ AI（自动走 6 步）：
   1. SCAN     扫项目 + 查历史经验
   2. PLAN     拆 Quest + 列「不做清单」
   3. EXECUTE  逐关施工 + 实时进度
-  4. VERIFY   过 15 道质检关
+  4. VERIFY   过 16 道质检关
   5. SUMMARIZE 交付清单（不自动 commit）
   6. LEARN    踩坑/模式写进 .auto/insights，下次自动复用
 ```
@@ -109,8 +109,8 @@ cat .auto/insights/patterns.md  # AI 学到的可复用模式
 2. **知识闭环 · 越用越懂你的项目** — 每次踩坑/模式/决策沉淀到 `.auto/insights/`，下次 SCAN **按关键词自动反查注入**，PHASE 4 `knowledge-reuse` gate 强制验证"真复用了"。
 3. **跨会话续接 · 不需要把上次对话再讲一遍** — run 中断时自动写 `session-continuity.md`，下次启动一行回到现场。
 4. **Quest 级失败回滚 · 不连累整个仓库** — 某关失败只回滚当前 Quest 触及文件，平均多保留 80% 已完成工作。
-5. **15-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
-6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，Subagent 上下文隔离减幻觉 40-60%，长 run 不跑偏。
+5. **16-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
+6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，最小上下文验证减幻觉 40-60%，长 run 不跑偏。
 
 > 2026 年 AI Agent 质量第一瓶颈不是模型能力，**而是上下文管理**。Auto CLI 让"对的 token 在对的时间"成为默认行为。
 
@@ -144,7 +144,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY 质检]
-        V1[15 个 Gate]
+        V1[16 个 Gate]
         V2{全过?}
     end
 
@@ -174,18 +174,18 @@ flowchart LR
 | **SCAN**      | 看项目家底、查历史踩坑、判断这事简单还是复杂                         | 装修前先量房、查老房子档案   |
 | **PLAN**      | 拆成几关，每关明确改哪些文件、不改哪些文件、怎么算完成               | 出施工图，写"承重墙绝不能动" |
 | **EXECUTE**   | 逐关施工，每关写盘，三件套防偷工（圈定文件 / 扩张词刹车 / 不偷捷径） | 工人按图施工，监工随时盯     |
-| **VERIFY**    | 15 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
+| **VERIFY**    | 16 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
 | **SUMMARIZE** | 给出人类可读总结，**不自动提交**——commit 权在你手里                  | 交付清单，由你签字           |
 | **LEARN**     | 把踩坑/模式提炼成 LearnCard，分发到 `.auto/insights/` 5 个文件       | 项目复盘，写进知识库         |
 
 ### 4 种执行策略（AI 自主判定）
 
-| 策略     | 适用               | 完整路径                                                            |
-| -------- | ------------------ | ------------------------------------------------------------------- |
+| 策略     | 适用               | 完整路径                                            |
+| -------- | ------------------ | --------------------------------------------------- |
 | **探索** | 分析/咨询/代码审查 | SCAN → 直接回答（快速通道）；复杂分析可走完整 PHASE |
-| **修复** | bug/小调整         | + build/test/self-verification gate                                 |
-| **实现** | 新功能/多文件      | + lint/coverage/self-critique + quest-designer 拆关                 |
-| **重构** | 架构级变更         | + security/adversarial 红蓝对抗验证                                 |
+| **修复** | bug/小调整         | + build/test/self-verification gate                 |
+| **实现** | 新功能/多文件      | + lint/coverage/self-critique + quest-designer 拆关 |
+| **重构** | 架构级变更         | + security/adversarial 红蓝对抗验证                 |
 
 > AI 在 SCAN 阶段根据**任务语义 + 安全敏感度 + 架构影响**自主判定，不按文件数硬编码。
 
@@ -228,8 +228,8 @@ flowchart LR
 **会发生什么**：
 
 - 策略 = 探索，全程**只读不改**
-- 调用 `security-reviewer` agent
-- VERIFY 为 `skipped`，但仍要产出分析结论
+- Claude Code 下调用 `security-reviewer` agent；Codex 下使用 security-review 验证视角
+- VERIFY 执行 analysis / skill-activation / knowledge-reuse / clean-state 等只读 gate
 - LEARN 把"发现的潜在威胁模式"写入 traps.md
 
 ### 场景 4 · 跨会话续接（无需重述）
@@ -336,45 +336,46 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 32 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 33 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>
 
-| Skill                   | 领域                                         |
-| ----------------------- | -------------------------------------------- |
-| `init-project`          | CLAUDE.md 智能初始化                         |
-| `workflow-patterns`     | 工作流模式 + Multi-Agent 编排 + 代码审查清单 |
-| `code-style-enforcer`   | TS/JS + Java 代码风格规则                    |
-| `git-workflow`          | Git 分支策略 + 约定式提交                    |
-| `dependency-analyzer`   | 依赖安全分析                                 |
-| `performance-patterns`  | 性能优化模式                                 |
-| `java-patterns`         | Spring Boot + MyBatis Plus 模板              |
-| `error-patterns`        | 错误模式速查                                 |
-| `robustness-patterns`   | 生产健壮性（重试/熔断/限流/幂等）            |
-| `logging-patterns`      | 结构化日志 + 可观测性                        |
-| `comment-standards`     | 代码注释规范                                 |
+| Skill                   | 领域                                          |
+| ----------------------- | --------------------------------------------- |
+| `init-project`          | CLAUDE.md 智能初始化                          |
+| `workflow-patterns`     | 工作流模式 + Multi-Agent 编排 + 代码审查清单  |
+| `code-style-enforcer`   | TS/JS + Java 代码风格规则                     |
+| `git-workflow`          | Git 分支策略 + 约定式提交                     |
+| `dependency-analyzer`   | 依赖安全分析                                  |
+| `performance-patterns`  | 性能优化模式                                  |
+| `java-patterns`         | Spring Boot + MyBatis Plus 模板               |
+| `error-patterns`        | 错误模式速查                                  |
+| `robustness-patterns`   | 生产健壮性（重试/熔断/限流/幂等）             |
+| `logging-patterns`      | 结构化日志 + 可观测性                         |
+| `comment-standards`     | 代码注释规范                                  |
 | `production-governance` | 目标收敛 + 产物真源 + run 状态 + skill 健康度 |
-| `production-standards`  | 生产就绪标准                                 |
-| `requirement-clarifier` | 需求模糊度评估与澄清                         |
-| `research-analyst`      | 外部资料 / 官方文档调研                      |
-| `test-plan-writer`      | 6 维测试计划生成                             |
-| `systematic-debugging`  | 系统化调试方法论（4 阶段）                   |
-| `code-analyzer`         | tree-sitter 代码结构分析                     |
-| `skill-creator`         | Skill 编写方法论                             |
-| `skill-evaluator`       | Skill 健康度评估（结构 + 效果双路径）        |
-| `prd-writer`            | PRD 需求文档（概念版 → 落地版）              |
-| `api-design`            | RESTful / 分页 / 错误码 / OpenAPI            |
-| `refactoring-patterns`  | 安全重构方法论                               |
-| `spec-driven`           | 规格驱动开发（契约 → 验收）                  |
-| `context-engineering`   | 上下文工程（预算 / 压缩 / 隔离）             |
-| `brainstorming`         | 多方案对比与权衡分析                         |
-| `using-git-worktrees`   | Git Worktree 多 Agent 并行                   |
-| `constitution`          | `.auto/constitution.md` 硬约束载体           |
-| `incremental-review`    | 会话末增量审查                               |
-| `self-critique`         | 每关 Reflexion 自纠                          |
-| `quality-gates`        | VERIFY 15 Gate 门禁定义                      |
-| `knowledge-management` | LEARN 知识蒸馏 + 分发 + 归档全流程           |
+| `production-standards`  | 生产就绪标准                                  |
+| `requirement-clarifier` | 需求模糊度评估与澄清                          |
+| `research-analyst`      | 外部资料 / 官方文档调研                       |
+| `test-plan-writer`      | 6 维测试计划生成                              |
+| `systematic-debugging`  | 系统化调试方法论（4 阶段）                    |
+| `code-analyzer`         | tree-sitter 代码结构分析                      |
+| `skill-creator`         | Skill 编写方法论                              |
+| `skill-evaluator`       | Skill 健康度评估（结构 + 效果双路径）         |
+| `prd-writer`            | PRD 需求文档（概念版 → 落地版）               |
+| `api-design`            | RESTful / 分页 / 错误码 / OpenAPI             |
+| `refactoring-patterns`  | 安全重构方法论                                |
+| `spec-driven`           | 规格驱动开发（契约 → 验收）                   |
+| `context-engineering`   | 上下文工程（预算 / 压缩 / 隔离）              |
+| `brainstorming`         | 多方案对比与权衡分析                          |
+| `using-git-worktrees`   | Git Worktree 多 Agent 并行                    |
+| `constitution`          | `.auto/constitution.md` 硬约束载体            |
+| `incremental-review`    | 会话末增量审查                                |
+| `self-critique`         | 每关 Reflexion 自纠                           |
+| `quality-gates`         | VERIFY 16 Gate 门禁定义                       |
+| `knowledge-management`  | LEARN 知识蒸馏 + 分发 + 归档全流程            |
+| `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
 
 </details>
 
@@ -415,13 +416,13 @@ node scripts/uninstall.js      # tgz 解压目录内
 SCAN     → RouteDecision   路由决策书（策略 + Agent + 预算 + 能力快照）
 PLAN     → QuestMap        闯关地图（Quest 列表 + outOfScope + 验收命令）
 EXECUTE  → QuestResult     每关战绩（diff + 验证 + skill 应用证据）
-VERIFY   → VerifyReport    质检报告（15 gate × 状态 + 实测证据）
+VERIFY   → VerifyReport    质检报告（16 gate × 状态 + 实测证据）
 LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 ```
 
 **类比**：工厂流水线工单——每个工位收上游标准件，出下游标准件，谁出问题精确定位。
 
-### 15 Gate 验证矩阵
+### 16 Gate 验证矩阵
 
 | Gate                     | 说明                   | 探索 | 修复 | 实现 | 重构 |
 | ------------------------ | ---------------------- | :--: | :--: | :--: | :--: |
@@ -435,6 +436,7 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | `self-verification`      | AI 自查代码            |  —   |  ✓   |  ✓   |  ✓   |
 | `self-critique`          | Reflexion 自纠（每关） |  —   |  —   |  ✓   |  ✓   |
 | `production-governance`  | 生产治理闭环           |  —   |  —   |  ✓   |  ✓   |
+| `protocol-validator`     | 协议对象完整性校验     |  —   |  ✓   |  ✓   |  ✓   |
 | `skill-activation`       | Skill 应用证据         |  ✓   |  ✓   |  ✓   |  ✓   |
 | `knowledge-reuse`        | 历史经验复用           |  ✓   |  ✓   |  ✓   |  ✓   |
 | `knowledge-distribution` | LearnCard 分发硬约束   |  ✓   |  ✓   |  ✓   |  ✓   |
@@ -445,7 +447,8 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 
 - **实测优先（Run-Don't-Claim）**：不准说"测试通过"——必须贴命令 + 输出尾 ≥ 3 行
 - **预测后验证（Predict-Then-Verify）**：跑命令前先猜结果，猜错说明理解错，停下来想清楚
-- **Subagent 上下文隔离**：验证子代理只接收最小上下文，减幻觉 40-60%
+- **协议先验校验**：`protocol-validator` 在 Phase 交接前检查必填字段、条件字段和失败项下一步建议
+- **验证上下文隔离**：Claude Code 可用 subagent；Codex 默认主代理按最小上下文执行验证视角，减幻觉 40-60%
 
 ### Context Engineering（上下文工程）
 
@@ -453,7 +456,7 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | ------------------------ | -------------------------------------------- | ------------------------ |
 | **预算三区**（绿/黄/红） | 进入红区自动写 `session-continuity.md` 续接  | 不让 AI 失忆             |
 | **渐进披露**             | Skill 三级激活，低匹配只读 20 行             | 节省 80%+ token          |
-| **Subagent 隔离**        | 子代理只给最小上下文                         | 减幻觉 + 省 40-60% token |
+| **验证上下文隔离**       | 验证视角只给最小上下文                       | 减幻觉 + 省 40-60% token |
 | **漂移防护**             | 复读原话 + 反向翻译 + 扩张词刹车             | 长 run 不跑偏            |
 | **知识蒸馏**             | LearnCard 原子化（≤5 行）+ 标 scope          | 复用真正有效             |
 | **运行级 Budget**        | `maxIterations` 25 + `noProgressThreshold` 3 | 防 runaway 烧 token      |
@@ -553,7 +556,7 @@ SCAN 自动按 frontmatter 发现，PLAN 按四信号匹配度激活。
 | `tags`                                                     | —    | **必填**（auto-cli 扩展，用于动态发现） |
 | `license` / `compatibility` / `metadata` / `allowed-tools` | 可选 | 可选                                    |
 
-源码结构对齐意味着 Skill 可直接被 **Claude Code / Cursor / Windsurf / Aider / Gemini CLI / Codex / OpenCode** 等支持 Agent Skills 标准的工具识别。
+源码结构对齐意味着 Skill 可被 **Claude Code** 原生识别；Codex / OpenCode 等运行时通过同步或桥接目录复用。
 
 ---
 
@@ -566,7 +569,7 @@ SCAN 自动按 frontmatter 发现，PLAN 按四信号匹配度激活。
 | 子命令 `/auto:route` 等 | 原生 slash command | 支持（Codex 覆盖版）                          |
 | 项目 `skills/`          | ✓                  | ✓                                             |
 | 能力快照                | project scan       | 优先读 `.auto/cache/capability-snapshot.json` |
-| 自定义 agents           | ✓                  | ✗（用 Codex 内建代理）                        |
+| 自定义 agents           | ✓                  | ✗（仅显式多 agent 时用 `spawn_agent`）        |
 | rules / hooks           | ✓                  | ✗                                             |
 
 > 同名 `/auto` 在两端**行为对齐**，但执行机制不同（关键术语 grep 双端核对）。

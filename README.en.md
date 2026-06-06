@@ -4,7 +4,7 @@
 
 **Give Claude Code / Codex a "Super Commander" — say one sentence, watch AI walk through a 6-phase pipeline, and write what it learned into your project's memory.**
 
-[![npm version](https://img.shields.io/badge/version-0.44.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.45.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-why-use-it)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -25,7 +25,7 @@ AI (runs 6 phases automatically):
   1. SCAN       scan project + retrieve past experience
   2. PLAN       break into Quests + declare "won't-do" list
   3. EXECUTE    build quest by quest + live progress
-  4. VERIFY     pass through 15 quality gates
+  4. VERIFY     pass through 16 quality gates
   5. SUMMARIZE  delivery report (NO auto-commit)
   6. LEARN      sediment traps/patterns to .auto/insights, auto-reused next time
 ```
@@ -109,8 +109,8 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
 3. **Cross-session resumption · no need to re-explain** — when a run interrupts, `session-continuity.md` is written automatically. Next startup picks up with one line.
 4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files, on average preserving 80% of completed work.
-5. **15-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
-6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, subagent context isolation reduces hallucination 40-60%, long runs don't drift.
+5. **16-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
+6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, minimal-context validation reduces hallucination 40-60%, long runs don't drift.
 
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
 
@@ -144,7 +144,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY Gate]
-        V1[15 Gates]
+        V1[16 Gates]
         V2{All pass?}
     end
 
@@ -174,18 +174,18 @@ flowchart LR
 | **SCAN**      | Check project's existing assets, look up past traps, judge complexity                                                              | Surveyor measures the house & checks records before renovation |
 | **PLAN**      | Break into quests, each declares what files to touch / NOT touch / how to verify                                                   | Draft blueprints with "load-bearing wall MUST NOT be touched"  |
 | **EXECUTE**   | Build quest by quest, write to disk every step. 3 anti-cheating mechanisms (file lock / expansion-word brake / no-shortcut pledge) | Workers follow blueprint, foreman watches constantly           |
-| **VERIFY**    | Run 15 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
+| **VERIFY**    | Run 16 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
 | **SUMMARIZE** | Output human-readable summary. **No auto-commit** — commit power stays with YOU                                                    | Delivery checklist for YOUR signature                          |
 | **LEARN**     | Distill traps/patterns into LearnCards, dispatch to 5 files in `.auto/insights/`                                                   | Project retrospective, written to knowledge base               |
 
 ### 4 execution strategies (AI decides autonomously)
 
-| Strategy      | Use case                     | Full path                                                                |
-| ------------- | ---------------------------- | ------------------------------------------------------------------------ |
-| **Explore**   | Analysis/consult/code review | SCAN → PLAN → EXECUTE (read-only) → VERIFY (skipped) → SUMMARIZE → LEARN |
-| **Fix**       | Bug / small tweak            | + build/test/self-verification gate                                      |
-| **Implement** | New feature / multi-file     | + lint/coverage/self-critique + quest-designer breakdown                 |
-| **Refactor**  | Architectural change         | + security/adversarial red-team validation                               |
+| Strategy      | Use case                     | Full path                                                                        |
+| ------------- | ---------------------------- | -------------------------------------------------------------------------------- |
+| **Explore**   | Analysis/consult/code review | SCAN → answer directly (fast path); complex analysis may run the full PHASE flow |
+| **Fix**       | Bug / small tweak            | + build/test/self-verification gate                                              |
+| **Implement** | New feature / multi-file     | + lint/coverage/self-critique + quest-designer breakdown                         |
+| **Refactor**  | Architectural change         | + security/adversarial red-team validation                                       |
 
 > AI in SCAN phase decides based on **task semantics + safety sensitivity + architectural impact**, NOT hard-coded by file count.
 
@@ -228,8 +228,8 @@ flowchart LR
 **What happens**:
 
 - Strategy = explore, **read-only throughout**
-- Calls `security-reviewer` agent
-- VERIFY is `skipped`, but analysis conclusions still produced
+- Claude Code calls the `security-reviewer` agent; Codex uses a security-review validation view
+- VERIFY runs read-only gates such as analysis / skill-activation / knowledge-reuse / clean-state
 - LEARN writes "discovered potential threat patterns" to traps.md
 
 ### Case 4 · Cross-session resumption (no re-narration needed)
@@ -336,7 +336,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 
 > `agents/_shared-principles.md` defines shared principles, not invoked as a standalone agent.
 
-### 29 Skills (cross-platform Anthropic Agent Skills standard)
+### 33 Skills (cross-platform Anthropic Agent Skills standard)
 
 <details>
 <summary><b>Expand full skill list</b></summary>
@@ -354,6 +354,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `robustness-patterns`   | Production robustness (retry/circuit-breaker/rate-limit/idempotency)  |
 | `logging-patterns`      | Structured logging + observability                                    |
 | `comment-standards`     | Code comment standards                                                |
+| `production-governance` | Goal convergence + artifact truth + run state + skill health          |
 | `production-standards`  | Production-ready standards                                            |
 | `requirement-clarifier` | Requirement ambiguity assessment & clarification                      |
 | `research-analyst`      | External resources / official docs research                           |
@@ -372,6 +373,9 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `constitution`          | `.auto/constitution.md` hard-constraint carrier                       |
 | `incremental-review`    | End-of-session incremental review                                     |
 | `self-critique`         | Per-quest Reflexion self-correction                                   |
+| `quality-gates`         | VERIFY 16-gate definitions                                            |
+| `knowledge-management`  | LEARN knowledge distillation + distribution + archive workflow        |
+| `protocol-validator`    | Protocol object schema / handoff completeness validation              |
 
 </details>
 
@@ -412,13 +416,13 @@ Every `/auto` run is forced to produce these, landing in `.auto/runs/<runId>/`:
 SCAN     → RouteDecision   routing decision (strategy + agent + budget + capability snapshot)
 PLAN     → QuestMap        quest map (quest list + outOfScope + acceptance commands)
 EXECUTE  → QuestResult     per-quest result (diff + validation + skill application evidence)
-VERIFY   → VerifyReport    gate report (15 gates × status + actual evidence)
+VERIFY   → VerifyReport    gate report (16 gates × status + actual evidence)
 LEARN    → LearnCard       experience card (dispatched by category to insights/)
 ```
 
 **Analogy**: factory assembly line work orders — each station consumes upstream standard parts, produces downstream standard parts. Failures locate precisely.
 
-### 15-Gate validation matrix
+### 16-Gate validation matrix
 
 | Gate                     | Meaning                                | Explore | Fix | Implement | Refactor |
 | ------------------------ | -------------------------------------- | :-----: | :-: | :-------: | :------: |
@@ -432,6 +436,7 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | `self-verification`      | AI self-check (code)                   |    —    |  ✓  |     ✓     |    ✓     |
 | `self-critique`          | Reflexion self-correction (per quest)  |    —    |  —  |     ✓     |    ✓     |
 | `production-governance`  | Production governance loop             |    —    |  —  |     ✓     |    ✓     |
+| `protocol-validator`     | Protocol object completeness           |    —    |  ✓  |     ✓     |    ✓     |
 | `skill-activation`       | Skill application evidence             |    ✓    |  ✓  |     ✓     |    ✓     |
 | `knowledge-reuse`        | Historical experience reuse            |    ✓    |  ✓  |     ✓     |    ✓     |
 | `knowledge-distribution` | LearnCard distribution hard-constraint |    ✓    |  ✓  |     ✓     |    ✓     |
@@ -442,7 +447,8 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 
 - **Run-Don't-Claim**: never say "tests passed" — must paste command + last 3 lines of output
 - **Predict-Then-Verify**: before running any verify command, predict the result first. Wrong prediction = wrong understanding, stop and fix understanding
-- **Subagent context isolation**: verification subagents receive minimal context, cutting hallucination 40-60%
+- **Protocol pre-validation**: `protocol-validator` checks required fields, conditional fields, and failed-gate next steps before phase handoff
+- **Verification context isolation**: Claude Code may use subagents; Codex uses the main agent with minimal-context validation views by default, cutting hallucination 40-60%
 
 ### Context Engineering
 
@@ -450,7 +456,7 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | ------------------------------------ | -------------------------------------------------------- | ---------------------------------------- |
 | **3-zone budget** (green/yellow/red) | Auto-writes `session-continuity.md` on entering red zone | AI never "forgets"                       |
 | **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save 80%+ tokens                         |
-| **Subagent isolation**               | Subagents get only minimal context                       | Less hallucination + 40-60% tokens saved |
+| **Verification context isolation**   | Validation views receive only minimal context            | Less hallucination + 40-60% tokens saved |
 | **Drift protection**                 | Echo the ask + reverse diff + expansion-word brake       | Long runs stay on mainline               |
 | **Knowledge distillation**           | LearnCards atomic (≤5 lines) + scope-tagged              | Reuse actually works                     |
 | **Run-level budget**                 | `maxIterations` 25 + `noProgressThreshold` 3             | Prevent runaway token burn               |
@@ -550,7 +556,7 @@ SCAN auto-discovers by frontmatter; PLAN activates by 4-signal match score.
 | `tags`                                                     | —        | **Required** (auto-cli extension for dynamic discovery) |
 | `license` / `compatibility` / `metadata` / `allowed-tools` | Optional | Optional                                                |
 
-Source structure alignment means skills are directly recognized by **Claude Code / Cursor / Windsurf / Aider / Gemini CLI / Codex / OpenCode** and other tools supporting the Agent Skills standard.
+Source structure alignment means skills are natively recognized by **Claude Code**; Codex / OpenCode and similar runtimes reuse them through sync or bridge directories.
 
 ---
 
@@ -563,7 +569,7 @@ Source structure alignment means skills are directly recognized by **Claude Code
 | Sub-commands `/auto:route` etc. | Native slash commands | Supported (Codex override versions)            |
 | Project `skills/`               | ✓                     | ✓                                              |
 | Capability snapshot             | project scan          | Prefers `.auto/cache/capability-snapshot.json` |
-| Custom agents                   | ✓                     | ✗ (uses Codex built-in agents)                 |
+| Custom agents                   | ✓                     | ✗ (uses `spawn_agent` only when explicit)      |
 | rules / hooks                   | ✓                     | ✗                                              |
 
 > Same-name `/auto` is **behavior-aligned** on both sides, but execution mechanisms differ (verified by grep on key terms across both runtimes).

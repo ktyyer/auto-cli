@@ -43,6 +43,7 @@ tags: [shared, protocol, handoff, agent, principles]
   "kind": "RouteDecision | QuestMap | QuestResult | VerifyReport | LearnCard",
   "id": "对象 ID",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "SCAN | PLAN | EXECUTE | VERIFY | SUMMARIZE | LEARN",
   "status": "success | partial | failed | skipped",
   "summary": "一句话摘要",
@@ -77,6 +78,7 @@ tags: [shared, protocol, handoff, agent, principles]
 4. `LEARN` 默认依赖 `VerifyReport`；唯一例外是独立 `/auto:learn --git` 可基于 Git 证据生成 `LearnCard`。
 5. 任一阶段如发现上游对象缺失，必须显式输出 `blockingIssues`，而不是静默续行。
 6. 当 run 需要跨阶段或跨会话继续时，当前 phase 必须立即写入 `.auto/runs/<runId>/session-continuity.md`；LEARN 仅负责收尾时补全或更新。
+7. Phase 交接前必须执行 `protocol-validator` 检查上游对象；缺少必填字段时必须回流对应 Phase，不能继续下游。
 
 ### Gate 自适应规则
 
@@ -104,7 +106,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### insight-index 派生对象
 
-`.auto/cache/insight-index.json` 是 LEARN 阶段维护的反向索引，用于让 SCAN/PLAN 阶段把「按印象 grep」升级为「程序化反查」。
+`.auto/cache/insight-index.json` 是 LEARN 阶段可维护的反向索引，用于辅助 SCAN/PLAN 检索；缺失时回退直接读取 `.auto/insights/*.md`。
 
 **只读真源仍是 `.auto/insights/*.md`**；索引仅作派生缓存，重建无副作用。
 
@@ -131,25 +133,15 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 **消费时机**：
 
-- `PHASE 2.1` 知识检索：先按 `by_keyword` 反查，再按 `by_tag` 命中
-- `PHASE 4` knowledge-reuse gate：核对 `QuestMap.routeHintsUsed` 中的 `[insight:<file>#<title>]` 引用数 ≥ 索引命中数 × 0.5
+- `PHASE 2.1` 知识检索：优先直接检索 `.auto/insights/*.md`；若 insight-index 存在，可按 `by_keyword` / `by_tag` 辅助命中
+- `PHASE 4` knowledge-reuse gate：核对 RouteDecision.notes.relevantInsights 中的 insight 是否在 QuestResult.validations 中出现参考证据
 
 **最小证据格式**：
 
-- Route / Plan 侧引用统一使用以下标记之一：
-  - `[insight:<file>#<title>]`
-  - `[feedback:skills.json#<skill-or-key>]`
-  - `[feedback:agents.json#<agent-or-key>]`
-  - `[run:<runId>]`
-- VERIFY 侧若 `knowledge-reuse` gate 为 `pass`，`gateResults[].evidence` 或人类可读 verify 摘要中至少要出现 1 个上述标记。
-- 这是“知识已被消费”的最小可执行证据；不要求脚本一次性理解引用语义，但要求能证明 run 不是纯口头声称“我复用了知识”。
-- 下一层弱校验要求这些标记必须可解析到真实目标：
-  - `insight` → `.auto/insights/<file>.md` 中真实存在的 heading
-  - `feedback` → `.auto/feedback/*.json` 中真实存在的顶层 key
-  - `run` → `.auto/runs/<runId>/` 真实存在
-- 再下一层弱相关性校验只拦截“真实但明显不相干”的引用：
-  - 至少 1 条有效 `insight` 或 `run` 标记应与当前任务文本存在明显词面重合
-  - `feedback` 标记默认只做存在性校验，不参与弱相关性打分
+- Route / Plan 侧把命中的 insight 摘要写入 `RouteDecision.notes.relevantInsights`。
+- EXECUTE 侧在 `QuestResult.validations` 中记录参考证据，包含 insight 标题/摘要与应用位置或决策点。
+- VERIFY 侧若 `knowledge-reuse` gate 为 `pass`，`gateResults[].evidence` 或人类可读 verify 摘要中至少要说明被复用的 insight 与应用证据。
+- 不再强制要求 `[insight:]` / `[feedback:]` / `[run:]` 标记；若出现这些标记，可作为更强证据处理。
   - 该规则是启发式门禁，不等价于深语义相关性证明
 - Verify 一致性校验要求人类可读结论与命令结果不冲突：
   - 若 `npm run check` 已为 `PASS`，`lint` / `regression` 不得仍为 `pending`
@@ -299,8 +291,8 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### RouteDecision 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `userIntent`, `strategy`, `primaryAgent`, `skills`, `next`。
-选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `userIntent`, `strategy`, `primaryAgent`, `skills`, `next`。
+选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`, `notes`。
 
 ```json
 {
@@ -308,6 +300,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "kind": "RouteDecision",
   "id": "route-<id>",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "SCAN",
   "status": "success",
   "summary": "一句话说明路由决策",
@@ -339,7 +332,10 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
         "reason": "<why not selected>"
       }
     ],
-    "routeHintsUsed": ["<hint>", "[insight:patterns.md#<title>]", "[run:run-<id>]"]
+    "routeHintsUsed": ["<hint>", "<insight title or summary>", "<related runId>"]
+  },
+  "notes": {
+    "relevantInsights": ["<insight title or summary>"]
   },
   "userIntent": "<原始输入>",
   "normalizedTask": "<归一化任务摘要>",
@@ -370,7 +366,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### QuestMap 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
 选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, `costCaps`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
 
 **实现 / 重构策略下的额外必填字段**（思考充分度门禁）：
@@ -388,6 +384,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "kind": "QuestMap",
   "id": "quest-map-<id>",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "PLAN",
   "status": "success",
   "summary": "一句话说明任务拆解结果",
@@ -456,9 +453,9 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### QuestResult 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `questId`, `attempt`, `ownerAgent`, `changedFiles`。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `questId`, `attempt`, `ownerAgent`, `changedFiles`。
 选填：`diffSummary`, `validations`, `producedOutputs`, `producedContracts`, `decisionNotes`。
-失败时必填：`failureContext`（含 `errorType`, `errorSummary`）, `retry`。
+失败时必填：`failureContext`（含 `errorType`, `errorSummary`, `recommendedNext`）, `retry`。
 
 ```json
 {
@@ -466,6 +463,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "kind": "QuestResult",
   "id": "quest-result-<id>",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "EXECUTE",
   "status": "success | partial | failed | skipped | cost_exceeded",
   "summary": "一句话说明本关结果",
@@ -500,7 +498,8 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
     "errorSummary": "<一句话错误摘要>",
     "failedCommand": "<失败命令>",
     "rootCauseHypothesis": "<根因假设>",
-    "suggestedFallbackAgent": "<候选 Agent>"
+    "suggestedFallbackAgent": "<候选 Agent>",
+    "recommendedNext": "下一步建议动作"
   },
   "retry": "same_path | alternative_path_or_agent | escalate_build_error_resolver | none",
   "rollbackApplied": false
@@ -509,7 +508,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### VerifyReport 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `gateResults[]`（每项必填 `name`, `status`）, `overallStatus`, `nextAction`。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `gateResults[]`（每项必填 `name`, `status`）, `overallStatus`, `nextAction`。
 选填：`scope`, `targetIds`, `failedGates`, `evidence`, `remediationPlan`, `rollbackRecommendation`。
 
 ```json
@@ -518,6 +517,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "kind": "VerifyReport",
   "id": "verify-<id>",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "VERIFY",
   "status": "success | partial | failed | skipped",
   "summary": "一句话验证结论",
@@ -535,13 +535,13 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "targetIds": ["quest-result-<id>"],
   "gateResults": [
     {
-      "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | skill-activation | knowledge-reuse | clean-state | cost",
+      "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | self-critique | production-governance | protocol-validator | skill-activation | knowledge-reuse | knowledge-distribution | clean-state | cost",
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",
-      "evidence": "<输出摘要；knowledge-reuse=pass 时至少包含一个 [insight:...] / [feedback:...] / [run:...] 标记>",
+      "evidence": "<输出摘要；knowledge-reuse=pass 时说明被复用的 insight 与应用证据>",
       "owner": "main | verification",
-      "fixHint": "<修复建议>"
+      "recommendedNext": "<失败时下一步建议动作；非失败可省略>"
     }
   ],
   "overallStatus": "pass | warn | fail",
@@ -555,7 +555,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### LearnCard 标准对象
 
-必填：`id`, `runId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`。
 选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`, `failureClass`。
 
 ```json
@@ -564,6 +564,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "kind": "LearnCard",
   "id": "learn-<id>",
   "runId": "run-<id>",
+  "correlationId": "corr-<id>",
   "phase": "LEARN",
   "status": "success",
   "summary": "一句话经验",

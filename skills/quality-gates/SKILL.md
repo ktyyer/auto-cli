@@ -1,6 +1,6 @@
 ---
 name: quality-gates
-description: VERIFY 门禁定义 — 15 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
+description: VERIFY 门禁定义 — 16 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
 tags:
   - verify
   - gate
@@ -15,18 +15,18 @@ tags:
 
 ## Gate Taxonomy
 
-`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `production-governance` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
+`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
 
 ## 各策略必需 gate
 
 > 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
 
-| 策略 | 必需 gate                                                                                                                                                                                                                        |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                     |
-| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `production-governance` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `production-governance` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                            |
+| 修复 | `build` + `test` + `self-verification` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
 
 ---
 
@@ -115,6 +115,24 @@ tags:
 
 ---
 
+## `protocol-validator` gate
+
+**触发**：Phase 交接前检查上游协议对象完整性；策略 = 修复/实现/重构时，VERIFY gateResults 只汇总截至 EXECUTE→VERIFY 已完成的 handoff 检查结果。
+
+**validator 支持对象**：按阶段校验已产出的对象：`RouteDecision` | `QuestMap` | `QuestResult` | `VerifyReport` | `LearnCard`
+
+**VERIFY gate 汇总范围**：仅汇总本 run 已完成的 handoff 检查：SCAN→PLAN 的 `RouteDecision`、PLAN→EXECUTE 的 `QuestMap`、EXECUTE→VERIFY 的 `QuestResult`；不得把尚未完成的 VERIFY→SUMMARIZE 或 LEARN 后检查计入本 gate。
+
+**验证逻辑**：加载 `skills/protocol-validator/SKILL.md`，检查必填字段、条件字段、同一 run 的 `correlationId` 一致性与失败时的 `recommendedNext`。
+
+| 结果    | 条件                                           | 处置                    |
+| ------- | ---------------------------------------------- | ----------------------- |
+| pass    | 所有必填字段与条件字段齐备                     | 继续                    |
+| warning | 仅 optional 字段缺失或非阻断字段不完整         | 记录放行                |
+| fail    | 缺少必填字段、条件字段或失败项 recommendedNext | 回流对应上游 Phase 补全 |
+
+---
+
 ## `skill-activation` gate
 
 **验证逻辑**：对每个激活 Skill（top-3）检查 QuestResult.validations 中的证据条目。每条证据须包含 skill 名称 + 提取要素 + 代码位置/决策点。
@@ -156,7 +174,7 @@ tags:
 | warning | 首次未达标，记录但放行                 |
 | fail    | 同项目/同关键词组连续 2 次未达标       |
 
-**跳过**：RouteDecision 中无注入 insight；insight-index 不存在或为空。
+**跳过**：RouteDecision.notes.relevantInsights 为空。
 
 ---
 

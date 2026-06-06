@@ -32,7 +32,7 @@ description: Codex 优化版超级命令 - 基于当前仓库与已安装 skills
 强制顺序：
 
 1. 先完成最小 preflight、route、plan
-2. 若项目存在 `.auto/`，先生成 `runId` 并写出最小 run 工件骨架
+2. 若项目存在 `.auto/`，先生成 `runId` + `correlationId` 并写出最小 run 工件骨架
 3. 在继续深读 diff、源码、测试或执行修改前，先把 `RouteDecision` 和 `Plan` 以**用户可见的规划卡片**告知用户
 4. 只有在 `RouteDecision` 和 `Plan` 已经形成并且对用户可见后，才允许继续读 diff、审查代码、执行修改或给结论
 
@@ -57,7 +57,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 最小内容要求：
 
-1. `## RouteDecision` 至少说明：`strategy`、`complexity`、`selectedSkills`、`verifyGates`
+1. `## RouteDecision` 至少说明：`strategy`、`complexity`、`skills`、`verifyGates`
 2. `## Plan` 至少说明：先验证什么、会读/会改哪些文件、如何完成验证
 3. 这张规划卡片可以是简版 / provisional，但必须先于 deeper scan、diff 审查、源码阅读或修改动作出现
 4. 最终完整回复仍然必须保留 `## RouteDecision / ## Plan / ## Execution / ## Verify / ## Learn` 五段骨架；这张 commentary 规划卡片只是把 route / plan 提前变成对用户可见
@@ -128,6 +128,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 9. 验证优先使用真实命令；无法验证时明确说明缺口。
 10. 只要项目已经使用 `.auto/`，就默认写入本次 run 工件，而不是只在对话里口头总结。
 11. 生产级实现/重构任务必须激活 `production-governance`，检查目标收敛、产物真源、run 状态、成本质量和 skill 健康度。
+12. Phase 交接前必须用 `protocol-validator` 校验上游协议对象；缺少必填字段、条件字段或失败项下一步建议时，不得继续下游。
 
 ---
 
@@ -148,7 +149,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 1. **Route 已形成**
    - 必须在内部先形成 `RouteDecision`
-   - 至少包含：`strategy`、`complexity`、`selectedSkills`、`verifyGates`
+   - 至少包含：`strategy`、`complexity`、`skills`、`verifyGates`
 2. **Plan 已形成**
    - 必须在真正分析或改动前形成 `QuestMap` 或 `Micro Plan`
    - 至少回答：要做什么、先验证什么、会动哪些文件、如何验证
@@ -168,7 +169,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 除非用户明确要求只返回某一个中间产物，否则 `/auto` 的回复至少要让用户看见这 4 层：
 
 1. `RouteDecision`
-   - 至少显式说明：`strategy`、`complexity`、`selectedSkills`、`verifyGates`
+   - 至少显式说明：`strategy`、`complexity`、`skills`、`verifyGates`
 2. `Micro Plan` 或 `QuestMap`
    - 至少显式说明：先验证什么、会读/会改哪些文件、如何完成验证
 3. `Verify Result`
@@ -286,7 +287,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 只要仓库存在 `.auto/`，preflight 还必须额外完成两件事：
 
-- 生成本次唯一 `runId`
+- 生成本次唯一 `runId` 与贯穿 RouteDecision / QuestMap / QuestResult / VerifyReport / LearnCard 的 `correlationId`
 - 立即确定 `.auto/runs/<runId>/` 作为本次真源目录
 
 不要等到总结阶段才决定是否写 run。
@@ -298,7 +299,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - `strategy`
 - `complexity`
 - `riskLevel`
-- `selectedSkills`
+- `skills`
 - `verifyGates`
 
 这一步是 `/auto` 的内部职责，不要要求用户先跑 `/auto:route`。
@@ -387,7 +388,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 判断风险：安全敏感、数据敏感、是否需要先澄清
 - 判断验证路径：build / test / lint / 只读分析
 - 判断是否需要激活 skill
-- 生成 runId 和本次写盘目标
+- 生成 runId、correlationId 和本次写盘目标
 
 不要引用 `~/.claude/*` 路径作为 Codex 的能力来源。
 
@@ -493,13 +494,9 @@ SCAN 完成后立即建立预算感知：
 - 哪些 traps 需要规避
 - 哪些 feedback 会影响 skill 选择或验证路径
 - 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：`successRate < 0.5` 的 agent 排除；有 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
-- 若本次明确复用了某条知识，优先在 `RouteDecision` 或 `QuestMap` 中留下最小引用标记：
-  - `[insight:<file>#<title>]`
-  - `[feedback:skills.json#<key>]`
-  - `[feedback:agents.json#<key>]`
-  - `[run:<runId>]`
-- 这些引用标记应优先指向真实存在的 insight 标题、feedback key 或历史 run，避免写出悬空引用
-- 若仓库已启用弱相关性校验，优先选择与当前任务文本明显同题的 `insight` 标题或历史 run goal，避免贴真实但不相干的引用
+- 若本次明确复用了某条知识，直接将命中摘要写入 `RouteDecision.notes.relevantInsights`，每条 ≤ 2 行
+- `QuestResult.validations` 记录这些 insight 在执行或验证中的参考证据
+- `selection.routeHintsUsed` 可记录 insight 标题、feedback key 或历史 runId，但不强制 `[insight:]` / `[feedback:]` / `[run:]` 标记
 
 ### 2.3 最小任务设计
 
@@ -537,14 +534,14 @@ SCAN 完成后立即建立预算感知：
 
 **Premortem（事前验尸）**：“假设 6 个月后本次改动引发 P0，复盘报告最可能写哪 3 个原因？”—— 把这 3 条塞进计划的风险缓解中。
 
-**白话复述（Rubber Duck）**：调 quest-designer 或写代码**之前**，用 ≤ 3 句不含技术术语的白话把方案讲给“完全不懂技术的用户”听。讲不顺 = 自己也没真懂 → 回头重新整理再继续。
+**白话复述（Rubber Duck）**：执行计划或写代码**之前**，用 ≤ 3 句不含技术术语的白话把方案讲给“完全不懂技术的用户”听。讲不顺 = 自己也没真懂 → 回头重新整理再继续。
 
 > **30 秒 Reflexion**（PLAN→EXECUTE 必做）：自问——“这个计划最不放心的是哪一步？该步验收标准是不是含糊的？”如不放心 → 回头加固再进 EXECUTE。
 
 计划结果至少应在内部形成：
 
-- `RouteDecision`
-- `QuestMap` 或 Micro Plan
+- `RouteDecision`（含 `runId`、`correlationId`、`strategy`、`skills`、`notes.relevantInsights`）
+- `QuestMap` 或 Micro Plan（实现/重构策略必须含 `assumptions[]`、`alternatives[]`、`riskMatrix[]`、`reflexionNote`）
 - 本次激活 skills 列表
 - 验证 gates 列表
 
@@ -639,25 +636,27 @@ SCAN 完成后立即建立预算感知：
 | 实现 | build + test + 必要 lint         |
 | 重构 | test + regression + 关键边界检查 |
 
-**Subagent 上下文隔离**（2026 Context Engineering 核心实践）：
+**验证上下文最小化**（2026 Context Engineering 核心实践）：
 
-每个验证 subagent 只接收完成其任务所需的**最小上下文**：
+每个验证视角只接收完成其检查所需的**最小上下文**：
 
-- `verification`：当前 Quest 的 `touchFiles` + `objective` + `acceptance` + diff
-- `code-reviewer`：变更文件内容 + 编码规范摘要 + anti-patterns
-- `security-reviewer`：安全敏感文件 + 威胁模型上下文
-- **禁止**将完整 QuestMap、历史 run 详情、或无关 Quest 的 QuestResult 传给验证 subagent
-- **收益**：减少 subagent 幻觉、降低 token 消耗 40-60%、提升验证精度
+- `verification` 视角：当前 Quest 的 `touchFiles` + `objective` + `acceptance` + diff
+- `code-review` 视角：变更文件内容 + 编码规范摘要 + anti-patterns
+- `security-review` 视角：安全敏感文件 + 威胁模型上下文
+- 默认由当前 Codex 主代理执行这些检查；只有用户明确要求多 agent / 并行协作时，才使用 Codex 的 `spawn_agent`
+- **禁止**将完整 QuestMap、历史 run 详情、或无关 Quest 的 QuestResult 传给单个验证视角
+- **收益**：减少上下文污染、降低 token 消耗 40-60%、提升验证精度
 
 额外必须检查：
 
-1. **skill-activation**：说明哪些 skill 真被用了，分别影响了什么
-2. **knowledge-reuse**：若用了 `.auto/insights` / `.auto/feedback`，说明复用了什么
-3. **knowledge-distribution**：本 run 产出的 LearnCard 是否已分发到 `.auto/insights/<category>.md`（详见 PHASE 6 硬约束）
-4. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
-5. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
-6. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-7. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+1. **protocol-validator**：Phase handoff 前校验上游协议对象必填字段、条件字段、同一 run 的 `correlationId` 一致性；VERIFY 中仅汇总截至 EXECUTE→VERIFY 已完成的 handoff 检查结果；失败项必须给出 `recommendedNext`
+2. **skill-activation**：说明哪些 skill 真被用了，分别影响了什么
+3. **knowledge-reuse**：若用了 `.auto/insights` / `.auto/feedback`，说明复用了什么，并在 `QuestResult.validations` 留下参考证据
+4. **knowledge-distribution**：本 run 产出的 LearnCard 是否已分发到 `.auto/insights/<category>.md`（详见 PHASE 6 硬约束）
+5. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
+6. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
+7. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+8. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：
@@ -683,10 +682,9 @@ SCAN 完成后立即建立预算感知：
 - 哪些结论来自 `git diff` / 文件内容
 - 哪些结论仍然缺少测试或运行时证据
 - 当前 run 的完整性校验结果
-- 若 `knowledge-reuse` 为 `PASS`，还要留下至少 1 个可识别知识引用：`[insight:...]` / `[feedback:...]` / `[run:...]`
-- 若仓库已启用知识引用有效性校验，这些标记还必须能解析到真实文件、标题、key 或 run 目录
-- 若仓库已启用弱相关性校验，至少应有 1 条有效 `insight` 或 `run` 引用与当前任务文本存在明显词面重合
+- 若 `knowledge-reuse` 为 `PASS`，还要说明 `RouteDecision.notes.relevantInsights` 中哪些 insight 被复用，以及对应执行证据
 - 若 `verify-report.md` 中命令结果已经是 `PASS`，对应 gate 状态也必须同步收口，不能继续写 `pending`
+- 若任一 gate 为 `fail`，必须同时写出 evidence 与 `recommendedNext`，不能只写失败结论
 
 ---
 
