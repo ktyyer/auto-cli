@@ -10,6 +10,10 @@ paths: ["hooks/**/*", ".claude/settings.json", ".claude/hooks.json"]
 
 - **PreToolUse**: 工具执行前（验证、参数修改）
 - **PostToolUse**: 工具执行后（自动格式化、检查、结果分析）
+- **PostToolBatch**: 一批并行工具全部完成后（并行 Quest 聚合验证）
+- **SubagentStop**: subagent 完成后（触发 LearnCard 写入提醒）
+- **WorktreeCreate**: worktree 创建时（可阻止创建，任意非零 exit 即失败）
+- **WorktreeRemove**: worktree 删除时（合并提醒）
 - **PreCompact**: 上下文窗口压缩前（保存关键进度）
 - **PostCompact**: 上下文窗口压缩后（重新注入关键上下文）
 - **SessionStart**: 会话冷启动时（注入项目知识 / 续接上次中断）
@@ -17,6 +21,16 @@ paths: ["hooks/**/*", ".claude/settings.json", ".claude/hooks.json"]
 - **TeammateIdle**: 多 Agent 团队中队友空闲时（任务分配提醒）
 - **TaskCompleted**: 任务完成时（质量门禁）
 - **Stop**: 会话结束时（最终验证）
+
+## Exit Code 规范（关键）
+
+| Exit Code | 含义 | 适用场景 |
+|-----------|------|---------|
+| `0` | 成功，JSON 输出被处理 | 正常放行 |
+| `2` | **硬阻断**，stderr 内容发送给 Claude | 强制阻止工具执行（TDD Guard、Doc 阻止器等）|
+| 其他（含 `1`） | 非阻断，仅在 transcript 显示第一行 stderr | 警告提示，Claude 仍继续执行 |
+
+> **关键规则**：`exit 1` **不会阻止工具执行**，只有 `exit 2` 才能真正阻断。所有需要强制拦截的场景必须用 `exit 2`。
 
 ## 当前 Hook（在 hooks/hooks.json 中）
 

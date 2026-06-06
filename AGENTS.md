@@ -46,3 +46,23 @@
 ## 真源说明
 
 Auto CLI 在 Codex 中的详细规则以仓库内 `commands/auto.codex.md` 为准；本文件只负责保证入口被真正接管。
+
+## Context
+
+本仓库是纯 Markdown 指令仓库，通过 Claude Code / Codex slash command 机制运行。
+
+- `commands/` — slash command 入口，`/auto` 是唯一编排入口
+- `skills/` — 可复用技能知识，新能力优先落地为 skill
+- `agents/` — Claude Code Agent 定义（Codex 不支持，忽略）
+- `hooks/` — Claude Code 自动化 hook（Codex 不支持，忽略）
+- `.auto/` — 运行产物真源（runs / insights / feedback / cache）
+
+当前版本 `v0.45.0`，32 个 skill，15 个 VERIFY gate。
+
+## Avoid
+
+- 不新增并列 slash command 入口（如 `/goal`、`/workflow`），所有能力通过 `/auto` 编排
+- 不引入 JS/Node 运行时代码，本项目是纯 Markdown 指令仓库
+- 不修改 `agents/` 目录（Codex 不使用 agent 文件）
+- 不承诺文档中尚未实现的功能
+- 修改 `.md` 文件时保持最小 diff，不顺手重构无关内容
