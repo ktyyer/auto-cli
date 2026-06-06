@@ -1,6 +1,6 @@
 ---
 name: quality-gates
-description: VERIFY 门禁定义 — 14 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
+description: VERIFY 门禁定义 — 15 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
 tags:
   - verify
   - gate
@@ -15,18 +15,18 @@ tags:
 
 ## Gate Taxonomy
 
-`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
+`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `production-governance` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
 
 ## 各策略必需 gate
 
 > 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
 
-| 策略 | 必需 gate                                                                                                                                                                                              |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                           |
-| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                         |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                                        |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                     |
+| 修复 | `build` + `test` + `self-verification` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `production-governance` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `production-governance` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
 
 ---
 
@@ -79,6 +79,39 @@ tags:
 - fail：达成度 < 70 或 outOfScope 违规 → 回流 PLAN
 
 **跳过**：策略=探索；策略=修复且单关 < 20 行。
+
+---
+
+## `production-governance` gate
+
+**触发**：策略 = 实现/重构；修复策略中用户明确要求“生产级/可上线/稳定安全健壮”时按需触发。
+
+**验证维度**：goal convergence | artifact truth | run state | cost-quality | skill health
+
+**输入**：`RouteDecision.userIntent`、`QuestMap.goal/outOfScope/acceptance`、`QuestResult.validations`、`.auto/runs/<runId>/` 标准工件、`.auto/feedback/skills.json`。
+
+**输出格式**：
+
+```json
+{
+  "gate": "production-governance",
+  "status": "pass | warning | fail",
+  "goalDrift": "none | minor | major",
+  "artifactTruth": "pass | warning | fail",
+  "runState": "running | partial | blocked | verified | learned | aborted",
+  "costQuality": "pass | warning | fail",
+  "skillHealth": "pass | warning | fail",
+  "evidence": [".auto/runs/<runId>/quest-map.md", ".auto/runs/<runId>/verify-report.md"]
+}
+```
+
+| 结果    | 条件                                                                | 处置             |
+| ------- | ------------------------------------------------------------------- | ---------------- |
+| pass    | 目标无漂移，关键工件齐备，run 状态明确，成本质量与 skill 证据均达标 | 继续             |
+| warning | 轻微目标偏移或非关键证据缺失，但不影响交付判断                      | 记录放行         |
+| fail    | `goalDrift=major`、关键工件缺失、未知状态被当成功、生产级任务缺证据 | 回流 PLAN/VERIFY |
+
+**反馈写入**：skill 被激活但无应用证据时，`.auto/feedback/skills.json` 中对应 skill 的 `evidence_missing_count` +1；治理 gate 失败时 `governance_fail_count` +1。
 
 ---
 

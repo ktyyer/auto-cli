@@ -6,7 +6,7 @@ description: 查看项目状态、能力安装情况与 .auto 协议落盘状态
 # /auto:status -- 状态查看
 
 > 查看项目当前状态、已安装能力，以及 `.auto/` 的 cache / runs / insights / memory / feedback 五层结构状态。
-> 状态以 `.auto/` canonical 结构为真源；legacy 路径仅用于兼容性提示。
+> 状态以 `.auto/` canonical 结构为真源；legacy 路径仅用于兼容性提示；生产治理状态由最近 run 工件推导，不引入后台运行时。
 
 ---
 
@@ -71,6 +71,7 @@ Bash: git branch --show-current → 当前分支
 - `cache/`：能力快照和模式卡是否存在
 - `runs/`：最近 run 数量、最近 runId、终态是完整成功 run、合法 partial/aborted run，还是异常中断 run
 - `runs/`：最近 run 是否存在 `session-continuity.md`（仅在需要续接时要求）
+- `runs/`：治理状态是否明确（runState / artifactTruth / goalDrift / costQuality / skillHealth）
 - `insights/`：知识文件是否存在、各文件是否非空
 - `feedback/`：`agents.json` / `skills.json` 是否存在
 - `memory/`：`store.json` 是否存在（项目级辅助记忆）
@@ -129,6 +130,16 @@ Bash: test -d node_modules && echo "INSTALLED" || echo "NOT_INSTALLED"
 | Git 状态     | CLEAN / DIRTY       |
 | 真源冲突     | NONE / PRESENT      |
 
+### 生产治理
+
+| 检查项        | 状态                                                                 |
+| ------------- | -------------------------------------------------------------------- |
+| runState      | running / partial / blocked / verified / learned / aborted / unknown |
+| artifactTruth | pass / warning / fail                                                |
+| goalDrift     | none / minor / major / unknown                                       |
+| costQuality   | pass / warning / fail / unknown                                      |
+| skillHealth   | pass / warning / fail / unknown                                      |
+
 ### 建议
 
 - [ ] 缺失 `.auto/runs/` → 说明尚未产生标准 run 记录
@@ -170,6 +181,13 @@ Bash: test -d node_modules && echo "INSTALLED" || echo "NOT_INSTALLED"
     },
     "memory": { "status": "OK", "files": ["store.json"] }
   },
+  "governance": {
+    "runState": "running | partial | blocked | verified | learned | aborted | unknown",
+    "artifactTruth": "pass | warning | fail | unknown",
+    "goalDrift": "none | minor | major | unknown",
+    "costQuality": "pass | warning | fail | unknown",
+    "skillHealth": "pass | warning | fail | unknown"
+  },
   "health": {
     "claudeMd": true,
     "repoMap": true,
@@ -192,6 +210,7 @@ Bash: test -d node_modules && echo "INSTALLED" || echo "NOT_INSTALLED"
 - 缺少 `.auto/cache/` → 建议先运行 `/auto` 触发能力快照与模式卡缓存
 - 缺少 `.auto/runs/` → 说明尚未产出标准 `RouteDecision / QuestMap / QuestResult / VerifyReport / LearnCard`
 - 最近 run 为 `partial` / `aborted` → 说明该 run 合法终止，但未完成全链路落盘
+- 最近 run 治理状态为 `unknown` / `fail` → 建议重新运行 `/auto` 完成 VERIFY/LEARN，不手工伪造状态
 - 最近 run 缺少 `session-continuity.md` 且仍需续接 → 说明跨会话续接信息尚未结构化
 - 缺少 `.auto/insights/` → 建议检查 LEARN 阶段是否已执行
 - 缺少 `.auto/feedback/` → 建议将 agent / skill 反馈收敛到 canonical 结构

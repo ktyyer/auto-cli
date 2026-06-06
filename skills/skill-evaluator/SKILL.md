@@ -128,14 +128,16 @@ tags: [skill, evaluation, evolution, quality-gate, verification]
 
 如果有 `.auto/feedback/skills.json` 的实际使用数据，按 60% 静态 + 40% 反馈加权：
 
-| 字段                  | 含义                        |
-| --------------------- | --------------------------- |
-| `trigger_accuracy`    | 应触发时实际触发的比例      |
-| `adoption_rate`       | 被触发后建议被采纳的比例    |
-| `correction_count`    | 触发后被用户纠正的次数      |
-| `correction_patterns` | 高频纠正类型（string 数组） |
-| `ignore_rate`         | 明显相关但被忽略的比例      |
-| `usage_frequency`     | 最近 N 次 run 中的调用次数  |
+| 字段                     | 含义                        |
+| ------------------------ | --------------------------- |
+| `trigger_accuracy`       | 应触发时实际触发的比例      |
+| `adoption_rate`          | 被触发后建议被采纳的比例    |
+| `correction_count`       | 触发后被用户纠正的次数      |
+| `correction_patterns`    | 高频纠正类型（string 数组） |
+| `ignore_rate`            | 明显相关但被忽略的比例      |
+| `usage_frequency`        | 最近 N 次 run 中的调用次数  |
+| `evidence_missing_count` | 被激活但缺少应用证据的次数  |
+| `governance_fail_count`  | 相关生产治理 gate 失败次数  |
 
 这些字段作为 `.auto/feedback/skills.json` 的扩展字段写入，由 `/auto:learn` 汇总维护。
 
@@ -189,14 +191,14 @@ tags: [skill, evaluation, evolution, quality-gate, verification]
 
 ## 与 auto-cli 集成
 
-| 集成点          | 说明                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------- |
-| PHASE 1 SCAN    | 能力快照读取 `skills/` 时，附带每个 skill 的上次评估分（如有）                         |
-| PHASE 2 PLAN    | 发现计划里要用的 skill 总分 < 50 时，提醒用户考虑先改进再使用                          |
-| PHASE 3 EXECUTE | "单 skill 评估"= 一个 Quest；"批量评估"= 多 Quest 顺序执行                             |
-| PHASE 4 VERIFY  | `verification` agent 承担 D8 打分，与红蓝对抗复用同一基础设施                          |
-| PHASE 6 LEARN   | 每轮评估结果写入 `.auto/feedback/skills.json`，模式卡写入 `.auto/insights/patterns.md` |
-| Hook 联动       | 编辑 `skills/*.md` 后 PostToolUse 提示"考虑跑 skill 健康度自检"                        |
+| 集成点          | 说明                                                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------------------------------- |
+| PHASE 1 SCAN    | 能力快照读取 `skills/` 时，附带每个 skill 的上次评估分（如有）                                                    |
+| PHASE 2 PLAN    | 发现计划里要用的 skill 总分 < 50 时，提醒用户考虑先改进再使用                                                     |
+| PHASE 3 EXECUTE | "单 skill 评估"= 一个 Quest；"批量评估"= 多 Quest 顺序执行                                                        |
+| PHASE 4 VERIFY  | `verification` agent 承担 D8 打分，与红蓝对抗复用同一基础设施；`production-governance` 提供证据缺失与治理失败信号 |
+| PHASE 6 LEARN   | 每轮评估结果写入 `.auto/feedback/skills.json`，模式卡写入 `.auto/insights/patterns.md`                            |
+| Hook 联动       | 编辑 `skills/*.md` 后 PostToolUse 提示"考虑跑 skill 健康度自检"                                                   |
 
 ---
 

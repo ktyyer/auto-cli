@@ -25,7 +25,7 @@ AI（自动走 6 步）：
   1. SCAN     扫项目 + 查历史经验
   2. PLAN     拆 Quest + 列「不做清单」
   3. EXECUTE  逐关施工 + 实时进度
-  4. VERIFY   过 14 道质检关
+  4. VERIFY   过 15 道质检关
   5. SUMMARIZE 交付清单（不自动 commit）
   6. LEARN    踩坑/模式写进 .auto/insights，下次自动复用
 ```
@@ -109,7 +109,7 @@ cat .auto/insights/patterns.md  # AI 学到的可复用模式
 2. **知识闭环 · 越用越懂你的项目** — 每次踩坑/模式/决策沉淀到 `.auto/insights/`，下次 SCAN **按关键词自动反查注入**，PHASE 4 `knowledge-reuse` gate 强制验证"真复用了"。
 3. **跨会话续接 · 不需要把上次对话再讲一遍** — run 中断时自动写 `session-continuity.md`，下次启动一行回到现场。
 4. **Quest 级失败回滚 · 不连累整个仓库** — 某关失败只回滚当前 Quest 触及文件，平均多保留 80% 已完成工作。
-5. **14-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
+5. **15-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
 6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，Subagent 上下文隔离减幻觉 40-60%，长 run 不跑偏。
 
 > 2026 年 AI Agent 质量第一瓶颈不是模型能力，**而是上下文管理**。Auto CLI 让"对的 token 在对的时间"成为默认行为。
@@ -144,7 +144,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY 质检]
-        V1[14 个 Gate]
+        V1[15 个 Gate]
         V2{全过?}
     end
 
@@ -174,7 +174,7 @@ flowchart LR
 | **SCAN**      | 看项目家底、查历史踩坑、判断这事简单还是复杂                         | 装修前先量房、查老房子档案   |
 | **PLAN**      | 拆成几关，每关明确改哪些文件、不改哪些文件、怎么算完成               | 出施工图，写"承重墙绝不能动" |
 | **EXECUTE**   | 逐关施工，每关写盘，三件套防偷工（圈定文件 / 扩张词刹车 / 不偷捷径） | 工人按图施工，监工随时盯     |
-| **VERIFY**    | 14 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
+| **VERIFY**    | 15 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
 | **SUMMARIZE** | 给出人类可读总结，**不自动提交**——commit 权在你手里                  | 交付清单，由你签字           |
 | **LEARN**     | 把踩坑/模式提炼成 LearnCard，分发到 `.auto/insights/` 5 个文件       | 项目复盘，写进知识库         |
 
@@ -336,7 +336,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 31 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 32 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>
@@ -354,6 +354,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `robustness-patterns`   | 生产健壮性（重试/熔断/限流/幂等）            |
 | `logging-patterns`      | 结构化日志 + 可观测性                        |
 | `comment-standards`     | 代码注释规范                                 |
+| `production-governance` | 目标收敛 + 产物真源 + run 状态 + skill 健康度 |
 | `production-standards`  | 生产就绪标准                                 |
 | `requirement-clarifier` | 需求模糊度评估与澄清                         |
 | `research-analyst`      | 外部资料 / 官方文档调研                      |
@@ -372,7 +373,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `constitution`          | `.auto/constitution.md` 硬约束载体           |
 | `incremental-review`    | 会话末增量审查                               |
 | `self-critique`         | 每关 Reflexion 自纠                          |
-| `quality-gates`        | VERIFY 14 Gate 门禁定义                      |
+| `quality-gates`        | VERIFY 15 Gate 门禁定义                      |
 | `knowledge-management` | LEARN 知识蒸馏 + 分发 + 归档全流程           |
 
 </details>
@@ -414,13 +415,13 @@ node scripts/uninstall.js      # tgz 解压目录内
 SCAN     → RouteDecision   路由决策书（策略 + Agent + 预算 + 能力快照）
 PLAN     → QuestMap        闯关地图（Quest 列表 + outOfScope + 验收命令）
 EXECUTE  → QuestResult     每关战绩（diff + 验证 + skill 应用证据）
-VERIFY   → VerifyReport    质检报告（14 gate × 状态 + 实测证据）
+VERIFY   → VerifyReport    质检报告（15 gate × 状态 + 实测证据）
 LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 ```
 
 **类比**：工厂流水线工单——每个工位收上游标准件，出下游标准件，谁出问题精确定位。
 
-### 14 Gate 验证矩阵
+### 15 Gate 验证矩阵
 
 | Gate                     | 说明                   | 探索 | 修复 | 实现 | 重构 |
 | ------------------------ | ---------------------- | :--: | :--: | :--: | :--: |
@@ -433,6 +434,7 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | `adversarial`            | 红蓝对抗               |  —   |  —   |  —   |  ✓   |
 | `self-verification`      | AI 自查代码            |  —   |  ✓   |  ✓   |  ✓   |
 | `self-critique`          | Reflexion 自纠（每关） |  —   |  —   |  ✓   |  ✓   |
+| `production-governance`  | 生产治理闭环           |  —   |  —   |  ✓   |  ✓   |
 | `skill-activation`       | Skill 应用证据         |  ✓   |  ✓   |  ✓   |  ✓   |
 | `knowledge-reuse`        | 历史经验复用           |  ✓   |  ✓   |  ✓   |  ✓   |
 | `knowledge-distribution` | LearnCard 分发硬约束   |  ✓   |  ✓   |  ✓   |  ✓   |

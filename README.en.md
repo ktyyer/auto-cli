@@ -25,7 +25,7 @@ AI (runs 6 phases automatically):
   1. SCAN       scan project + retrieve past experience
   2. PLAN       break into Quests + declare "won't-do" list
   3. EXECUTE    build quest by quest + live progress
-  4. VERIFY     pass through 14 quality gates
+  4. VERIFY     pass through 15 quality gates
   5. SUMMARIZE  delivery report (NO auto-commit)
   6. LEARN      sediment traps/patterns to .auto/insights, auto-reused next time
 ```
@@ -109,7 +109,7 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
 3. **Cross-session resumption · no need to re-explain** — when a run interrupts, `session-continuity.md` is written automatically. Next startup picks up with one line.
 4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files, on average preserving 80% of completed work.
-5. **14-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
+5. **15-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
 6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, subagent context isolation reduces hallucination 40-60%, long runs don't drift.
 
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
@@ -144,7 +144,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY Gate]
-        V1[14 Gates]
+        V1[15 Gates]
         V2{All pass?}
     end
 
@@ -174,7 +174,7 @@ flowchart LR
 | **SCAN**      | Check project's existing assets, look up past traps, judge complexity                                                              | Surveyor measures the house & checks records before renovation |
 | **PLAN**      | Break into quests, each declares what files to touch / NOT touch / how to verify                                                   | Draft blueprints with "load-bearing wall MUST NOT be touched"  |
 | **EXECUTE**   | Build quest by quest, write to disk every step. 3 anti-cheating mechanisms (file lock / expansion-word brake / no-shortcut pledge) | Workers follow blueprint, foreman watches constantly           |
-| **VERIFY**    | Run 14 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
+| **VERIFY**    | Run 15 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
 | **SUMMARIZE** | Output human-readable summary. **No auto-commit** — commit power stays with YOU                                                    | Delivery checklist for YOUR signature                          |
 | **LEARN**     | Distill traps/patterns into LearnCards, dispatch to 5 files in `.auto/insights/`                                                   | Project retrospective, written to knowledge base               |
 
@@ -412,13 +412,13 @@ Every `/auto` run is forced to produce these, landing in `.auto/runs/<runId>/`:
 SCAN     → RouteDecision   routing decision (strategy + agent + budget + capability snapshot)
 PLAN     → QuestMap        quest map (quest list + outOfScope + acceptance commands)
 EXECUTE  → QuestResult     per-quest result (diff + validation + skill application evidence)
-VERIFY   → VerifyReport    gate report (14 gates × status + actual evidence)
+VERIFY   → VerifyReport    gate report (15 gates × status + actual evidence)
 LEARN    → LearnCard       experience card (dispatched by category to insights/)
 ```
 
 **Analogy**: factory assembly line work orders — each station consumes upstream standard parts, produces downstream standard parts. Failures locate precisely.
 
-### 14-Gate validation matrix
+### 15-Gate validation matrix
 
 | Gate                     | Meaning                                | Explore | Fix | Implement | Refactor |
 | ------------------------ | -------------------------------------- | :-----: | :-: | :-------: | :------: |
@@ -431,6 +431,7 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | `adversarial`            | Red-team validation                    |    —    |  —  |     —     |    ✓     |
 | `self-verification`      | AI self-check (code)                   |    —    |  ✓  |     ✓     |    ✓     |
 | `self-critique`          | Reflexion self-correction (per quest)  |    —    |  —  |     ✓     |    ✓     |
+| `production-governance`  | Production governance loop             |    —    |  —  |     ✓     |    ✓     |
 | `skill-activation`       | Skill application evidence             |    ✓    |  ✓  |     ✓     |    ✓     |
 | `knowledge-reuse`        | Historical experience reuse            |    ✓    |  ✓  |     ✓     |    ✓     |
 | `knowledge-distribution` | LearnCard distribution hard-constraint |    ✓    |  ✓  |     ✓     |    ✓     |

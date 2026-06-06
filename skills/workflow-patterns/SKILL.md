@@ -44,12 +44,14 @@ tags:
 - [ ] 选择编排模式: 串行链(有依赖) | 并行扇出(独立任务) | 主从(复杂协调) | 评估优化(质量优先)
 - [ ] Bug 修复: 走根因追踪五步法 (症状→日志→范围→假设→验证)
 - [ ] 代码审查: 覆盖 10 维度(正确性/安全/性能/可读性/测试/错误处理/并发/依赖/日志/配置)
+- [ ] 生产级任务: 声明 Goal State / Evidence / Exit Criteria，并激活 `production-governance`
 
 **硬约束** (constraints):
 
 - 重构策略必须走 quest-designer，不可直接执行
 - Agent 交接只向下游传递，不反向调用
 - 安全敏感场景必须调 security-reviewer
+- 多 Agent 或多 Quest 只表达依赖与交接，不引入运行时调度器
 
 **输出模板** (output):
 
