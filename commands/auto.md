@@ -257,39 +257,41 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 **兜底索引**（动态发现不可用时的回退路径）：
 
-| 触发条件                                  | 激活 Skill              |
-| ----------------------------------------- | ----------------------- |
-| Java / Spring Boot                        | `java-patterns`         |
-| 性能优化相关                              | `performance-patterns`  |
-| 错误处理 / 异常                           | `error-patterns`        |
-| Git 操作 / 提交 / PR                      | `git-workflow`          |
-| Bug / 调试 / 测试失败 / 构建失败          | `systematic-debugging`  |
-| 模糊需求 / 多种合理理解                   | `requirement-clarifier` |
-| 需求明确但实现路径多选 / 架构决策         | `brainstorming`         |
-| 多并行 Quest / 多模块独立开发             | `using-git-worktrees`   |
-| 不熟悉的库 / 新技术栈                     | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2               | `test-plan-writer`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等          | `robustness-patterns`   |
-| 重构 / 拆分大文件 / 消除重复              | `refactoring-patterns`  |
-| API 设计 / REST / OpenAPI                 | `api-design`            |
-| 复杂任务 / 上下文接近极限 / 跨会话续接    | `context-engineering`   |
-| 项目硬约束 / `.auto/constitution.md` 存在 | `constitution`          |
-| 每关完成自纠 / 主线漂移防范               | `self-critique`         |
-| 代码风格 / 格式化                         | `code-style-enforcer`   |
-| 依赖分析 / 升级                           | `dependency-analyzer`   |
-| 多 Agent 编排                             | `workflow-patterns`     |
-| 新项目初始化                              | `init-project`          |
-| PRD / 需求文档                            | `prd-writer`            |
-| 日志 / tracing / 可观测性                 | `logging-patterns`      |
-| 目标收敛 / 产物真源 / run 状态 / 生产治理 | `production-governance` |
-| Phase 交接 / 协议字段完整性 / Schema 验证 | `protocol-validator`    |
-| 上线 / 部署 / 生产环境                    | `production-standards`  |
-| 代码注释 / JSDoc                          | `comment-standards`     |
-| 创建 / 编写 / 优化 skill                  | `skill-creator`         |
-| 代码结构分析 / AST                        | `code-analyzer`         |
-| 评估 skill / skill 触发诊断               | `skill-evaluator`       |
-| 需求明确但验收标准模糊 / 契约驱动         | `spec-driven`           |
-| 会话末增量代码审查 / dirty files 累积     | `incremental-review`    |
+| 触发条件                                               | 激活 Skill              |
+| ------------------------------------------------------ | ----------------------- |
+| Java / Spring Boot                                     | `java-patterns`         |
+| 性能优化相关                                           | `performance-patterns`  |
+| 错误处理 / 异常                                        | `error-patterns`        |
+| Git 操作 / 提交 / PR                                   | `git-workflow`          |
+| Bug / 调试 / 测试失败 / 构建失败                       | `systematic-debugging`  |
+| 模糊需求 / 多种合理理解                                | `requirement-clarifier` |
+| 需求明确但实现路径多选 / 架构决策                      | `brainstorming`         |
+| 多并行 Quest / 多模块独立开发                          | `using-git-worktrees`   |
+| 不熟悉的库 / 新技术栈                                  | `research-analyst`      |
+| 实现 / 重构策略下的 PHASE 2                            | `test-plan-writer`      |
+| 重试 / 熔断 / 限流 / 降级 / 幂等                       | `robustness-patterns`   |
+| 重构 / 拆分大文件 / 消除重复                           | `refactoring-patterns`  |
+| API 设计 / REST / OpenAPI                              | `api-design`            |
+| 复杂任务 / 上下文接近极限 / 跨会话续接                 | `context-engineering`   |
+| 项目硬约束 / `.auto/constitution.md` 存在              | `constitution`          |
+| 每关完成自纠 / 主线漂移防范                            | `self-critique`         |
+| 代码风格 / 格式化                                      | `code-style-enforcer`   |
+| 依赖分析 / 升级                                        | `dependency-analyzer`   |
+| 多 Agent 编排                                          | `workflow-patterns`     |
+| 新项目初始化                                           | `init-project`          |
+| PRD / 需求文档                                         | `prd-writer`            |
+| 日志 / tracing / 可观测性                              | `logging-patterns`      |
+| 目标收敛 / 产物真源 / run 状态 / 生产治理              | `production-governance` |
+| Phase 交接 / 协议字段完整性 / Schema 验证              | `protocol-validator`    |
+| 上线 / 部署 / 生产环境                                 | `production-standards`  |
+| 代码注释 / JSDoc                                       | `comment-standards`     |
+| 创建 / 编写 / 优化 skill                               | `skill-creator`         |
+| 代码结构分析 / AST                                     | `code-analyzer`         |
+| 评估 skill / skill 触发诊断                            | `skill-evaluator`       |
+| 需求明确但验收标准模糊 / 契约驱动                      | `spec-driven`           |
+| 会话末增量代码审查 / dirty files 累积                  | `incremental-review`    |
+| bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统 | `feedback-loop`         |
+| 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展               | `agentless-repair`      |
 
 **Phase 敏感性调整**：实现/探索策略下 code-style-enforcer、comment-standards 匹配度 -1；重构策略恢复正常权重。**预算联动**：红区强制摘要级；黄区深度降全文级。
 

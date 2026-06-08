@@ -62,12 +62,13 @@
 
 - [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
 
-### 计划中（v0.46 候选）
+### 计划中（v0.48 候选）
 
 - 暂无
 
 ### 已完成
 
+- [x] v0.47.0: **feedback-loop + agentless-repair skill**：新增 `skills/feedback-loop/SKILL.md`（I/O 系统自验证闭环，融合 SWE-agent ACI / Reflexion / 非退化性理论，含生产级退化防护）+ `skills/agentless-repair/SKILL.md`（两阶段 Bug 修复流水线，来源 Agentless 论文 arXiv:2407.01489，SWE-bench Lite 27.33%）；`refactoring-patterns` 追加维度驱动收敛节；`auto.md` + `auto.codex.md` + README 同步更新；skills 从 34 升为 36
 - [x] v0.46.0: **production-governance skill**：新增 `skills/production-governance/SKILL.md`，引入第 15 个 VERIFY gate，覆盖目标收敛 / 产物真源 / run 状态 / 成本质量 / skill 健康度；`/auto:status` 增加治理状态字段；`skill-evaluator` 增加 `evidence_missing_count` / `governance_fail_count` 反馈信号；安全敏感路由硬约束补齐；skills 从 31 升为 32
 - [x] v0.45.0: **auto.md 精简 + 细节下沉**：1007 行 → 499 行；新增 `skills/quality-gates/SKILL.md`（14 Gate 定义 + Phase 交接自检表）+ `skills/knowledge-management/SKILL.md`（LEARN 全流程）；探索快速通道 / Skill 分层 / 知识注入简化 / Feedback 真实化 / Run 归档 / 编号修复 / 7 项断档补回
 - [x] v0.44.0: **B5 收尾 · PHASE 3.3 self-critique 触发钩子**：`commands/auto.md` PHASE 3.3 QuestResult 节追加每关 self-critique 强制触发说明，达成度 < 70 阻断进入下一关。补足 v0.43 留下的 EXECUTE 触发链

@@ -4,7 +4,7 @@
 
 **给 Claude Code / Codex 装一个"超级司令官" — 一句话需求，自动走完 6 步流水线，并把这次的经验写进项目记忆。**
 
-[![npm version](https://img.shields.io/badge/version-0.45.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.47.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -242,6 +242,20 @@ flowchart LR
 - 自动展示"上次在 Quest 3/5 中断（已完成 Read，待 Edit）"
 - 默认续接，**不需要你把上次对话再讲一遍**
 
+### 场景 5 · Bot / 无 UI 系统完全自主开发
+
+```bash
+/auto 用 AstrBot 框架开发一个钓鱼游戏插件，含稀有度/金钱/签到系统
+```
+
+**会发生什么**：
+
+- SCAN 检测到无浏览器 UI 的 bot 框架，激活 `feedback-loop` skill
+- PLAN 拆出"构建 CLI 测试驱动器"关卡，输出 I/O 模型文档
+- AI 构建 `cli_test.py`，将"发送消息 → 收到回复"抽象为可重复执行的命令
+- EXECUTE：AI 写代码 → 跑 CLI 测试 → 读结构化日志 → 自主修复 → 再跑，**全程无人工介入**
+- VERIFY：`clean-state` gate 要求 CLI 驱动器全量 PASS
+
 ---
 
 ## 🛠️ 安装
@@ -336,7 +350,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 33 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 36 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>
@@ -376,6 +390,8 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `quality-gates`         | VERIFY 16 Gate 门禁定义                       |
 | `knowledge-management`  | LEARN 知识蒸馏 + 分发 + 归档全流程            |
 | `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
+| `feedback-loop`         | I/O 系统自验证闭环（bot/daemon/CLI 工具）     |
+| `agentless-repair`      | 两阶段 Bug 修复（定位 + 多候选过滤）          |
 
 </details>
 
@@ -658,6 +674,9 @@ npm run check      # 格式 + 引用 + 包内容 + run 完整性校验
 - [Anthropic Agent Skills](https://github.com/anthropics/skills) — Skill 标准对齐
 - [GitHub Spec Kit](https://github.com/github/spec-kit) — Constitution 模式启发
 - [obra/superpowers](https://github.com/obra/superpowers) — `systematic-debugging` skill 集成
+- [SWE-agent](https://github.com/princeton-nlp/SWE-agent) — ACI（Agent-Computer Interface）+ Think→Act→Observe 循环理论
+- [Agentless](https://github.com/OpenAutoCoder/Agentless) — 两阶段定位修复流水线，`agentless-repair` skill 来源
+- [Reflexion](https://arxiv.org/abs/2303.11366)（Shinn et al., NeurIPS 2023）— 外部执行信号驱动的自纠理论基础
 
 ---
 
