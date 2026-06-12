@@ -17,6 +17,30 @@ tags:
 
 ---
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] LearnCard 含全部必填字段（category/scope/title/confidence 等），无 category 的卡无效
+- [ ] 分发前执行 Curator 检查：查重（同主题 merge）/ 矛盾检测（旧条目标 superseded）/ 复用计数（helpful/harmful/lastConfirmed）
+- [ ] 按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）
+- [ ] feedback 真实化：被激活 skill `usageCount` +1、被调度 agent `totalCalls` +1、更新 successRate/lastUsed
+- [ ] 需跨会话续接时写 `session-continuity.md`；>30 天 run 移入 `.auto/runs/archive/`
+
+**硬约束** (constraints):
+
+- `scope: stack|universal` 的卡额外写入 `skills.json` 的 `portablePatterns`
+- 新旧结论矛盾时旧条目末尾标 `superseded by run-<runId>`，不静默并存
+- 失败经验必须标 `trap` 或 `feedback`，不得伪造"已验证"经验
+
+**反模式** (anti-patterns):
+
+- 只写 learn-cards.md 不分发到 insights → knowledge-distribution gate fail
+- 同主题重复 append 而非 merge → 知识库膨胀、检索噪音上升
+- PLAN 读 successRate 但 LEARN 从不更新 → 反馈闭环断链
+
+---
+
 ## LEARN 执行清单（按序执行，不可跳步）
 
 LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
@@ -63,7 +87,13 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 | feedback | `.auto/insights/agent-feedback.md` |
 
 2. Read 目标文件当前内容
-3. 使用 Edit 工具在文件末尾 append 新 section：
+3. **Curator 检查**（ACE 式增量演化，append 前必做，来源 arXiv:2510.04618）：
+
+   a. **查重**：`Grep(pattern="<title 关键词>", path=".auto/insights/<目标文件>")`。同主题已存在 → 改为 Edit 更新该 section（保留原日期，追加新结论），不新增条目
+   b. **矛盾检测**：新结论与已有条目相反时，不得静默并存。在旧条目末尾追加 `**状态**: superseded by run-<runId>`，新条目正常 append 并在 summary 中注明推翻依据
+   c. **merge-or-append 决策**：查重命中且无矛盾 → merge；查重未命中 → append；矛盾 → supersede + append
+
+4. 使用 Edit 工具在文件末尾 append 新 section：
 
 ```markdown
 ### <title>
@@ -75,7 +105,7 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 推荐动作：<recommendedAction>
 ```
 
-4. 验证 append 成功（Read 目标文件末尾确认）
+5. 验证 append 成功（Read 目标文件末尾确认）
 
 **硬约束**：`category=trap` 的 LearnCard 未 append 到 `traps.md` → LEARN 不完整，`knowledge-distribution` gate = fail。
 
@@ -146,6 +176,30 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 | agent-feedback.md | 影响 selection 排序     |
 
 **相似历史 run 预匹配**：Read 最近 3 个未归档 run 的 `route-decision.md` 第一段（userIntent），语义相关时预加载该 run 的 `learn-cards.md` 前 10 行。
+
+---
+
+## Insight 复用计数（ACE 反馈环）
+
+insight 的价值由实际复用结果决定，不由写入时的 confidence 单方面决定。VERIFY 的 `knowledge-reuse` gate 核对完成后，LEARN 阶段对本次被注入的每条 insight 更新计数行：
+
+```markdown
+**复用**: helpful=<N> | harmful=<M> | lastConfirmed=YYYY-MM-DD
+```
+
+**更新规则**：
+
+| 情形                                                      | 动作                                 |
+| --------------------------------------------------------- | ------------------------------------ |
+| 被注入且对本次决策有正向贡献（QuestMap/QuestResult 引用） | `helpful` +1，更新 `lastConfirmed`   |
+| 被注入但误导执行（VERIFY fail 可归因到该条 / 被用户纠正） | `harmful` +1                         |
+| `harmful ≥ 2` 且 `harmful > helpful`                      | 追加 `**状态**: harmful`，注入时排除 |
+
+**衔接约定**：
+
+- 条目无复用行时视为 `helpful=0`（旧条目兼容，不批量回填，首次被复用时才补行）
+- `/auto:learn --decay` 的 age-prune 规则中"最后命中时间"以 `lastConfirmed` 为准
+- 含 `**状态**: harmful` 的条目与 archived/merged/outdated 同等处置：仅强命中才注入，confidence 按 (-1) 降级
 
 ---
 

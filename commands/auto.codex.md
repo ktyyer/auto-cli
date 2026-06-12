@@ -113,6 +113,8 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 满足以上条件时，仍要做最小 PLAN，但不要把流程机械化。
 
+> **双端设计分歧声明**：Claude 端探索策略走快速通道（跳过 QuestMap/VerifyReport 等协议产出，SCAN 后直接回答）；Codex 端探索仍走完整闭环 + 固定输出骨架。这是**有意为之**的纪律强化 — Codex 无 hooks 兜底，强制闭环防止 `/auto` 退化为普通问答，不视为双端行为不一致。
+
 ---
 
 ## 核心规则
@@ -381,6 +383,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 4. 与任务直接相关的源码、配置、测试文件
 5. 仓库内 `skills/*/SKILL.md`（每个 skill 是独立目录，含 SKILL.md + 可选 references/，对齐 Anthropic 开放标准）
 6. `.auto/insights/*`、`.auto/feedback/*`、`.auto/cache/*`、最近 run 工件（若存在）
+7. `.auto/constitution.md`（若存在则读全文，注入 `RouteDecision.notes.constitution`；PLAN/EXECUTE/VERIFY 三 phase 必须遵守，违反任一条款即 VERIFY fail，详见 `skills/constitution/SKILL.md`）
 
 同时完成：
 
@@ -407,7 +410,7 @@ SCAN 完成后立即建立预算感知：
 
 **相似历史 run 预匹配**（知识复用加速）：
 
-- 若 `.auto/runs/` 存在，扫描最近 5 个 run 的 `route-decision.md`，提取 `userIntent` + `strategy`
+- 若 `.auto/runs/` 存在，扫描最近 5 个未归档 run（不含 `.auto/runs/archive/`）的 `route-decision.md`，提取 `userIntent` + `strategy`
 - 当前任务与历史 run 语义相似度 > 0.7 时，预加载该 run 的 `learn-cards.md` 中的 trap/pattern
 - 收益：避免重复踩同样的坑，起手就有历史经验注入
 - 限制：最多预加载 3 条历史 LearnCard，避免上下文污染
@@ -453,9 +456,10 @@ SCAN 完成后立即建立预算感知：
 
 - **摘要级**：仅读 `## 激活摘要` 段落（~20 行），提取 checklist + constraints + anti-patterns
 - **全文级**：摘要级 + 按需读具体 `###` 子段落
-- **深度级**：全文级 + 读 `.references/` 目录文件
+- **深度级**：全文级 + 读 `references/` 目录文件
 - 缓存优先：若 `.auto/cache/skill-extracts/<skill>.md` 存在，直接读缓存跳过全文读取
 - **上下文预算联动**：当上下文进入黄区(40-70%)时所有 Skill 降级一档；红区(>70%)时强制摘要级
+- **Claude 端机制降级说明**：核心/储备层分层扫描与 Extended Thinking（16k 推理预算）在 Codex 端不可用；Codex 以缓存优先 + 渐进式加载近似前者，深度推理由模型默认推理能力承担
 
 激活时至少产出这四项内部结论：
 
@@ -470,12 +474,15 @@ SCAN 完成后立即建立预算感知：
 - 新功能 / 重构：`test-plan-writer`
 - 需求不清：`requirement-clarifier`
 - 实现 / 重构策略下存在 ≥ 2 条合理实现路径（OAuth/JWT/Session、Redis/本地缓存、新建/重构等）：`brainstorming`（在 PLAN 阶段强制前置，列 2-3 个方案让用户选向后再写代码）
+- 策略=重构、或实现且复杂度 high、或 brainstorming 后 trade-off 仍不明：`plan-ensemble`（2-3 个异质视角隔离出计划草案，分歧点 + 评分矩阵合成唯一 QuestMap；Codex 无 subagent 时降级为同窗口分段独立推演并标注 `degraded: no-isolation`；上下文红区禁用）
 - Quest 数 ≥ 3 且无 touchFiles 交集且可独立测试：`using-git-worktrees`（多 agent 并行隔离开发）
 - 复杂任务 / 上下文接近极限 / 跨会话续接：`context-engineering`
 - skill 触发诊断或 skill 质量优化：`skill-evaluator`
 - 新技术、第三方库、版本兼容：`research-analyst`
 - API 设计：`api-design`
 - 有现有源码且实现前需要理解结构：`code-analyzer`
+- 项目存在 `.auto/constitution.md`：`constitution`（项目级硬约束载体，违反即 VERIFY fail）
+- 实现 / 重构策略每关完成后：`self-critique`（达成度评分 < 70 必须修补或回流 PLAN）
 
 ### 2.2 知识复用
 
@@ -613,6 +620,8 @@ SCAN 完成后立即建立预算感知：
 - 当前验证状态
 - 是否需要把失败经验记入 `trap`
 
+**Self-Critique 触发**（策略 = 实现/重构，每关必做）：每关 QuestResult 落盘前按 `skills/self-critique/SKILL.md` 自评 objective 满足度 + 盲点暴露 + 达成度评分；达成度 < 70 必须修补或回流 PLAN，不得带病进入下一关。
+
 **条件分支执行**：当 QuestMap 中 Quest 含 `conditionalNext` 时，按 `QuestResult.status` 自动路由到 `on_success` / `on_fail` / `on_partial` 对应的 questId。Fallback Quest（`isFallback=true`）的验收标准可适当放宽。
 
 **中断恢复**：如当前 run 是从 `session-continuity.md(status=interrupted)` 续接，从 `interruptPoint` 继续，跳过已完成 Quest。
@@ -629,14 +638,16 @@ SCAN 完成后立即建立预算感知：
 
 ## PHASE 4: VERIFY
 
-按任务类型选择真实验证：
+按任务类型选择真实验证（gate 详细定义见 `skills/quality-gates/SKILL.md` 16-gate 体系）：
 
-| 场景 | 最少验证                         |
-| ---- | -------------------------------- |
-| 探索 | 结论自洽 + 引用文件依据          |
-| 修复 | 相关测试 / 构建 / 最小回归       |
-| 实现 | build + test + 必要 lint         |
-| 重构 | test + regression + 关键边界检查 |
+| 场景 | 最少验证                                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------------------------------ |
+| 探索 | 结论自洽 + 引用文件依据                                                                                            |
+| 修复 | 相关测试 / 构建 / 最小回归 + self-verification                                                                     |
+| 实现 | build + test + 必要 lint + coverage（有测试基建时实算覆盖率）+ self-verification + self-critique                   |
+| 重构 | build + test + coverage + security（敏感面自查）+ adversarial（降级模式，见下）+ self-verification + self-critique |
+
+**adversarial 降级模式**（Codex 无 verification subagent）：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径，两段互不引用对方结论，标注 `degraded: no-isolation`。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
 
 **验证上下文最小化**（2026 Context Engineering 核心实践）：
 
@@ -647,7 +658,7 @@ SCAN 完成后立即建立预算感知：
 - `security-review` 视角：安全敏感文件 + 威胁模型上下文
 - 默认由当前 Codex 主代理执行这些检查；只有用户明确要求多 agent / 并行协作时，才使用 Codex 的 `spawn_agent`
 - **禁止**将完整 QuestMap、历史 run 详情、或无关 Quest 的 QuestResult 传给单个验证视角
-- **收益**：减少上下文污染、降低 token 消耗 40-60%、提升验证精度
+- **收益**：减少上下文污染、显著降低 token 消耗、提升验证精度
 
 额外必须检查：
 
@@ -657,8 +668,9 @@ SCAN 完成后立即建立预算感知：
 4. **knowledge-distribution**：本 run 产出的 LearnCard 是否已分发到 `.auto/insights/<category>.md`（详见 PHASE 6 硬约束）
 5. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
 6. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
-7. **doctor-lite consistency**：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-8. **run-completeness**：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+7. **constitution**：若 `.auto/constitution.md` 存在，逐条核对本次变更未违反任何硬约束；违反即整体 fail
+8. **doctor-lite consistency**（Codex 端补充检查，非 16-gate 体系成员）：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+9. **run-completeness**（Codex 端补充检查，非 16-gate 体系成员）：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：
@@ -727,15 +739,16 @@ SCAN 完成后立即建立预算感知：
    - `project` — 仅当前项目（特定配置/约定）
    - `stack` — 同技术栈通用（如 Spring Boot 最佳实践）
    - `universal` — 跨项目通用（如错误处理模式、调试方法论）
-3. **去重合并**：与 `.auto/insights/` 已有条目对比，同主题则更新而非追加
+3. **Curator 检查（去重 / 矛盾检测 / merge-or-append）**：分发前与 `.auto/insights/` 已有条目对比，同主题 merge 更新而非追加；新旧结论矛盾时旧条目末尾标 `**状态**: superseded by run-<runId>`，不静默并存；本次被复用且生效的 insight `helpful` +1、被复用但误导的 `harmful` +1，并刷新 `lastConfirmed`（详见 `skills/knowledge-management/SKILL.md`）
 
 **跨项目复用**：`scope: stack|universal` 的 LearnCard 额外写入 `.auto/feedback/skills.json` 的 `portablePatterns` 字段，供同技术栈新项目复用。
 
 当任务较大、仓库本身在使用 `.auto/`，或用户明确要求沉淀时：
 
 - 把可复用经验写入 `.auto/insights/*`
-- 把 skill / 路由效果写入 `.auto/feedback/*`
+- 把 skill / 路由效果写入 `.auto/feedback/*`（**真实化更新**：被激活 skill 的 `usageCount` +1、更新 `lastUsed`、按结果更新 `successRate`；agent/视角调度记入 `agents.json` 的 `totalCalls`；失败追加 `knownIssues`；>30 天未更新标记 `stale`。PLAN 读侧消费 `successRate` 的前提是 LEARN 写侧持续更新 — 只读不写即反馈闭环断链）
 - 把本次可复用的输入模式总结成短规则
+- **Run 归档**：发现运行超过 30 天的 run 时移入 `.auto/runs/archive/`，SCAN 预匹配只扫描未归档 run
 
 否则，不强制制造额外运行文件，但仍要完成最小沉淀：
 

@@ -60,7 +60,7 @@ Bash: git branch --show-current → 当前分支
 │   ├── prompts.md
 │   └── agent-feedback.md
 ├── memory/
-│   └── store.json
+│   └── (可选 · 项目记忆，主流程不强制产出)
 └── feedback/
     ├── agents.json
     └── skills.json

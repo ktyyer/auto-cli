@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0] - 2026-06-13
+
+> 全仓自上而下审计修复（27 项），审计清单见 `.auto/runs/run-20260613-top-down-audit/index.md`。
+
+### Added
+
+- **Codex 双端对齐**（`commands/auto.codex.md`）：补齐 constitution 硬约束（SCAN 读取 + VERIFY gate）、self-critique（每关达成度 < 70 回流 + gate）、VERIFY 补 coverage / security / self-verification gate + adversarial 降级模式（同窗口红蓝分段对抗，`degraded: no-isolation`）、LEARN 反馈真实化（usageCount/totalCalls/successRate/stale）、Curator 完整化（矛盾检测 + helpful/harmful 计数）、Run 归档、Claude 端机制降级说明（Extended Thinking / Skill 分层）、探索策略双端分歧显式声明为设计决策
+- **learn.codex.md 对齐**：LearnCard 补 `scope` 必填字段、参数表补全（--decay / --commit-count / -d,--dir）、新增 Session Continuity 与 Portable Patterns 冷启动导入章节、Curator helpful 计数
+- **激活摘要补齐**：`knowledge-management` + `quality-gates` 两个 skill 补 `## 激活摘要` 段落（三级激活协议要求）
+- **CHANGELOG 补史**：补回缺失的 0.46.0 / 0.47.0 条目
+
+### Fixed
+
+- 版本与计数滞后：README.md 徽章 0.48.0 → 0.50.0、README.en.md 徽章 0.45.0 → 0.50.0 + "33 Skills" → 36（补 feedback-loop / agentless-repair / plan-ensemble 三行）、`.claude-plugin/plugin.json` 0.41.0 → 0.50.0、`marketplace.json` 计数刷新（36 skills / 22 hooks）、REPO_MAP.md 头部 v0.40.0 → v0.50.0、`rules/commands.md` 子命令清单补 dashboard、CLAUDE.md C3 条目 11 → 10 agents
+- 幽灵引用清除：`doctor.md` 的 `auto install` → `npm run sync`、`RepoIndexer` → AI 按模板生成；`skills/community/README.md` 改为明示"机制开发中"（原文承诺的 SCAN 自动发现 / validate 校验链路实际未接通）+ 修复失效链接；README 中/英 FAQ 贡献流程同步修正
+- `.auto/` 结构口径统一：以 auto.md 五层为准，`status.md` 移除虚构的 `memory/store.json`，README 结构图补 `memory/` 层
+- `create-hook.md` Hook 类型表补列 SessionStart
+- `agents/quest-designer.md` 瘦身 464 → 440 行（恢复 < 450 约束），并修复尾部游离代码围栏导致"质量底线"章节被错误包进代码块的渲染 bug
+- 删除根目录残留的 `auto-cli-0.47.0.tgz`
+- 移除无出处的量化声明（README 中英双语 + auto.codex.md）："减幻觉 40-60%" / "平均多保留 80% 已完成工作" / "省 40-60% token" 改为定性描述；"节省 80%+ 上下文" 标注为"最高"并附估算依据（摘要级 ~500 vs 深度级 ~5000 tokens）
+
+## [0.49.0] - 2026-06-13
+
+### Added
+
+- **plan-ensemble skill**（`skills/plan-ensemble/SKILL.md`）：视角集成规划 — PLAN 阶段对高复杂度任务并行派出 2-3 个异质视角只读 subagent，隔离出计划草案（≤30 行/个，零共享上下文防锚定），分歧点清单（直接喂 QuestMap.pitfalls）+ 四维评分矩阵（目标契合/风险/成本/可演进）合成唯一 QuestMap。触发门槛：策略=重构 / 实现+复杂度 high / brainstorming 后 trade-off 不明 / 用户显式要求；上下文红区一票否决。理论依据：多 agent 辩论评审（NeurIPS 2025, arXiv:2510.12697）、视角多样性决定收益（ChatEval）、一轮异质出案即获大部分收益（ACL 2026 受控研究）；隔离发散借鉴 ADHD skill
+
+### Changed
+
+- `skills/brainstorming/SKILL.md`：新增「与 plan-ensemble 的升级路由」— 方案列举后 trade-off 仍不明朗时升级而非强行让用户选（激活摘要 checklist 同步加一行，保证摘要级激活可见）
+- `commands/auto.md`：兜底索引表 + PHASE 2.6 视角集成升级注记
+- `commands/auto.codex.md`：高频硬规则同步（含 Codex 无 subagent 时的 `degraded: no-isolation` 降级模式）
+- `README.md`：Skill 清单新增 plan-ensemble，计数修正为实际 36（旧"36"虚高一位）；`AGENTS.md` 版本行刷新至 v0.49.0 / 36 skill / 16 gate
+
+### Fixed
+
+- `scripts/manifest.js`：补齐 v0.43 起遗漏的 9 个 skill（constitution / incremental-review / self-critique / quality-gates / knowledge-management / protocol-validator / feedback-loop / agentless-repair / plan-ensemble）到 `CODEX_SKILL_DIRS` 与 `MANAGED_FILES`，修复 uninstall 在 `~/.claude/skills` 与 `~/.codex/skills` 留孤儿文件的问题
+
+## [0.48.0] - 2026-06-13
+
+### Added
+
+- **ACE Curator**（`knowledge-management` skill）：LearnCard 分发前强制 Curator 检查 — 查重（同主题 merge 而非 append）、矛盾检测（旧条目标 `superseded`，不静默并存）、merge-or-append 决策。来源 ACE（ICLR 2026, arXiv:2510.04618）
+- **Insight 复用计数**（`knowledge-management` skill）：被注入的 insight 按复用结果维护 `helpful/harmful/lastConfirmed` 计数行；`harmful ≥ 2 且 > helpful` 标记排除；`lastConfirmed` 作为 `--decay` age-prune 的命中时间依据
+- **AWM 工作流归纳**（`/auto:learn --workflows`）：≥ 3 个同策略且 VERIFY pass 的 run 中归纳子任务粒度（2-4 关）的可复用 Quest 序列模板，产出 `LearnCard(category=pattern, tags 含 workflow)` 进入 patterns.md，经 knowledgeHints 在 PLAN 拆关时复用。来源 AWM（ICML 2025, arXiv:2409.07429）
+- **触发率评估**（`skill-evaluator` skill）：正例 8-12 条 + 反例 4-6 条触发语料，60/40 train/test 切分，量化 D2 评分并写回 `trigger_accuracy`；对抗 skill debt（SoK arXiv:2602.20867 实测无验证自生成 skill -1.3pp）
+
+### Changed
+
+- `commands/auto.md` PHASE 6.1：分发前 Curator 检查纳入高层流程
+- `commands/auto/learn.md`：参数表补全 `--decay`（文内已用但漏列）+ 新增 `--workflows`
+- `commands/auto.codex.md` / `commands/auto/learn.codex.md`：与 Claude 端等价同步
+
+## [0.47.0] - 2026-06-08
+
+### Added
+
+- **feedback-loop skill**（`skills/feedback-loop/SKILL.md`）：I/O 系统自验证闭环，融合 SWE-agent ACI / Reflexion / 非退化性理论，含生产级退化防护，覆盖 bot / daemon / 消息队列 / CLI 工具等无 UI 系统
+- **agentless-repair skill**（`skills/agentless-repair/SKILL.md`）：两阶段 Bug 修复流水线（分层定位 + 多候选过滤），来源 Agentless 论文（arXiv:2407.01489）
+
+### Changed
+
+- `refactoring-patterns` 追加维度驱动收敛节
+- `auto.md` + `auto.codex.md` + README 同步更新；skills 计数随新增刷新
+
+## [0.46.0] - 2026-06-06
+
+### Added
+
+- **production-governance skill**（`skills/production-governance/SKILL.md`）：第 15 个 VERIFY gate，覆盖目标收敛 / 产物真源 / run 状态 / 成本质量 / skill 健康度
+- `/auto:status` 增加治理状态字段
+- `skill-evaluator` 增加 `evidence_missing_count` / `governance_fail_count` 反馈信号
+
+### Changed
+
+- 安全敏感路由硬约束补齐（安全敏感任务不得因 successRate 排除 `security-reviewer`）
+
 ## [0.45.0] - 2026-05-27
 
 ### Added
@@ -78,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - 纯 Markdown 变更，无运行时依赖
 - format:check 通过
+
 ## [0.25.0] - 2026-03-29
 
 ### Changed

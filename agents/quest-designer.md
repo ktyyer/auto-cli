@@ -58,17 +58,7 @@ model: opus
 
 ### 第 1.5 步：缓存模式卡加载（v4.1 优化）
 
-**如果 prompt 中包含【已缓存的文件模式卡】，优先使用缓存，跳过已缓存文件的读取。**
-
-```
-IF prompt 中包含【已缓存的文件模式卡】:
-  记录缓存中已有的文件名和模式
-  后续第 2 步中，这些文件无需重新读取
-  输出: "📋 利用缓存模式卡，跳过 [N] 个文件的重复读取"
-
-ELSE:
-  按标准流程执行第 2 步（读取 5-12 个核心文件）
-```
+**如果 prompt 中包含【已缓存的文件模式卡】**：记录已缓存的文件名和模式，第 2 步跳过这些文件的重复读取，输出 "📋 利用缓存模式卡，跳过 [N] 个文件的重复读取"；否则按标准流程执行第 2 步（读取 5-12 个核心文件）。
 
 ---
 
@@ -153,10 +143,7 @@ ELSE:
   │       return Result.success(orderService.selectList(req));
   │   }
   │ 关联 import:
-  │   import com.example.system.domain.dto.OrderDTO;
-  │   import com.example.system.domain.query.OrderQueryRequest;
-  │   import com.example.common.core.page.PageInfo;
-  │   import com.example.common.core.domain.Result;
+  │   OrderDTO / OrderQueryRequest / PageInfo / Result（均为项目内完整路径，逐条列出）
   └──────────────────────────────┘
 ```
 
@@ -306,11 +293,7 @@ CONTRACT-1: ExportOrderRequest
 ✓ Quest 1.1 产出的代码是否包含完整字段？
 ✓ Quest 1.2 的 import 是否正确引用？
 ✓ 字段类型（LocalDate/Integer）是否与 Service 使用一致？
-
-CONTRACT-2: OrderService.exportOrders
-✓ Quest 1.2 的方法签名是否与 Controller 调用匹配？
-✓ 返回值类型是否正确（void + HttpServletResponse）？
-✓ 异常类型是否在 Controller 层能被全局异常处理器捕获？
+（CONTRACT-2 等其余合约按同样三问逐一核对：签名匹配 / 返回值正确 / 异常可被全局处理器捕获）
 
 ═══ 5.2 路径存在性校验 ═══
 
@@ -432,8 +415,6 @@ v4 质量项：
   2. [基于代码分析的具体坑点]
 ```
 
-```
-
 微型模式同样至少输出一关 Quest，不能跳过 Quest 展示。
 
 ---
@@ -456,9 +437,4 @@ v4 质量项：
 
 ## 参考 Skills
 
-执行时自动加载以下 Skill 以增强分析能力：
-
-- **java-patterns** — Java/Spring Boot 模式库（Controller-Service-Mapper 模板）
-- **workflow-patterns** — 工作流模式（Plan Mode、Agent 编排、代码审查清单）
-- **performance-patterns** — 性能优化模式（缓存、查询优化、懒加载策略）
-```
+执行时自动加载：`java-patterns`（Spring Boot 模板）、`workflow-patterns`（编排与审查清单）、`performance-patterns`（缓存与查询优化）。

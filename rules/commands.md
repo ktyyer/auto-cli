@@ -14,7 +14,7 @@ paths: ["commands/**/*.md", ".claude/commands/**/*.md"]
 ## 子命令结构
 
 - 位于 `commands/auto/` 目录，每个子命令一个 .md 文件
-- 当前子命令：doctor、learn、status、route、create-hook
+- 当前子命令：doctor、learn、status、route、create-hook、dashboard
 
 ## 子命令 frontmatter
 

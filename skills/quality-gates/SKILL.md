@@ -13,6 +13,28 @@ tags:
 
 > auto.md 只保留各策略的必需 gate 清单表，本文件提供每个 gate 的完整定义。
 
+## 激活摘要 (Activation Digest)
+
+**检查清单** (checklist):
+
+- [ ] 按当前策略查"各策略必需 gate"表，确定本次必检 gate 集合
+- [ ] 按需加载对应 gate 的详细定义（不预加载全量 16 个）
+- [ ] 每个 gate 输出 `status` + `evidence`（实际命令 + 输出，不接受"看起来没问题"）
+- [ ] 任一 gate fail 必须同时给出 `recommendedNext`
+- [ ] gate 状态与 verify-report.md 同步收口（命令已 PASS 的 gate 不得仍标 pending）
+
+**硬约束** (constraints):
+
+- 实测优先于断言：任何验证声明必须附实际命令 + 输出
+- 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行探索 gate 集
+- `knowledge-distribution` 为全策略必检：LearnCard 未分发到 `.auto/insights/` 即 fail
+
+**反模式** (anti-patterns):
+
+- 用主观判断代替命令实测 → Run-Don't-Claim 违规
+- fail 只写结论不写下一步 → 下游无法回流修复
+- 一次性加载全部 16 个 gate 定义 → 上下文浪费
+
 ## Gate Taxonomy
 
 `analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`

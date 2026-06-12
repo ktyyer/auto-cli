@@ -14,8 +14,19 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 ```bash
 /auto:learn
 /auto:learn --git
+/auto:learn --workflows
+/auto:learn --decay
 /auto:learn --json
 ```
+
+| 参数               | 说明                                                 |
+| ------------------ | ---------------------------------------------------- |
+| `--git`            | 额外分析 Git 历史模式                                |
+| `--commit-count n` | `--git` 时分析最近 n 条提交（默认 30）               |
+| `--workflows`      | 跨 run 归纳可复用 Quest 序列模板（AWM 模式，见下文） |
+| `--decay`          | 触发知识库防膨胀规则（见下文）                       |
+| `--json`           | 输出结构化摘要                                       |
+| `-d, --dir <path>` | 指定项目目录（默认当前目录）                         |
 
 ---
 
@@ -68,6 +79,7 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 每张卡至少要有：
 
 - `category`
+- `scope`（`project | stack | universal`，必填；`stack|universal` 额外写入 `skills.json` 的 `portablePatterns`）
 - `title`
 - `summary`
 - `context`
@@ -120,6 +132,43 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 - 同时更新 `.auto/cache/insight-index.json`，对应条目 confidence 降级
 - 默认 `/auto:learn` 不扫描全量；只有显式 `--decay` 才触发
 - 反模式：直接 `rm` 删除条目 / 用硬时间阈值一刀切 / 不区分 `scope` 一律 decay
+
+---
+
+## 工作流归纳（`--workflows`，与 Claude 端对齐）
+
+`.auto/runs/`（未归档）存在 ≥ 3 个同策略且 VERIFY pass 的 run 时，`/auto:learn --workflows` 可归纳可复用工作流模板（AWM 模式）：
+
+1. 跨 run 比较 `quest-map.md` / `quest-results.md` 的 Quest 序列
+2. 找出出现 ≥ 2 次的重复子序列（2-4 关的子任务粒度，不取整条流水线）
+3. 文件名参数化为 `<占位符>`，保留 agent / skill / 验证组合
+4. 产出 `LearnCard(category=pattern, tags 含 workflow)` 写入 `.auto/insights/patterns.md`
+
+纪律：只归纳 VERIFY pass 的 run；失败轨迹走 `trap`；同模板再次命中走 Curator merge 路径（`helpful` +1、刷新 `lastConfirmed`），不重复 append。
+
+---
+
+## Portable Patterns 冷启动导入（与 Claude 端对齐）
+
+新项目首次运行且 `.auto/insights/` 为空时，可从同技术栈旧项目的 `.auto/feedback/skills.json` 读取 `portablePatterns`：
+
+1. 只导入 `confidence: high` 且 `scope: stack`（技术栈匹配）或 `scope: universal` 的条目
+2. 导入条目写入本项目 `.auto/insights/patterns.md`，末尾标注 `**来源**: imported-from <旧项目>`
+3. 导入后按本项目实际复用效果维护 helpful/harmful 计数，误导性条目正常衰减
+
+---
+
+## Session Continuity（跨会话续接）
+
+run 未完成或需跨会话续接时，`/auto:learn` 负责补全或更新 `.auto/runs/<runId>/session-continuity.md`，至少包含：
+
+- `runId` / `status`（interrupted | suspended | completed）
+- `currentPhase` / `nextPhase`
+- `requiredArtifacts`（续接前必须存在的工件清单）
+- `blockingIssues` / `knownDefects` / `unverifiedPaths`
+- `resumePrompt`（下次会话可直接粘贴的续接指令）
+
+下次 `/auto` SCAN 检测到 `status=interrupted` 时从中断点继续。
 
 ---
 

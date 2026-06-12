@@ -4,7 +4,7 @@
 
 **Give Claude Code / Codex a "Super Commander" — say one sentence, watch AI walk through a 6-phase pipeline, and write what it learned into your project's memory.**
 
-[![npm version](https://img.shields.io/badge/version-0.45.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.50.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-why-use-it)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -108,9 +108,9 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 1. **Protocol-driven · 5 standard objects written to disk immediately** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` land in `.auto/runs/<runId>/`. Failures trace precisely to the failing Quest.
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
 3. **Cross-session resumption · no need to re-explain** — when a run interrupts, `session-continuity.md` is written automatically. Next startup picks up with one line.
-4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files, on average preserving 80% of completed work.
+4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files; completed quests stay intact.
 5. **16-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
-6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, minimal-context validation reduces hallucination 40-60%, long runs don't drift.
+6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, minimal-context validation lowers hallucination risk, long runs don't drift.
 
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
 
@@ -336,7 +336,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 
 > `agents/_shared-principles.md` defines shared principles, not invoked as a standalone agent.
 
-### 33 Skills (cross-platform Anthropic Agent Skills standard)
+### 36 Skills (cross-platform Anthropic Agent Skills standard)
 
 <details>
 <summary><b>Expand full skill list</b></summary>
@@ -369,6 +369,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `spec-driven`           | Spec-driven development (contract → acceptance)                       |
 | `context-engineering`   | Context engineering (budget / compression / isolation)                |
 | `brainstorming`         | Multi-option comparison & tradeoff analysis                           |
+| `plan-ensemble`         | Multi-perspective parallel planning & review synthesis                |
 | `using-git-worktrees`   | Git Worktree multi-agent parallelism                                  |
 | `constitution`          | `.auto/constitution.md` hard-constraint carrier                       |
 | `incremental-review`    | End-of-session incremental review                                     |
@@ -376,6 +377,8 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `quality-gates`         | VERIFY 16-gate definitions                                            |
 | `knowledge-management`  | LEARN knowledge distillation + distribution + archive workflow        |
 | `protocol-validator`    | Protocol object schema / handoff completeness validation              |
+| `feedback-loop`         | I/O system self-verification loop (bot/daemon/CLI tools)              |
+| `agentless-repair`      | Two-phase bug repair (localization + multi-candidate filtering)       |
 
 </details>
 
@@ -385,7 +388,7 @@ Each skill contains a `## Activation Summary` section, supporting 3-tier on-dema
 - **Full level** (5-6): summary + relevant sub-sections on demand → ~2000 tokens
 - **Deep level** (7+): full + `references/` → ~5000 tokens
 
-Low-match skills only read 20-line summary, **saving 80%+ context**.
+Low-match skills only read 20-line summary, **saving up to 80%+ context** (summary ~500 vs deep ~5000 tokens).
 
 ### 22 Hooks (Claude Code automation)
 
@@ -448,18 +451,18 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 - **Run-Don't-Claim**: never say "tests passed" — must paste command + last 3 lines of output
 - **Predict-Then-Verify**: before running any verify command, predict the result first. Wrong prediction = wrong understanding, stop and fix understanding
 - **Protocol pre-validation**: `protocol-validator` checks required fields, conditional fields, and failed-gate next steps before phase handoff
-- **Verification context isolation**: Claude Code may use subagents; Codex uses the main agent with minimal-context validation views by default, cutting hallucination 40-60%
+- **Verification context isolation**: Claude Code may use subagents; Codex uses the main agent with minimal-context validation views by default, lowering hallucination risk and token cost
 
 ### Context Engineering
 
-| Mechanism                            | What it does                                             | Benefit                                  |
-| ------------------------------------ | -------------------------------------------------------- | ---------------------------------------- |
-| **3-zone budget** (green/yellow/red) | Auto-writes `session-continuity.md` on entering red zone | AI never "forgets"                       |
-| **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save 80%+ tokens                         |
-| **Verification context isolation**   | Validation views receive only minimal context            | Less hallucination + 40-60% tokens saved |
-| **Drift protection**                 | Echo the ask + reverse diff + expansion-word brake       | Long runs stay on mainline               |
-| **Knowledge distillation**           | LearnCards atomic (≤5 lines) + scope-tagged              | Reuse actually works                     |
-| **Run-level budget**                 | `maxIterations` 25 + `noProgressThreshold` 3             | Prevent runaway token burn               |
+| Mechanism                            | What it does                                             | Benefit                               |
+| ------------------------------------ | -------------------------------------------------------- | ------------------------------------- |
+| **3-zone budget** (green/yellow/red) | Auto-writes `session-continuity.md` on entering red zone | AI never "forgets"                    |
+| **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save up to 80%+ tokens                |
+| **Verification context isolation**   | Validation views receive only minimal context            | Less hallucination + lower token cost |
+| **Drift protection**                 | Echo the ask + reverse diff + expansion-word brake       | Long runs stay on mainline            |
+| **Knowledge distillation**           | LearnCards atomic (≤5 lines) + scope-tagged              | Reuse actually works                  |
+| **Run-level budget**                 | `maxIterations` 25 + `noProgressThreshold` 3             | Prevent runaway token burn            |
 
 See `skills/context-engineering/SKILL.md` for details.
 
@@ -614,7 +617,7 @@ Claude Code natively supports agents / rules / hooks runtime; Codex currently su
 No. `.auto/` is already in `.gitignore`. Each project accumulates its own local knowledge.
 
 **Q: How to contribute a new Skill?**
-Create a skill file under `skills/community/` (following Agent Skills standard + `tags` extension), run `node scripts/validate-references.js`, submit PR to `dev` branch. See `skills/community/README.md`.
+Create your skill as `skills/<your-skill>/SKILL.md` (following Agent Skills standard + `tags` extension), run `node scripts/validate-references.js`, submit PR to `dev` branch. The `skills/community/` auto-discovery mechanism is under development — see `skills/community/README.md`.
 
 **Q: Which languages are supported?**
 Java / Spring Boot, JavaScript / TypeScript / React, Python / Django, Go / Gin, Rust (basic). Skills tagged `scope: universal` are language-agnostic.

@@ -866,3 +866,21 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 
 **推荐动作**: 大型项目（>100 文件）开启 incremental-review skill；小项目无需，可保持每次提交完整 review。
 
+---
+
+### 外部调研先查现状再落地，避免重复造轮子
+
+**日期**: 2026-06-13 | **置信度**: high | **来源**: run-20260613-v048-p0
+
+调研建议"insight 生命周期管理"时，SCAN 实读 learn.md 发现 decay 机制（age-prune/dedup-merge/scope-outdated）已存在，落地动作从"新建机制"降级为"增量补强"（复用计数行 + lastConfirmed 与 age-prune 衔接）。Cite-or-Die 在实现策略同样关键：调研结论 ≠ 仓库现状。关键词：外部调研 / 增量补强 / 重复造轮子 / 现状核对。
+
+**推荐动作**: 实现外部调研建议前，先 Grep/Read 目标文件确认该能力是否已部分存在，再决定新建还是补强。
+
+
+### [pattern] 声明性数字随版本演进系统性滞后（run-20260613-v050-audit-fix）
+
+**置信度**: high | **scope**: universal
+
+全仓审计发现 8 处版本/计数声明滞后（README 双语徽章差 2-5 个 minor、plugin.json 差 9 个 minor、"33 Skills" vs 实际 36、manifest 卸载清单缺 9 个 skill）。根因：发布流程只更新 package.json + CHANGELOG，散落在徽章 / 插件清单 / 桥接文档 / 英文版中的同一数字无人巡检。双端文档（auto.md vs auto.codex.md）同理：新能力只加 Claude 端，Codex 端欠账累积到 9 项。关键词：版本徽章 / 计数漂移 / 双端对齐 / 发布检查清单。
+
+**推荐动作**: 版本发布前 grep 全仓旧版本号字符串（如 `0\.4[0-9]\.0`）+ 实算 skill/gate/agent 计数对照所有声明处；给 auto.md 加能力时同步检查 auto.codex.md 是否需要等价条目或降级说明。

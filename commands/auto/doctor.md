@@ -36,19 +36,19 @@ Bash("git --version")
 
 ```
 Bash("test -d ~/.claude && echo EXISTS || echo MISSING")
-  -> MISSING -> FAIL: "~/.claude 目录不存在，请先运行 auto install"
+  -> MISSING -> FAIL: "~/.claude 目录不存在，请先在 auto-cli 仓库运行 npm run sync"
 
 Bash("ls ~/.claude/agents/*.md 2>/dev/null | wc -l")
   -> >= 5 -> PASS
-  -> < 5 -> WARN: "Agent 文件不完整，建议重新 auto install"
+  -> < 5 -> WARN: "Agent 文件不完整，建议重新运行 npm run sync"
 
 Bash("ls ~/.claude/commands/auto/*.md 2>/dev/null | wc -l")
   -> >= 5 -> PASS
-  -> < 5 -> WARN: "Command 文件不完整，建议重新 auto install"
+  -> < 5 -> WARN: "Command 文件不完整，建议重新运行 npm run sync"
 
 Bash("ls ~/.claude/skills/*.md 2>/dev/null | wc -l")
   -> >= 4 -> PASS
-  -> < 4 -> WARN: "Skill 文件不完整，建议重新 auto install"
+  -> < 4 -> WARN: "Skill 文件不完整，建议重新运行 npm run sync"
 
 Bash("test -f ~/.claude/hooks/hooks.json && echo EXISTS || echo MISSING")
   -> EXISTS -> PASS
@@ -158,11 +158,11 @@ Bash("test -f .auto/feedback/skills.json && jq '.portablePatterns | length' .aut
 
 使用 `--fix` 时，当前会自动执行以下修复操作：
 
-| 问题                  | 自动修复动作                        | 风险 |
-| --------------------- | ----------------------------------- | ---- |
-| REPO_MAP.md 缺失      | 调用 RepoIndexer 生成 `REPO_MAP.md` | 安全 |
-| hooks/hooks.json 缺失 | 生成最小默认 hooks 配置             | 安全 |
-| Claude 组件缺失       | 调用 installer 补齐缺失组件         | 安全 |
+| 问题                  | 自动修复动作                                 | 风险 |
+| --------------------- | -------------------------------------------- | ---- |
+| REPO_MAP.md 缺失      | 由 AI 按仓库结构生成 `REPO_MAP.md`           | 安全 |
+| hooks/hooks.json 缺失 | 生成最小默认 hooks 配置                      | 安全 |
+| Claude 组件缺失       | 提示在 auto-cli 仓库运行 `npm run sync` 补齐 | 安全 |
 
 以下问题**不会自动修复**（需人工确认）：
 

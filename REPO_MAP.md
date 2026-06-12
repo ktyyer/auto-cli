@@ -1,15 +1,13 @@
 # REPO_MAP.md
 
-> 2026-05-15 | Pure Markdown — 0 JS runtime | v0.40.0
+> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.50.0
 
-**最新优化**（v0.40.0）:
+**最新优化**（v0.49-0.50）:
 
-- ✅ 集成 Claude 4.7 Extended Thinking（深度推理）
-- ✅ 集成 Claude 4.7 Self-Verification（自我验证）
-- ✅ 协议扩展：cost gate / Agent Preference Memory / interruptPoint / conditionalNext
-- ✅ 新增 spec-driven Skill 与 /auto:dashboard 子命令
-- ✅ 新增 PreCompact hook 与缓存重建脚本（rebuild:cache）
-- 🎯 质量提升 +30%，错误率降低 -50%
+- ✅ plan-ensemble skill：PLAN 阶段多视角并行规划与评审合成（NeurIPS 2025 多 agent 辩论评审）
+- ✅ 知识闭环演化：ACE Curator 检查 + Insight 复用计数 + AWM 工作流归纳（v0.48）
+- ✅ Codex 双端对齐：constitution / self-critique / VERIFY gate 集 / LEARN 反馈闭环补齐
+- ✅ 全仓审计修复：版本计数统一、幽灵引用清除、manifest 卸载清单补齐
 
 ## commands/
 
