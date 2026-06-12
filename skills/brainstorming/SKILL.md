@@ -49,6 +49,7 @@ tags: [brainstorming, design, planning, alternatives, plan-phase, socratic, meth
 - [ ] 给出 AI 推荐 + 推荐理由（不强制接受）
 - [ ] 用 `AskUserQuestion` 让用户在 2-3 方案 + "其他（请补充）" 中选择
 - [ ] 用户选定后写回 RouteDecision.selection.notes + QuestMap.decisionNotes
+- [ ] 列举后 trade-off 仍不明朗（给不出有依据的推荐）→ 升级调用 `plan-ensemble` skill，不强行让用户选
 
 **硬约束** (constraints):
 
@@ -185,6 +186,12 @@ tags: [brainstorming, design, planning, alternatives, plan-phase, socratic, meth
 ```
 
 ---
+
+## 与 plan-ensemble 的升级路由
+
+列出 2-3 方案后若 trade-off 仍不明朗（利弊对冲，给不出有依据的推荐），不要强行让用户在信息不足时选择 — 升级调用 `plan-ensemble` skill：2-3 个异质视角隔离并行出计划草案，分歧点聚焦 + 评分矩阵合成唯一 QuestMap。
+
+注意分工：brainstorming 是**方案级、用户选择**（OAuth vs JWT，串行列举）；plan-ensemble 是**视角级、并行竞争**（同一目标下不同规划哲学各自出草案，AI 合成）。策略=重构、或实现且复杂度 high 时，plan-ensemble 可不经 brainstorming 直接触发。
 
 ## 与 spec-driven 的协作
 
