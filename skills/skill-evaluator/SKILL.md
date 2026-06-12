@@ -124,6 +124,32 @@ tags: [skill, evaluation, evolution, quality-gate, verification]
 
 ---
 
+## 触发率评估（Trigger-Rate Eval）
+
+> 依据：SkillsBench 实测，无验证机制的自生成 skill 平均比不用还差 -1.3pp（SoK: Agentic Skills, arXiv:2602.20867）。D2 不能只靠主观读 description 打分，必须有语料实测支撑。
+
+### 语料构造
+
+1. **正例 8-12 条**：应触发本 skill 的真实风格用户请求，覆盖不同措辞 / 同义词 / 中英混合
+2. **反例 4-6 条**：最容易误触发的相邻 skill 的正例（如 `skill-creator` vs `skill-evaluator`）
+3. **60/40 切分**：train 集用于改 description，test 集只用于验收，防止 description 过拟合
+4. 语料沉淀到 `skills/<name>/references/trigger-eval.md`，复评时直接复用
+
+### 评测流程
+
+1. 对每条 test 语料，按 SCAN 四信号匹配规则推演该 skill 是否会被激活（匹配度 ≥ 3 视为触发）
+2. 计算：命中率 = 正例触发数 / 正例数；误触率 = 反例触发数 / 反例数
+3. 映射 D2 分：命中率 ≥ 0.9 且误触率 ≤ 0.2 → 9-10 分；命中率 ≥ 0.7 → 6-8 分；否则 ≤ 5 分
+4. 改 description 只允许以 train 集为依据；改后用 test 集复测（作为第 4 步验证的一部分）
+
+### 纪律
+
+- test 集语料不得反向抄进 description（过拟合 = 评测失效）
+- 误触率比命中率更重要：误触发会污染其他任务的上下文预算
+- 评测结果写入 `.auto/feedback/skills.json` 的 `trigger_accuracy` 字段
+
+---
+
 ## 反馈信号（可选增强）
 
 如果有 `.auto/feedback/skills.json` 的实际使用数据，按 60% 静态 + 40% 反馈加权：

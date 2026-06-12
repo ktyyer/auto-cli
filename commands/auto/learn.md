@@ -15,6 +15,7 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 ```bash
 /auto:learn
 /auto:learn --git
+/auto:learn --workflows
 /auto:learn --json
 ```
 
@@ -88,6 +89,7 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
 - 将路由反馈统一映射为 `LearnCard(category=feedback)`
 - 将可复用的 route hints 写回 `.auto/feedback/agents.json` / `.auto/feedback/skills.json`
 - 分析 skill 使用模式（命中、忽略、纠正），写回 `.auto/feedback/skills.json`
+- 从 ≥ 3 个同策略 run 归纳可复用工作流模板（`--workflows`，AWM 模式）
 - 将可复用的模式卡写回 `.auto/cache/pattern-cards.json`
 - 为跨会话续接产出 `.auto/runs/<runId>/session-continuity.md`
 
@@ -186,6 +188,43 @@ git log --oneline -n 200 --pretty=format:"%s" | head -50
 - `usage_frequency`
 
 字段定义详见 `commands/auto.md` 6.2 节与 `skills/skill-evaluator/SKILL.md`。
+
+---
+
+## 工作流归纳（AWM 模式）
+
+> 来源：Agent Workflow Memory（ICML 2025, arXiv:2409.07429）。从历史执行轨迹中归纳**子任务粒度**的可复用工作流，供后续 PLAN 拆关时直接复用。
+
+### 触发条件
+
+- 显式 `/auto:learn --workflows`
+- 前置条件：`.auto/runs/`（未归档）中存在 ≥ 3 个同策略（修复/实现/重构）且 VERIFY pass 的 run；不满足时跳过并说明原因
+
+### 归纳流程
+
+1. **收集**：Read 候选 run 的 `quest-map.md` + `quest-results.md`，提取每关 objective / ownerAgent / 激活 skills / 验证方式
+2. **对齐**：跨 run 比较 Quest 序列，找出出现 ≥ 2 次的重复子序列（2-4 关的子任务粒度，不取整条流水线）
+3. **模板化**：把重复子序列抽象为工作流模板——具体文件名/模块名参数化为 `<占位符>`，保留 agent / skill / 验证组合
+4. **产出**：每个模板一张 `LearnCard(category=pattern, tags 含 workflow)`，走标准分发链写入 `.auto/insights/patterns.md`
+
+### 工作流模板格式（写入 LearnCard summary）
+
+```markdown
+适用：<触发场景，1 句>
+步骤：<关1 objective> → <关2 objective> → <关3 objective>
+组合：agent=<owner> | skills=<列表> | 验证=<命令或方式>
+来源：run-<id1>, run-<id2>（≥2 个 run 实证）
+```
+
+### 复用路径
+
+`patterns.md` 经 SCAN 1.6 / PLAN 2.1 注入 `QuestMap.knowledgeHints`，PLAN 拆解 Quest 时优先比对工作流模板，命中则按模板拆关。简单模板可作为复杂模板的子步骤（AWM 雪球效应）。
+
+### 纪律
+
+- 只归纳 VERIFY pass 的 run；失败轨迹走 `trap`，不进工作流模板
+- 子任务粒度优先于整条流水线（泛化性更好，AWM 论文核心结论）
+- 同模板再次命中时走 Curator merge 路径（`helpful` +1，见 `skills/knowledge-management/SKILL.md` 复用计数节），不重复 append
 
 ---
 
@@ -339,12 +378,14 @@ LEARN 完成 `LearnCard` 落盘后，**强制**重建或增量更新 `.auto/cach
 
 ## 参数说明
 
-| 参数                 | 说明               |
-| -------------------- | ------------------ |
-| `--git`              | 启用 Git 历史分析  |
-| `--commit-count <n>` | 指定分析的提交数量 |
-| `--json`             | 输出 JSON 结构     |
-| `-d, --dir <path>`   | 指定分析目录       |
+| 参数                 | 说明                                  |
+| -------------------- | ------------------------------------- |
+| `--git`              | 启用 Git 历史分析                     |
+| `--commit-count <n>` | 指定分析的提交数量                    |
+| `--decay`            | 触发知识库全量 decay 扫描             |
+| `--workflows`        | 从历史 run 归纳工作流模板（AWM 模式） |
+| `--json`             | 输出 JSON 结构                        |
+| `-d, --dir <path>`   | 指定分析目录                          |
 
 ---
 
