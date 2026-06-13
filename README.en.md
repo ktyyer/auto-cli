@@ -4,7 +4,7 @@
 
 **Give Claude Code / Codex a "Super Commander" — say one sentence, watch AI walk through a 6-phase pipeline, and write what it learned into your project's memory.**
 
-[![npm version](https://img.shields.io/badge/version-0.50.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.51.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-why-use-it)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)

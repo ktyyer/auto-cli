@@ -4,7 +4,7 @@
 
 **给 Claude Code / Codex 装一个"超级司令官" — 一句话需求，自动走完 6 步流水线，并把这次的经验写进项目记忆。**
 
-[![npm version](https://img.shields.io/badge/version-0.50.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.51.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)

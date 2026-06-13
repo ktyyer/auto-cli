@@ -1,6 +1,8 @@
 # Community Skills
 
 > 社区贡献的 Skill 目录。遵循 [Agent Skills 标准](https://agentskills.io/specification) 和 auto-cli 扩展规范。
+>
+> **注意**：`community/` 本身是**组织目录**，不是 skill。统计 skill 数量时应排除（`ls skills/ | wc -l` 会多数 1 个）。
 
 ## 机制状态：开发中
 

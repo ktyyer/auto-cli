@@ -748,7 +748,7 @@ SCAN 完成后立即建立预算感知：
 - 把可复用经验写入 `.auto/insights/*`
 - 把 skill / 路由效果写入 `.auto/feedback/*`（**真实化更新**：被激活 skill 的 `usageCount` +1、更新 `lastUsed`、按结果更新 `successRate`；agent/视角调度记入 `agents.json` 的 `totalCalls`；失败追加 `knownIssues`；>30 天未更新标记 `stale`。PLAN 读侧消费 `successRate` 的前提是 LEARN 写侧持续更新 — 只读不写即反馈闭环断链）
 - 把本次可复用的输入模式总结成短规则
-- **Run 归档**：发现运行超过 30 天的 run 时移入 `.auto/runs/archive/`，SCAN 预匹配只扫描未归档 run
+- **Run 归档**：运行超过 30 天的 run 自动移入 `.auto/runs/archive/`（由 SessionStart Hook 触发，Claude Code 专有机制；Codex 暂无 Hook 支持，可手动触发或在 LEARN 阶段提示），SCAN 预匹配只扫描未归档 run
 
 否则，不强制制造额外运行文件，但仍要完成最小沉淀：
 

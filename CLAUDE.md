@@ -62,7 +62,7 @@
 
 - [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
 
-### 计划中（v0.51 候选）
+### 计划中（v0.52 候选）
 
 - Agent Teams 双模执行：并行 Quest 在 git-worktrees 之外提供原生 Agent Teams 模式（含分层模型成本指引）
 - OpenSpec delta specs：`spec-driven` skill 吸收 ADDED/MODIFIED/REMOVED 标记与 proposal→apply→archive 状态机
@@ -70,6 +70,8 @@
 - agentless-repair 撤下过时 SWE-bench 分数表述（保留方法论）
 
 ### 已完成
+
+- [x] v0.51.0: **自动 run 清理机制**：SessionStart Hook 自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能；新增 `hooks/lib/auto-clean-runs.sh` 跨平台脚本（支持 Linux/macOS/Windows Git Bash/Node.js/Python 降级）；`hooks/hooks.json` SessionStart Hook 集成（< 50ms 开销）；`commands/auto.md` PHASE 6.4 补充配置/手动触发/恢复说明；`commands/auto.codex.md` LEARN 章节同步（标注 Codex 暂无 Hook）；`rules/hooks.md` SessionStart 章节补充；`skills/community/README.md` 顶部显式声明组织目录身份；`scripts/validate-references.js` 白名单补齐
 
 - [x] v0.50.0: **全仓审计修复（27 项）**：Codex 双端对齐（constitution / self-critique / VERIFY gate 集补齐 + adversarial 降级模式 / LEARN 反馈真实化 / Curator 完整化 / Session Continuity / Portable Patterns）；版本计数全链路统一（README 双语徽章 / plugin.json / marketplace.json / REPO_MAP）；幽灵引用清除（doctor.md `auto install`/`RepoIndexer`、community README 未实现承诺改为"开发中"）；CHANGELOG 补回 0.46/0.47 条目；quest-designer 瘦身 464→440 行；knowledge-management + quality-gates 补激活摘要。审计方法：2 个并行 Explore agent（文档一致性 / 双端对齐）+ 机械检查，清单见 `.auto/runs/run-20260613-top-down-audit/index.md`
 - [x] v0.49.0: **plan-ensemble skill（视角集成规划）**：新增 `skills/plan-ensemble/SKILL.md`，PLAN 阶段对高复杂度任务（重构 / 实现+high / brainstorming 后 trade-off 不明 / 用户显式要求）并行派出 2-3 个异质视角只读 subagent 隔离出计划草案（≤30 行/个，零共享上下文防锚定），再以分歧点清单（喂 QuestMap.pitfalls）+ 四维评分矩阵合成唯一 QuestMap；理论依据 NeurIPS 2025 多 agent 辩论评审（arXiv:2510.12697）+ ChatEval 视角多样性 + ACL 2026 受控研究（一轮异质出案即获大部分收益）；`brainstorming` 加升级路由；`auto.md` + `auto.codex.md`（含 Codex 降级模式）+ README 同步；skill 实际计数修正为 36（旧文档"36"虚高一位，实际为 35 + 新增 plan-ensemble）

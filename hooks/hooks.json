@@ -162,9 +162,13 @@
           {
             "type": "command",
             "command": "#!/bin/bash\n# Cold-start: surface critical project knowledge so the new session opens with context\nfiles=()\n[ -f 'CLAUDE.md' ] && files+=('CLAUDE.md (project instructions)')\n[ -f '.auto/constitution.md' ] && files+=('.auto/constitution.md (non-negotiable hard constraints)')\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ]; then\n  cont=\".auto/runs/$latest_run/session-continuity.md\"\n  [ -f \"$cont\" ] && files+=(\"$cont (last run continuity)\")\nfi\nif [ ${#files[@]} -gt 0 ]; then\n  echo '[Hook] SessionStart - consider Read on:' >&2\n  for f in \"${files[@]}\"; do echo \"[Hook]   - $f\" >&2; done\nfi\nexit 0"
+          },
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Auto-clean old runs: archive runs older than retention threshold\n# Runs on every session start to keep SCAN fast (< 50ms overhead)\nCLAUDE_HOME=\"${HOME}/.claude\"\nclean_script=\"${CLAUDE_HOME}/hooks/lib/auto-clean-runs.sh\"\nif [ -f \"$clean_script\" ]; then\n  bash \"$clean_script\" 2>&1 || true\nfi\nexit 0"
           }
         ],
-        "description": "SessionStart: surface CLAUDE.md / .auto/constitution.md / last-run session-continuity.md on cold start (informational, never blocks)"
+        "description": "SessionStart: surface CLAUDE.md / .auto/constitution.md / last-run session-continuity.md + auto-clean old runs (informational, never blocks)"
       }
     ],
     "PostCompact": [

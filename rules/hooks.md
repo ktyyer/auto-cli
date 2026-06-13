@@ -65,6 +65,7 @@ paths: ["hooks/**/*", ".claude/settings.json", ".claude/hooks.json"]
 ### SessionStart
 
 - **项目知识冷启动注入**: 新会话开始时提示 Read CLAUDE.md / `.auto/constitution.md` / 最新 run 的 session-continuity.md，零阻塞的项目上下文唤醒
+- **自动清理旧 run**: 每次会话启动时自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能（< 50ms 开销）
 
 ### UserPromptSubmit
 

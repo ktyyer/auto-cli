@@ -298,6 +298,9 @@ function validateReferences() {
   }
 
   // Orphan 判定：能力文件存在，但在任何 commands/*.md 中都没有以任何形式被提及
+  // 白名单：下沉实现 skill（从 auto.md 提取的细节，隐式引用）
+  const implicitSkills = new Set(['knowledge-management', 'quality-gates']);
+
   for (const agent of availableAgents) {
     if (!RESULTS.mentioned.agents.has(agent)) {
       RESULTS.warnings.push({ type: 'agent', name: agent, message: '定义了但未被提及' });
@@ -305,7 +308,7 @@ function validateReferences() {
   }
 
   for (const skill of availableSkills) {
-    if (!RESULTS.mentioned.skills.has(skill)) {
+    if (!RESULTS.mentioned.skills.has(skill) && !implicitSkills.has(skill)) {
       RESULTS.warnings.push({ type: 'skill', name: skill, message: '定义了但未被提及' });
     }
   }

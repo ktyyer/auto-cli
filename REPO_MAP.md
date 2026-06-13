@@ -1,8 +1,8 @@
 # REPO_MAP.md
 
-> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.50.0
+> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.51.0
 
-**最新优化**（v0.49-0.50）:
+**最新优化**（v0.49-0.51）:
 
 - ✅ plan-ensemble skill：PLAN 阶段多视角并行规划与评审合成（NeurIPS 2025 多 agent 辩论评审）
 - ✅ 知识闭环演化：ACE Curator 检查 + Insight 复用计数 + AWM 工作流归纳（v0.48）

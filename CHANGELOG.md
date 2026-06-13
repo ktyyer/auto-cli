@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.51.0] - 2026-06-13
+
+### Added
+
+- **自动 run 清理机制**：SessionStart Hook 自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能
+  - 新增 `hooks/lib/auto-clean-runs.sh` 脚本，**跨平台兼容**（支持 Linux/macOS/Windows Git Bash/Node.js/Python 降级）
+  - 支持环境变量配置 (`AUTO_CLEAN_RETENTION_DAYS`, `AUTO_CLEAN_DRY_RUN`)
+  - `hooks/hooks.json` SessionStart Hook 集成自动清理逻辑（< 50ms 开销）
+  - `commands/auto.md` PHASE 6.4 补充配置说明、手动触发和恢复方式
+  - `commands/auto.codex.md` LEARN 章节同步更新（标注 Codex 暂无 Hook，可手动触发）
+  - `rules/hooks.md` SessionStart 章节补充自动清理条目
+
+### Fixed
+
+- **community README 说明**：顶部显式声明 `community/` 是组织目录（非 skill），避免计数困惑
+- **validate-references.js 白名单**：新增下沉实现 skill 白名单（`knowledge-management`, `quality-gates`），消除假阳性警告
+
 ## [0.50.0] - 2026-06-13
 
 > 全仓自上而下审计修复（27 项），审计清单见 `.auto/runs/run-20260613-top-down-audit/index.md`。
