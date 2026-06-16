@@ -282,7 +282,7 @@ model: opus
 
 ---
 
-### 第 5 步：合约一致性 + 路径校验
+### 第 5 步：合约一致性 + 路径校验 + 并行冲突检测
 
 ```
 
@@ -304,7 +304,122 @@ Glob("src/.../OrderServiceImpl.java") → ✅ 存在
 CREATE 的文件路径验证：
 Glob("src/.../ExportOrderRequest.java") → ⚠️ 不存在（正确，这是新建文件）
 
-═══ 5.3 代码完整性校验（v4 新增）═══
+═══ 5.3 并行冲突检测（v4.2 新增）═══
+
+**目的**：自动检测哪些 Quest 可以并行执行，最大化 CPU 利用率。
+
+**算法**：
+
+1. 提取每个 Quest 的 touchFiles 列表（包含 CREATE 和 MODIFY 的文件）
+2. 计算两两 Quest 之间的文件交集
+3. 如果交集为空 → 可并行；否则 → 必须串行
+4. 构建冲突矩阵并推荐并行分组
+
+**执行步骤**：
+
+```python
+# 伪代码示例
+quests = [
+  {id: 1, touchFiles: ["OrderController.java", "OrderDTO.java"]},
+  {id: 2, touchFiles: ["OrderService.java", "OrderServiceImpl.java"]},
+  {id: 3, touchFiles: ["OrderMapper.java", "OrderMapper.xml"]},
+  {id: 4, touchFiles: ["OrderController.java", "Result.java"]},  # 与 Quest 1 冲突
+]
+
+# 步骤 1：构建冲突矩阵
+conflicts = {}
+for i in quests:
+  for j in quests:
+    if i.id < j.id:
+      intersection = set(i.touchFiles) & set(j.touchFiles)
+      if intersection:
+        conflicts[(i.id, j.id)] = list(intersection)
+
+# 示例输出：
+# conflicts = {(1, 4): ["OrderController.java"]}
+
+# 步骤 2：推荐并行分组
+parallelGroups = []
+sequential = []
+
+# 使用贪心算法分组
+visited = set()
+for quest in quests:
+  if quest.id in visited:
+    continue
+  group = [quest.id]
+  for other in quests:
+    if other.id in visited or other.id == quest.id:
+      continue
+    # 检查 other 是否与 group 中任一 Quest 冲突
+    canAdd = all((min(q, other.id), max(q, other.id)) not in conflicts for q in group)
+    if canAdd:
+      group.append(other.id)
+      visited.add(other.id)
+  visited.add(quest.id)
+  if len(group) > 1:
+    parallelGroups.append(group)
+  else:
+    sequential.append(quest.id)
+```
+
+**产出格式**（写入 `.auto/runs/<runId>/parallelism-analysis.md`）：
+
+```markdown
+# 并行执行分析
+
+## 冲突矩阵
+
+| Quest | 与 Quest 1 | 与 Quest 2 | 与 Quest 3 | 与 Quest 4 |
+| ----- | ---------- | ---------- | ---------- | ---------- |
+| 1     | -          | ✅ 无冲突  | ✅ 无冲突  | ❌ 冲突    |
+| 2     | ✅ 无冲突  | -          | ✅ 无冲突  | ✅ 无冲突  |
+| 3     | ✅ 无冲突  | ✅ 无冲突  | -          | ✅ 无冲突  |
+| 4     | ❌ 冲突    | ✅ 无冲突  | ✅ 无冲突  | -          |
+
+## 冲突详情
+
+- Quest 1 ↔ Quest 4：共同触及 `OrderController.java`
+
+## 推荐执行策略
+
+### 并行组 1（可同时执行）
+
+- Quest 1：实现 DTO
+- Quest 2：实现 Service
+- Quest 3：实现 Mapper
+
+### 串行执行
+
+- Quest 4：修改 Controller（依赖 Quest 1 完成）
+
+## 执行建议
+
+- 如果使用 `using-git-worktrees` skill，可将并行组 1 的 3 个 Quest 分配到不同 worktree
+- Quest 4 必须等待 Quest 1 完成后执行
+```
+
+**自动标注 Quest 字段**：
+
+在 Quest Map 中为每个 Quest 增加 `canParallel` 字段：
+
+```yaml
+quests:
+  - questId: quest-1
+    canParallel: [quest-2, quest-3] # 可与 Quest 2、3 并行
+    touchFiles: [OrderController.java, OrderDTO.java]
+
+  - questId: quest-2
+    canParallel: [quest-1, quest-3, quest-4]
+    touchFiles: [OrderService.java, OrderServiceImpl.java]
+
+  - questId: quest-4
+    canParallel: [quest-2, quest-3]
+    mustWaitFor: [quest-1] # 必须等 Quest 1 完成
+    touchFiles: [OrderController.java, Result.java]
+```
+
+═══ 5.4 代码完整性校验（v4 原有）═══
 
 检查每个 Quest 的完整实现：
 
@@ -434,6 +549,8 @@ v4 质量项：
 - [ ] 所有 🚫 边界限制列出了具体文件名 + 禁止的技术/模式
 - [ ] 所有 🔴 高风险 Quest 配备了额外护栏
 - [ ] 依赖顺序经过拓扑排序验证，无循环依赖
+- [ ] 并行冲突检测已执行，`parallelism-analysis.md` 已产出
+- [ ] 每个 Quest 已标注 `canParallel` 和 `mustWaitFor` 字段（如适用）
 
 ## 参考 Skills
 

@@ -33,9 +33,48 @@ tags: [shared, protocol, handoff, agent, principles]
 - `DISCOVER` = `SCAN`
 - `REASON` = `PLAN`
 
-### 公共头部
+### 公共头部（v0.52 人类可读格式升级）
 
-所有对象必须先输出 JSON 协议块，再输出人类可读摘要。
+所有对象优先输出**人类可读格式**，JSON 协议块作为可选附加（仅在需要机器解析时产出）。
+
+**人类可读格式示例**（优先使用）：
+
+```markdown
+# RouteDecision: route-20260616-abc123
+
+**策略**: 实现  
+**主 Agent**: quest-designer  
+**回退链**: code-reviewer → build-error-resolver  
+**安全敏感度**: 低  
+**上下文预算**: 绿区（40% 以下）
+
+## 能力快照
+
+- **Commands**: 7 个
+- **Agents**: 10 个
+- **Skills**: 36 个（核心层 30 + 储备层 6）
+
+## 选中能力
+
+- **Agents**: quest-designer, code-reviewer
+- **Skills**: java-patterns, test-plan-writer, self-critique
+
+## 拒绝原因
+
+- ~~security-reviewer~~: 非安全敏感任务
+- ~~adversarial~~: 策略非重构，无需对抗验证
+
+## 协议头部
+
+- **Protocol**: auto-md/v1
+- **Run ID**: run-20260616-abc123
+- **Correlation ID**: corr-20260616-xyz789
+- **Phase**: SCAN
+- **Status**: success
+- **Handoff Ready**: ✅ 可进入 PLAN
+```
+
+**JSON 协议块**（机器解析时使用）：
 
 ```json
 {
@@ -59,6 +98,12 @@ tags: [shared, protocol, handoff, agent, principles]
   }
 }
 ```
+
+**格式选择原则**：
+
+- 人类可读格式：用户查看 `.auto/runs/<runId>/` 时体验更好
+- JSON 协议块：需要跨工具解析、自动化流程集成时使用
+- 默认只输出人类可读格式，节省 token 和上下文空间
 
 ### Phase 硬约束
 
@@ -289,10 +334,79 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 | `VerifyReport`  | VERIFY   | 固化门禁、对抗验证和修复建议                   | `gateResults[]`, `overallStatus`, `failedGates`, `nextAction`                                 |
 | `LearnCard`     | LEARN    | 固化可复用知识单元，再分发到 insights/feedback | `category`, `recommendedAction`, `confidence`, `targetInsightFile`                            |
 
-### RouteDecision 标准对象
+### RouteDecision 标准对象（v0.52 人类可读格式）
 
 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `userIntent`, `strategy`, `primaryAgent`, `skills`, `next`。
 选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`, `notes`。
+
+**人类可读格式**（优先）：
+
+```markdown
+# RouteDecision: route-20260616-abc123
+
+**Run ID**: run-20260616-abc123  
+**Correlation ID**: corr-20260616-xyz789  
+**状态**: ✅ success
+
+## 用户意图
+
+实现用户导出功能，包含 DTO / Service / Controller 三层
+
+## 路由决策
+
+- **策略**: 实现
+- **复杂度**: medium
+- **安全敏感度**: 低
+- **主 Agent**: quest-designer
+- **回退链**: code-reviewer → build-error-resolver
+
+## 能力快照
+
+- **Commands**: 7 个
+- **Agents**: 10 个
+- **Skills**: 36 个（核心层 30 + 储备层 6）
+- **Insights**: 12 个文件（project: 3, stack: 5, universal: 4）
+- **Feedback**: agents.json (10 条), skills.json (36 条)
+
+## 选中能力
+
+**Agents**:
+
+- quest-designer（主力，产出 QuestMap）
+- code-reviewer（审查关）
+
+**Skills**（激活级别）:
+
+- java-patterns（全文级）
+- test-plan-writer（摘要级）
+- self-critique（摘要级）
+
+**Rejected**:
+
+- ~~security-reviewer~~: 非安全敏感任务
+- ~~adversarial~~: 策略非重构
+
+## 上下文预算
+
+- **当前区间**: 绿区（35% 使用）
+- **压缩策略**: 标准（摘要级起点，按需升全文级）
+- **预估 Quest 数**: 3-5 关
+
+## 知识注入
+
+已从 `.auto/insights/stack/` 注入 2 条相关经验：
+
+- Spring Boot 事务回滚必须加 rollbackFor
+- DTO 与 Entity 必须分离
+
+## Handoff
+
+- **下游 Phase**: PLAN
+- **准备就绪**: ✅
+- **阻塞项**: 无
+```
+
+**JSON 协议块**（机器解析时可选）：
 
 ```json
 {

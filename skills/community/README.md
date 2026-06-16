@@ -4,11 +4,14 @@
 >
 > **注意**：`community/` 本身是**组织目录**，不是 skill。统计 skill 数量时应排除（`ls skills/ | wc -l` 会多数 1 个）。
 
-## 机制状态：开发中
+## 机制状态：✅ 已接通（v0.52）
 
-`skills/community/` 的自动发现链路（SCAN 扫描 / install 同步 / 引用校验）**尚未接通**：当前 `/auto` SCAN 只扫描 `skills/<name>/SKILL.md` 结构，`scripts/install.js` 与 `scripts/validate-references.js` 均跳过本目录。本目录暂作为社区 Skill 的收集与评审区。
+`skills/community/` 的完整链路已接通：
 
-**当前贡献新 Skill 的实际路径**：直接按标准结构创建 `skills/<your-skill>/SKILL.md`（会被 SCAN 自动发现、被 `npm run sync` 同步、被 validate 校验），经 PR 评审合入主清单。
+- ✅ **SCAN 自动发现**：`/auto` PHASE 1 扫描 `skills/community/<name>/SKILL.md`，按标准 frontmatter 参与四信号匹配
+- ✅ **install 同步**：`npm run sync` 自动复制到 `~/.claude/skills/` 和 `~/.codex/skills/`
+- ✅ **引用校验**：`node scripts/validate-references.js` 校验 frontmatter 完整性与引用准确性
+- ✅ **缺失提示**：安装时若 `SKILL.md` 缺失，输出警告但不中断
 
 ## 贡献指南
 
@@ -35,7 +38,7 @@
 ## 提交流程
 
 1. Fork 本仓库
-2. 按标准结构创建 `skills/<your-skill>/SKILL.md`
+2. 按标准结构创建 `skills/community/<your-skill>/SKILL.md`
 3. 运行 `node scripts/validate-references.js` 确认无错误
 4. 提交 PR 到 `dev` 分支
 

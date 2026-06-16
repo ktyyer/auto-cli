@@ -212,7 +212,15 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 **简化注入流程**：不再要求 `[insight:]` 格式标记。检索到相关 insight 后，直接将命中摘要（每条 ≤2 行）注入 `RouteDecision.notes.relevantInsights`。后续 Phase 通过继承 RouteDecision 自然获得知识上下文。
 
-检索方式：优先 `Grep` 搜索 `.auto/insights/*.md`（避免加载大体积 insight-index.json），关键词从用户需求提取。命中条目记入 `selection.routeHintsUsed`。
+检索方式：按技术栈分层加载（**v0.52 升级**）：
+
+1. **确定技术栈**：从 package.json/pom.xml 等提取（如 Java + Spring Boot）
+2. **按 scope 分层 Grep**：
+   - 优先搜索 `.auto/insights/stack/` + `.auto/insights/universal/`（同技术栈通用知识）
+   - 仅当用户需求明确涉及项目特定逻辑时才加载 `.auto/insights/project/`
+3. **节省 token**：跳过无关 scope 的 insights（如 Java 项目不加载 Python 专属经验）
+
+关键词从用户需求提取。命中条目记入 `selection.routeHintsUsed`。
 
 **相似历史 run 预匹配**：扫描最近 5 个未归档 run 的 `route-decision.md`，语义相似度 > 0.7 时预加载该 run 的 trap/pattern（最多 3 条）。
 
@@ -293,6 +301,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 | 会话末增量代码审查 / dirty files 累积                  | `incremental-review`    |
 | bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统 | `feedback-loop`         |
 | 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展               | `agentless-repair`      |
+| 执行影响性命令前（git commit/npm publish/Edit超50行）  | `predict-verify`        |
 
 **Phase 敏感性调整**：实现/探索策略下 code-style-enforcer、comment-standards 匹配度 -1；重构策略恢复正常权重。**预算联动**：红区强制摘要级；黄区深度降全文级。
 

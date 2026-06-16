@@ -210,6 +210,7 @@ function copySkills(src, tools) {
   let totalCopied = 0;
 
   for (const entry of entries) {
+    // 跳过 community 目录（社区 Skill 需单独校验）
     if (!entry.isDirectory() || entry.name === 'community') continue;
 
     const skillFile = path.join(src, entry.name, 'SKILL.md');
@@ -229,6 +230,37 @@ function copySkills(src, tools) {
         fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
       }
       totalCopied++;
+    }
+  }
+
+  // 处理社区 Skill（单独校验）
+  const communityDir = path.join(src, 'community');
+  if (fs.existsSync(communityDir)) {
+    const communitySkills = fs.readdirSync(communityDir, { withFileTypes: true });
+    for (const entry of communitySkills) {
+      if (!entry.isDirectory()) continue;
+
+      const skillFile = path.join(communityDir, entry.name, 'SKILL.md');
+      if (!fs.existsSync(skillFile)) {
+        console.warn(`[WARN] 社区 Skill ${entry.name} 缺少 SKILL.md，跳过安装`);
+        continue;
+      }
+
+      const skillName = entry.name;
+
+      for (const tool of tools) {
+        if (tool.skillFileName) {
+          // Codex: skills/<name>/SKILL.md
+          const skillDir = path.join(tool.skillsDir, skillName);
+          ensureDir(skillDir);
+          fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
+        } else {
+          // Claude: skills/<name>.md
+          ensureDir(tool.skillsDir);
+          fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
+        }
+        totalCopied++;
+      }
     }
   }
 

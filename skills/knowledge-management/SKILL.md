@@ -72,24 +72,44 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 
 写盘到 `.auto/runs/<runId>/learn-cards.md`。
 
-### 步骤 2：分发 LearnCards 到 insights/
+### 步骤 2：分发 LearnCards 到 insights/（按 scope 分层）
 
 对每张有效 LearnCard（有 category 字段），**必须执行以下操作**：
 
-1. 根据 category 确定目标文件：
+1. 根据 category **和 scope** 确定目标文件（**v0.52 升级：三层命名空间**）：
 
-| category | 目标文件（必须 append）            |
-| -------- | ---------------------------------- |
-| trap     | `.auto/insights/traps.md`          |
-| pattern  | `.auto/insights/patterns.md`       |
-| decision | `.auto/insights/decisions.md`      |
-| prompt   | `.auto/insights/prompts.md`        |
-| feedback | `.auto/insights/agent-feedback.md` |
+| category | scope     | 目标文件（必须 append）                 |
+| -------- | --------- | --------------------------------------- |
+| trap     | project   | `.auto/insights/project/traps.md`       |
+| trap     | stack     | `.auto/insights/stack/traps.md`         |
+| trap     | universal | `.auto/insights/universal/traps.md`     |
+| pattern  | project   | `.auto/insights/project/patterns.md`    |
+| pattern  | stack     | `.auto/insights/stack/patterns.md`      |
+| pattern  | universal | `.auto/insights/universal/patterns.md`  |
+| decision | project   | `.auto/insights/project/decisions.md`   |
+| decision | stack     | `.auto/insights/stack/decisions.md`     |
+| decision | universal | `.auto/insights/universal/decisions.md` |
+| prompt   | project   | `.auto/insights/project/prompts.md`     |
+| prompt   | stack     | `.auto/insights/stack/prompts.md`       |
+| prompt   | universal | `.auto/insights/universal/prompts.md`   |
+| feedback | (不分层)  | `.auto/insights/agent-feedback.md`      |
 
-2. Read 目标文件当前内容
+**分层说明**：
+
+- `project`：当前项目特有的知识（如"本项目用户表名为 sys_user"）
+- `stack`：同技术栈通用（如"Spring Boot @Transactional 要加 rollbackFor"）
+- `universal`：跨项目/跨语言通用（如"复杂查询先写伪代码"）
+
+**SCAN 1.6 按技术栈加载**：
+
+- 当前项目技术栈 = Java + Spring Boot → 加载 `stack/` 和 `universal/`，跳过 `project/`（除非明确需要）
+- 节省 token：只加载相关 scope 的 insights
+
+2. Read 目标文件当前内容（如文件不存在则自动创建空文件）
+
 3. **Curator 检查**（ACE 式增量演化，append 前必做，来源 arXiv:2510.04618）：
 
-   a. **查重**：`Grep(pattern="<title 关键词>", path=".auto/insights/<目标文件>")`。同主题已存在 → 改为 Edit 更新该 section（保留原日期，追加新结论），不新增条目
+   a. **查重**：`Grep(pattern="<title 关键词>", path="<目标文件>")`。同主题已存在 → 改为 Edit 更新该 section（保留原日期，追加新结论），不新增条目
    b. **矛盾检测**：新结论与已有条目相反时，不得静默并存。在旧条目末尾追加 `**状态**: superseded by run-<runId>`，新条目正常 append 并在 summary 中注明推翻依据
    c. **merge-or-append 决策**：查重命中且无矛盾 → merge；查重未命中 → append；矛盾 → supersede + append
 
@@ -98,7 +118,7 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 ```markdown
 ### <title>
 
-**日期**: YYYY-MM-DD | **置信度**: <confidence> | **来源**: <source>
+**日期**: YYYY-MM-DD | **置信度**: <confidence> | **来源**: <source> | **Scope**: <scope>
 
 <summary>
 
@@ -107,7 +127,17 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 
 5. 验证 append 成功（Read 目标文件末尾确认）
 
-**硬约束**：`category=trap` 的 LearnCard 未 append 到 `traps.md` → LEARN 不完整，`knowledge-distribution` gate = fail。
+**硬约束**：`category=trap` 的 LearnCard 未 append 到对应 scope 的 `traps.md` → LEARN 不完整，`knowledge-distribution` gate = fail。
+
+**迁移说明**（首次使用三层结构时）：
+
+- 如果 `.auto/insights/traps.md` 已存在（旧平铺结构），需手动迁移：
+  ```bash
+  # 迁移脚本示例（手动执行）
+  mkdir -p .auto/insights/{project,stack,universal}
+  # 根据每条 insight 的 scope 字段分发到对应目录
+  ```
+- 新项目直接使用三层结构，无需迁移
 
 ### 步骤 3：更新 agents.json
 

@@ -211,17 +211,47 @@ function getAvailableFiles(dir) {
 
 // 获取可用 Skill 列表（dir 结构：skills/<name>/SKILL.md）
 function getAvailableSkills(dir) {
-  const exclude = new Set(['community']);
+  const exclude = new Set([]);  // 移除 'community' 排除，让社区 skill 也参与校验
 
   if (!fs.existsSync(dir)) {
     return [];
   }
 
-  return fs
+  const skills = fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !exclude.has(entry.name))
     .filter((entry) => fs.existsSync(path.join(dir, entry.name, 'SKILL.md')))
     .map((entry) => entry.name);
+
+  // 校验 community skills
+  const communityDir = path.join(dir, 'community');
+  if (fs.existsSync(communityDir)) {
+    const communitySkills = fs
+      .readdirSync(communityDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .filter((entry) => {
+        const skillFile = path.join(communityDir, entry.name, 'SKILL.md');
+        if (!fs.existsSync(skillFile)) {
+          RESULTS.warnings.push({
+            type: 'community-skill',
+            name: entry.name,
+            message: '社区 Skill 缺少 SKILL.md 文件'
+          });
+          return false;
+        }
+        return true;
+      });
+
+    // 校验 community skills frontmatter
+    communitySkills.forEach((entry) => {
+      const skillFile = path.join(communityDir, entry.name, 'SKILL.md');
+      validateSkillFrontmatter(skillFile, entry.name);
+    });
+
+    skills.push(...communitySkills.map((entry) => entry.name));
+  }
+
+  return skills;
 }
 
 function validateReferences() {
