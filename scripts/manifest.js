@@ -212,7 +212,7 @@ export const MANAGED_FILES = [
   },
   {
     dir: path.join(CLAUDE_DIR, 'hooks', 'lib'),
-    files: ['codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js']
+    files: ['auto-clean-runs.sh', 'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js']
   }
 ];
 

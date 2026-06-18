@@ -26,6 +26,32 @@ function removeIfExists(filePath) {
   }
 }
 
+function removeAutoCliHooksFromSettings(settingsPath) {
+  if (!fs.existsSync(settingsPath)) return;
+
+  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  if (!settings.hooks) return;
+
+  let changed = false;
+  for (const [event, entries] of Object.entries(settings.hooks)) {
+    const filtered = entries.filter((e) => e._source !== 'auto-cli');
+    if (filtered.length !== entries.length) {
+      settings.hooks[event] = filtered;
+      changed = true;
+    }
+    if (settings.hooks[event].length === 0) {
+      delete settings.hooks[event];
+    }
+  }
+  if (Object.keys(settings.hooks).length === 0) {
+    delete settings.hooks;
+  }
+
+  if (changed) {
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+  }
+}
+
 console.log('Auto CLI 卸载');
 console.log('');
 
@@ -69,6 +95,10 @@ for (const tool of tools) {
         }
       }
     }
+
+    // 从 settings.json 精准移除 auto-cli hooks（保留用户自定义 hooks）
+    removeAutoCliHooksFromSettings(path.join(dir, 'settings.json'));
+    console.log('  settings.json: auto-cli hooks 已移除（用户自定义 hooks 保留）');
   } else {
     // Codex: remove AGENTS.md, prompts/auto.md, prompts/auto/, skills/<skillName>/
     for (const rootFile of CODEX_MANAGED_FILES.rootFiles || []) {

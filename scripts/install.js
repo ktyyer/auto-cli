@@ -359,6 +359,36 @@ function cleanManagedFiles(tools) {
   return removed;
 }
 
+const AUTO_CLI_SOURCE_TAG = 'auto-cli';
+
+function mergeHooksIntoSettings(hooksJsonSrc, settingsPath) {
+  const srcHooks = JSON.parse(fs.readFileSync(hooksJsonSrc, 'utf8')).hooks || {};
+
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  }
+  if (!settings.hooks) settings.hooks = {};
+
+  for (const [event, srcEntries] of Object.entries(srcHooks)) {
+    if (!settings.hooks[event]) settings.hooks[event] = [];
+    const existing = settings.hooks[event];
+
+    for (const srcEntry of srcEntries) {
+      const tagged = { ...srcEntry, _source: AUTO_CLI_SOURCE_TAG };
+      // Remove any previous entry with same description (tagged or legacy untagged)
+      const matchIdx = existing.findIndex((e) => e.description === srcEntry.description);
+      if (matchIdx >= 0) {
+        existing[matchIdx] = tagged;
+      } else {
+        existing.push(tagged);
+      }
+    }
+  }
+
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+}
+
 // === Main ===
 
 const tools = detectTools();
@@ -461,6 +491,17 @@ if (fs.existsSync(hooksSrc)) {
   }
   console.log(`  hooks/ → ${hookCount} 文件`);
   totalFiles += hookCount;
+}
+
+// 6. Merge hooks into settings.json (Claude only, idempotent)
+const hooksJsonSrc = path.join(srcRoot, 'hooks', 'hooks.json');
+if (fs.existsSync(hooksJsonSrc)) {
+  for (const tool of tools) {
+    if (!tool.hasHooks) continue;
+    const settingsPath = path.join(tool.dir, 'settings.json');
+    mergeHooksIntoSettings(hooksJsonSrc, settingsPath);
+  }
+  console.log('  hooks → settings.json (merged)');
 }
 
 console.log('');
