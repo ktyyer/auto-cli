@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 理论依据：2026 loop engineering 范式（Boris Cherny "My job is to write loops" + Addy Osmani 命名）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop（Stop Hook + Completion-Promise）+ Agent SDK budget caps（max_turns/max_budget_usd）+ 非退化性收敛
   - `commands/auto.md`：执行策略表后新增「Loop 模式（正交于策略）」节；SCAN 新增 1.8 Loop 参数解析（模式判定 + loopBudgets + 调度选择 + 收敛判据硬门禁）；兜底索引加 `loop-engineering` 触发项；LEARN 新增 6.6 跨迭代回灌
   - `commands/auto.codex.md`：双端对齐 —— Codex 无原生 ScheduleWakeup/CronCreate，降级为外部 `cron`/`schtasks`/`at` 或人手触发，**严禁伪造后台运行**；CHECKER / 预算 / 跨迭代逻辑两端一致
-  - RouteDecision 新增 `loopBudgets`：maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3
+  - RouteDecision 新增 `loopBudgets`：maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3；支持 `--budget <USD|unlimited>` / `--max-time <h>` per-loop 覆盖
   - 语义自动触发（无需 interval 参数）：SCAN 1.8 识别持续型（盯盘/巡检/持续/守住/保持/自主/自愈）与收敛型（直到/达到/提到/降到/收敛 + 可度量目标）语义即自动开 loop，默认 10m；收敛型关键词由「无 CHECKER 不开 loop」硬门禁过滤误命中
+  - 预算模型按模式分 + 监听型 CHECKER-first：收敛型 maxIterations=20（次数兜底）；**监听型（fixed/sustain）免 maxIterations**（靠 maxBudgetUsd + maxWallClock 兜底，避免 1m 高频轮询 20 分钟早夭）；监听型每轮先跑超轻量 CHECKER，**状态无变化跳过 DOER（近乎零成本）**，变化才升级聚焦 6 PHASE —— 让 `/auto 1m 盯CI` 这类高频监听既不烧钱也不早夭
   - 核心约束：**写不出可度量收敛判据（退出码/正则/数值阈值）不开 loop** —— CHECKER 缺位的 loop = 烧钱机器（2026 社区数据：过夜自主产出约 25% 被丢弃，根因是 CHECKER 缺位）
 
 ### Fixed

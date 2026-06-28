@@ -260,14 +260,16 @@ flowchart LR
 ### 场景 6 · Loop 自主循环（盯盘 / 自愈 / 收敛目标）
 
 ```bash
-/auto 5m 盯 CI 直到全绿，失败了自动修
+/auto 5m 盯 CI 直到全绿，失败了自动修             # 默认预算 $300 兜底
 /auto 30m 把测试覆盖率从 62% 提到 80%
+/auto 5m --budget 10000 把整个模块重构到测试全过   # 这个 loop 允许花到 $10000
+/auto 5m --budget unlimited 持续盯生产             # 不限费用（仍受 72h + CHECKER 约束）
 ```
 
 **会发生什么**：
 
 - SCAN 解析 interval 参数 → 进入 loop 模式，激活 `loop-engineering` skill
-- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（maxIterations 20 / maxBudgetUsd 10）
+- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（默认 maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h；`--budget` / `--max-time` 可 per-loop 覆盖）
 - 用 `ScheduleWakeup`（会话内）或 `CronCreate`（过夜持久）按时触发每一轮
 - 每轮跑聚焦版 6 PHASE → CHECKER 跑判据命令 → 收敛度↑ 续跑 / 回退则 `git reset` 换策略 / 达成则停
 - LEARN 跨迭代回灌：上轮 trap 下轮自动避坑，直到收敛或预算耗尽

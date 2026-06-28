@@ -425,7 +425,7 @@ SCAN 完成后立即建立预算感知：
 
 - 首 token 匹配 `/^\d+(m|h|s)$/` → loop 模式，记录 interval；无 interval 但语义含持续型(盯盘/巡检/持续/守住/保持/自主/自愈)/收敛型(直到/达到/提到/降到/收敛 + 可度量目标) → loop 模式，默认 10m（收敛型由 skill「无 CHECKER 不开 loop」硬门禁过滤误命中）
 - **跨迭代锚点**：入参若含 `#loop=<loopId>` → 续接既有 loop（读 `.auto/runs/<loopId>/loop-state.json` 继承预算/迭代号/收敛史，非新 loop）；每次触发的 prompt 必须带 `#loop=<loopId>`，否则预算与收敛史每轮 reset
-- 进入 loop 模式后：激活 `loop-engineering` skill → 写 `.auto/runs/<loopId>/loop-contract.md`（目标 + 可度量收敛判据 + 预算）→ 初始化 `loopBudgets`（maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3）
+- 进入 loop 模式后：激活 `loop-engineering` skill → 写 `.auto/runs/<loopId>/loop-contract.md`（目标 + 可度量收敛判据 + 预算）→ 初始化 `loopBudgets`（**模式相关**：收敛型 maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3；监听型免 maxIterations，靠 maxBudgetUsd + maxWallClock 兜底，且每轮 CHECKER-first 无变化跳过 DOER）；入参 `--budget <USD|unlimited>` / `--max-time <h>` 可 per-loop 覆盖默认
 - **收敛判据硬门禁**：写不出可度量 CHECKER（退出码 / 正则 / 数值阈值）→ 不开 loop，回退单次 `/auto`
 - **调度降级**：见上方「Loop 模式 · Codex 调度降级声明」
 

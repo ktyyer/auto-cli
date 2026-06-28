@@ -246,14 +246,16 @@ Open session B, type `/auto`:
 ### Case 6 · Loop autonomous run (monitoring / self-heal / convergence)
 
 ```bash
-/auto 5m watch CI until green, auto-fix on failure
+/auto 5m watch CI until green, auto-fix on failure   # default budget $300 cap
 /auto 30m raise test coverage from 62% to 80%
+/auto 5m --budget 10000 refactor the whole module until tests pass  # allow up to $10000
+/auto 5m --budget unlimited keep watching production               # no cost cap (still bounded by 72h + CHECKER)
 ```
 
 **What happens**:
 
 - SCAN parses the interval → enters loop mode, activates the `loop-engineering` skill
-- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (maxIterations 20 / maxBudgetUsd 10)
+- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (default maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h; `--budget` / `--max-time` override per-loop)
 - Schedules each iteration via `ScheduleWakeup` (in-session) or `CronCreate` (overnight, durable)
 - Each iteration runs a focused 6-PHASE pass → CHECKER runs the criterion command → progress: continue / regress: `git reset` + new strategy / met: stop
 - LEARN feeds back across iterations: last run's traps are auto-avoided next run, until convergence or budget exhaustion

@@ -260,18 +260,21 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 1. **激活 skill**：全文级加载 `loop-engineering`，提取 DOER/CHECKER 模板与 budget 模板。
 2. **写 loop 契约**：`.auto/runs/<loopId>/loop-contract.md`，固化目标 / 收敛判据（可度量）/ 预算。
-3. **初始化 loopBudgets**（写入 `RouteDecision`，覆盖默认）：
+3. **初始化 loopBudgets**（写入 `RouteDecision`，按模式覆盖默认）：
 
-   | 字段              | 默认值 | 触发动作                                |
-   | ----------------- | ------ | --------------------------------------- |
-   | `maxIterations`   | 20     | 超限 → 终止 loop，写 LearnCard(trap)    |
-   | `maxBudgetUsd`    | 10     | 超限 → 终止 loop                        |
-   | `maxWallClock`    | 72h    | 到期 → 终止 loop（对齐官方 3 天上限）   |
-   | `noProgressLimit` | 3      | 连续 3 轮收敛度不增 → 强制换策略 / 终止 |
+   | 字段              | 收敛型默认 | 监听型默认 | 触发动作                                                             |
+   | ----------------- | ---------- | ---------- | -------------------------------------------------------------------- |
+   | `maxIterations`   | 20         | 不限(∞)    | 收敛型超限终止；监听型**不以此终止**（避免 1m 高频轮询 20 分钟早夭） |
+   | `maxBudgetUsd`    | 300        | 300        | 超限 → 终止 loop                                                     |
+   | `maxWallClock`    | 72h        | 72h        | 到期 → 终止 loop（对齐官方 3 天上限）                                |
+   | `noProgressLimit` | 3          | 不适用     | 收敛型连续 3 轮收敛度不增 → 强制换策略 / 终止                        |
 
 4. **选调度机制**：会话内动态 → `ScheduleWakeup`；跨会话持久 / 过夜 → `CronCreate(durable:true)`。
 5. **收敛判据硬门禁**：写不出可度量 CHECKER（退出码 / 正则 / 数值阈值）→ **不开 loop**，回退单次 `/auto` 先把目标拆明白。
 6. **跨迭代锚点（关键）**：`ScheduleWakeup` / `CronCreate` 的 prompt 必须带 `#loop=<loopId>`（如 `/auto 5m 盯CI #loop=run-xxx`）。不带则下一轮 SCAN 当成新 loop，`loopBudgets` 与 `convergenceHistory` 全部 reset —— 预算耗尽永不触发、退化检测失效、反复用同一失败策略。`loopId` = 本 loop 首轮 run 的 `runId`，全程不变。
+7. **预算 / 时长覆盖（per-loop）**：入参含 `--budget <USD|unlimited>` 或 `--max-time <h>` → 覆盖 loopBudgets 默认（默认 `maxBudgetUsd=300` / `maxWallClock=72h`）。例：`/auto 5m --budget 10000 把整个模块重构到测试全过`、`/auto 5m --budget unlimited 持续盯生产`。`unlimited` 仅免费用上限，**仍受 maxWallClock + CHECKER + 用户中断约束**（无 CHECKER 的目标即便 unlimited 也不开 loop）。
+
+> **监听型（fixed/sustain）CHECKER-first**：每轮先跑超轻量状态检查（`gh pr checks` / 退出码 / 接口状态），**无变化跳过 DOER（近乎零成本）**，状态变化才升级聚焦 6 PHASE。这让 `1m` 高频轮询不烧钱，且因监听型免 `maxIterations`，不会被 20 次早夭。
 
 > **反幻觉约束**：interval 转 `delaySeconds` 时偏移避开整点（`5m`→270s/330s），不卡 `:00`/`:30` 撞峰；Codex / 无原生调度运行时降级为外部 cron/schtasks 或人手触发，**不伪造「正在后台跑」**。
 

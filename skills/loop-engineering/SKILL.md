@@ -64,7 +64,8 @@ tags:
 **检查清单**(开 loop 前必过)：
 
 - [ ] 收敛判据已写成**可度量条件**(命令退出码 / 正则 / 数值阈值),不是「感觉差不多了」
-- [ ] 预算已设:`maxIterations` + `maxBudgetUsd`(或 token 上限)+ `maxWallClock`
+- [ ] 预算已设(按模式):收敛型 `maxIterations=20` + `maxBudgetUsd=300` + `maxWallClock=72h`;监听型免 `maxIterations`(靠 `maxBudgetUsd` + `maxWallClock` 兜底,不因高频轮询早夭)
+- [ ] 预算可 per-loop 覆盖:入参 `--budget <USD|unlimited>` / `--max-time <h>` 覆盖默认;`unlimited` 仅免费用上限,**仍受 maxWallClock + CHECKER + 用户中断约束**(无 CHECKER 的目标即便 unlimited 也不开 loop)
 - [ ] 关键路径已 commit,可回滚(loop 改坏能 `git reset`)
 - [ ] 调度机制已选:会话内动态 → ScheduleWakeup;跨会话持久 → CronCreate
 - [ ] 每轮产物落 `.auto/runs/<runId-iter-N>/`,跨迭代可追溯
@@ -155,20 +156,25 @@ tags:
 
 ## Step 4:单次迭代执行
 
-每轮 tick 触发时,跑一轮**聚焦版** 6 PHASE(非完整重跑):
+每轮 tick 触发时,**按模式分支**(监听型 CHECKER-first 省 token,收敛型每轮全量 DOER):
 
 ```text
 [loop iter N] tick 触发
-  ├─ 读 .auto/runs/<loopId>/loop-state.json(上轮收敛度 / 遗留)
-  ├─ SCAN:增量扫(只看上轮 trap + 本轮目标)
-  ├─ PLAN:≤3 关 Micro QuestMap
-  ├─ EXECUTE:最小变更
-  ├─ VERIFY:clean-state gate(硬门禁)
-  ├─ CHECKER:跑收敛判据命令
-  │    ├─ 达成 → 写 loop-state(converged=true),进 Step 5 终止
-  │    ├─ 收敛度↑ → 写 state, ScheduleWakeup 续跑
-  │    └─ 收敛度↓/回退 → git reset 本轮, 换策略, ScheduleWakeup 续跑
-  └─ LEARN:跨迭代 trap/pattern 回灌(Step 6)
+  ├─ 读 .auto/runs/<loopId>/loop-state.json(上轮收敛度 / 遗留 / mode)
+  │
+  ├─ 监听型(fixed/sustain):CHECKER-first
+  │    ├─ 先跑 CHECKER(超轻量:gh pr checks / 退出码 / 接口状态)
+  │    ├─ 状态无变化 → 跳过 DOER,直接续下一轮(本轮近乎零成本)
+  │    └─ 状态变化/失败 → 升级跑下方 DOER
+  │
+  ├─ 收敛型(convergent):每轮直接跑 DOER(每轮都是有用功)
+  │
+  └─ DOER(聚焦版 6 PHASE,仅 CHECKER 触发或收敛型时跑):
+       SCAN 增量 → PLAN ≤3 关 → EXECUTE 最小变更 → VERIFY clean-state → CHECKER
+         ├─ 达成 → loop-state.converged=true,进 Step 5 终止
+         ├─ 收敛度↑ → 写 state, 续跑
+         └─ 收敛度↓/回退 → git reset 本轮, 换策略, 续跑
+       LEARN:跨迭代 trap/pattern 回灌(Step 6)
 ```
 
 **loop-state.json**(每轮更新,跨迭代真源):
@@ -185,7 +191,7 @@ tags:
     { "iter": 1, "metric": "覆盖率 62%", "status": "progress" },
     { "iter": 7, "metric": "覆盖率 79%", "status": "progress" }
   ],
-  "budget": { "spentIterations": 7, "maxIterations": 20, "spentUsd": 1.2, "maxUsd": 10 },
+  "budget": { "spentIterations": 7, "maxIterations": 20, "spentUsd": 1.2, "maxUsd": 300 },
   "lastStrategy": "补 service 层测试",
   "rollbackRef": "refs/auto-snapshots/<ts>"
 }
@@ -198,9 +204,11 @@ tags:
 **终止条件**(满足任一即停 loop):
 
 1. ✅ **CHECKER 达成** —— 收敛判据满足,写 LearnCard(pattern: 怎么收敛的),停
-2. 🛑 **预算耗尽** —— `iteration ≥ maxIterations` 或 `spentUsd ≥ maxUsd`,写 LearnCard(trap: 卡在哪),停
-3. 🛑 **到期** —— wall clock ≥ 72h,停
-4. 🛑 **退化超阈** —— 连续 3 轮收敛度回退,写 LearnCard(trap: 根因假设),停
+2. 🛑 **预算耗尽**(按模式):
+   - **收敛型**:`iteration ≥ maxIterations(20)` 或 `spentUsd ≥ maxUsd` → 停,写 LearnCard(trap: 卡在哪)
+   - **监听型**:**不受 maxIterations 限制**(轮询次数不计数耗尽,避免高频轮询早夭),仅 `spentUsd ≥ maxUsd` → 停
+3. 🛑 **到期** —— wall clock ≥ `maxWallClock(72h)`,停
+4. 🛑 **退化超阈**(仅收敛型)—— 连续 3 轮收敛度回退,写 LearnCard(trap: 根因假设),停
 5. 👤 **用户中断** —— 停止调度（`CronDelete` / 不再续 `ScheduleWakeup`）或 Ctrl-C，停
 
 **终止时必做**:
