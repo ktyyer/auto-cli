@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "auto-cli",
-  "description": "auto-cli 自托管市场 - 单 plugin marketplace，提供 /auto 超级命令、10 agents、36 skills、22 hooks、10 rules",
+  "description": "auto-cli 自托管市场 - 单 plugin marketplace，提供 /auto 超级命令、10 agents、38 skills、22 hooks、10 rules",
   "owner": {
     "name": "Auto CLI Team"
   },

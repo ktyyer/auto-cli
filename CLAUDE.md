@@ -71,6 +71,8 @@
 
 ### 已完成
 
+- [x] v0.52.0: **loop-engineering skill（/auto 自主循环引擎）**：新增 `skills/loop-engineering/SKILL.md`，把 `/auto` 从单次流水线升级为按 interval 参数（`5m`/`30m`/`2h`）触发的 DOER+CHECKER 自主循环。理论依据 2026 loop engineering 范式（Boris Cherny "My job is to write loops"）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop + Agent SDK budget caps + 非退化性收敛。落地：`commands/auto.md` 新增「Loop 模式（正交于策略）」节 + SCAN 1.8 Loop 参数解析（含持续型/收敛型语义自动触发）+ 兜底索引触发项 + LEARN 6.6 跨迭代回灌；`commands/auto.codex.md` 双端对齐（Codex 无原生调度工具 → 外部 cron/schtasks 或人手触发降级，严禁伪造后台运行）；RouteDecision 增 `loopBudgets`（maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3）；收敛判据硬门禁（无可度量 CHECKER 不开 loop）；skills 从 37 升为 38（顺带补 predict-verify 入 README 表，修正长期计数滞后）
+
 - [x] v0.51.0: **自动 run 清理机制**：SessionStart Hook 自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能；新增 `hooks/lib/auto-clean-runs.sh` 跨平台脚本（支持 Linux/macOS/Windows Git Bash/Node.js/Python 降级）；`hooks/hooks.json` SessionStart Hook 集成（< 50ms 开销）；`commands/auto.md` PHASE 6.4 补充配置/手动触发/恢复说明；`commands/auto.codex.md` LEARN 章节同步（标注 Codex 暂无 Hook）；`rules/hooks.md` SessionStart 章节补充；`skills/community/README.md` 顶部显式声明组织目录身份；`scripts/validate-references.js` 白名单补齐
 
 - [x] v0.50.0: **全仓审计修复（27 项）**：Codex 双端对齐（constitution / self-critique / VERIFY gate 集补齐 + adversarial 降级模式 / LEARN 反馈真实化 / Curator 完整化 / Session Continuity / Portable Patterns）；版本计数全链路统一（README 双语徽章 / plugin.json / marketplace.json / REPO_MAP）；幽灵引用清除（doctor.md `auto install`/`RepoIndexer`、community README 未实现承诺改为"开发中"）；CHANGELOG 补回 0.46/0.47 条目；quest-designer 瘦身 464→440 行；knowledge-management + quality-gates 补激活摘要。审计方法：2 个并行 Explore agent（文档一致性 / 双端对齐）+ 机械检查，清单见 `.auto/runs/run-20260613-top-down-audit/index.md`

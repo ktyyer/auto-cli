@@ -115,6 +115,12 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 > **双端设计分歧声明**：Claude 端探索策略走快速通道（跳过 QuestMap/VerifyReport 等协议产出，SCAN 后直接回答）；Codex 端探索仍走完整闭环 + 固定输出骨架。这是**有意为之**的纪律强化 — Codex 无 hooks 兜底，强制闭环防止 `/auto` 退化为普通问答，不视为双端行为不一致。
 
+### Loop 模式（正交于策略）
+
+检测到 interval 参数（`/auto 5m <goal>`）或「盯盘 / 自主迭代 / 自愈 / 周期巡检」语义时进入 loop 模式，激活 `loop-engineering` skill，按时重复跑聚焦版 6 PHASE 直至目标收敛或预算耗尽。内层每轮仍是标准 SCAN→…→LEARN，协议对象照常落 `.auto/runs/`。
+
+> **Codex 调度降级声明**：Claude Code 端用 `ScheduleWakeup`（会话内动态）/ `CronCreate`（持久）驱动 tick；**Codex 无原生调度工具**，降级为外部 `cron` / Windows `schtasks` / `at`，或退化为「每轮结束后由用户/脚本手动触发下一轮」。**严禁伪造「正在后台跑」**—— loop-state.json 必须如实记录 `scheduler: external-cron | manual`。收敛判据、预算、跨迭代回灌等 CHECKER 逻辑两端一致，仅调度执行机制不同。
+
 ---
 
 ## 核心规则
@@ -414,6 +420,14 @@ SCAN 完成后立即建立预算感知：
 - 当前任务与历史 run 语义相似度 > 0.7 时，预加载该 run 的 `learn-cards.md` 中的 trap/pattern
 - 收益：避免重复踩同样的坑，起手就有历史经验注入
 - 限制：最多预加载 3 条历史 LearnCard，避免上下文污染
+
+**Loop 参数解析**（loop 模式入口）：
+
+- 首 token 匹配 `/^\d+(m|h|s)$/` → loop 模式，记录 interval；无 interval 但语义含持续型(盯盘/巡检/持续/守住/保持/自主/自愈)/收敛型(直到/达到/提到/降到/收敛 + 可度量目标) → loop 模式，默认 10m（收敛型由 skill「无 CHECKER 不开 loop」硬门禁过滤误命中）
+- **跨迭代锚点**：入参若含 `#loop=<loopId>` → 续接既有 loop（读 `.auto/runs/<loopId>/loop-state.json` 继承预算/迭代号/收敛史，非新 loop）；每次触发的 prompt 必须带 `#loop=<loopId>`，否则预算与收敛史每轮 reset
+- 进入 loop 模式后：激活 `loop-engineering` skill → 写 `.auto/runs/<loopId>/loop-contract.md`（目标 + 可度量收敛判据 + 预算）→ 初始化 `loopBudgets`（maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3）
+- **收敛判据硬门禁**：写不出可度量 CHECKER（退出码 / 正则 / 数值阈值）→ 不开 loop，回退单次 `/auto`
+- **调度降级**：见上方「Loop 模式 · Codex 调度降级声明」
 
 ---
 

@@ -24,6 +24,20 @@ description: 智能超级命令 - 上下文扫描 + Quest 设计 + 逐关执行 
 
 AI 在 SCAN 阶段综合任务语义、安全敏感度、架构影响等因素自主判定，不按文件数或行数硬编码。
 
+### Loop 模式（正交于策略）
+
+Loop 是叠加在上述任一策略之上的**重复模式**，由 SCAN 1.8 的 interval 参数开启。开启后 `/auto` 变成「按时重复跑聚焦版 6 PHASE，直至目标收敛或预算耗尽」的 loop 引擎：
+
+```
+/auto 5m 盯 CI 直到全绿              → loop + 修复策略
+/auto 30m 把测试覆盖率从 62% 提到 80% → loop + 实现策略
+/auto 2h 守住生产环境无 P0 告警       → loop + 探索策略（持续维持）
+```
+
+- **不开 loop**：无 interval 且目标一次性可完成 → 走原 6 PHASE 单次流水线。
+- **开 loop**：检测到 interval，或语义含持续型（盯盘/巡检/持续/守住/保持/自主/自愈）/ 收敛型（直到/达到/提到/降到/收敛 + 可度量目标）→ 激活 `loop-engineering` skill，进入 DOER + CHECKER 循环（详见 PHASE 1.8 与该 skill）。收敛型关键词是启发式触发，最终由 skill 的「无 CHECKER 不开 loop」硬门禁过滤误命中。
+- **核心不变量不变**：loop 模式仍是 `/auto` 单一入口，内层每轮依然是标准 6 PHASE，协议对象照常落 `.auto/runs/`。
+
 ## 协议对象与 Phase 出入口
 
 `/auto` 统一消费和产出以下 5 个标准对象（定义见 `_shared-principles.md`）：
@@ -230,6 +244,37 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 **出口**：展示技术栈、能力清单、环境状态、策略判定摘要与上下文预算区间，随后进入 PLAN。
 
+### 1.8 Loop 参数解析（loop 模式入口）
+
+解析 `/auto` 入参首 token，判定是否进入 loop 模式：
+
+```text
+模式判定：
+  入参含 #loop=<loopId>           → 续接既有 loop，读 .auto/runs/<loopId>/loop-state.json 继承预算/迭代号/收敛史（非新 loop）
+  首 token 匹配 /^\d+(m|h|s)$/  → 新 loop 模式，记录 interval，剥离子任务
+  无 interval 但语义含持续型(盯盘/巡检/持续/守住/保持/自主/自愈)或收敛型(直到/达到/提到/降到/收敛 + 可度量目标) → loop 模式，默认 interval=10m
+  其他                              → 非 loop，走原 6 PHASE 单次流水线
+```
+
+进入 loop 模式后执行（详见 `skills/loop-engineering/SKILL.md`）：
+
+1. **激活 skill**：全文级加载 `loop-engineering`，提取 DOER/CHECKER 模板与 budget 模板。
+2. **写 loop 契约**：`.auto/runs/<loopId>/loop-contract.md`，固化目标 / 收敛判据（可度量）/ 预算。
+3. **初始化 loopBudgets**（写入 `RouteDecision`，覆盖默认）：
+
+   | 字段              | 默认值 | 触发动作                                |
+   | ----------------- | ------ | --------------------------------------- |
+   | `maxIterations`   | 20     | 超限 → 终止 loop，写 LearnCard(trap)    |
+   | `maxBudgetUsd`    | 10     | 超限 → 终止 loop                        |
+   | `maxWallClock`    | 72h    | 到期 → 终止 loop（对齐官方 3 天上限）   |
+   | `noProgressLimit` | 3      | 连续 3 轮收敛度不增 → 强制换策略 / 终止 |
+
+4. **选调度机制**：会话内动态 → `ScheduleWakeup`；跨会话持久 / 过夜 → `CronCreate(durable:true)`。
+5. **收敛判据硬门禁**：写不出可度量 CHECKER（退出码 / 正则 / 数值阈值）→ **不开 loop**，回退单次 `/auto` 先把目标拆明白。
+6. **跨迭代锚点（关键）**：`ScheduleWakeup` / `CronCreate` 的 prompt 必须带 `#loop=<loopId>`（如 `/auto 5m 盯CI #loop=run-xxx`）。不带则下一轮 SCAN 当成新 loop，`loopBudgets` 与 `convergenceHistory` 全部 reset —— 预算耗尽永不触发、退化检测失效、反复用同一失败策略。`loopId` = 本 loop 首轮 run 的 `runId`，全程不变。
+
+> **反幻觉约束**：interval 转 `delaySeconds` 时偏移避开整点（`5m`→270s/330s），不卡 `:00`/`:30` 撞峰；Codex / 无原生调度运行时降级为外部 cron/schtasks 或人手触发，**不伪造「正在后台跑」**。
+
 > **反幻觉全局守则**（贯穿全 PHASE）：
 >
 > - **引用必锚定（Cite-or-Die）**：文件路径 / 函数名写入上下文前必须先 `Grep`/`Read` 确认存在
@@ -265,43 +310,44 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 **兜底索引**（动态发现不可用时的回退路径）：
 
-| 触发条件                                               | 激活 Skill              |
-| ------------------------------------------------------ | ----------------------- |
-| Java / Spring Boot                                     | `java-patterns`         |
-| 性能优化相关                                           | `performance-patterns`  |
-| 错误处理 / 异常                                        | `error-patterns`        |
-| Git 操作 / 提交 / PR                                   | `git-workflow`          |
-| Bug / 调试 / 测试失败 / 构建失败                       | `systematic-debugging`  |
-| 模糊需求 / 多种合理理解                                | `requirement-clarifier` |
-| 需求明确但实现路径多选 / 架构决策                      | `brainstorming`         |
-| 重构 / 实现+high 复杂度 / 多角度规划择优               | `plan-ensemble`         |
-| 多并行 Quest / 多模块独立开发                          | `using-git-worktrees`   |
-| 不熟悉的库 / 新技术栈                                  | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2                            | `test-plan-writer`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等                       | `robustness-patterns`   |
-| 重构 / 拆分大文件 / 消除重复                           | `refactoring-patterns`  |
-| API 设计 / REST / OpenAPI                              | `api-design`            |
-| 复杂任务 / 上下文接近极限 / 跨会话续接                 | `context-engineering`   |
-| 项目硬约束 / `.auto/constitution.md` 存在              | `constitution`          |
-| 每关完成自纠 / 主线漂移防范                            | `self-critique`         |
-| 代码风格 / 格式化                                      | `code-style-enforcer`   |
-| 依赖分析 / 升级                                        | `dependency-analyzer`   |
-| 多 Agent 编排                                          | `workflow-patterns`     |
-| 新项目初始化                                           | `init-project`          |
-| PRD / 需求文档                                         | `prd-writer`            |
-| 日志 / tracing / 可观测性                              | `logging-patterns`      |
-| 目标收敛 / 产物真源 / run 状态 / 生产治理              | `production-governance` |
-| Phase 交接 / 协议字段完整性 / Schema 验证              | `protocol-validator`    |
-| 上线 / 部署 / 生产环境                                 | `production-standards`  |
-| 代码注释 / JSDoc                                       | `comment-standards`     |
-| 创建 / 编写 / 优化 skill                               | `skill-creator`         |
-| 代码结构分析 / AST                                     | `code-analyzer`         |
-| 评估 skill / skill 触发诊断                            | `skill-evaluator`       |
-| 需求明确但验收标准模糊 / 契约驱动                      | `spec-driven`           |
-| 会话末增量代码审查 / dirty files 累积                  | `incremental-review`    |
-| bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统 | `feedback-loop`         |
-| 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展               | `agentless-repair`      |
-| 执行影响性命令前（git commit/npm publish/Edit超50行）  | `predict-verify`        |
+| 触发条件                                                            | 激活 Skill              |
+| ------------------------------------------------------------------- | ----------------------- |
+| Java / Spring Boot                                                  | `java-patterns`         |
+| 性能优化相关                                                        | `performance-patterns`  |
+| 错误处理 / 异常                                                     | `error-patterns`        |
+| Git 操作 / 提交 / PR                                                | `git-workflow`          |
+| Bug / 调试 / 测试失败 / 构建失败                                    | `systematic-debugging`  |
+| 模糊需求 / 多种合理理解                                             | `requirement-clarifier` |
+| 需求明确但实现路径多选 / 架构决策                                   | `brainstorming`         |
+| 重构 / 实现+high 复杂度 / 多角度规划择优                            | `plan-ensemble`         |
+| 多并行 Quest / 多模块独立开发                                       | `using-git-worktrees`   |
+| 不熟悉的库 / 新技术栈                                               | `research-analyst`      |
+| 实现 / 重构策略下的 PHASE 2                                         | `test-plan-writer`      |
+| 重试 / 熔断 / 限流 / 降级 / 幂等                                    | `robustness-patterns`   |
+| 重构 / 拆分大文件 / 消除重复                                        | `refactoring-patterns`  |
+| API 设计 / REST / OpenAPI                                           | `api-design`            |
+| 复杂任务 / 上下文接近极限 / 跨会话续接                              | `context-engineering`   |
+| 项目硬约束 / `.auto/constitution.md` 存在                           | `constitution`          |
+| 每关完成自纠 / 主线漂移防范                                         | `self-critique`         |
+| 代码风格 / 格式化                                                   | `code-style-enforcer`   |
+| 依赖分析 / 升级                                                     | `dependency-analyzer`   |
+| 多 Agent 编排                                                       | `workflow-patterns`     |
+| 新项目初始化                                                        | `init-project`          |
+| PRD / 需求文档                                                      | `prd-writer`            |
+| 日志 / tracing / 可观测性                                           | `logging-patterns`      |
+| 目标收敛 / 产物真源 / run 状态 / 生产治理                           | `production-governance` |
+| Phase 交接 / 协议字段完整性 / Schema 验证                           | `protocol-validator`    |
+| 上线 / 部署 / 生产环境                                              | `production-standards`  |
+| 代码注释 / JSDoc                                                    | `comment-standards`     |
+| 创建 / 编写 / 优化 skill                                            | `skill-creator`         |
+| 代码结构分析 / AST                                                  | `code-analyzer`         |
+| 评估 skill / skill 触发诊断                                         | `skill-evaluator`       |
+| 需求明确但验收标准模糊 / 契约驱动                                   | `spec-driven`           |
+| 会话末增量代码审查 / dirty files 累积                               | `incremental-review`    |
+| bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统              | `feedback-loop`         |
+| 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展                            | `agentless-repair`      |
+| 执行影响性命令前（git commit/npm publish/Edit超50行）               | `predict-verify`        |
+| interval 参数（`5m`/`30m`/`2h`）/ 盯盘 / 自主迭代 / 自愈 / 周期巡检 | `loop-engineering`      |
 
 **Phase 敏感性调整**：实现/探索策略下 code-style-enforcer、comment-standards 匹配度 -1；重构策略恢复正常权重。**预算联动**：红区强制摘要级；黄区深度降全文级。
 
@@ -534,6 +580,15 @@ mv .auto/runs/archive/run-<id> .auto/runs/
 ### 6.5 LEARN 对 SCAN 的回灌
 
 把路由提示和模式卡写回 `.auto/feedback/agents.json`、`.auto/feedback/skills.json`、`.auto/cache/pattern-cards.json`。下次 SCAN 优先读取作为 hint。
+
+### 6.6 Loop 跨迭代回灌（loop 模式专用）
+
+loop 模式下每轮 LEARN 产物**即时**回灌到下一轮 SCAN，构成跨迭代飞轮（详见 `skills/loop-engineering/SKILL.md` Step 6）：
+
+- 每轮 CHECKER 失败 → 立即写 `LearnCard(category=trap)` → 第 N+1 轮 SCAN 自动注入 `QuestMap.pitfalls`
+- 每轮收敛度↑ 的策略 → 写 `LearnCard(category=pattern)` → 下轮优先复用
+- 收敛度回退（< 上轮）→ **不写新 trap，先 `git reset` 本轮**，根因分析后才记录
+- 终止时写 `.auto/runs/<loopId>/loop-summary.md`（N 轮 / 是否收敛 / 总成本 / 关键 trap），收敛则 commit，未收敛则留 session-continuity 交用户决策
 
 ---
 

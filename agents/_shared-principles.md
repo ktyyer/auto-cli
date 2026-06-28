@@ -366,7 +366,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 - **Agents**: 10 个
 - **Skills**: 36 个（核心层 30 + 储备层 6）
 - **Insights**: 12 个文件（project: 3, stack: 5, universal: 4）
-- **Feedback**: agents.json (10 条), skills.json (36 条)
+- **Feedback**: agents.json (10 条), skills.json (38 条)
 
 ## 选中能力
 

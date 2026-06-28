@@ -4,7 +4,7 @@
 
 **Give Claude Code / Codex a "Super Commander" — say one sentence, watch AI walk through a 6-phase pipeline, and write what it learned into your project's memory.**
 
-[![npm version](https://img.shields.io/badge/version-0.51.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.52.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-why-use-it)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -103,7 +103,7 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 | GitHub Spec Kit          | spec → plan → tasks doc-driven         | Built-in constitution + spec-driven skill, **plus** LearnCard knowledge loop |
 | Generic prompt templates | One-shot, no memory                    | `.auto/insights/` cross-run persistent memory, auto-injected next time       |
 
-### 6 unique features
+### 7 unique features
 
 1. **Protocol-driven · 5 standard objects written to disk immediately** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` land in `.auto/runs/<runId>/`. Failures trace precisely to the failing Quest.
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
@@ -111,6 +111,7 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files; completed quests stay intact.
 5. **16-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
 6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, minimal-context validation lowers hallucination risk, long runs don't drift.
+7. **Loop engine · `/auto 5m <goal>` autonomous loop until convergence** — one interval parameter turns the one-shot pipeline into a DOER + CHECKER loop: runs a focused 6-PHASE pass on schedule, a measurable checker decides "done", budget exhaustion stops it. auto-cli's memory / persistence / gates already are the loop trio — this just adds the scheduling layer.
 
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
 
@@ -242,6 +243,23 @@ Open session B, type `/auto`:
 - Auto-shows "Last run paused at Quest 3/5 (Read done, waiting for Edit)"
 - Continues by default, **no need to re-explain the prior conversation**
 
+### Case 6 · Loop autonomous run (monitoring / self-heal / convergence)
+
+```bash
+/auto 5m watch CI until green, auto-fix on failure
+/auto 30m raise test coverage from 62% to 80%
+```
+
+**What happens**:
+
+- SCAN parses the interval → enters loop mode, activates the `loop-engineering` skill
+- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (maxIterations 20 / maxBudgetUsd 10)
+- Schedules each iteration via `ScheduleWakeup` (in-session) or `CronCreate` (overnight, durable)
+- Each iteration runs a focused 6-PHASE pass → CHECKER runs the criterion command → progress: continue / regress: `git reset` + new strategy / met: stop
+- LEARN feeds back across iterations: last run's traps are auto-avoided next run, until convergence or budget exhaustion
+
+> If you can't write a measurable "done" criterion, loop won't start — a loop without a CHECKER is just a money burner.
+
 ---
 
 ## 🛠️ Installation
@@ -336,7 +354,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 
 > `agents/_shared-principles.md` defines shared principles, not invoked as a standalone agent.
 
-### 36 Skills (cross-platform Anthropic Agent Skills standard)
+### 38 Skills (cross-platform Anthropic Agent Skills standard)
 
 <details>
 <summary><b>Expand full skill list</b></summary>
@@ -379,6 +397,8 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `protocol-validator`    | Protocol object schema / handoff completeness validation              |
 | `feedback-loop`         | I/O system self-verification loop (bot/daemon/CLI tools)              |
 | `agentless-repair`      | Two-phase bug repair (localization + multi-candidate filtering)       |
+| `predict-verify`        | Predict before impactful commands; wrong prediction = stop & rethink |
+| `loop-engineering`      | `/auto <interval>` autonomous loop (DOER + CHECKER)                   |
 
 </details>
 
@@ -388,7 +408,7 @@ Each skill contains a `## Activation Summary` section, supporting 3-tier on-dema
 - **Full level** (5-6): summary + relevant sub-sections on demand → ~2000 tokens
 - **Deep level** (7+): full + `references/` → ~5000 tokens
 
-Low-match skills only read 20-line summary, **saving up to 80%+ context** (summary ~500 vs deep ~5000 tokens).
+Low-match skills only read 20-line summary, **saving up to ~80% context** (summary ~500 vs deep ~5000 tokens, per tier token estimates).
 
 ### 22 Hooks (Claude Code automation)
 
@@ -458,7 +478,7 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | Mechanism                            | What it does                                             | Benefit                               |
 | ------------------------------------ | -------------------------------------------------------- | ------------------------------------- |
 | **3-zone budget** (green/yellow/red) | Auto-writes `session-continuity.md` on entering red zone | AI never "forgets"                    |
-| **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save up to 80%+ tokens                |
+| **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save up to ~80% tokens                |
 | **Verification context isolation**   | Validation views receive only minimal context            | Less hallucination + lower token cost |
 | **Drift protection**                 | Echo the ask + reverse diff + expansion-word brake       | Long runs stay on mainline            |
 | **Knowledge distillation**           | LearnCards atomic (≤5 lines) + scope-tagged              | Reuse actually works                  |
@@ -484,7 +504,7 @@ Next SCAN auto-preloads relevant LearnCards
 Next EXECUTE proactively avoids traps + reuses patterns
        │
        ▼
-(loop, stronger each run)
+(loop, accumulates over runs)
 ```
 
 5 dispatch files:

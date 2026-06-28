@@ -4,7 +4,7 @@
 
 **给 Claude Code / Codex 装一个"超级司令官" — 一句话需求，自动走完 6 步流水线，并把这次的经验写进项目记忆。**
 
-[![npm version](https://img.shields.io/badge/version-0.51.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.52.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -103,7 +103,7 @@ cat .auto/insights/patterns.md  # AI 学到的可复用模式
 | GitHub Spec Kit  | spec → plan → tasks 文档驱动   | 内置 constitution + spec-driven skill，**额外**有 LearnCard 知识闭环 |
 | 通用 prompt 模板 | 一次性使用，无记忆             | `.auto/insights/` 跨 run 持久记忆，下次自动注入                      |
 
-### 6 个独有特性
+### 7 个独有特性
 
 1. **协议驱动 · 5 个标准对象立刻写盘** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` 落到 `.auto/runs/<runId>/`，失败可精确回溯到具体 Quest。
 2. **知识闭环 · 越用越懂你的项目** — 每次踩坑/模式/决策沉淀到 `.auto/insights/`，下次 SCAN **按关键词自动反查注入**，PHASE 4 `knowledge-reuse` gate 强制验证"真复用了"。
@@ -111,6 +111,7 @@ cat .auto/insights/patterns.md  # AI 学到的可复用模式
 4. **Quest 级失败回滚 · 不连累整个仓库** — 某关失败只回滚当前 Quest 触及文件，已完成 Quest 的成果不受影响。
 5. **16-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
 6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，最小上下文验证降低幻觉风险，长 run 不跑偏。
+7. **Loop 引擎 · `/auto 5m <goal>` 自主循环到收敛** — 一个 interval 参数把单次流水线变成 DOER+CHECKER 自主循环：按时跑聚焦版 6 PHASE，可度量判据判定「够了没」，预算耗尽即停。auto-cli 的记忆/持久化/门禁本就是 loop 三件套，只缺这一层调度。
 
 > 2026 年 AI Agent 质量第一瓶颈不是模型能力，**而是上下文管理**。Auto CLI 让"对的 token 在对的时间"成为默认行为。
 
@@ -256,6 +257,23 @@ flowchart LR
 - EXECUTE：AI 写代码 → 跑 CLI 测试 → 读结构化日志 → 自主修复 → 再跑，**全程无人工介入**
 - VERIFY：`clean-state` gate 要求 CLI 驱动器全量 PASS
 
+### 场景 6 · Loop 自主循环（盯盘 / 自愈 / 收敛目标）
+
+```bash
+/auto 5m 盯 CI 直到全绿，失败了自动修
+/auto 30m 把测试覆盖率从 62% 提到 80%
+```
+
+**会发生什么**：
+
+- SCAN 解析 interval 参数 → 进入 loop 模式，激活 `loop-engineering` skill
+- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（maxIterations 20 / maxBudgetUsd 10）
+- 用 `ScheduleWakeup`（会话内）或 `CronCreate`（过夜持久）按时触发每一轮
+- 每轮跑聚焦版 6 PHASE → CHECKER 跑判据命令 → 收敛度↑ 续跑 / 回退则 `git reset` 换策略 / 达成则停
+- LEARN 跨迭代回灌：上轮 trap 下轮自动避坑，直到收敛或预算耗尽
+
+> 写不出可度量「够了没」就不开 loop —— CHECKER 缺位的 loop 只是烧钱机器。
+
 ---
 
 ## 🛠️ 安装
@@ -350,7 +368,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 36 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 38 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>
@@ -393,6 +411,8 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
 | `feedback-loop`         | I/O 系统自验证闭环（bot/daemon/CLI 工具）     |
 | `agentless-repair`      | 两阶段 Bug 修复（定位 + 多候选过滤）          |
+| `predict-verify`        | 影响性命令前预测，预测错即停下重想           |
+| `loop-engineering`      | `/auto <interval>` 自主循环（DOER+CHECKER）   |
 
 </details>
 
@@ -402,7 +422,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 - **全文级**（5-6）：摘要 + 按需子段落 → ~2000 tokens
 - **深度级**（7+）：全文 + `references/` → ~5000 tokens
 
-低匹配 Skill 只读 20 行摘要，**最高节省 80%+ 上下文**（摘要级 ~500 vs 深度级 ~5000 tokens）。
+低匹配 Skill 只读 20 行摘要，**最高可省约 80% 上下文**（摘要级 ~500 vs 深度级 ~5000 tokens，按三级 token 估算）。
 
 ### 22 个 Hook（Claude Code 自动化）
 
@@ -472,7 +492,7 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | 机制                     | 干嘛                                         | 收益                     |
 | ------------------------ | -------------------------------------------- | ------------------------ |
 | **预算三区**（绿/黄/红） | 进入红区自动写 `session-continuity.md` 续接  | 不让 AI 失忆             |
-| **渐进披露**             | Skill 三级激活，低匹配只读 20 行             | 最高节省 80%+ token      |
+| **渐进披露**             | Skill 三级激活，低匹配只读 20 行             | 最高可省约 80% token      |
 | **验证上下文隔离**       | 验证视角只给最小上下文                       | 减幻觉 + 降低 token 消耗 |
 | **漂移防护**             | 复读原话 + 反向翻译 + 扩张词刹车             | 长 run 不跑偏            |
 | **知识蒸馏**             | LearnCard 原子化（≤5 行）+ 标 scope          | 复用真正有效             |

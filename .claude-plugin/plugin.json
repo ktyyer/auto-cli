@@ -1,7 +1,7 @@
 {
   "name": "auto-cli",
   "description": "Claude Code /auto 超级命令 - 6 PHASE 工作流（SCAN→PLAN→EXECUTE→VERIFY→SUMMARIZE→LEARN）+ 协议驱动 5 标准对象 + 知识闭环 insights/feedback 反查 + 跨会话续接",
-  "version": "0.51.0",
+  "version": "0.52.0",
   "author": {
     "name": "Auto CLI Team"
   },

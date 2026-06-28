@@ -1,9 +1,10 @@
 # REPO_MAP.md
 
-> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.51.0
+> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.52.0
 
-**最新优化**（v0.49-0.51）:
+**最新优化**（v0.49-0.52）:
 
+- ✅ loop-engineering skill：`/auto <interval>` 自主循环引擎（DOER+CHECKER，ScheduleWakeup/CronCreate 调度，跨迭代收敛与学习回灌）
 - ✅ plan-ensemble skill：PLAN 阶段多视角并行规划与评审合成（NeurIPS 2025 多 agent 辩论评审）
 - ✅ 知识闭环演化：ACE Curator 检查 + Insight 复用计数 + AWM 工作流归纳（v0.48）
 - ✅ Codex 双端对齐：constitution / self-critique / VERIFY gate 集 / LEARN 反馈闭环补齐

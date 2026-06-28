@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.0] - 2026-06-28
+
+### Added
+
+- **loop-engineering skill（/auto 自主循环引擎）**：把 `/auto` 从单次 6 PHASE 流水线升级为按 interval 参数触发的 DOER+CHECKER 自主循环，保持 `/auto` 单一超级入口
+  - 新增 `skills/loop-engineering/SKILL.md`：interval 参数契约（`5m`/`30m`/`2h`，缺省 10m，上限 72h）、三种 loop 模式（固定间隔巡检 / 目标收敛 / 持续维持）、DOER+CHECKER 分离、调度机制映射（`ScheduleWakeup` 会话内动态 / `CronCreate` 跨会话持久）、收敛判据硬门禁、跨迭代学习回灌、生产级防护（budget / commit-before-loop / 退化检测 / 撞峰偏移）
+  - 理论依据：2026 loop engineering 范式（Boris Cherny "My job is to write loops" + Addy Osmani 命名）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop（Stop Hook + Completion-Promise）+ Agent SDK budget caps（max_turns/max_budget_usd）+ 非退化性收敛
+  - `commands/auto.md`：执行策略表后新增「Loop 模式（正交于策略）」节；SCAN 新增 1.8 Loop 参数解析（模式判定 + loopBudgets + 调度选择 + 收敛判据硬门禁）；兜底索引加 `loop-engineering` 触发项；LEARN 新增 6.6 跨迭代回灌
+  - `commands/auto.codex.md`：双端对齐 —— Codex 无原生 ScheduleWakeup/CronCreate，降级为外部 `cron`/`schtasks`/`at` 或人手触发，**严禁伪造后台运行**；CHECKER / 预算 / 跨迭代逻辑两端一致
+  - RouteDecision 新增 `loopBudgets`：maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3
+  - 语义自动触发（无需 interval 参数）：SCAN 1.8 识别持续型（盯盘/巡检/持续/守住/保持/自主/自愈）与收敛型（直到/达到/提到/降到/收敛 + 可度量目标）语义即自动开 loop，默认 10m；收敛型关键词由「无 CHECKER 不开 loop」硬门禁过滤误命中
+  - 核心约束：**写不出可度量收敛判据（退出码/正则/数值阈值）不开 loop** —— CHECKER 缺位的 loop = 烧钱机器（2026 社区数据：过夜自主产出约 25% 被丢弃，根因是 CHECKER 缺位）
+
+### Fixed
+
+- skill 计数长期滞后：`predict-verify` 已在盘但未入 README 表，本次顺带补入；磁盘实测 38 个 skill，全链路计数统一（README / AGENTS.md / marketplace.json / `_shared-principles.md` 示例 36 → 38）
+- 版本号同步：package.json / package-lock.json / plugin.json / README 双语徽章 / REPO_MAP 头部 0.51.0 → 0.52.0
+
 ## [0.51.0] - 2026-06-13
 
 ### Added
