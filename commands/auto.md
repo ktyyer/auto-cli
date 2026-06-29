@@ -196,6 +196,20 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 快速通道：跳过 QuestMap 设计，直接 Read → Edit → 验证 → SUMMARIZE。不调用 quest-designer，但产出最小 `QuestResult` 供 EXECUTE→VERIFY handoff 与 VERIFY gate 汇总。
 
+**快速通道质量保证**（强制执行）：
+
+即使走快速通道，也必须执行以下质量门禁：
+
+- `self-verification` — 语法/逻辑/边界/错误处理自动检查
+- `code-reviewer` — AI 代码审查（强制执行，不可跳过）
+- `test` — 单元测试（至少覆盖变更代码路径）
+
+**处置规则**：
+
+- code-reviewer 发现 critical 问题 → 必须修复后才能 SUMMARIZE
+- 测试失败 → 回流 EXECUTE 修复
+- 任一 gate fail → 不得进入 SUMMARIZE
+
 **探索快速通道**（新增）：
 
 当 SCAN 判定策略 = `探索` 时：
@@ -204,6 +218,15 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 - SCAN 后直接回答用户问题（只读分析）
 - LEARN 阶段可选：仅在有可沉淀知识时产出 LearnCard（不强制）
 - 收益：分析/咨询类任务消除全流程协议开销，直接产出分析结果
+
+**探索快速通道质量保证**（强制执行）：
+
+即使是只读分析，也必须确保分析质量：
+
+- 引用必锚定（Cite-or-Die）— 引用的文件/函数必须先 Read/Grep 确认存在
+- 数字必算（Compute-Don't-Guess）— 行数/覆盖率/版本号必须有实际命令输出
+- 双源印证（Two-Source Cross-Check）— 关键结论至少两个独立来源印证
+- 禁止猜测 — 信息不足时明确说"不知道"，不编造
 
 ### 1.4 Agent 路由
 
