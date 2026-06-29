@@ -265,6 +265,34 @@ Open session B, type `/auto`:
 
 ---
 
+## 🏢 Who's Using auto-cli
+
+> We're collecting production use cases! If you're using auto-cli in your projects, we'd love to hear from you on [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions).
+
+### Call for Cases 🎯
+
+**We want to know**:
+- Your project type (Web app / CLI tool / Library / Other)
+- Use case (New features / Bug fixes / Refactoring / Code review)
+- Actual results (Time saved / Errors reduced / Code quality improved)
+- Most impressive feature (Knowledge loop / Loop mode / Quality gates / Other)
+
+### How to Submit
+
+1. **GitHub Discussions** - Create a new post in the [Production Cases](https://github.com/ktyyer/auto-cli/discussions/categories/production-cases) category
+2. **Case Template** - See `docs/case-studies/TEMPLATE.md` (to be created)
+3. **Pull Request** - Submit your case directly to the `docs/case-studies/` directory
+
+### Early Adopter Benefits
+
+The first 10 case submissions will receive:
+- ✨ Featured in README (company/project name + link)
+- 🎖️ "Early Adopter" badge
+- 🔧 Priority feature request access
+- 📣 Official promotion of your case
+
+---
+
 ## 🛠️ Installation
 
 ### Requirements

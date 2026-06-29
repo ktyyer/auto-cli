@@ -279,6 +279,34 @@ flowchart LR
 
 ---
 
+## 🏢 Who's Using auto-cli
+
+> 我们正在收集生产环境使用案例！如果你在项目中使用了 auto-cli，欢迎在 [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions) 分享你的经验。
+
+### 案例征集中 🎯
+
+**我们想了解**：
+- 你的项目类型（Web 应用 / CLI 工具 / 库 / 其他）
+- 使用场景（新功能开发 / Bug 修复 / 重构 / 代码审查）
+- 实际效果（节省时间 / 减少错误 / 提升代码质量）
+- 印象最深的特性（知识闭环 / Loop 模式 / 质量门禁 / 其他）
+
+### 提交方式
+
+1. **GitHub Discussions** - 在 [Production Cases](https://github.com/ktyyer/auto-cli/discussions/categories/production-cases) 分类下新建帖子
+2. **案例模板** - 参考 `docs/case-studies/TEMPLATE.md`（待创建）
+3. **Pull Request** - 直接在 `docs/case-studies/` 目录提交你的案例
+
+### 早期采纳者权益
+
+前 10 个提交案例的用户将获得：
+- ✨ 在 README 中展示（公司/项目名称 + 链接）
+- 🎖️ "Early Adopter" 徽章
+- 🔧 优先功能建议权
+- 📣 案例被官方渠道推广
+
+---
+
 ## 🛠️ 安装
 
 ### 环境要求
