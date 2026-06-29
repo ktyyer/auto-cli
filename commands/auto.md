@@ -269,13 +269,51 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 **相似历史 run 预匹配**：扫描最近 5 个未归档 run 的 `route-decision.md`，语义相似度 > 0.7 时预加载该 run 的 trap/pattern（最多 3 条）。
 
-### 1.7 能力缓存
+### 1.7 持久化上下文索引（P1.1）
+
+**目的**：SCAN 阶段耗时减少 50-70%，通过缓存项目结构，只扫描变更文件。
+
+**索引构建**：
+```bash
+# 首次使用或项目结构变化后构建索引
+node scripts/build-context-index.js
+
+# 查看索引摘要
+node scripts/fast-scan.js
+```
+
+**索引内容**（`.auto/cache/index.json`）：
+- 技术栈检测（Node.js/Python/Java/Go/Rust）
+- 项目架构（root/dev/infra/config 目录）
+- 文件清单（路径 + hash + 最后修改时间）
+- 依赖列表（package.json/pom.xml/go.mod 等）
+- Git 变更状态（修改/新增/删除文件）
+
+**SCAN 使用策略**：
+1. 检查索引是否存在且新鲜（< 24小时）
+2. 从索引读取项目结构、技术栈、依赖
+3. **只扫描 git 变更文件**（从 `index.git.changedFiles` 获取）
+4. 其余文件信息直接从索引读取
+
+**索引失效条件**：
+- 索引文件不存在
+- 索引超过 24 小时
+- 主要依赖文件变更（package.json/pom.xml/go.mod）
+- 用户显式指定 `--no-cache`
+
+**性能对比**：
+- 传统 SCAN：全量扫描 173 个文件 → ~15-20s
+- 索引 SCAN：读取缓存 + 扫描 5 个变更文件 → ~5-8s（50-70% 提升）
+
+### 1.8 能力缓存
+
+### 1.8 能力缓存
 
 命中缓存时可跳过重复扫描，但仍要输出本次 SCAN 摘要。
 
 **出口**：展示技术栈、能力清单、环境状态、策略判定摘要与上下文预算区间，随后进入 PLAN。
 
-### 1.8 Loop 参数解析（loop 模式入口）
+### 1.9 Loop 参数解析（loop 模式入口）
 
 解析 `/auto` 入参首 token，判定是否进入 loop 模式：
 
