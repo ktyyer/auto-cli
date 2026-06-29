@@ -47,7 +47,7 @@ tags:
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                                                                               |
 | 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `production-readiness` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
+| 实现 | `build` + `test` + `lint` + `coverage` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                     |
 | 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
 
 ---
@@ -196,6 +196,82 @@ tags:
 | fail    | `goalDrift=major`、关键工件缺失、未知状态被当成功、生产级任务缺证据 | 回流 PLAN/VERIFY |
 
 **反馈写入**：skill 被激活但无应用证据时，`.auto/feedback/skills.json` 中对应 skill 的 `evidence_missing_count` +1；治理 gate 失败时 `governance_fail_count` +1。
+
+---
+
+## `adversarial` gate
+
+**触发**：策略 = 实现/重构，每关完成后由 `verification` agent 执行（红蓝对抗）。
+
+**验证维度**：边界值攻击 | 并发场景 | 幂等性验证 | 异常路径覆盖 | 注入攻击
+
+**对抗场景**（至少执行 3 种）：
+
+1. **边界值攻击** — 0, -1, null, undefined, 空字符串, 超长字符串 (10MB), MAX_INT, MIN_INT, Infinity, NaN
+2. **并发场景** — 并行请求同一接口，检查竞态条件、重复创建、数据损坏
+3. **幂等性验证** — 同一请求提交两次，结果必须一致（或安全失败）
+4. **异常路径** — 网络超时、磁盘满、OOM、依赖服务故障
+5. **注入攻击** — SQL 注入、XSS、命令注入、路径穿越
+
+**输出格式**：
+
+```json
+{
+  "gate": "adversarial",
+  "status": "pass | warning | fail",
+  "attacks": [
+    {
+      "scenario": "boundary-values",
+      "target": "api/users/create",
+      "payload": "{ name: '', age: -1, email: 'x'.repeat(10000000) }",
+      "expected": "400 Bad Request with validation error",
+      "actual": "500 Internal Server Error",
+      "status": "fail",
+      "evidence": "curl -X POST /api/users -d '{\"age\":-1}' → 500"
+    },
+    {
+      "scenario": "concurrency",
+      "target": "orderService.createOrder",
+      "payload": "Same order ID submitted twice in parallel",
+      "expected": "Second request returns 409 Conflict",
+      "actual": "Both requests created duplicate orders",
+      "status": "fail",
+      "evidence": "parallel curl commands → two rows in DB"
+    },
+    {
+      "scenario": "idempotency",
+      "target": "paymentService.charge",
+      "payload": "Same payment request submitted twice",
+      "expected": "Second request returns cached result (no double charge)",
+      "actual": "Second request charged again",
+      "status": "fail",
+      "evidence": "curl /api/charge (twice) → balance -= 20"
+    }
+  ],
+  "summary": "发现 3 个关键漏洞：边界值未验证、并发重复创建、支付非幂等",
+  "verdict": "fail"
+}
+```
+
+**处置**：
+
+- pass：所有对抗场景通过 → 继续
+- warning：非关键路径发现问题（如日志格式、错误消息）→ 记录放行 + 建议修复
+- fail：关键漏洞（数据损坏、安全漏洞、非幂等写操作）→ 回流 EXECUTE
+
+**硬约束**：
+
+- 边界值导致 500 错误 → 必须加输入验证
+- 并发导致数据重复/损坏 → 必须加锁或幂等性保证
+- 注入攻击成功 → 必须修复（不可放行）
+
+**调用方式**：
+
+```markdown
+Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderService.createOrder")
+```
+
+**详细定义**: 见 `agents/verification.md`
 
 ---
 
