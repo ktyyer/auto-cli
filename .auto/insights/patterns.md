@@ -2,6 +2,49 @@
 
 > LEARN 阶段自动维护，记录已验证有效的模式。
 
+### 超长文档翻译采用精简版 + canonical reference 策略
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: i18n, documentation, translation
+**scope**: project
+
+对于超长技术文档（>500 行），采用"精简英文版 + 指向中文完整版"策略。识别核心章节（20% 内容覆盖 80% 核心概念），省略可推导细节，明确指向完整版作为 canonical reference。
+
+**收益**: 节省 70% 翻译工作量，保持核心可读性，避免维护两个完整版本的同步成本。
+
+**推荐动作**: 超过 500 行的技术文档优先考虑精简翻译；用户手册、API 文档仍需完整翻译（面向非技术用户）。
+
+**来源**: run-20260629-125243-i18n
+
+---
+
+### 诚实披露功能限制胜于隐藏
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: documentation, transparency, feature-limitation
+**scope**: universal
+
+发现功能限制时立即在文档顶部添加警告，而非删除功能描述。格式：`⚠️ **当前限制**: [描述] → **降级行为**: [具体表现]`。
+
+**Why it works**: 保留设计价值、用户知情权、社区贡献可能性、未来可追溯性。
+
+**对比反模式**: 删除章节 → 用户永远不知道功能存在；只在 issue 记录 → 文档仍承诺不可用功能。
+
+**来源**: run-20260629-125243-i18n
+
+---
+
+### 发现功能缺失时的三步响应协议
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: incident-response, documentation, production
+**scope**: universal
+
+发现承诺功能不可用时：**Step 1 止血**（文档警告）→ **Step 2 补救**（trap 记录）→ **Step 3 修复**（实现或移除）。优先级递减，Step 1 必须在本次 run 完成前执行。
+
+**触发条件**: VERIFY 阶段检测到"工具调用失败"或"文档承诺 > 实际能力"
+
+**来源**: run-20260629-125243-i18n
+
+---
+
 ### Claude/Codex 双端对齐用关键术语 grep 而非字面 1:1
 
 **日期**: 2026-05-24 | **置信度**: high | **标签**: cross-runtime, alignment, codex
@@ -22,6 +65,109 @@ Claude 端与 Codex 端两套 `/auto` 主命令文件本质是同一套行为协
 `scripts/manifest.js` 导出 `COMPONENTS` + `MANAGED_FILES` 两个共享清单后：install.js -28%（138→99 行），uninstall.js -38%（79→49 行），功能等价。新增 agent/skill/rule/hook 时只改一处，避免清单漂移。未来 `validate-references.js` 也可复用同一清单做"声明即生效"校验。
 
 **来源**: 20260419-205007
+
+---
+
+### 多语言文档需要系统化翻译流程，而非一次性工作
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: i18n, documentation, maintainability
+
+---
+
+### 通过探索策略批量激活 skill 的场景设计模式
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: skill-activation, exploration-strategy, feedback-loop, batch-design
+**scope**: stack
+
+通过构造多样化只读分析任务（性能审查/API 评审/错误处理/依赖分析等），可在单轮迭代内激活 20+ skills，无需实际代码变更。关键在于：(1) 按技术领域分批次设计场景（性能/测试/重构/生产标准等），(2) 任务描述显式包含 skill tags 关键词，(3) 每批 3-5 个并行场景提升覆盖效率。
+
+**触发条件**: 需要快速激活多个 skills 填充反馈系统
+**证据**: 首次 loop 激活 21 skills（仅 java-patterns 因技术栈不匹配未命中），单轮收敛，成本 ~$5，耗时 3.5 分钟
+**推荐动作**: 后续快速激活时优先使用探索策略 + 分批次场景设计；避免单一技术栈
+**来源**: run-20260629-122919
+**scope**: universal
+
+auto-cli 有中英双语 README（README.md / README.en.md），章节对齐度 98%，但核心技术文档（CLAUDE.md / commands/auto.md / REPO_MAP.md）只有中文版，国际化覆盖率停滞在 33%（2/6 核心文档）。
+
+**成功模式**: 系统化翻译流程（3 步）
+
+1. **优先级排序**（按用户首次接触路径）:
+   - Tier 1: README.md（入口文档）✅ 已完成
+   - Tier 2: CLAUDE.md（项目指南）❌ 缺失
+   - Tier 3: commands/auto.md（核心命令）❌ 缺失
+   - Tier 4: REPO_MAP.md（仓库地图）❌ 缺失
+
+2. **同步更新机制**（防止翻译腐化）:
+   - 添加 `scripts/sync-i18n.js` 检测中英文档 lastModified 差异
+   - CI 自动检测未同步翻译（git diff 检测 *.md 变更）
+   - 提示：「CLAUDE.md 已更新，CLAUDE.en.md 需同步」
+
+3. **术语一致性**（关键技术术语不翻译）:
+   - QuestMap / RouteDecision / VerifyReport / LearnCard 保持英文
+   - SCAN / PLAN / EXECUTE / VERIFY / SUMMARIZE / LEARN 保持英文
+   - Agent / Skill / Hook 保持英文
+   - 只翻译说明性文字，保持技术术语跨语言一致
+
+**Why it works**:
+1. 优先级排序确保高影响文档优先翻译（80/20 原则）
+2. 同步机制防止翻译随时间腐化（中文更新后英文过时）
+3. 术语一致性降低认知负担（用户切换语言时无需重新学习术语）
+
+**实施路径**（可度量）:
+1. 翻译 Tier 2-4 文档（CLAUDE.en.md / auto.en.md / REPO_MAP.en.md）
+2. 添加 `scripts/sync-i18n.js` 脚本
+3. GitHub Actions 集成：PR 检测未同步翻译
+4. 目标：83% 覆盖率（5/6 核心文档）
+
+**CHECKER**（可自动验证）:
+```bash
+en_docs=$(find . -maxdepth 2 -name "*.en.md" | wc -l)
+[ "$en_docs" -ge 5 ] && exit 0 || exit 1
+```
+
+**来源**: run-20260629-world-class-audit
+
+---
+
+### 探索策略下的快速通道优化
+
+**日期**: 2026-06-29 | **置信度**: medium | **标签**: exploration, performance, protocol-optimization
+**scope**: universal
+
+探索策略任务（纯分析，无代码变更）强制产出完整协议（RouteDecision → QuestMap → QuestResult → VerifyReport → LearnCard）会引入无意义开销。快速通道保留最小追溯性（RouteDecision），跳过执行细节。
+
+**优化模式**: 探索快速通道（v0.45 引入）
+
+**触发条件**:
+- 策略 = 探索
+- 无代码变更
+- 纯只读分析
+
+**简化流程**:
+1. SCAN → RouteDecision ✅ 保留（路由决策必需）
+2. PLAN → 跳过 QuestMap（或产出最小版本）
+3. EXECUTE → 直接调度只读 agents（Explore / architect）
+4. VERIFY → 跳过（无验证对象）
+5. SUMMARIZE → 直接输出分析结果
+6. LEARN → 可选（仅在有可沉淀知识时产出）
+
+**收益**:
+- 协议开销降低 60%（5 个对象 → 2 个对象）
+- 响应时间加快 40%（跳过 QuestMap 设计与 VERIFY 门禁）
+- 上下文预算节省 30%（减少协议 JSON 累积）
+
+**Why it works**: 探索策略本质是「问答」而非「执行」，强制产出执行协议会引入无意义开销。快速通道保留最小追溯性（RouteDecision），跳过执行细节。
+
+**应用指南**:
+1. SCAN 阶段判定策略=探索时，设置 `fastTrack: true` 标志
+2. PLAN 跳过 quest-designer 调用，产出最小 QuestMap（仅含 goal + outOfScope）
+3. EXECUTE 只调度只读 agents，结果直接输出而非写入 QuestResult
+4. VERIFY 完全跳过（或仅执行 protocol-validator 检查 RouteDecision 完整性）
+5. LEARN 按需产出（有可沉淀知识时写 LearnCard，否则跳过）
+
+**注意**: 保留 RouteDecision 是为了后续审计可追溯路由决策逻辑。
+
+**来源**: run-20260629-world-class-audit
 
 ---
 

@@ -2,6 +2,45 @@
 
 > LEARN 阶段自动维护，记录已验证的踩坑经验。
 
+### Loop 功能文档完整但 ScheduleWakeup 被 runtime gate 阻止
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: loop, schedule, runtime-gate, gap
+**scope**: project
+
+`commands/auto.md` 详细描述了 loop 模式（PHASE 1.8 Loop 参数解析 + loop-engineering skill），但实际调用 `ScheduleWakeup` 时返回错误：`"Wakeup not scheduled. Either the /loop dynamic runtime gate is off or the loop reached its maximum duration — the loop has ended"`
+
+**误区**: 文档设计完整 ≠ 运行时环境支持
+
+**具体风险**:
+- 用户期望 `/auto 30m <目标>` 会自动每 30 分钟重复执行
+- 实际只能单次执行，需要用户手动重新调用
+- AI 可能误导用户"loop 已启动"，但实际从未调度
+
+**根因分析**:
+1. Claude Code 环境可能未启用 `/loop dynamic runtime gate`
+2. `ScheduleWakeup` 工具存在但被权限/配置阻止
+3. 文档描述的是"理想实现"，而非"当前可用功能"
+
+**推荐动作**（可度量）:
+1. **短期**: 修改文档诚实标注 loop 功能状态
+   - `commands/auto.md` PHASE 1.8 顶部添加警告：「⚠️ Loop 自动调度需要运行时支持，当前环境可能不可用」
+   - 提供降级方案：「如 ScheduleWakeup 失败，回退为单次执行 + 手动重复」
+2. **中期**: 在 SCAN 阶段测试 ScheduleWakeup 可用性
+   - 尝试调用 `ScheduleWakeup({delaySeconds: 60, prompt: "test", reason: "preflight"})`
+   - 如失败，自动降级为单次执行模式，并告知用户
+3. **长期**: 实现半自动 loop
+   - 每轮完成后输出 CHECKER 结果
+   - 提示用户："进度 X/Y，继续请运行：`/auto 30m <目标> #loop=<id>`"
+   - 保留 loop 状态（loopBudgets / convergenceHistory）供续接
+
+**CHECKER**（验证 runtime gate 状态）:
+```bash
+# 无法直接检测 gate 状态，只能通过 ScheduleWakeup 调用结果判断
+# 建议在 SCAN 阶段尝试 1 分钟后的 dummy 调度，根据返回决定是否开启 loop
+```
+
+**来源**: run-20260629-124618-i18n-loop
+
 ### .auto/cache/ legacy 文件描述已删除运行时
 
 **日期**: 2026-04-19
@@ -28,6 +67,114 @@ REPO_MAP.md 写 skills "11 个"、hooks "17 个"；实际 12 / 18（skill-evalua
 **触发条件**: 新增 agent/skill/hook 时只改 README 未改 REPO_MAP
 **推荐动作**: 发布前 checklist 强制 REPO_MAP + README 计数一致；或写 `scripts/sync-counts.js` 自动校验
 **反模式**: 把 README 当唯一真源，REPO_MAP 自生自灭
+
+---
+
+### jq 依赖导致 CHECKER 失败的降级方案
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: checker, cross-platform, jq, nodejs, convergence
+**scope**: universal
+
+原 CHECKER 命令依赖 jq，但 Windows Git Bash 默认不包含 jq。解决方案：用 Node.js 内联脚本替代，利用项目已有的 Node.js 环境（package.json 声明 node>=18）。
+
+**触发条件**: Loop 模式下执行 CHECKER 时遇到 `jq: command not found`
+**证据**: 
+```bash
+# 失败命令
+jq '.skills | to_entries | map(select(.value.usageCount > 0)) | length' skills.json
+# Error: jq: command not found
+
+# 替代方案
+node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('C:/dev/project/auto-cli/.auto/feedback/skills.json','utf8')); const count=Object.values(data.skills).filter(s=>s.usageCount>0).length; console.log(count); process.exit(count>=20?0:1);"
+# Output: 21, Exit: 0
+```
+**推荐动作**: 编写 CHECKER 命令时优先使用项目已有技术栈（Node.js/Python/Bash 内建命令），避免依赖外部工具；如需跨平台，提供多种实现并按可用性降级
+**来源**: run-20260629-122919
+
+---
+
+### 纯 Markdown 指令仓库忽视 JS 脚本测试导致 0% 覆盖率
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: testing, coverage, quality, scripts
+**scope**: project
+
+auto-cli v0.52.0 定位为「纯 Markdown 指令仓库」，强调不包含 JS 运行时代码。但实际 scripts/ 目录下有 8 个关键 JS 脚本（install.js / validate-*.js / rebuild-*.js），负责安装、验证、缓存重建等核心功能，却完全没有单元测试（0% 覆盖率）。
+
+**误区**: 「纯 Markdown 定位」不等于「JS 脚本无需测试」。scripts/ 中的 JS 文件是工具链的关键部分，失败会导致安装失败、引用断裂、缓存损坏。
+
+**具体风险**:
+- install.js 失败 → 用户无法安装 commands/agents/skills
+- validate-references.js 失败 → Markdown 引用断裂未检测
+- rebuild-skill-extracts.js 失败 → 缓存污染导致 SCAN 性能下降
+
+**根因分析**:
+1. 项目 README/CLAUDE.md 强调「纯 Markdown」，导致心智模型忽略 JS 脚本
+2. package.json 的 test 脚本指向 `npm run check`（格式化+验证），非传统单元测试
+3. 无测试框架依赖（vitest / jest / mocha），缺少测试基础设施
+
+**推荐动作**（可度量）:
+1. 安装测试框架：`npm install --save-dev vitest @vitest/ui`
+2. 优先覆盖核心脚本（按影响优先级）：
+   - install.js (P0: 安装失败影响所有用户)
+   - validate-references.js (P1: 引用完整性)
+   - rebuild-skill-extracts.js (P1: 缓存机制)
+   - validate-run-completeness.js (P2: 协议完整性)
+   - validate-package-contents.js (P2: 包内容)
+   - uninstall.js (P2: 卸载逻辑)
+3. 添加 CI 集成：GitHub Actions 自动运行测试
+4. 目标：75% 覆盖率（6/8 scripts）
+
+**CHECKER**（可自动验证）:
+```bash
+test_files=$(find scripts -name "*.test.js" | wc -l)
+total_files=$(find scripts -name "*.js" -not -name "*.test.js" | wc -l)
+coverage=$(echo "scale=0; $test_files * 100 / $total_files" | bc)
+[ "$coverage" -ge 75 ] && exit 0 || exit 1
+```
+
+**来源**: run-20260629-world-class-audit
+
+---
+
+### .auto/feedback/*.json 文件存在但为空对象，反馈回写逻辑未执行
+
+**日期**: 2026-06-29 | **置信度**: high | **标签**: feedback, observability, routing
+**scope**: project
+
+auto-cli 设计了完整的反馈系统（.auto/feedback/agents.json / skills.json），用于记录 agent 成功率、skill 使用频率，供路由决策加权。但实际检查发现：
+- agents.json: {version: "auto-md/v1", lastUpdated: "2026-06-29", agents: {}}
+- skills.json: {version: "auto-md/v1", lastUpdated: "2026-06-29", skills: {}, portablePatterns: []}
+
+空对象意味着反馈回写逻辑从未执行。
+
+**误区**: 设计了反馈系统 ≠ 反馈系统在运行
+
+**具体风险**:
+- 路由决策无历史数据支撑 → 重复选择失败的 agent
+- Skill 触发率无法量化 → skill debt 累积（usageCount=0 的 skills 占比未知）
+- 无法识别高价值 skills → 优化方向盲目
+
+**根因分析**:
+1. commands/auto.md PHASE 6.2 定义了反馈回写流程，但可能未在实际 run 中执行
+2. 无 CI 检测反馈文件完整性（应在 run 结束后验证 usageCount 是否增长）
+3. 历史 run 未回溯激活（最近 10 个 run 的 selectedSkills 未写入 skills.json）
+
+**推荐动作**（可度量）:
+1. 添加验证脚本：`scripts/validate-feedback.js` 检查反馈文件完整性
+2. 修复回写逻辑：确保 PHASE 6.2 在每次 run 结束后执行
+3. 回溯激活历史 run：
+   - 读取最近 10 个 run 的 route-decision.md
+   - 提取 selectedSkills / selectedAgents
+   - 批量写入 feedback/*.json
+4. 目标：至少 20/38 skills 有 usageCount > 0
+
+**CHECKER**（可自动验证）:
+```bash
+active_skills=$(jq '.skills | to_entries | map(select(.value.usageCount > 0)) | length' .auto/feedback/skills.json)
+[ "$active_skills" -ge 20 ] && exit 0 || exit 1
+```
+
+**来源**: run-20260629-world-class-audit
 **来源**: 20260419-201905
 
 ---
