@@ -37,18 +37,18 @@ tags:
 
 ## Gate Taxonomy
 
-`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
+`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
 
 ## 各策略必需 gate
 
 > 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
 
-| 策略 | 必需 gate                                                                                                                                                                                                                                               |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                            |
-| 修复 | `build` + `test` + `self-verification` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                                                                                         |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                                                      |
+| 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `world-class-standards` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
 
 ---
 
@@ -78,6 +78,68 @@ tags:
 ```
 
 **处置**：pass → 继续 | warning → 记录放行 | fail → 回流 EXECUTE
+
+---
+
+## `world-class-standards` gate
+
+**触发**：策略 = 实现/重构，每个 QuestResult 产出后自动触发（与 self-verification 并行）。
+
+**验证维度**：圈复杂度 | 认知复杂度 | 函数长度 | 文件长度 | 嵌套层数 | 重复代码率 | 测试覆盖率 | 问题严重级别
+
+**量化阈值**：
+
+- 圈复杂度 ≤ 10（每个函数）
+- 认知复杂度 ≤ 15（每个函数）
+- 函数长度 ≤ 50 行
+- 文件长度 ≤ 500 行
+- 嵌套层数 ≤ 4
+- 重复代码率 ≤ 3%
+- 测试覆盖率 ≥ 80%
+- 严重问题 = 0
+- 高优先级问题 ≤ 2
+
+**输出格式**：
+
+```json
+{
+  "gate": "world-class-standards",
+  "status": "pass | warning | fail",
+  "metrics": {
+    "complexity": {
+      "cyclomatic": { "avg": 6.2, "max": 9, "threshold": 10, "status": "pass" },
+      "cognitive": { "avg": 8.5, "max": 14, "threshold": 15, "status": "pass" }
+    },
+    "maintainability": {
+      "functionLength": { "avg": 32, "max": 48, "threshold": 50, "status": "pass" },
+      "duplication": { "rate": 2.1, "threshold": 3, "status": "pass" }
+    },
+    "test": {
+      "coverage": { "value": 87, "threshold": 80, "status": "pass" }
+    },
+    "issues": {
+      "critical": { "count": 0, "threshold": 0, "status": "pass" },
+      "high": { "count": 1, "threshold": 2, "status": "pass" }
+    }
+  },
+  "overallRating": "A",
+  "verdict": "pass | warning | fail"
+}
+```
+
+**处置**：
+
+- pass：评级 ≥ A（所有指标达标）→ 继续
+- warning：评级 B（部分指标接近阈值）→ 记录放行 + 建议优化
+- fail：评级 ≤ C 或严重问题 > 0 → 回流 EXECUTE
+
+**硬约束**：
+
+- 圈复杂度 > 15 → 必须重构（不可放行）
+- 严重问题 > 0 → 必须修复（不可放行）
+- 测试覆盖率 < 70% → 必须补充测试
+
+**详细定义**: 见 `skills/world-class-code-standards/SKILL.md`
 
 ---
 
