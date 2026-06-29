@@ -111,17 +111,132 @@ model: opus
 
 **第二部分：问题详情**
 
-对于每个问题：
+对于每个问题，必须提供：
 
-```
-[关键] 硬编码 API 密钥
-文件：src/api/client.ts:42
-问题：API 密钥在源代码中暴露
-修复：移到环境变量
+1. 问题描述（严重级别 + 位置）
+2. 原因分析（为什么是问题）
+3. **修复建议**（具体代码示例）
+4. 预期效果（修复后的改进）
 
-const apiKey = "sk-abc123";  // ❌ 错误
-const apiKey = process.env.API_KEY;  // ✓ 正确
+**示例 1：硬编码密钥**
+
+````markdown
+## [关键] 硬编码 API 密钥
+
+**位置**: `src/api/client.ts:42`  
+**问题**: API 密钥直接写在源代码中，会被提交到 Git，存在泄露风险
+
+**当前代码**:
+
+```typescript
+const apiKey = 'sk-abc123'; // ❌ 硬编码
+const response = await fetch(url, {
+  headers: { Authorization: `Bearer ${apiKey}` }
+});
 ```
+````
+
+**修复建议**:
+
+```typescript
+// 1. 添加到 .env 文件
+// API_KEY=sk-abc123
+
+// 2. 修改代码使用环境变量
+const apiKey = process.env.API_KEY;
+if (!apiKey) {
+  throw new Error('API_KEY not configured');
+}
+const response = await fetch(url, {
+  headers: { Authorization: `Bearer ${apiKey}` }
+});
+```
+
+**预期效果**: 密钥不再提交到 Git，可按环境灵活配置
+
+````
+
+**示例 2：函数过长**
+
+```markdown
+## [警告] 函数过长
+
+**位置**: `src/utils.ts:25-87`
+**问题**: 函数 `processOrder` 长度 62 行（建议 ≤ 50），职责过多，难以测试
+
+**修复建议**:
+```typescript
+// 拆分为 3 个子函数，每个职责单一
+function processOrder(order: Order): ProcessedOrder {
+  const validated = validateOrder(order);       // 15 行
+  const enriched = enrichWithUserData(validated); // 18 行
+  const result = saveToDatabase(enriched);      // 12 行
+  return result;
+}
+
+function validateOrder(order: Order): ValidatedOrder {
+  if (!order.id || !order.userId) {
+    throw new Error('Invalid order');
+  }
+  return { ...order, validated: true };
+}
+
+function enrichWithUserData(order: ValidatedOrder): EnrichedOrder {
+  const user = getUserById(order.userId);
+  return { ...order, userName: user.name, userEmail: user.email };
+}
+
+function saveToDatabase(order: EnrichedOrder): ProcessedOrder {
+  const saved = db.orders.insert(order);
+  return { ...saved, processed: true };
+}
+````
+
+**预期效果**: 每个函数职责单一，易测试，易复用
+
+````
+
+**示例 3：缺少错误处理**
+
+```markdown
+## [高优先级] 缺少错误处理
+
+**位置**: `src/api/users.ts:45`
+**问题**: 外部 API 调用无错误处理，网络故障会导致应用崩溃
+
+**当前代码**:
+```typescript
+async function getUser(id: string) {
+  const response = await fetch(`/api/users/${id}`);  // ❌ 无错误处理
+  return response.json();
+}
+````
+
+**修复建议**:
+
+```typescript
+async function getUser(id: string): Promise<User | null> {
+  try {
+    const response = await fetch(`/api/users/${id}`, {
+      timeout: 5000 // 设置超时
+    });
+
+    if (!response.ok) {
+      logger.warn(`Failed to fetch user ${id}: ${response.status}`);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error(`Error fetching user ${id}:`, error);
+    return null; // 降级处理
+  }
+}
+```
+
+**预期效果**: 网络故障不会导致崩溃，返回 null 允许调用方优雅降级
+
+````
 
 **第三部分：批准决策**
 
@@ -141,7 +256,7 @@ const apiKey = process.env.API_KEY;  // ✓ 正确
 - [ ] 中优先级: `config.ts` 重复代码 5%（建议 ≤ 3%）
 
 **下一步**: 修复 1 个高优先级问题后可合并
-```
+````
 
 ## 批准标准
 
