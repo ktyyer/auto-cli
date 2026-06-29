@@ -9,8 +9,9 @@
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-supported-black.svg)](https://github.com/openai/codex)
+[![AI-Ready](https://img.shields.io/badge/AI--Ready-llms.txt-brightgreen.svg)](./docs/llms.txt)
 
-[English](./README.en.md) · [更新日志](./CHANGELOG.md) · [仓库地图](./REPO_MAP.md)
+[English](./README.en.md) · [更新日志](./CHANGELOG.md) · [仓库地图](./REPO_MAP.md) · **[AI 导航](./docs/llms.txt)**
 
 </div>
 

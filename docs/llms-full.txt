@@ -1,0 +1,636 @@
+# auto-cli - Complete Documentation (llms-full.txt)
+
+## Project Overview
+
+auto-cli is an intelligent Agent orchestration system for Claude Code and Codex. It provides a protocol-driven 6-PHASE workflow (SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN) that enables AI to understand your codebase better with each use.
+
+**Version**: v0.52.0
+**Repository**: https://github.com/ktyyer/auto-cli
+**License**: MIT
+**Tech Stack**: Pure Markdown instruction system (no JavaScript runtime)
+
+---
+
+## Core Architecture
+
+### 6-PHASE Workflow
+
+1. **SCAN** - Context scanning (tech stack + capabilities + environment + knowledge injection)
+2. **PLAN** - Orchestration planning (Quest decomposition + Agent selection + Skill activation)
+3. **EXECUTE** - Quest-by-quest execution (incremental progress + validation per Quest)
+4. **VERIFY** - Quality gates (16 gates including build/test/security/adversarial)
+5. **SUMMARIZE** - Delivery summary (no auto-commit, user decides)
+6. **LEARN** - Knowledge sedimentation (LearnCard → insights/ + feedback/)
+
+### Execution Strategies
+
+- **探索 (explore)**: Analysis/consultation, read-only, no code changes
+- **修复 (fix)**: Bug fixes, small adjustments, few files
+- **实现 (implement)**: New features, multi-file changes
+- **重构 (refactor)**: Architecture-level changes, includes adversarial verification
+
+### Protocol Objects
+
+All protocol objects are defined in `agents/_shared-principles.md`:
+
+1. **RouteDecision** - Agent routing decision (primary agent + fallback chain + strategy + sensitivity)
+2. **QuestMap** - Quest blueprint (complete code + acceptance criteria + dependencies)
+3. **QuestResult** - Quest execution result (attempts + validation + failure context)
+4. **VerifyReport** - Quality gate report (16 gates + adversarial verification + continue/terminate decision)
+5. **LearnCard** - Knowledge card (category/scope/evidence + Curator check)
+
+---
+
+## Installation & Usage
+
+### Installation
+
+**Option A: Claude Code Plugin Marketplace**
+```bash
+/plugin marketplace add ktyyer/auto-cli
+/plugin install auto-cli@auto-cli
+```
+
+**Option B: npm sync**
+```bash
+git clone https://github.com/ktyyer/auto-cli.git
+cd auto-cli
+npm run sync  # Copies to ~/.claude/ or ~/.codex/
+```
+
+**Uninstallation**
+```bash
+npm run uninstall  # Removes installed files
+```
+
+### Basic Usage
+
+```bash
+# Basic invocation
+/auto <task>
+
+# Explicit routing analysis
+/auto:route <task>
+
+# Environment diagnosis
+/auto:doctor
+
+# Project status
+/auto:status
+
+# Execution trends dashboard
+/auto:dashboard
+
+# Loop mode (autonomous iteration)
+/auto 5m 盯 CI 直到全绿
+/auto 30m 把测试覆盖率从 62% 提到 80%
+
+# Budget constraint
+/auto --budget 500 <task>
+```
+
+### Example Workflows
+
+```bash
+# Bug fix
+/auto 修复 auth.ts 中的登录逻辑错误
+
+# New feature
+/auto 实现用户头像上传功能
+
+# Refactoring
+/auto 重构订单模块，提取共享逻辑
+
+# Analysis
+/auto 分析当前代码库的技术债务
+
+# Autonomous loop
+/auto 30m 把测试覆盖率从 62% 提到 80%
+```
+
+---
+
+## Agents (10)
+
+### 1. architect
+Software architecture expert focusing on system design, scalability, and technical decisions.
+
+**Trigger**: Architecture decisions, refactoring strategy
+**Tools**: Read, Grep, Glob
+**Usage**: Activated in PLAN phase for architecture-level tasks
+
+### 2. quest-designer
+Quest outline designer v4 - outputs complete code + precise insertion instructions + contract-driven + anchor validation.
+
+**Trigger**: Implement/refactor strategies with complexity ≥ medium
+**Tools**: Read, Grep, Glob, Bash
+**Output**: Complete QuestMap with code blueprints
+
+### 3. tdd-guide
+Test-driven development expert enforcing write-tests-first methodology.
+
+**Trigger**: New features, bug fixes, refactoring
+**Tools**: Read, Write, Edit, Bash, Grep
+**Goal**: 80%+ test coverage
+
+### 4. code-reviewer
+Professional code review expert for quality, security, and maintainability.
+
+**Trigger**: Automatically after writing/modifying code
+**Tools**: Read, Grep, Glob, Bash
+**Output**: Findings with priority levels (critical/high/medium/low)
+
+### 5. security-reviewer
+Security vulnerability detection and remediation expert.
+
+**Trigger**: After writing code handling user input, authentication, API endpoints, or sensitive data
+**Tools**: Read, Write, Edit, Bash, Grep, Glob
+**Checks**: OWASP Top 10, key leakage, SSRF, injection, insecure crypto
+
+### 6. build-error-resolver
+Build and TypeScript error resolution expert.
+
+**Trigger**: Build failure or type errors
+**Tools**: Read, Write, Edit, Bash, Grep, Glob
+**Approach**: Minimal-diff fixes, no architectural edits
+
+### 7. verification
+Adversarial verification agent forming red-blue opposition with code-reviewer.
+
+**Trigger**: Refactor strategy + VERIFY phase
+**Tools**: Read, Grep, Glob, Bash
+**Focus**: Boundary defects, concurrency risks, edge cases
+
+### 8. e2e-runner
+End-to-end testing expert using Playwright.
+
+**Trigger**: Critical user flows, E2E test generation/maintenance
+**Tools**: Read, Write, Edit, Bash, Grep, Glob
+**Outputs**: Test journeys, screenshots, videos, traces
+
+### 9. refactor-cleaner
+Dead code cleanup and consolidation expert.
+
+**Trigger**: Code maintenance, refactoring
+**Tools**: Read, Write, Edit, Bash, Grep, Glob
+**Analysis**: Runs knip/depcheck/ts-prune to identify and safely remove dead code
+
+### 10. doc-updater
+Documentation and code map expert.
+
+**Trigger**: Implement/refactor strategy LEARN phase
+**Tools**: Read, Write, Edit, Bash, Grep, Glob
+**Updates**: Code maps, README, API docs
+
+---
+
+## Skills (39)
+
+### Architecture & Design (4)
+
+**architect** - System architecture design patterns
+**api-design** - RESTful API design standards
+**refactoring-patterns** - Refactoring pattern library (Extract Method/Class, dimension-driven convergence)
+**workflow-patterns** - Multi-agent orchestration patterns
+
+### Planning & Analysis (4)
+
+**requirement-clarifier** - Requirement clarification (ambiguity detection, Socratic questioning)
+**brainstorming** - Solution brainstorming (mandatory 2-3 options upfront)
+**plan-ensemble** - Perspective-integrated planning (2-3 heterogeneous perspectives + divergence list synthesis)
+**research-analyst** - Research analysis expert (multi-source retrieval + adversarial verification + cited reports)
+
+### Code Quality (4)
+
+**code-style-enforcer** - Code style enforcement
+**comment-standards** - Comment standards (JSDoc, API docs)
+**code-analyzer** - Code structure analysis (AST, dependency graphs)
+**systematic-debugging** - Systematic debugging (5 Why, binary search)
+
+### Testing & Verification (4)
+
+**test-plan-writer** - Test plan writing (unit/integration/E2E full coverage)
+**self-verification** - Self-verification (syntax/logic/boundary/performance checks)
+**self-critique** - Self-critique (achievement scoring, <70 flows back)
+**predict-verify** - Predict-then-verify (predict results before impactful commands)
+
+### Security & Robustness (3)
+
+**security-reviewer** - Security review
+**robustness-patterns** - Robustness patterns (retry/circuit-breaker/rate-limit/graceful-degradation/idempotency)
+**error-patterns** - Error handling patterns
+
+### Knowledge & Learning (4)
+
+**knowledge-management** - Knowledge loop management (ACE Curator + AWM workflow induction)
+**constitution** - Project hard constraints management (.auto/constitution.md injection)
+**context-engineering** - Context engineering (budget awareness, progressive disclosure, Subagent isolation)
+**incremental-review** - Incremental review (PostToolUse accumulates dirty.txt for on-demand triggering)
+
+### Domain-Specific (6)
+
+**java-patterns** - Java/Spring Boot patterns
+**performance-patterns** - Performance optimization patterns
+**logging-patterns** - Logging and observability
+**git-workflow** - Git workflow (branching strategy, PR templates)
+**dependency-analyzer** - Dependency analysis and upgrades
+**prd-writer** - PRD document writing
+
+### Production & Governance (4)
+
+**production-governance** - Production governance (goal convergence/artifact truth/cost quality)
+**production-standards** - Production standards (launch checklist, monitoring alerts)
+**quality-gates** - Quality gates (16 gates definition + Phase handoff checklist)
+**protocol-validator** - Protocol validation (Phase handoff checks required fields)
+
+### Specialized (6)
+
+**loop-engineering** - Autonomous loop engine (DOER+CHECKER + convergence criteria hard gate)
+**feedback-loop** - I/O system self-verification loop (Reflexion integration for CLI/bot/daemon)
+**agentless-repair** - Two-phase bug repair (localization → repair, SWE-Bench 27.33%)
+**using-git-worktrees** - Git Worktree parallel execution (triggers when ≥3 Quests have no intersection)
+**spec-driven** - Contract-driven development (acceptance criteria upfront)
+**skill-creator** - Skill creation and optimization
+**skill-evaluator** - Skill trigger rate evaluation (D2 scoring + positive/negative corpus split)
+**init-project** - New project initialization
+**world-class-code-standards** - World-class code quantitative standards (P0/P1/P2 priority roadmap)
+
+---
+
+## Quality Gates (16)
+
+All strategies must pass minimum required gates (see `skills/quality-gates/SKILL.md` for full definitions):
+
+### Core Gates
+1. **build** - Build succeeds (compilation, transpilation)
+2. **test** - Tests pass (unit/integration/E2E)
+3. **lint** - Linting passes (ESLint/Prettier/etc.)
+4. **coverage** - Test coverage ≥ threshold (default 80%)
+5. **security** - Security checks pass (no key leakage, OWASP Top 10)
+6. **adversarial** - Adversarial verification (boundary attacks, concurrency scenarios)
+
+### Protocol Gates
+7. **self-verification** - Self-verification (syntax/logic/boundary/error-handling/performance)
+8. **self-critique** - Self-critique (objective satisfaction + blind spot exposure + achievement scoring)
+9. **production-governance** - Production governance (goal convergence + artifact truth + run status + cost quality + skill health)
+10. **protocol-validator** - Protocol validator (Phase handoff checks upstream protocol object required fields)
+
+### Knowledge Gates
+11. **skill-activation** - Skill activation (verify application evidence for activated Skills)
+12. **knowledge-reuse** - Knowledge reuse (verify referenced insights from RouteDecision.notes.relevantInsights)
+13. **knowledge-distribution** - Knowledge distribution (verify LearnCard distribution to .auto/insights/)
+
+### State Gates
+14. **clean-state** - Clean state (startup tests pass / state consistent / no orphaned changes / standard restart path)
+15. **analysis** - Analysis (explore strategy only)
+16. **documentation** - Documentation (README/API docs updated)
+
+---
+
+## Knowledge Management
+
+### Knowledge Closure Loop
+
+auto-cli implements a knowledge closure loop based on ACE (ICLR 2026, arXiv:2510.04618) and AWM (ICML 2025, arXiv:2409.07429):
+
+1. **LearnCard Generation** - Each run produces LearnCards with category/scope/evidence
+2. **Curator Check** - Deduplication + contradiction detection + merge-or-append decision
+3. **Insight Distribution** - LearnCards distributed to `.auto/insights/` by category
+4. **Reuse Tracking** - Injected insights maintain helpful/harmful/lastConfirmed counts
+5. **Workflow Induction** - ≥3 same-strategy runs extract reusable Quest sequence templates
+
+### Directory Structure
+
+```
+.auto/
+├── cache/           # Disposable (skill-extracts, pattern-cards)
+├── runs/<runId>/    # Single-run truth source
+│   ├── route-decision.md
+│   ├── quest-map.md
+│   ├── quest-results.md
+│   ├── verify-report.md
+│   ├── index.md
+│   ├── learn-cards.md
+│   └── session-continuity.md (if cross-session needed)
+├── insights/        # Long-term knowledge
+│   ├── decisions/   # Decision records
+│   ├── traps/       # Pitfalls to avoid
+│   ├── patterns/    # Reusable patterns
+│   ├── universal/   # Tech-stack universal knowledge
+│   ├── stack/       # Tech-stack specific knowledge
+│   └── project/     # Project-specific knowledge
+├── feedback/        # Structured feedback
+│   ├── agents.json  # Agent preferences/successRate/knownIssues
+│   └── skills.json  # Skill usageCount/successRate/portablePatterns
+└── memory/          # Project memory
+```
+
+### Curator Check (ACE)
+
+Before distributing LearnCards:
+- **Deduplication**: Same topic → merge instead of append
+- **Contradiction Detection**: Mark old entries as `superseded`, don't silently coexist
+- **Reuse Feedback**: Maintain `helpful/harmful/lastConfirmed` counts for injected insights
+
+### Workflow Induction (AWM)
+
+When ≥3 runs share the same strategy and VERIFY pass:
+- Extract 2-4 Quest granularity reusable Quest sequence template
+- Output `LearnCard(category=pattern, tags=[workflow])`
+- Reuse via knowledgeHints in PLAN Quest decomposition
+
+---
+
+## Loop Engineering
+
+### Loop Mode
+
+Loop mode transforms `/auto` from a single 6-PHASE pipeline into a repeating DOER+CHECKER autonomous loop:
+
+```bash
+/auto 5m 盯 CI 直到全绿              # Loop + fix strategy
+/auto 30m 把测试覆盖率从 62% 提到 80% # Loop + implement strategy
+/auto 2h 守住生产环境无 P0 告警       # Loop + explore strategy (continuous sustain)
+```
+
+### Trigger Conditions
+
+- Explicit interval: `5m`, `30m`, `2h` (first token matches `/^\d+(m|h|s)$/`)
+- Semantic auto-trigger (continuous): 盯盘/巡检/持续/守住/保持/自主/自愈
+- Semantic auto-trigger (convergence): 直到/达到/提到/降到/收敛 + measurable goal
+
+### Core Principles
+
+1. **DOER+CHECKER Separation** - DOER executes focused 6-PHASE, CHECKER verifies convergence
+2. **Convergence Criteria Hard Gate** - Cannot write measurable CHECKER (exit code/regex/numeric threshold) → **no loop**, fallback to single `/auto`
+3. **Cross-Iteration Feedforward** - Each round's CHECKER failure → immediately write `LearnCard(category=trap)` → round N+1 SCAN auto-injects to `QuestMap.pitfalls`
+4. **Budget Models by Mode**:
+   - Convergence: maxIterations=20 (count ceiling)
+   - Monitoring (fixed/sustain): **no maxIterations** (relies on maxBudgetUsd + maxWallClock ceiling, avoids 1m high-frequency polling dying at 20 mins)
+5. **Monitoring CHECKER-first** - Each round runs ultra-lightweight state check first, **no change skips DOER (near-zero cost)**, change triggers focused 6-PHASE escalation
+
+### Budget Defaults
+
+| Field | Convergence Default | Monitoring Default | Trigger Action |
+|-------|---------------------|-------------------|----------------|
+| `maxIterations` | 20 | ∞ (unlimited) | Convergence: exceeds → terminate loop; Monitoring: **not terminated by this** |
+| `maxBudgetUsd` | 300 | 300 | Exceeds → terminate loop |
+| `maxWallClock` | 72h | 72h | Expires → terminate loop |
+| `noProgressLimit` | 3 | N/A | Convergence: 3 consecutive rounds no convergence increase → force strategy switch / terminate |
+
+### Per-Loop Budget Override
+
+```bash
+/auto 5m --budget 10000 把整个模块重构到测试全过
+/auto 5m --budget unlimited 持续盯生产
+/auto 5m --max-time 12 <task>
+```
+
+---
+
+## Advanced Features
+
+### Context Engineering
+
+auto-cli implements context budget awareness:
+
+| Model Capacity Signal | Green Zone Limit | Yellow Zone Limit | Adjustment Strategy |
+|-----------------------|------------------|-------------------|---------------------|
+| Large window (≥200K tokens) | 40% | 70% | Default threshold, allows deep-level activation |
+| Medium window (100-200K) | 30% | 55% | Early downgrade, reduce files loaded per Quest |
+| Small window (<100K) | 20% | 40% | Default summary-level, max 3 Skill activations |
+
+**Compression Mode**:
+- Auto-activates when 3+ protocol objects produced or context feels tight
+- Protocol blocks output only required fields, omit optional
+- Summaries limited to ≤3 lines
+- Already-written content referenced by path only, not expanded
+
+### Git Worktree Parallelization
+
+When Quest count ≥3 + no touchFiles intersection + independently testable:
+
+1. Create worktree per Quest
+2. Parallel implementation
+3. Sequential merge (order preserved)
+4. Cleanup
+
+### Session Continuity
+
+When cross-session needed, writes `session-continuity.md` with:
+- runId / status / currentPhase / nextPhase
+- requiredArtifacts / blockingIssues / resumePrompt
+- knownDefects / unverifiedPaths / cleanStateChecklist
+
+---
+
+## Commands Reference
+
+### /auto
+Main entry point. Auto-routes + 6 PHASE workflow.
+
+**Usage**:
+```bash
+/auto <task>
+/auto 5m <task>              # Loop mode with 5-minute interval
+/auto --budget 500 <task>    # Budget constraint
+/auto --deep-think <task>    # Force Extended Thinking
+/auto --no-think <task>      # Disable Extended Thinking
+```
+
+### /auto:route
+Explicit routing analysis based on intent, complexity, security sensitivity.
+
+**Output**: RouteDecision (primary agent + fallback chain + strategy + sensitivity)
+
+### /auto:doctor
+Environment diagnosis checking Node.js version, Git status, dependency health.
+
+**Output**: Health report + repair suggestions
+
+### /auto:status
+View project status, capability installation, .auto protocol state.
+
+**Output**: Commands/agents/skills installed + insights/feedback statistics
+
+### /auto:dashboard
+Aggregate execution data from recent N runs, show trends and bottlenecks.
+
+**Output**: Strategy distribution + gate pass rate + skill activation frequency + cost trends
+
+### /auto:learn
+Knowledge sedimentation management - LearnCard output, insights distribution, Curator check.
+
+**Options**:
+```bash
+/auto:learn                  # Generate LearnCards for latest run
+/auto:learn --workflows      # Extract workflow patterns from ≥3 same-strategy runs
+/auto:learn --decay          # Age-prune stale insights
+```
+
+### /auto:create-hook
+Generate Hook template suggestions based on project configuration.
+
+**Output**: Copyable Hook configuration snippets for TypeScript/Prettier/ESLint
+
+---
+
+## Rules & Standards
+
+### Markdown Authoring (`rules/markdown-authoring.md`)
+
+- **Minimal diff principle** - Only change lines that need changing
+- **Document matches behavior** - Documentation must reflect actual behavior
+- **Remove obsolete docs** - Delete docs when features removed
+
+### Version & Release (`rules/version-and-release.md`)
+
+- **semver** - MAJOR.MINOR.PATCH
+- **Conventional commits** - feat: / fix: / docs: / chore: / refactor: / test: / perf: / ci:
+- **Only commit when user explicitly requests**
+
+### Hooks (`rules/hooks.md`)
+
+- **PreToolUse** - Auto-snapshot before Write/Edit (≥3 dirty files)
+- **PostToolUse** - Log metrics, accumulate dirty.txt
+- **SessionStart** - Read CLAUDE.md / .auto/constitution.md / latest session-continuity.md
+- **PostToolUseFailure** - Capture failure context (future)
+- **SubagentStart** - Inject agent-specific context (future)
+
+### Commands (`rules/commands.md`)
+
+- **Subcommand self-contained** - Each .md file is standalone instruction
+- **Internal references consistent** - File paths/Agent names/Skill names match actual
+- **Frontmatter follows Claude Code format**
+
+---
+
+## Hooks Configuration
+
+Default hooks in `hooks/hooks.json`:
+
+```json
+{
+  "SessionStart": {
+    "enabled": true,
+    "script": "bash ~/.claude/hooks/lib/session-start.sh"
+  },
+  "PreToolUse": {
+    "enabled": true,
+    "condition": "git status --porcelain | wc -l >= 3",
+    "script": "git stash create -u > .auto/snapshots.log"
+  },
+  "PostToolUse": {
+    "enabled": true,
+    "script": "bash ~/.claude/hooks/lib/post-tool-use.sh"
+  }
+}
+```
+
+### SessionStart Hook
+
+- Auto-archives runs >30 days old (configurable via `AUTO_CLEAN_RETENTION_DAYS`)
+- Reads CLAUDE.md / .auto/constitution.md / latest session-continuity.md
+- <50ms overhead
+
+---
+
+## Project Statistics (v0.52.0)
+
+- **Commands**: 1 main + 6 subcommands
+- **Agents**: 10 specialized agents
+- **Skills**: 39 skills
+- **Hooks**: 22 hook definitions
+- **Rules**: 10 coding standards
+- **Quality Gates**: 16 gates
+- **Commits (2026)**: 234
+- **Contributors (2026)**: 3
+- **Documentation Files**: 97 markdown files
+
+---
+
+## Changelog Highlights
+
+### v0.52.0 (2026-06-28)
+- **loop-engineering skill** - Autonomous loop engine (DOER+CHECKER + convergence criteria hard gate)
+- Monitoring CHECKER-first mode (state unchanged skips DOER, near-zero cost)
+- Cross-iteration feedforward (each round's trap immediately flows into next round's SCAN)
+- Skill count correction (38 actual, was incorrectly listed as 36)
+
+### v0.51.0 (2026-06-13)
+- **Auto run cleanup** - SessionStart Hook auto-archives runs >30 days (configurable)
+- Cross-platform script (Linux/macOS/Windows Git Bash/Node.js/Python fallback)
+
+### v0.50.0 (2026-06-13)
+- **Full repo audit fix (27 items)** - Codex dual-end alignment + version count chain-wide unification + ghost reference cleanup
+
+### v0.49.0 (2026-06-13)
+- **plan-ensemble skill** - Perspective-integrated planning (2-3 heterogeneous perspectives → divergence list + 4D scoring matrix synthesis)
+
+### v0.48.0 (2026-06-13)
+- **ACE Curator** - Deduplication + contradiction detection + merge-or-append
+- **Insight reuse counting** - helpful/harmful/lastConfirmed feedback loop
+- **AWM workflow induction** - ≥3 same-strategy runs extract Quest sequence templates
+- **Trigger rate evaluation** - 60/40 train/test split quantifies D2 score
+
+### v0.47.0 (2026-06-08)
+- **feedback-loop + agentless-repair skills**
+- Feedback-loop: I/O system self-verification loop (Reflexion integration)
+- Agentless-repair: Two-phase bug repair (SWE-Bench Lite 27.33%)
+
+---
+
+## Comparison with Alternatives
+
+| Feature | auto-cli | Cursor | Copilot | Aider |
+|---------|----------|--------|---------|-------|
+| Protocol-driven | ✅ | ❌ | ❌ | ❌ |
+| Knowledge loop | ✅ ACE+AWM | ❌ | ❌ | ❌ |
+| Cross-session memory | ✅ | ❌ | ❌ | ❌ |
+| Multi-agent orchestration | ✅ 10 agents | ❌ | ❌ | ❌ |
+| Quality gates | ✅ 16 gates | Partial | Partial | Partial |
+| Adversarial verification | ✅ | ❌ | ❌ | ❌ |
+| Loop mode | ✅ DOER+CHECKER | ❌ | ❌ | ❌ |
+| Pure markdown | ✅ | ❌ | ❌ | ❌ |
+| Open source | ✅ MIT | ❌ | ❌ | ✅ Apache |
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md] (to be created in P2.2).
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+---
+
+## License
+
+MIT License - see [LICENSE](./LICENSE)
+
+---
+
+## Support & Community
+
+- **GitHub Issues**: https://github.com/ktyyer/auto-cli/issues
+- **GitHub Discussions**: https://github.com/ktyyer/auto-cli/discussions
+- **Production Case Submissions**: Welcome via Discussions
+
+---
+
+## Related Resources
+
+- [CLAUDE.md](./CLAUDE.md) - Project instructions
+- [REPO_MAP.md](./REPO_MAP.md) - Repository map
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
+- [AGENTS.md](./AGENTS.md) - Agent definitions reference
+- [.auto/insights/](./. auto/insights/) - Knowledge base (generated at runtime)
+
+---
+
+**Last Updated**: 2026-06-29
+**Document Version**: 1.0 (llms-full.txt initial release)

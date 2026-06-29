@@ -1,0 +1,169 @@
+# auto-cli
+
+> Claude Code `/auto` 超级命令 - 智能 Agent 编排系统
+
+## Overview
+
+auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN）实现协议驱动的 Agent 编排。提供 38 个 Skills + 10 个 Agents + 知识闭环系统。
+
+## Core Components
+
+### Main Commands
+
+- `/auto` → 智能超级命令主入口（6 PHASE 工作流 + 策略路由 + Agent 编排）
+- `/auto:route` → 智能路由分析（基于意图、复杂度、安全敏感度推荐 Agent/Skill）
+- `/auto:doctor` → 环境诊断（Node.js 版本、Git 状态、依赖健康度检查）
+- `/auto:status` → 项目状态查看（能力安装情况、.auto 协议落盘状态、知识库统计）
+- `/auto:dashboard` → 执行趋势仪表盘（聚合 N 次 run 的策略分布、gate 通过率、成本趋势）
+- `/auto:learn` → 知识沉淀管理（LearnCard 产出、insights 分发、Curator 检查）
+- `/auto:create-hook` → Hook 模板生成（基于项目技术栈推荐 Hook 配置片段）
+
+### Agents (10)
+
+- `architect` → 软件架构专家（系统设计、可扩展性、技术决策）
+- `quest-designer` → 闯关大纲设计师 v4（完整代码输出 + 精确插入指令 + 合约驱动）
+- `tdd-guide` → 测试驱动开发专家（先写测试、红绿重构、80%+ 覆盖率）
+- `code-reviewer` → 代码审查专家（质量、安全性、可维护性）
+- `security-reviewer` → 安全漏洞检测专家（OWASP Top 10、密钥泄露、注入攻击）
+- `build-error-resolver` → 构建错误修复专家（TypeScript 类型错误、依赖冲突快速解决）
+- `verification` → 对抗性验证 agent（红蓝对抗、边界缺陷、并发风险检测）
+- `e2e-runner` → Playwright E2E 测试专家（用户流程测试、不稳定测试隔离）
+- `refactor-cleaner` → 死代码清理专家（knip/depcheck/ts-prune 分析 + 安全移除）
+- `doc-updater` → 文档更新专家（代码地图、README、API 文档同步）
+
+### Skills (39)
+
+#### Architecture & Design
+- `architect` → 系统架构设计模式
+- `api-design` → RESTful API 设计规范
+- `refactoring-patterns` → 重构模式库（Extract Method/Class、维度驱动收敛）
+- `workflow-patterns` → 多 Agent 编排模式
+
+#### Planning & Analysis
+- `requirement-clarifier` → 需求澄清（歧义检测、Socratic 提问）
+- `brainstorming` → 方案头脑风暴（强制前置 2-3 种方案）
+- `plan-ensemble` → 视角集成规划（2-3 异质视角并行 + 分歧点清单合成）
+- `research-analyst` → 调研分析专家（多源检索 + 对抗验证 + 引用报告）
+
+#### Code Quality
+- `code-style-enforcer` → 代码风格强制执行
+- `comment-standards` → 注释规范（JSDoc、API 文档）
+- `code-analyzer` → 代码结构分析（AST、依赖图谱）
+- `systematic-debugging` → 系统化调试（5 Why、二分排查）
+
+#### Testing & Verification
+- `test-plan-writer` → 测试计划编写（单元/集成/E2E 全覆盖）
+- `self-verification` → 自我验证（语法/逻辑/边界/性能检查）
+- `self-critique` → 自我批判（达成度评分 <70 回流）
+- `predict-verify` → 预测后验证（影响性命令前先预测结果）
+
+#### Security & Robustness
+- `security-reviewer` → 安全审查
+- `robustness-patterns` → 鲁棒性模式（重试/熔断/限流/降级/幂等）
+- `error-patterns` → 错误处理模式
+
+#### Knowledge & Learning
+- `knowledge-management` → 知识闭环管理（ACE Curator + AWM 工作流归纳）
+- `constitution` → 项目硬约束管理（.auto/constitution.md 注入）
+- `context-engineering` → 上下文工程（预算感知、渐进披露、Subagent 隔离）
+- `incremental-review` → 增量审查（PostToolUse 累积 dirty.txt 按需触发）
+
+#### Domain-Specific
+- `java-patterns` → Java/Spring Boot 模式
+- `performance-patterns` → 性能优化模式
+- `logging-patterns` → 日志与可观测性
+- `git-workflow` → Git 工作流（分支策略、PR 模板）
+- `dependency-analyzer` → 依赖分析与升级
+
+#### Production & Governance
+- `production-governance` → 生产治理（目标收敛/产物真源/成本质量）
+- `production-standards` → 生产标准（上线清单、监控告警）
+- `quality-gates` → 质量门禁（16 gates 定义 + Phase 交接自检表）
+- `protocol-validator` → 协议验证（Phase handoff 检查必填字段）
+
+#### Specialized
+- `loop-engineering` → 自主循环引擎（DOER+CHECKER + 收敛判据硬门禁）
+- `feedback-loop` → I/O 系统自验证闭环（CLI/bot/daemon 的 Reflexion 集成）
+- `agentless-repair` → 两阶段 Bug 修复（定位 → 修复，SWE-Bench 27.33%）
+- `using-git-worktrees` → Git Worktree 并行执行（≥3 Quest 无交集时触发）
+- `spec-driven` → 契约驱动开发（明确验收标准前置）
+- `skill-creator` → Skill 创建与优化
+- `skill-evaluator` → Skill 触发率评估（D2 评分 + 正反例语料切分）
+- `prd-writer` → PRD 文档编写
+- `init-project` → 新项目初始化
+- `world-class-code-standards` → 世界级代码量化标准（P0/P1/P2 优先级路线图）
+
+## Key Features
+
+### Protocol-Driven Architecture
+- `RouteDecision` → Agent 路由决策协议（主 Agent + 回退链 + 策略 + 敏感度）
+- `QuestMap` → Quest 拆解蓝图协议（完整代码 + 验收标准 + 依赖关系）
+- `QuestResult` → Quest 执行结果协议（尝试次数 + 验证结果 + 失败上下文）
+- `VerifyReport` → 质量门禁报告协议（16 gates + 对抗验证 + 继续/终止决策）
+- `LearnCard` → 知识沉淀卡片协议（category/scope/evidence + Curator 检查）
+
+### Knowledge Management
+- `.auto/insights/` → 长期知识库（decisions/traps/patterns/universal/stack/project）
+- `.auto/feedback/` → 结构化反馈（agents.json/skills.json + helpful/harmful 计数）
+- `.auto/runs/<runId>/` → 单次运行真源（协议对象完整落盘 + session-continuity）
+- ACE Curator → 查重/矛盾检测/merge-or-append 决策（ICLR 2026 论文级实现）
+- AWM 工作流归纳 → ≥3 同策略 run 提取可复用 Quest 序列模板（ICML 2025）
+
+### Quality Gates (16)
+- `build` / `test` / `lint` / `coverage` / `security` / `adversarial`
+- `self-verification` / `self-critique` / `production-governance` / `protocol-validator`
+- `skill-activation` / `knowledge-reuse` / `knowledge-distribution` / `clean-state`
+- `analysis` / `documentation`
+
+## Documentation Structure
+
+- `/` → Overview and quick start (README.md in Chinese + README.en.md in English)
+- `/commands` → Slash command definitions (auto.md + subcommands/)
+- `/agents` → Agent definitions (10 specialized agents + shared-principles)
+- `/skills` → Skill library (39 skills with SKILL.md + references/)
+- `/rules` → Coding standards (markdown-authoring / version-and-release / hooks / commands)
+- `/hooks` → Default hooks configuration (PreToolUse/PostToolUse/SessionStart)
+- `/.auto` → Protocol落盘真源（runs/ + insights/ + feedback/ + cache/ + memory/）
+- `/CLAUDE.md` → Project instructions (architecture constraints + coding norms)
+- `/CHANGELOG.md` → Version history (v0.31.0 → v0.52.0 detailed records)
+
+## Getting Started
+
+### Installation
+```bash
+npm run sync  # 复制 commands/agents/skills/hooks 到 ~/.claude/
+```
+
+### Usage
+```bash
+/auto <task>                    # 自动路由 + 6 PHASE 工作流
+/auto:route <task>              # 显式路由分析
+/auto:doctor                    # 环境诊断
+/auto:status                    # 项目状态
+/auto:dashboard                 # 执行趋势
+/auto 5m 盯 CI 直到全绿          # Loop 模式（DOER+CHECKER 自主循环）
+/auto --budget 500 <task>       # 预算约束
+```
+
+### Example Workflows
+- Bug 修复：`/auto 修复 auth.ts 中的登录逻辑错误`
+- 新功能：`/auto 实现用户头像上传功能`
+- 重构：`/auto 重构订单模块，提取共享逻辑`
+- 分析：`/auto 分析当前代码库的技术债务`
+- 自主循环：`/auto 30m 把测试覆盖率从 62% 提到 80%`
+
+## Advanced Topics
+
+- **Loop Engineering** → 自主循环引擎（interval 参数 + DOER/CHECKER 分离 + 收敛判据硬门禁）
+- **Adversarial Verification** → 对抗性验证（红蓝对抗 + 边界值攻击 + 并发场景）
+- **Context Engineering** → 上下文工程（预算感知 + 渐进披露 + Subagent 隔离）
+- **Git Worktree Parallelization** → Git Worktree 并行执行（≥3 Quest 无交集触发）
+- **Session Continuity** → 跨会话续接（session-continuity.md + 断点恢复）
+
+## Related Resources
+
+- GitHub: https://github.com/ktyyer/auto-cli
+- Issues: https://github.com/ktyyer/auto-cli/issues
+- Discussions: https://github.com/ktyyer/auto-cli/discussions (生产案例征集)
+- Marketplace: `/plugin install auto-cli@auto-cli`
+- Version: v0.52.0 (loop-engineering 引擎 + 自动 run 清理)
