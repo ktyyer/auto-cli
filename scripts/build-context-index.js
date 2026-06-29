@@ -84,8 +84,10 @@ function detectTechStack() {
   const techStack = [];
 
   if (fs.existsSync('package.json')) {
+    techStack.push('nodejs'); // 直接标记 Node.js 项目
     try {
       const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+      if (pkg.type === 'module') techStack.push('esm');
       if (pkg.dependencies) {
         if (pkg.dependencies.react) techStack.push('react');
         if (pkg.dependencies.vue) techStack.push('vue');
@@ -98,7 +100,7 @@ function detectTechStack() {
         if (pkg.devDependencies.vitest) techStack.push('vitest');
       }
     } catch (e) {
-      // ignore
+      // ignore parse errors
     }
   }
 

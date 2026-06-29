@@ -4,6 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,8 +13,15 @@ const INDEX_FILE = '.auto/cache/index.json';
 
 function loadIndex() {
   if (!fs.existsSync(INDEX_FILE)) {
-    console.log('❌ No index found. Run: node scripts/build-context-index.js');
-    process.exit(1);
+    console.log('⚠️  索引不存在，正在自动构建...\n');
+    try {
+      execSync('node scripts/build-context-index.js', { stdio: 'inherit' });
+      console.log('\n✅ 索引构建完成，继续扫描...\n');
+    } catch (e) {
+      console.log('❌ 索引构建失败:', e.message);
+      console.log('   请手动运行: node scripts/build-context-index.js');
+      process.exit(1);
+    }
   }
 
   try {
