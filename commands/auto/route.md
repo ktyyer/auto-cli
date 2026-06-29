@@ -43,7 +43,7 @@ description: 使用 Canonical Router 智能路由到最合适的 Agent
 
 1. **能力快照**：先列出可用 commands / agents / skills / insights / feedback / legacy 信号
 2. **意图分析**：提取关键词 + 评估复杂度 + 检测安全敏感性
-3. **反馈加权**：读取 `.auto/feedback/agents.json`，对已有记录的 agent 计算 `adjusted_priority = base_priority + (successRate - 0.9) * 20 + (usageCount > 3 ? 5 : 0)`。未记录的 agent bonus = 0。文件不存在或为空时跳过（静默降级为纯静态路由）
+3. **反馈加权**：读取 `.auto/feedback/agents.json`，对已有记录的 agent 计算 `adjusted_priority = base_priority + (successRate - 0.9) * 20 + (totalCalls > 3 ? 5 : 0)`。未记录的 agent bonus = 0。文件不存在或为空时跳过（静默降级为纯静态路由）
 4. **候选匹配**：基于任务特征、能力清单和反馈加权后的优先级选择最优 Agent / Skill
 5. **安全优先**：安全相关意图自动提升 `security-reviewer` 优先级（+10，无视反馈值）
 6. **回退链**：主 Agent 失败时按优先级降级

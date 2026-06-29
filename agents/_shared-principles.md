@@ -964,14 +964,14 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
   "lastUpdated": "YYYY-MM-DD",
   "skills": {
     "<skill-name>": {
-      "totalActivations": 0,
+      "usageCount": 0,
       "lastUsed": "YYYY-MM-DD | null",
       "successRate": 0.85,
-      "triggerAccuracy": 0.9,
-      "adoptionRate": 0.8,
-      "correctionCount": 0,
-      "ignoreRate": 0.1,
-      "usageFrequency": "high | medium | low",
+      "trigger_accuracy": 0.9,
+      "adoption_rate": 0.8,
+      "correction_count": 0,
+      "ignore_rate": 0.1,
+      "usage_frequency": "high | medium | low",
       "notes": ""
     }
   },

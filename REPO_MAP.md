@@ -127,7 +127,7 @@
 │   └── agent-feedback.md
 ├── memory/
 │   └── store.json
-└── feedback/
+└── feedback/           # canonical feedback 真源（首次 LEARN 前可能缺失，需按 canonical seed 初始化）
     ├── agents.json
     └── skills.json
 ```

@@ -68,7 +68,7 @@ tags:
 - [ ] 预算可 per-loop 覆盖:入参 `--budget <USD|unlimited>` / `--max-time <h>` 覆盖默认;`unlimited` 仅免费用上限,**仍受 maxWallClock + CHECKER + 用户中断约束**(无 CHECKER 的目标即便 unlimited 也不开 loop)
 - [ ] 关键路径已 commit,可回滚(loop 改坏能 `git reset`)
 - [ ] 调度机制已选:会话内动态 → ScheduleWakeup;跨会话持久 → CronCreate
-- [ ] 每轮产物落 `.auto/runs/<runId-iter-N>/`,跨迭代可追溯
+- [ ] 每轮产物落 `.auto/runs/<runId-iter-N>/`,跨迭代可追溯；涉及 LEARN 路由反馈时，若 `.auto/feedback/agents.json` 或 `skills.json` 缺失，先按 canonical seed 创建再更新
 
 **硬约束**：
 
@@ -87,7 +87,7 @@ tags:
 /auto 5m 盯 CI 直到全绿                    → loop 模式, interval=5m, 固定间隔
 /auto 30m 把测试覆盖率从 62% 提到 80%       → loop 模式, interval=30m, 目标收敛
 /auto 把这个 bug 修了                       → 非 loop(无 interval, 单次 6 PHASE)
-/auto --watch 盯着 PR 状态变化通知我        → loop 模式(dynamic, 用户语义触发)
+/auto 盯着 PR 状态变化通知我               → loop 模式(持续型语义触发, 默认 10m)
 /auto 把测试覆盖率提到 80%                  → loop 模式(收敛型语义自动触发, 默认 10m)
 ```
 
@@ -102,6 +102,8 @@ tags:
 | **持续维持**     | 长期守住某指标     | 用户停(无自然终止)      | CronCreate 持久     |
 
 > 默认走「目标收敛」—— 它有自然退出,最安全。无明确退出条件的改问用户或降级为单次。
+
+> 预算按类别(详见 Step 4/5):**监听型** = 固定间隔巡检 + 持续维持(`mode: fixed | sustain`)—— 免 `maxIterations` + 每轮 CHECKER-first;**收敛型** = 目标收敛(`mode: convergent`)—— `maxIterations=20` + 每轮全量 DOER。
 
 ---
 

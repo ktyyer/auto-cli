@@ -73,7 +73,7 @@ Bash: git branch --show-current → 当前分支
 - `runs/`：最近 run 是否存在 `session-continuity.md`（仅在需要续接时要求）
 - `runs/`：治理状态是否明确（runState / artifactTruth / goalDrift / costQuality / skillHealth）
 - `insights/`：知识文件是否存在、各文件是否非空
-- `feedback/`：`agents.json` / `skills.json` 是否存在
+- `feedback/`：`agents.json` / `skills.json` 是否存在（缺失时说明尚未初始化 canonical feedback）
 - `memory/`：`store.json` 是否存在（项目级辅助记忆）
 - legacy 反馈文件是否仍存在，以及是否与 canonical 真源冲突
 
