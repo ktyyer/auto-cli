@@ -133,11 +133,25 @@ function generateMetrics(runId) {
     if (filesModified) metrics.files.modified = filesModified.length;
   }
 
-  // Write metrics file
+  // Write metrics file with error handling
   const metricsFile = path.join(runDir, 'metrics.json');
-  fs.writeFileSync(metricsFile, JSON.stringify(metrics, null, 2));
+  const tempFile = `${metricsFile}.tmp.${Date.now()}`;
 
-  console.log(`Metrics generated: ${metricsFile}`);
+  try {
+    fs.writeFileSync(tempFile, JSON.stringify(metrics, null, 2));
+    fs.renameSync(tempFile, metricsFile); // Atomic operation
+  } catch (e) {
+    // Clean up temp file if it exists
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+    console.error(`❌ Failed to write metrics: ${e.message}`);
+    console.error('   Possible causes: disk full, permission denied');
+    process.exit(1);
+  }
+
+  const displayPath = metricsFile.replace(/\\/g, '/');
+  console.log(`Metrics generated: ${displayPath}`);
   console.log(`Strategy: ${metrics.strategy}`);
   console.log(`Quests: ${metrics.quests.completed}/${metrics.quests.total} completed`);
   console.log(`Gates: ${metrics.gates.passed}/${metrics.gates.total} passed (${(metrics.gates.passRate * 100).toFixed(1)}%)`);

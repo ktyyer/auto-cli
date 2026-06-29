@@ -212,20 +212,38 @@ function buildIndex() {
     index.files.byExtension[ext] = (index.files.byExtension[ext] || 0) + 1;
   });
 
-  // Write index
-  fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
+  // Write index with atomic operation (temp file + rename)
+  const tempFile = `${INDEX_FILE}.tmp.${Date.now()}`;
 
-  console.log(`✅ Index built: ${INDEX_FILE}`);
+  try {
+    fs.writeFileSync(tempFile, JSON.stringify(index, null, 2));
+    fs.renameSync(tempFile, INDEX_FILE); // Atomic operation on most filesystems
+  } catch (e) {
+    // Clean up temp file if it exists
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+    console.error(`❌ Failed to write index: ${e.message}`);
+    console.error('   Possible causes: disk full, permission denied');
+    process.exit(1);
+  }
+
+  // Normalize paths for cross-platform display
+  const displayPath = INDEX_FILE.replace(/\\/g, '/');
+  const displaySize = Math.round(fs.statSync(INDEX_FILE).size / 1024);
+
+  console.log(`✅ Index built: ${displayPath}`);
   console.log(`   Total files: ${index.files.total}`);
   console.log(`   Tech stack: ${index.techStack.join(', ') || 'unknown'}`);
   console.log(`   Changed files: ${index.git.changedFiles.length}`);
-  console.log(`   Cache size: ${Math.round(fs.statSync(INDEX_FILE).size / 1024)} KB`);
+  console.log(`   Cache size: ${displaySize} KB`);
 }
 
 function invalidateIndex() {
   if (fs.existsSync(INDEX_FILE)) {
     fs.unlinkSync(INDEX_FILE);
-    console.log(`✅ Index invalidated: ${INDEX_FILE}`);
+    const displayPath = INDEX_FILE.replace(/\\/g, '/');
+    console.log(`✅ Index invalidated: ${displayPath}`);
   } else {
     console.log('No index to invalidate');
   }

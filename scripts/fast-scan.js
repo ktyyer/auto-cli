@@ -37,20 +37,61 @@ function isIndexStale(index) {
   const indexAge = Date.now() - new Date(index.timestamp).getTime();
   const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
-  return indexAge > maxAge;
+  if (indexAge > maxAge) {
+    return true;
+  }
+
+  // Check if critical files changed after index was built
+  const criticalFiles = ['package.json', 'pom.xml', 'build.gradle', 'go.mod', 'Cargo.toml', 'requirements.txt', 'pyproject.toml'];
+  const indexTime = new Date(index.timestamp).getTime();
+
+  for (const file of criticalFiles) {
+    if (fs.existsSync(file)) {
+      const fileMtime = fs.statSync(file).mtime.getTime();
+      if (fileMtime > indexTime) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function fastScan() {
   const index = loadIndex();
 
+  // Check staleness and auto-rebuild if needed
   if (isIndexStale(index)) {
-    console.log('⚠️  Index is older than 24 hours. Consider rebuilding:');
-    console.log('   node scripts/build-context-index.js\n');
+    const indexAge = Date.now() - new Date(index.timestamp).getTime();
+    const hours = Math.round(indexAge / 1000 / 60 / 60);
+
+    console.log(`⚠️  Index is stale (${hours}h old or dependencies changed)`);
+    console.log('   Rebuilding automatically...\n');
+
+    try {
+      execSync('node scripts/build-context-index.js', { stdio: 'inherit' });
+      console.log('\n✅ Index rebuilt, continuing scan...\n');
+      // Reload the fresh index
+      const freshIndex = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'));
+      displayScanSummary(freshIndex);
+      return;
+    } catch (e) {
+      console.log('⚠️  Auto-rebuild failed, using stale index\n');
+      displayScanSummary(index);
+      return;
+    }
   }
+
+  displayScanSummary(index);
+}
+
+function displayScanSummary(index) {
+  // Normalize paths for cross-platform display
+  const displayRoot = index.project.root.replace(/\\/g, '/');
 
   console.log('# Fast SCAN Summary\n');
   console.log(`**Project**: ${index.project.name}`);
-  console.log(`**Root**: ${index.project.root}`);
+  console.log(`**Root**: ${displayRoot}`);
   console.log(`**Last Indexed**: ${new Date(index.timestamp).toLocaleString()}\n`);
 
   // Tech Stack
