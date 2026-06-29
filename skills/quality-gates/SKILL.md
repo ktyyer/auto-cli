@@ -37,18 +37,18 @@ tags:
 
 ## Gate Taxonomy
 
-`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
+`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `production-readiness` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
 
 ## 各策略必需 gate
 
 > 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
 
-| 策略 | 必需 gate                                                                                                                                                                                                                                                                         |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                                                      |
-| 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
-| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `world-class-standards` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                                                                                                                  |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                                                                               |
+| 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `production-readiness` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
+| 实现 | `build` + `test` + `lint` + `coverage` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                                     |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
 
 ---
 
@@ -196,6 +196,79 @@ tags:
 | fail    | `goalDrift=major`、关键工件缺失、未知状态被当成功、生产级任务缺证据 | 回流 PLAN/VERIFY |
 
 **反馈写入**：skill 被激活但无应用证据时，`.auto/feedback/skills.json` 中对应 skill 的 `evidence_missing_count` +1；治理 gate 失败时 `governance_fail_count` +1。
+
+---
+
+## `production-readiness` gate
+
+**触发**：策略 = 实现/重构，每个 QuestResult 产出后自动触发（与 self-verification 并行）。
+
+**验证维度**：错误处理 | 配置管理 | 日志规范 | 安全头 | 边界值验证
+
+**核心检查清单**（5 项强制）：
+
+1. **错误处理完整** — 无裸 try-catch，所有异常必须记录日志 + 返回用户友好错误
+2. **无硬编码配置** — 数据库连接、API Key、环境特定配置必须走环境变量
+3. **日志结构化** — JSON 格式 + correlationId + timestamp + level
+4. **安全头完整** — HTTP 响应必须包含 HSTS / CSP / X-Frame-Options
+5. **边界值验证** — 所有外部输入必须验证（长度、类型、范围、格式）
+
+**输出格式**：
+
+```json
+{
+  "gate": "production-readiness",
+  "status": "pass | warning | fail",
+  "checks": {
+    "errorHandling": {
+      "status": "pass | fail",
+      "nakedTryCatch": 0,
+      "unloggedErrors": 0,
+      "evidence": "grep -r 'catch.*{\\s*}' src/ | wc -l"
+    },
+    "configManagement": {
+      "status": "pass | fail",
+      "hardcodedSecrets": 0,
+      "hardcodedUrls": 1,
+      "evidence": "grep -r 'api_key\\s*=\\s*[\"']' src/"
+    },
+    "logging": {
+      "status": "pass | fail",
+      "jsonFormatted": true,
+      "hasCorrelationId": true,
+      "evidence": "grep 'JSON.stringify' src/logger.ts"
+    },
+    "securityHeaders": {
+      "status": "pass | fail",
+      "hsts": true,
+      "csp": true,
+      "xFrameOptions": true,
+      "evidence": "grep -r 'Strict-Transport-Security' src/"
+    },
+    "inputValidation": {
+      "status": "pass | fail",
+      "validatedInputs": 8,
+      "unvalidatedInputs": 0,
+      "evidence": "grep -r 'req\\.(body|query|params)' src/ | wc -l"
+    }
+  },
+  "verdict": "pass | warning | fail"
+}
+```
+
+**处置**：
+
+- pass：5 项全部通过 → 继续
+- warning：有硬编码但非敏感信息（如默认端口）→ 记录放行 + 建议修复
+- fail：任一项严重违规（硬编码密钥、无错误处理、无输入验证）→ 回流 EXECUTE
+
+**硬约束**：
+
+- 硬编码密钥/密码 → 必须修复（不可放行）
+- 无错误处理的外部调用 → 必须加 try-catch
+- 无输入验证的 API 端点 → 必须加验证
+
+**详细定义**: 见 `skills/production-standards/SKILL.md`
 
 ---
 
