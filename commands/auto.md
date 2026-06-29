@@ -274,6 +274,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 **目的**：SCAN 阶段耗时减少 50-70%，通过缓存项目结构，只扫描变更文件。
 
 **索引构建**：
+
 ```bash
 # 首次使用或项目结构变化后构建索引
 node scripts/build-context-index.js
@@ -283,6 +284,7 @@ node scripts/fast-scan.js
 ```
 
 **索引内容**（`.auto/cache/index.json`）：
+
 - 技术栈检测（Node.js/Python/Java/Go/Rust）
 - 项目架构（root/dev/infra/config 目录）
 - 文件清单（路径 + hash + 最后修改时间）
@@ -290,22 +292,23 @@ node scripts/fast-scan.js
 - Git 变更状态（修改/新增/删除文件）
 
 **SCAN 使用策略**：
+
 1. 检查索引是否存在且新鲜（< 24小时）
 2. 从索引读取项目结构、技术栈、依赖
 3. **只扫描 git 变更文件**（从 `index.git.changedFiles` 获取）
 4. 其余文件信息直接从索引读取
 
 **索引失效条件**：
+
 - 索引文件不存在
 - 索引超过 24 小时
 - 主要依赖文件变更（package.json/pom.xml/go.mod）
 - 用户显式指定 `--no-cache`
 
 **性能对比**：
+
 - 传统 SCAN：全量扫描 173 个文件 → ~15-20s
 - 索引 SCAN：读取缓存 + 扫描 5 个变更文件 → ~5-8s（50-70% 提升）
-
-### 1.8 能力缓存
 
 ### 1.8 能力缓存
 
