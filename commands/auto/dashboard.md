@@ -73,6 +73,18 @@ insight 引用命中率趋势:
 
 ## 执行方式
 
+### 自动聚合（推荐）
+
+```bash
+# 使用 dashboard.js 脚本聚合最近 N 次 run（默认 10）
+node scripts/dashboard.js [limit]
+
+# 示例
+node scripts/dashboard.js 20  # 聚合最近 20 次 run
+```
+
+### 手动提取（兼容模式）
+
 ```bash
 # 读取最近 N 次 run（默认 10）
 ls -d .auto/runs/*/ | sort -r | head -10
@@ -86,6 +98,21 @@ for run in $(ls -d .auto/runs/*/ | sort -r | head -10); do
   grep -c "status.*fail\|status.*warning" "$run/verify-report.md"
   # quest 数
   grep -c "questId" "$run/quest-results.md"
+done
+```
+
+### 生成 metrics.json（首次使用）
+
+```bash
+# 为最近的 run 生成 metrics.json
+node scripts/generate-metrics.js
+
+# 为特定 run 生成
+node scripts/generate-metrics.js run-20260629-135957
+
+# 批量生成所有 run 的 metrics
+for run in $(ls -d .auto/runs/run-* | xargs -n1 basename); do
+  node scripts/generate-metrics.js "$run"
 done
 ```
 
