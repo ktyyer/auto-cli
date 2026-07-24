@@ -43,53 +43,72 @@ AI (runs 6 phases automatically):
 
 ## 🚀 Quick Start (3 minutes)
 
-### Step 1 · Install
+### 0 · Prerequisites (read this)
 
-**Option A · Claude Code Plugin Marketplace (recommended)**
+Before installing auto-cli, you need:
+
+| Requirement | Why |
+| ----------- | --- |
+| **Claude Code** or **Codex** already installed and working | auto-cli is an instruction pack, **not** a standalone app |
+| **Node.js ≥ 18** + Git (Option B only) | Required for `npm run sync`; Option A (plugin) does not need Node for install |
+
+> No Claude Code yet? Install and sign in via its official docs first, then come back.
+
+### 1 · Install (pick one)
+
+**Option A · Claude Code plugin (recommended)**
+
+Inside **Claude Code**:
 
 ```
 /plugin marketplace add ktyyer/auto-cli
 /plugin install auto-cli@auto-cli
 ```
 
-**Option B · One command (includes Codex support)**
+Then **fully quit and reopen** Claude Code.
+
+If the marketplace is blocked (network / enterprise / not listed) → use Option B.
+
+**Option B · Source sync (Claude + Codex)**
 
 ```bash
 git clone https://github.com/ktyyer/auto-cli.git
-cd auto-cli && npm run sync
+cd auto-cli
+npm run sync
 ```
 
-> `npm run sync` auto-detects `~/.claude/` and `~/.codex/`, **only installs to runtimes that exist**.
+- Needs **Node ≥ 18** locally (`sync` does not require installing prettier first).
+- Copies only into **existing** `~/.claude/` and/or `~/.codex/`.
+- After install: **restart** Claude Code / Codex.
 
-### Step 2 · Try one sentence
+> Dev reinstall / offline tgz: see [Installation](#-installation).
 
-Open Claude Code or Codex, type:
+### 2 · Try one sentence
+
+In any project folder, open Claude Code or Codex and type:
 
 ```
 /auto Analyze the current project and find 3 improvement points
 ```
 
-### Step 3 · Watch AI work
+### 3 · Confirm it works
 
-You'll see AI **not act immediately** — it does this first:
-
-```
-[Phase 1 SCAN]    ✓ Detected React + TS project, found 8 skills
-[Phase 2 PLAN]    ✓ Strategy=explore, generated 3 analysis quests
-[Phase 3 EXEC]    ✓ Quest 1/3 → 2/3 → 3/3 done
-[Phase 4 VERIFY]  ✓ 5 gates passed
-[Phase 5 SUMM]    ✓ 3 improvement recommendations output
-[Phase 6 LEARN]   ✓ Experience written to .auto/insights/patterns.md
-```
-
-After completion, check:
+You should see phased progress (SCAN → … → LEARN), not silent random edits. Then:
 
 ```bash
-ls .auto/runs/                    # all artifacts from this run
-cat .auto/insights/patterns.md    # reusable patterns AI learned
+ls .auto/runs/                 # this run's artifacts
+cat .auto/insights/patterns.md # may be empty on first run — OK
 ```
 
-> 🎯 **Key experience**: ask a similar question again, and AI will **auto-load** the traps and patterns from last time.
+**Quick troubleshooting**
+
+| Symptom | What to do |
+| ------- | ---------- |
+| No `/auto` command | Restart the host? Does `~/.claude` or `~/.codex` exist for Option B? |
+| Plugin install fails | Use Option B |
+| Odd behavior | Run `/auto:doctor` after a successful install |
+
+> 🎯 **Key experience**: ask a similar question again and AI will **auto-load** traps/patterns from `.auto/insights/` when present.
 
 ---
 
@@ -112,10 +131,9 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
 3. **Cross-session resumption · no need to re-explain** — when a run interrupts, `session-continuity.md` is written automatically. Next startup picks up with one line.
 4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files; completed quests stay intact.
-5. **16-Gate adaptive validation · not "lint passed = done"** — gate combinations chosen per strategy. Missing evidence reflows to EXECUTE.
-6. **Context Engineering · manage AI's attention budget** — green/yellow/red zone dynamic compression, minimal-context validation lowers hallucination risk, long runs don't drift.
-7. **Loop engine · `/auto 5m <goal>` autonomous loop until convergence** — one interval parameter turns the one-shot pipeline into a DOER + CHECKER loop: runs a focused 6-PHASE pass on schedule, a measurable checker decides "done", budget exhaustion stops it. auto-cli's memory / persistence / gates already are the loop trio — this just adds the scheduling layer.
-
+5. **Adaptive validation gates** — multiple quality gates by strategy (stricter on hard tasks); missing evidence reflows. Not “lint passed = done”.
+6. **Context Engineering · manage AI attention budget** — green/yellow/red compression; long runs drift less.
+7. **Loop engine · `/auto 5m <goal>`** — DOER+CHECKER on an interval; **needs host scheduler support**, otherwise falls back to one-shot (see main command docs).
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
 
 ---
@@ -287,10 +305,12 @@ Share production stories on [GitHub Discussions](https://github.com/ktyyer/auto-
 
 ## 🛠️ Installation
 
+> New users: follow [Quick Start](#-quick-start-3-minutes) first (host → install → **restart**). This section is the full install matrix.
+
 ### Requirements
 
-- **Node.js** ≥ 18 (install / validate / metrics tooling; slash business instructions are pure Markdown)
-- **Claude Code** or **Codex** (at least one)
+- **Claude Code** or **Codex** already installed (hard requirement)
+- **Node.js** ≥ 18 for Options B/C/D (`sync` / pack tooling; slash instructions remain pure Markdown)
 
 ### Option A · Plugin Marketplace (Claude Code native)
 
@@ -641,29 +661,33 @@ Each run directory contains the full 6 artifacts. Validate closure with `node sc
 
 ## ❓ FAQ
 
-**Q: Commands don't take effect after install?**
-Restart Claude Code or Codex.
+**Q: No `/auto` after install?**
+1) Fully quit and restart Claude Code / Codex. 2) Option B: ensure `~/.claude` or `~/.codex` already exists (host app installed). 3) If the plugin fails, use `git clone` + `npm run sync`.
 
 **Q: Can non-technical users use it?**
-Yes. Just type `/auto + your need` (in any language). AI auto-judges the execution path. **All artifacts are human-readable Markdown**, every step explained.
+**Using it**: after the host + auto-cli are installed, type `/auto + your need`. Artifacts are human-readable Markdown.  
+**Installing it**: you still need a working Claude Code/Codex; source sync also needs Node + Git (or a teammate to install once).
 
-**Q: Will it auto-commit without typing `commit`?**
-No. Auto CLI **never auto-commits** — commit power stays with you. SUMMARIZE phase only provides a change list; you say "commit" to trigger git.
+**Q: Is install truly one-click with zero failures?**
+No unconditional guarantee. Easiest: two plugin lines in Claude. Most reliable: `npm run sync`. Both depend on network/host/dirs; always restart after install.
+
+**Q: Will it auto-commit without asking?**
+No. Auto CLI **never** auto-commits. SUMMARIZE only lists changes.
 
 **Q: Will my code leak externally?**
-No. Auto CLI is a local Markdown instruction package only. No data is sent externally. All AI calls go through your installed Claude Code / Codex.
+No. Local Markdown pack only. AI calls go through your Claude Code / Codex.
 
-**Q: Why does Codex feel worse than Claude Code?**
-Claude Code natively supports agents / rules / hooks runtime; Codex currently supports only prompts + skills. Both `/auto` are **behavior-aligned but execution mechanisms differ** — we install a Codex-specific `/auto` prompt + `AGENTS.md` bridge layer to approximate Claude experience.
+**Q: Why is Codex weaker than Claude Code?**
+Claude Code has native agents/rules/hooks; Codex is mainly prompts + skills. Behavior-aligned, different mechanisms — Codex gets a dedicated `/auto` prompt + `AGENTS.md` bridge.
 
-**Q: Will `.auto/` pollute my git?**
-No. `.auto/` is already in `.gitignore`. Each project accumulates its own local knowledge.
+**Q: Will `.auto/` pollute git?**
+No. Listed in `.gitignore`. Per-project local knowledge.
 
-**Q: How to contribute a new Skill?**
-Create `skills/<your-skill>/SKILL.md` (Agent Skills standard + `tags`), or a community skill under `skills/community/<name>/` (installed as `community-<name>`). Run `node scripts/validate-references.js`, open a PR to `dev`. See `skills/community/README.md` and the sample `hello-auto`.
+**Q: How to contribute a Skill?**
+Core: `skills/<name>/SKILL.md`. Community: `skills/community/<name>/` → install name `community-<name>` (see `hello-auto`). Run `node scripts/validate-references.js`, PR to `dev`. See `skills/community/README.md`.
 
-**Q: Which languages are supported?**
-Java / Spring Boot, JavaScript / TypeScript / React, Python / Django, Go / Gin, Rust (basic). Skills tagged `scope: universal` are language-agnostic.
+**Q: Which languages?**
+Java/Spring, JS/TS/React, Python/Django, Go/Gin, Rust (basic), plus `scope: universal` skills.
 
 ---
 

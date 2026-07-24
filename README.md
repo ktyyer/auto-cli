@@ -43,53 +43,72 @@ AI（自动走 6 步）：
 
 ## 🚀 Quick Start（3 分钟跑起来）
 
-### Step 1 · 安装
+### 0 · 先决条件（必读）
 
-**方式 A · Claude Code 插件市场（推荐）**
+在装 auto-cli **之前**，请先具备其一：
+
+| 你需要 | 说明 |
+| ------ | ---- |
+| **Claude Code** 或 **Codex** 已安装并能对话 | auto-cli 是指令包，**不是**独立 App；没有宿主则 `/auto` 无处运行 |
+| （方式 B）**Node.js ≥ 18** + Git | 仅源码 `npm run sync` 需要；插件方式 A 不强制本机 Node |
+
+> 还没有 Claude Code？先完成其官方安装与登录，再回到本页。
+
+### 1 · 安装（二选一）
+
+**方式 A · Claude Code 插件（推荐，最接近「两行装好」）**
+
+在 **Claude Code** 里执行：
 
 ```
 /plugin marketplace add ktyyer/auto-cli
 /plugin install auto-cli@auto-cli
 ```
 
-**方式 B · 一行命令（含 Codex 支持）**
+装完后：**完全退出并重新打开** Claude Code。
+
+若 marketplace 不可用（网络 / 企业墙 / 未收录）→ 改用方式 B。
+
+**方式 B · 源码同步（Claude + Codex 都适用）**
 
 ```bash
 git clone https://github.com/ktyyer/auto-cli.git
-cd auto-cli && npm run sync
+cd auto-cli
+npm run sync
 ```
 
-> `npm run sync` 会自动检测 `~/.claude/` 和 `~/.codex/`，**只装存在的运行时**。
+- 需要本机 **Node ≥ 18**（`sync` 本身不依赖 `npm install` 业务包）。
+- 只会装到**已存在**的 `~/.claude/` 和/或 `~/.codex/`；两边都没有则不会产生可用命令。
+- 装完后：**重启** Claude Code / Codex。
 
-### Step 2 · 试一句话
+> 开发机重装、离线 tgz 等见下方 [🛠️ 安装](#-安装)。
 
-打开 Claude Code 或 Codex，敲：
+### 2 · 试一句话
+
+打开**任意项目**目录中的 Claude Code 或 Codex，输入：
 
 ```
 /auto 帮我分析一下当前项目，找 3 个可优化的点
 ```
 
-### Step 3 · 看 AI 怎么工作
+### 3 · 确认装对了
 
-你会看到 AI **不动手立刻分析**，而是先做：
-
-```
-[Phase 1 SCAN]   ✓ 识别为 React + TS 项目，读到 8 个 skill
-[Phase 2 PLAN]   ✓ 策略=探索，生成 3 个分析关卡
-[Phase 3 EXEC]   ✓ Quest 1/3 → 2/3 → 3/3 完成
-[Phase 4 VERIFY] ✓ 5 个 gate 全过
-[Phase 5 SUMM ]  ✓ 输出 3 项优化建议清单
-[Phase 6 LEARN]  ✓ 经验已写入 .auto/insights/patterns.md
-```
-
-完成后查看：
+你会看到分阶段进度（SCAN → … → LEARN），而不是立刻瞎改代码。跑完后：
 
 ```bash
-ls .auto/runs/  # 这次 run 的全部产物
-cat .auto/insights/patterns.md  # AI 学到的可复用模式
+ls .auto/runs/                 # 本次 run 产物
+cat .auto/insights/patterns.md # 若已沉淀经验（可没有也正常）
 ```
 
-> 🎯 **关键体验**：再问一次类似问题，AI 会**自动加载**上次踩过的坑和学到的招。
+**不对时快速排查**
+
+| 现象 | 处理 |
+| ---- | ---- |
+| 没有 `/auto` 命令 | 是否重启宿主？方式 B 是否存在 `~/.claude` 或 `~/.codex`？ |
+| 插件装不上 | 改用方式 B |
+| 行为异常 | 在项目里执行 `/auto:doctor`（装成功后可用） |
+
+> 🎯 **关键体验**：再问一次类似问题，AI 会**自动加载**上次踩过的坑和学到的招（写入 `.auto/insights/` 时）。
 
 ---
 
@@ -112,9 +131,9 @@ cat .auto/insights/patterns.md  # AI 学到的可复用模式
 2. **知识闭环 · 越用越懂你的项目** — 每次踩坑/模式/决策沉淀到 `.auto/insights/`，下次 SCAN **按关键词自动反查注入**，PHASE 4 `knowledge-reuse` gate 强制验证"真复用了"。
 3. **跨会话续接 · 不需要把上次对话再讲一遍** — run 中断时自动写 `session-continuity.md`，下次启动一行回到现场。
 4. **Quest 级失败回滚 · 不连累整个仓库** — 某关失败只回滚当前 Quest 触及文件，已完成 Quest 的成果不受影响。
-5. **16-Gate 自适应验证 · 不是一个 lint 就放行** — 按策略动态选 gate 组合，缺证据就回流补强。
+5. **自适应验证门禁** — 按策略选多道质量关（复杂任务更严），缺证据就回流补强；不是「lint 过了就算完」。
 6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，最小上下文验证降低幻觉风险，长 run 不跑偏。
-7. **Loop 引擎 · `/auto 5m <goal>` 自主循环到收敛** — 一个 interval 参数把单次流水线变成 DOER+CHECKER 自主循环：按时跑聚焦版 6 PHASE，可度量判据判定「够了没」，预算耗尽即停。auto-cli 的记忆/持久化/门禁本就是 loop 三件套，只缺这一层调度。
+7. **Loop 引擎 · `/auto 5m <goal>` 自主循环到收敛** — interval 把单次流水线变成 DOER+CHECKER 循环；**需宿主支持调度**，不可用时降级为单次执行（见主命令说明）。
 
 > 2026 年 AI Agent 质量第一瓶颈不是模型能力，**而是上下文管理**。Auto CLI 让"对的 token 在对的时间"成为默认行为。
 
@@ -301,10 +320,12 @@ flowchart LR
 
 ## 🛠️ 安装
 
+> 小白请优先看上方 [Quick Start](#-quick-start3-分钟跑起来)：先宿主、再安装、再**重启**。本节为完整安装矩阵。
+
 ### 环境要求
 
-- **Node.js** ≥ 18（安装 / 校验 / 观测工具链；slash 业务指令为纯 Markdown）
-- **Claude Code** 或 **Codex** 任一已安装
+- **Claude Code** 或 **Codex** 任一已安装（硬前置）
+- **Node.js** ≥ 18（方式 B/C/D 的 sync/pack 工具链需要；slash 业务指令仍是纯 Markdown）
 
 ### 方式 A · Plugin Marketplace（Claude Code 原生）
 
@@ -656,29 +677,33 @@ SCAN 自动按 frontmatter 发现，PLAN 按四信号匹配度激活。
 
 ## ❓ FAQ
 
-**Q: 安装后命令不生效？**
-重启 Claude Code 或 Codex。
+**Q: 安装后没有 `/auto`？**
+1）完全退出并重启 Claude Code / Codex。2）方式 B：确认本机已有 `~/.claude` 或 `~/.codex`（先能打开对应宿主）。3）插件失败则改用 `git clone` + `npm run sync`。
 
 **Q: 我不懂技术能用吗？**
-能。你只需要敲 `/auto + 你的需求`（中文/英文都行），AI 自动判断走什么路径。**你看到的产物都是人类可读的 Markdown 文件**，每一步都有解释。
+能**使用**：装好宿主并装好 auto-cli 后，只需敲 `/auto + 你的需求`。产物是人类可读的 Markdown。  
+**安装**仍需要：已会用 Claude Code/Codex；若走源码同步，还需要会装 Node 与 Git（或请同事代装一次）。
+
+**Q: 是不是「一键安装保证成功」？**
+不是无条件保证。最省事是 Claude 里插件两行；最稳是 `npm run sync`。都依赖网络/宿主/本机目录，装完必须重启。
 
 **Q: 不写 `commit` 会自动提交吗？**
-不会。Auto CLI 永远**不自动 commit**——提交权在你手里。SUMMARIZE 阶段只给你变更清单，你说"提交"才动 git。
+不会。Auto CLI 永远**不自动 commit**——提交权在你手里。SUMMARIZE 只给变更清单。
 
 **Q: 会泄露代码到外部吗？**
-不会。Auto CLI 只是本地 Markdown 指令包，不发送任何数据到外部服务。所有 AI 调用都通过你已安装的 Claude Code / Codex 进行。
+不会。本地 Markdown 指令包；AI 调用只走你已安装的 Claude Code / Codex。
 
 **Q: 为什么 Codex 体验不如 Claude Code？**
-Claude Code 原生支持 agents / rules / hooks 等运行时能力，Codex 当前只支持 prompts + skills。两端 `/auto` **行为对齐但执行机制不同**——我们给 Codex 装了专用 `/auto` prompt + `AGENTS.md` 桥接层逼近 Claude 体验。
+Claude Code 原生 agents/rules/hooks；Codex 目前主要是 prompts + skills。两端行为对齐、机制不同——Codex 有专用 `/auto` prompt + `AGENTS.md` 桥接。
 
-**Q: `.auto/` 目录会污染我的 git 吗？**
-不会。`.auto/` 已在 `.gitignore` 中。每个项目本地累积自己的知识库。
+**Q: `.auto/` 会污染 git 吗？**
+不会。已在 `.gitignore`。知识库按项目本地累积。
 
 **Q: 如何贡献新的 Skill？**
-按标准结构创建 `skills/<your-skill>/SKILL.md`（遵循 Agent Skills 标准 + `tags` 扩展），跑 `node scripts/validate-references.js`，提 PR 到 `dev` 分支。`skills/community/` 自动发现机制开发中，详见 `skills/community/README.md`。
+核心 skill：`skills/<your-skill>/SKILL.md`。社区 skill：`skills/community/<name>/` → 安装名 `community-<name>`（样例 `hello-auto`）。跑 `node scripts/validate-references.js`，PR 到 `dev`。见 `skills/community/README.md`。
 
 **Q: 支持哪些语言？**
-Java / Spring Boot、JavaScript / TypeScript / React、Python / Django、Go / Gin、Rust（基础）。Skill 标 `scope: universal` 的部分跨语言通用。
+Java / Spring Boot、JS/TS/React、Python/Django、Go/Gin、Rust（基础）等；`scope: universal` 的 skill 跨语言通用。
 
 ---
 
