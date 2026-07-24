@@ -11,7 +11,7 @@
 [![Codex](https://img.shields.io/badge/Codex-supported-black.svg)](https://github.com/openai/codex)
 [![AI-Ready](https://img.shields.io/badge/AI--Ready-llms.txt-brightgreen.svg)](./docs/llms.txt)
 
-[中文](./README.md) · [Changelog](./CHANGELOG.md) · [Repo Map](./REPO_MAP.md) · **[AI Navigation](./docs/llms.txt)**
+[中文](./README.md) · [Changelog](./CHANGELOG.md) · [Repo Map](./REPO_MAP.md) · **[AI Navigation](./docs/llms.txt)** · [Discovery draft](./docs/discovery.md) · [self-bench](./docs/self-bench.md)
 
 </div>
 
@@ -37,7 +37,7 @@ AI (runs 6 phases automatically):
 | A **protocol-driven** AI workflow that makes AI behavior repeatable & auditable | Not a model replacement — just makes existing models work more reliably |
 | A **knowledge loop** that learns your project (LearnCard → insights)            | Not a black box — all artifacts are human-readable `.md` files          |
 
-> **Boundary**: business instructions are pure Markdown; Node under `scripts/` is only for install / validate / cache / metrics tooling, not a slash business runtime.
+> **Boundary**: slash business instructions are pure Markdown; Node under `scripts/` is only for install / validate / cache / metrics tooling — not a product business runtime.
 
 ---
 
@@ -269,29 +269,19 @@ Open session B, type `/auto`:
 
 ## 🏢 Who's Using auto-cli
 
-> We're collecting production use cases! If you're using auto-cli in your projects, we'd love to hear from you on [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions).
+### Published cases
 
-### Call for Cases 🎯
+| Project | Type | Summary |
+| ------- | ---- | ------- |
+| [auto-cli self-host dogfood](./docs/case-studies/auto-cli-self-host.md) | Open-source instruction pack | World-class audit + Wave 0 trust defaults via `/auto` |
 
-**We want to know**:
-- Your project type (Web app / CLI tool / Library / Other)
-- Use case (New features / Bug fixes / Refactoring / Code review)
-- Actual results (Time saved / Errors reduced / Code quality improved)
-- Most impressive feature (Knowledge loop / Loop mode / Quality gates / Other)
+### Call for cases
 
-### How to Submit
+Share production stories on [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions).
 
-1. **GitHub Discussions** - Create a new post in the [Production Cases](https://github.com/ktyyer/auto-cli/discussions/categories/production-cases) category
-2. **Case Template** - See `docs/case-studies/TEMPLATE.md` (to be created)
-3. **Pull Request** - Submit your case directly to the `docs/case-studies/` directory
-
-### Early Adopter Benefits
-
-The first 10 case submissions will receive:
-- ✨ Featured in README (company/project name + link)
-- 🎖️ "Early Adopter" badge
-- 🔧 Priority feature request access
-- 📣 Official promotion of your case
+1. **Template** — [`docs/case-studies/TEMPLATE.md`](./docs/case-studies/TEMPLATE.md)
+2. **Directory** — [`docs/case-studies/README.md`](./docs/case-studies/README.md)
+3. **PR** — submit under `docs/case-studies/`
 
 ---
 
@@ -299,7 +289,7 @@ The first 10 case submissions will receive:
 
 ### Requirements
 
-- **Node.js** ≥ 18 (for install scripts only; runtime is zero-dependency)
+- **Node.js** ≥ 18 (install / validate / metrics tooling; slash business instructions are pure Markdown)
 - **Claude Code** or **Codex** (at least one)
 
 ### Option A · Plugin Marketplace (Claude Code native)
@@ -670,7 +660,7 @@ Claude Code natively supports agents / rules / hooks runtime; Codex currently su
 No. `.auto/` is already in `.gitignore`. Each project accumulates its own local knowledge.
 
 **Q: How to contribute a new Skill?**
-Create your skill as `skills/<your-skill>/SKILL.md` (following Agent Skills standard + `tags` extension), run `node scripts/validate-references.js`, submit PR to `dev` branch. The `skills/community/` auto-discovery mechanism is under development — see `skills/community/README.md`.
+Create `skills/<your-skill>/SKILL.md` (Agent Skills standard + `tags`), or a community skill under `skills/community/<name>/` (installed as `community-<name>`). Run `node scripts/validate-references.js`, open a PR to `dev`. See `skills/community/README.md` and the sample `hello-auto`.
 
 **Q: Which languages are supported?**
 Java / Spring Boot, JavaScript / TypeScript / React, Python / Django, Go / Gin, Rust (basic). Skills tagged `scope: universal` are language-agnostic.

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Wave 0–2 信任默认与发现扩展**（定位：纯 Markdown 指令包）
+  - 文档诚实：skills 计数统一为 **39**（+ community 组织目录）；纯 MD 指令 + Node 工具链边界句（CLAUDE/README 中英）
+  - `CONTRIBUTING.md` 与 `package.json` scripts 对齐（无虚构 `lint` / `test:coverage`）
+  - LEARN 强制 `metrics.json`（`commands/auto.md` §6.1.1 + `auto.codex.md` 最小写盘）；Stop hook 缺文件时 `generate-metrics.js` 补齐
+  - `build-context-index.js` 识别 markdown-instruction monorepo（`commands/` / `skills/` / `agents/` / `rules`+`hooks`）
+  - dogfood 案例 `docs/case-studies/auto-cli-self-host.md`；发现草稿 `docs/discovery.md`；自举基准 `docs/self-bench.md`；中文帖草稿 `docs/outreach-zh.md`
+  - community 样例 `skills/community/hello-auto/`；安装名为 **`community-<name>`** 并复制 `references/`
+  - `validate-run-completeness.js` 对齐 auto-md/v1 内容 token；knowledge-reuse 接受 `relevantInsights`；支持 `AUTO_CLI_TEST_ROOT`
+
+### Changed
+
+- plugin / marketplace 描述与 keywords 面向发现层
+- SCAN：skill `tier` 分层 + `skills/community/*/SKILL.md` 发现
+
 ## [0.52.0] - 2026-06-28
 
 ### Added

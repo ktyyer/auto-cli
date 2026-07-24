@@ -1,7 +1,7 @@
 {
   "name": "auto-cli",
   "version": "0.52.0",
-  "description": "Auto CLI - Claude Code /auto 超级命令",
+  "description": "Claude Code / Codex /auto: protocol-driven 6-phase orchestration + LearnCard knowledge loop (pure Markdown instructions)",
   "scripts": {
     "pack": "npm pack",
     "uninstall": "node scripts/uninstall.js",
