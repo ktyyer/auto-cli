@@ -11,7 +11,7 @@
 [![Codex](https://img.shields.io/badge/Codex-supported-black.svg)](https://github.com/openai/codex)
 [![AI-Ready](https://img.shields.io/badge/AI--Ready-llms.txt-brightgreen.svg)](./docs/llms.txt)
 
-[English](./README.en.md) · [更新日志](./CHANGELOG.md) · [仓库地图](./REPO_MAP.md) · **[AI 导航](./docs/llms.txt)**
+[English](./README.en.md) · [更新日志](./CHANGELOG.md) · [仓库地图](./REPO_MAP.md) · **[AI 导航](./docs/llms.txt)** · [发现/收录草稿](./docs/discovery.md) · [self-bench](./docs/self-bench.md)
 
 </div>
 
@@ -36,6 +36,8 @@ AI（自动走 6 步）：
 | 一份纯 Markdown 指令包，安装到 `~/.claude/` 或 `~/.codex/` 后生效 | 不是 IDE 插件，不是 SaaS，不需要登录        |
 | 一套**协议驱动**的 AI 工作流，让 AI 行为可重复、可审计            | 不是模型替代品，只让现有模型用得更稳更聪明  |
 | 一个**越用越懂你项目**的知识闭环（LearnCard → insights）          | 不是黑盒——所有产物都是人类可读的 `.md` 文件 |
+
+> **边界**：业务指令为纯 Markdown；仓库内 `scripts/` 的 Node 仅用于安装 / 校验 / 缓存 / 观测工具，不是 slash 业务 runtime。
 
 ---
 
@@ -281,29 +283,19 @@ flowchart LR
 
 ## 🏢 Who's Using auto-cli
 
-> 我们正在收集生产环境使用案例！如果你在项目中使用了 auto-cli，欢迎在 [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions) 分享你的经验。
+### 已发布案例
 
-### 案例征集中 🎯
+| 项目 | 类型 | 摘要 |
+| ---- | ---- | ---- |
+| [auto-cli 自托管 dogfood](./docs/case-studies/auto-cli-self-host.md) | 开源指令包 | 用 `/auto` 完成世界级审计与 Wave 0 信任默认落地 |
 
-**我们想了解**：
-- 你的项目类型（Web 应用 / CLI 工具 / 库 / 其他）
-- 使用场景（新功能开发 / Bug 修复 / 重构 / 代码审查）
-- 实际效果（节省时间 / 减少错误 / 提升代码质量）
-- 印象最深的特性（知识闭环 / Loop 模式 / 质量门禁 / 其他）
+### 案例征集
 
-### 提交方式
+欢迎在 [GitHub Discussions](https://github.com/ktyyer/auto-cli/discussions) 分享生产使用经验。
 
-1. **GitHub Discussions** - 在 [Production Cases](https://github.com/ktyyer/auto-cli/discussions/categories/production-cases) 分类下新建帖子
-2. **案例模板** - 参考 `docs/case-studies/TEMPLATE.md`（待创建）
-3. **Pull Request** - 直接在 `docs/case-studies/` 目录提交你的案例
-
-### 早期采纳者权益
-
-前 10 个提交案例的用户将获得：
-- ✨ 在 README 中展示（公司/项目名称 + 链接）
-- 🎖️ "Early Adopter" 徽章
-- 🔧 优先功能建议权
-- 📣 案例被官方渠道推广
+1. **模板** — [`docs/case-studies/TEMPLATE.md`](./docs/case-studies/TEMPLATE.md)
+2. **目录说明** — [`docs/case-studies/README.md`](./docs/case-studies/README.md)
+3. **PR** — 提交到 `docs/case-studies/`
 
 ---
 
@@ -311,7 +303,7 @@ flowchart LR
 
 ### 环境要求
 
-- **Node.js** ≥ 18（仅安装脚本用，运行时零依赖）
+- **Node.js** ≥ 18（安装 / 校验 / 观测工具链；slash 业务指令为纯 Markdown）
 - **Claude Code** 或 **Codex** 任一已安装
 
 ### 方式 A · Plugin Marketplace（Claude Code 原生）
@@ -399,7 +391,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 > `agents/_shared-principles.md` 为公共原则，不作为独立 Agent 调度。
 
-### 38 个 Skill（跨平台 Anthropic Agent Skills 标准）
+### 39 个 Skill（跨平台 Anthropic Agent Skills 标准）
 
 <details>
 <summary><b>展开完整 Skill 清单</b></summary>

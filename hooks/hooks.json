@@ -241,6 +241,16 @@
           }
         ],
         "description": "Final audit for console.log in modified files before session ends"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\n# Ensure latest .auto/runs/<runId>/metrics.json exists (Wave 0 default observability)\ninput=$(cat)\n\nif [ ! -d .auto/runs ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | grep '^run-' | grep -v archive | head -1)\nif [ -z \"$latest_run\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nmetrics_file=\".auto/runs/$latest_run/metrics.json\"\nif [ -f \"$metrics_file\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nif [ -f scripts/generate-metrics.js ]; then\n  node scripts/generate-metrics.js \"$latest_run\" >/dev/null 2>&1 && \\\n    echo \"[Hook] metrics.json generated for $latest_run\" >&2 || \\\n    echo \"[Hook] WARNING: failed to generate metrics.json for $latest_run\" >&2\nfi\n\necho \"$input\""
+          }
+        ],
+        "description": "If latest run lacks metrics.json, run scripts/generate-metrics.js (LEARN default path backup)"
       }
     ]
   }

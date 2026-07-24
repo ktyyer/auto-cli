@@ -4,14 +4,21 @@
 >
 > **注意**：`community/` 本身是**组织目录**，不是 skill。统计 skill 数量时应排除（`ls skills/ | wc -l` 会多数 1 个）。
 
-## 机制状态：✅ 已接通（v0.52）
+## 机制状态：✅ 已接通（Wave 2 补示例）
 
-`skills/community/` 的完整链路已接通：
+`skills/community/` 的完整链路：
 
-- ✅ **SCAN 自动发现**：`/auto` PHASE 1 扫描 `skills/community/<name>/SKILL.md`，按标准 frontmatter 参与四信号匹配
-- ✅ **install 同步**：`npm run sync` 自动复制到 `~/.claude/skills/` 和 `~/.codex/skills/`
-- ✅ **引用校验**：`node scripts/validate-references.js` 校验 frontmatter 完整性与引用准确性
-- ✅ **缺失提示**：安装时若 `SKILL.md` 缺失，输出警告但不中断
+- ✅ **SCAN 自动发现**：扫描 `skills/community/<name>/SKILL.md`（组织目录 `community/` 本身不是 skill）
+- ✅ **install 同步**：`npm run sync` 安装为 **`community-<name>`**（前缀防覆盖核心 skill）；含 `references/`
+- ✅ **引用校验**：`validate-references.js` 校验 frontmatter
+- ✅ **官方样例**：[`hello-auto`](./hello-auto/SKILL.md) — 安装名 `community-hello-auto`
+
+### 安装名规则
+
+| 源路径                         | 安装名                 |
+| ------------------------------ | ---------------------- |
+| `skills/community/hello-auto/` | `community-hello-auto` |
+| `skills/foo/`（核心）          | `foo`（无前缀）        |
 
 ## 贡献指南
 

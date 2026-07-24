@@ -50,11 +50,11 @@ test('validate-run-completeness passes for a complete run with matching knowledg
 
   makeRun(tempRoot, 'run-coverage-pass', {
     'route-decision.md': '- strategy: implement\n- complexity: medium\n- verify: npm run check\n- goal: improve coverage testing\n- knowledge inputs: [insight:patterns.md#Coverage testing pattern]\n',
-    'quest-map.md': '- plan: add tests for scripts and verify coverage\n',
-    'quest-results.md': '- execution: added tests\n- findings: coverage support works\n',
-    'verify-report.md': '- command: `npm run check`\n- result: PASS\n- command: `node scripts/validate-run-completeness.js --run run-coverage-pass`\n- result: PASS\n- `lint`: pass\n- `regression`: pass\n- `run-completeness`: pass\n- `knowledge-reuse`: PASS [insight:patterns.md#Coverage testing pattern]\n- verify: complete\n',
-    'learn-cards.md': '- summary: added reusable coverage tests\n- recommendedAction: extend to other scripts\n- confidence: high\n',
-    'index.md': '- strategy: implement\n- goal: improve coverage testing\n- verification: complete\n'
+    'quest-map.md': '- goal: add tests for scripts and verify coverage\n- plan: write unit tests\n',
+    'quest-results.md': '- quest: Q1\n- execution: added tests\n- findings: coverage support works\n- status: pass\n',
+    'verify-report.md': '- command: `npm run check`\n- result: PASS\n- command: `node scripts/validate-run-completeness.js --run run-coverage-pass`\n- result: PASS\n- `lint`: pass\n- `regression`: pass\n- `run-completeness`: pass\n- gate knowledge-reuse: PASS [insight:patterns.md#Coverage testing pattern]\n- verify: complete\n',
+    'learn-cards.md': '- summary: added reusable coverage tests\n- recommendedAction: extend to other scripts\n- category: pattern\n- confidence: high\n',
+    'index.md': '- runId: run-coverage-pass\n- strategy: implement\n- goal: improve coverage testing\n- verification: complete\n- status: completed\n'
   });
 
   const result = runValidate(tempRoot, ['--run', 'run-coverage-pass']);
@@ -78,11 +78,11 @@ test('validate-run-completeness fails when verify report claims knowledge reuse 
 
   makeRun(tempRoot, 'run-coverage-fail', {
     'route-decision.md': '- strategy: implement\n- complexity: medium\n- verify: npm run check\n- goal: improve coverage testing\n',
-    'quest-map.md': '- plan: add tests for scripts and verify coverage\n',
-    'quest-results.md': '- execution: added tests\n- findings: coverage support works\n',
-    'verify-report.md': '- command: `npm run check`\n- result: PASS\n- `lint`: pass\n- `regression`: pass\n- `run-completeness`: pending\n- `knowledge-reuse`: PASS\n- verify: complete\n',
-    'learn-cards.md': '- summary: added reusable coverage tests\n- recommendedAction: extend to other scripts\n- confidence: high\n',
-    'index.md': '- strategy: implement\n- goal: improve coverage testing\n- verification: complete\n'
+    'quest-map.md': '- goal: add tests\n- plan: add tests for scripts and verify coverage\n',
+    'quest-results.md': '- quest: Q1\n- execution: added tests\n- findings: coverage support works\n',
+    'verify-report.md': '- command: `npm run check`\n- result: PASS\n- `lint`: pass\n- `regression`: pass\n- `run-completeness`: pending\n- gate knowledge-reuse: PASS\n- verify: complete\n',
+    'learn-cards.md': '- summary: added reusable coverage tests\n- recommendedAction: extend to other scripts\n- category: pattern\n- confidence: high\n',
+    'index.md': '- runId: run-coverage-fail\n- strategy: implement\n- goal: improve coverage testing\n- verification: complete\n'
   });
 
   const result = runValidate(tempRoot, ['--run', 'run-coverage-fail']);

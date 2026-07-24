@@ -164,6 +164,7 @@ Glob("package.json" / "pom.xml" / "go.mod" / "requirements.txt" / "Cargo.toml") 
 Glob("CLAUDE.md") → Read（如存在）
 Glob("~/.claude/agents/*.md") → 提取可用 Agent 列表
 Glob("skills/*/SKILL.md") → 提取项目 Skill 列表（分层扫描，见下方 Skill 分层规则）
+Glob("skills/community/*/SKILL.md") → 社区 skill（安装名 community-<name>；参与匹配，计数不含 community 组织目录本身）
 Glob("~/.claude/skills/*.md") → 提取全局 Skill 列表（补充），与项目 Skill 按 name 去重
 Glob("~/.claude/rules/*.md") + Glob("rules/*.md") → 按 frontmatter paths 字段按需注入
 Glob(".auto/constitution.md") → 如存在则 Read 全文，注入 RouteDecision.notes.constitution；PLAN/EXECUTE/VERIFY 三 phase 必须遵守（违反即 VERIFY fail）
@@ -171,10 +172,11 @@ Glob(".auto/constitution.md") → 如存在则 Read 全文，注入 RouteDecisio
 
 **Skill 分层扫描**（减少 SCAN 阶段 frontmatter 读取量）：
 
-1. **核心层 Skill**（有实际使用记录的 skill）：SCAN 正常读取 frontmatter，参与四信号匹配
-2. **储备层 Skill**（usageCount=0 且从未被激活的 skill）：SCAN 跳过 frontmatter 读取，仅在兜底索引命中时按需加载
-3. **自动升降**：连续 10 个 run 未激活 → 降级到储备层；储备层 skill 被激活 1 次 → 升回核心层
-4. 分层依据：`.auto/feedback/skills.json` 中的 `usageCount` 字段
+1. **核心层 Skill**（`tier=core` 或 `usageCount>0`）：SCAN 正常读取 frontmatter，参与四信号匹配
+2. **情境层 Skill**（`tier=situational`）：默认跳过全文 frontmatter；兜底索引或策略关键词命中时再加载
+3. **领域储备层**（`tier=domain-reserve` 且 `usageCount=0`）：仅技术栈/显式意图命中时加载（如 `java-patterns`）
+4. **自动升降**：连续 10 个 run 未激活 → 可标为 situational/domain-reserve；被激活 1 次 → 升回 core
+5. 分层依据：`.auto/feedback/skills.json` 的 `usageCount` + 可选 `tier` 字段（见 skill-health 报告）
 
 ### 1.2 环境快检
 
@@ -385,44 +387,46 @@ node scripts/fast-scan.js
 
 **兜底索引**（动态发现不可用时的回退路径）：
 
-| 触发条件                                                            | 激活 Skill              |
-| ------------------------------------------------------------------- | ----------------------- |
-| Java / Spring Boot                                                  | `java-patterns`         |
-| 性能优化相关                                                        | `performance-patterns`  |
-| 错误处理 / 异常                                                     | `error-patterns`        |
-| Git 操作 / 提交 / PR                                                | `git-workflow`          |
-| Bug / 调试 / 测试失败 / 构建失败                                    | `systematic-debugging`  |
-| 模糊需求 / 多种合理理解                                             | `requirement-clarifier` |
-| 需求明确但实现路径多选 / 架构决策                                   | `brainstorming`         |
-| 重构 / 实现+high 复杂度 / 多角度规划择优                            | `plan-ensemble`         |
-| 多并行 Quest / 多模块独立开发                                       | `using-git-worktrees`   |
-| 不熟悉的库 / 新技术栈                                               | `research-analyst`      |
-| 实现 / 重构策略下的 PHASE 2                                         | `test-plan-writer`      |
-| 重试 / 熔断 / 限流 / 降级 / 幂等                                    | `robustness-patterns`   |
-| 重构 / 拆分大文件 / 消除重复                                        | `refactoring-patterns`  |
-| API 设计 / REST / OpenAPI                                           | `api-design`            |
-| 复杂任务 / 上下文接近极限 / 跨会话续接                              | `context-engineering`   |
-| 项目硬约束 / `.auto/constitution.md` 存在                           | `constitution`          |
-| 每关完成自纠 / 主线漂移防范                                         | `self-critique`         |
-| 代码风格 / 格式化                                                   | `code-style-enforcer`   |
-| 依赖分析 / 升级                                                     | `dependency-analyzer`   |
-| 多 Agent 编排                                                       | `workflow-patterns`     |
-| 新项目初始化                                                        | `init-project`          |
-| PRD / 需求文档                                                      | `prd-writer`            |
-| 日志 / tracing / 可观测性                                           | `logging-patterns`      |
-| 目标收敛 / 产物真源 / run 状态 / 生产治理                           | `production-governance` |
-| Phase 交接 / 协议字段完整性 / Schema 验证                           | `protocol-validator`    |
-| 上线 / 部署 / 生产环境                                              | `production-standards`  |
-| 代码注释 / JSDoc                                                    | `comment-standards`     |
-| 创建 / 编写 / 优化 skill                                            | `skill-creator`         |
-| 代码结构分析 / AST                                                  | `code-analyzer`         |
-| 评估 skill / skill 触发诊断                                         | `skill-evaluator`       |
-| 需求明确但验收标准模糊 / 契约驱动                                   | `spec-driven`           |
-| 会话末增量代码审查 / dirty files 累积                               | `incremental-review`    |
-| bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统              | `feedback-loop`         |
-| 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展                            | `agentless-repair`      |
-| 执行影响性命令前（git commit/npm publish/Edit超50行）               | `predict-verify`        |
-| interval 参数（`5m`/`30m`/`2h`）/ 盯盘 / 自主迭代 / 自愈 / 周期巡检 | `loop-engineering`      |
+| 触发条件                                                            | 激活 Skill                   |
+| ------------------------------------------------------------------- | ---------------------------- |
+| Java / Spring Boot                                                  | `java-patterns`              |
+| 性能优化相关                                                        | `performance-patterns`       |
+| 错误处理 / 异常                                                     | `error-patterns`             |
+| Git 操作 / 提交 / PR                                                | `git-workflow`               |
+| Bug / 调试 / 测试失败 / 构建失败                                    | `systematic-debugging`       |
+| 模糊需求 / 多种合理理解                                             | `requirement-clarifier`      |
+| 需求明确但实现路径多选 / 架构决策                                   | `brainstorming`              |
+| 重构 / 实现+high 复杂度 / 多角度规划择优                            | `plan-ensemble`              |
+| 多并行 Quest / 多模块独立开发                                       | `using-git-worktrees`        |
+| 不熟悉的库 / 新技术栈                                               | `research-analyst`           |
+| 实现 / 重构策略下的 PHASE 2                                         | `test-plan-writer`           |
+| 重试 / 熔断 / 限流 / 降级 / 幂等                                    | `robustness-patterns`        |
+| 重构 / 拆分大文件 / 消除重复                                        | `refactoring-patterns`       |
+| API 设计 / REST / OpenAPI                                           | `api-design`                 |
+| 复杂任务 / 上下文接近极限 / 跨会话续接                              | `context-engineering`        |
+| 项目硬约束 / `.auto/constitution.md` 存在                           | `constitution`               |
+| 每关完成自纠 / 主线漂移防范                                         | `self-critique`              |
+| 代码风格 / 格式化                                                   | `code-style-enforcer`        |
+| 圈复杂度 / 覆盖率阈值 / 世界级代码标准                              | `world-class-code-standards` |
+| 依赖分析 / 升级                                                     | `dependency-analyzer`        |
+| 多 Agent 编排                                                       | `workflow-patterns`          |
+| 新项目初始化                                                        | `init-project`               |
+| PRD / 需求文档                                                      | `prd-writer`                 |
+| 日志 / tracing / 可观测性                                           | `logging-patterns`           |
+| 目标收敛 / 产物真源 / run 状态 / 生产治理                           | `production-governance`      |
+| Phase 交接 / 协议字段完整性 / Schema 验证                           | `protocol-validator`         |
+| 上线 / 部署 / 生产环境                                              | `production-standards`       |
+| 代码注释 / JSDoc                                                    | `comment-standards`          |
+| 创建 / 编写 / 优化 skill                                            | `skill-creator`              |
+| 社区 skill / hello-auto / 验证 community 安装                       | `hello-auto`                 |
+| 代码结构分析 / AST                                                  | `code-analyzer`              |
+| 评估 skill / skill 触发诊断                                         | `skill-evaluator`            |
+| 需求明确但验收标准模糊 / 契约驱动                                   | `spec-driven`                |
+| 会话末增量代码审查 / dirty files 累积                               | `incremental-review`         |
+| bot / daemon / 消息队列 / CLI 工具 / 无 UI 的 I/O 系统              | `feedback-loop`              |
+| 明确 Bug 复现路径 / 单链修复 ≥2 轮无进展                            | `agentless-repair`           |
+| 执行影响性命令前（git commit/npm publish/Edit超50行）               | `predict-verify`             |
+| interval 参数（`5m`/`30m`/`2h`）/ 盯盘 / 自主迭代 / 自愈 / 周期巡检 | `loop-engineering`           |
 
 **Phase 敏感性调整**：实现/探索策略下 code-style-enforcer、comment-standards 匹配度 -1；重构策略恢复正常权重。**预算联动**：红区强制摘要级；黄区深度降全文级。
 
@@ -619,6 +623,20 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 ### 6.1 LearnCard 产出与分发
 
 产出标准 LearnCard（必须含 category/scope/title/confidence 字段，模板见 `skills/knowledge-management/SKILL.md`），按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）。分发前执行 Curator 检查（查重 / 矛盾检测 / merge-or-append，含被复用 insight 的 helpful/harmful 计数更新，详见 `skills/knowledge-management/SKILL.md`）。硬约束：`scope: stack|universal` 额外写入 `skills.json` 的 `portablePatterns`。无 category 字段的 LearnCard 无效。
+
+### 6.1.1 metrics.json 强制落盘（默认可观测）
+
+LEARN 结束前（或 SUMMARIZE 完成后紧接）**必须**为当前 `runId` 生成/刷新 `.auto/runs/<runId>/metrics.json`：
+
+```bash
+node scripts/generate-metrics.js <runId>
+```
+
+- 文件已存在则允许覆盖为更完整字段（strategy / gates / skills / quests）
+- 生成失败不得静默忽略：在 VerifyReport 或 index.md 标注 `metrics: missing`
+- `/auto:dashboard` 优先读 metrics.json；缺失时降级解析协议文件并标明 incomplete
+
+可选：`hooks/lib/log-metrics.sh` 可在 PostToolUse 追加 tool 调用轨迹；**权威汇总仍以 generate-metrics.js 为准**。
 
 ### 6.2 Agent/Skill 路由反馈（真实化更新）
 

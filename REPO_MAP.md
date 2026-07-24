@@ -1,6 +1,6 @@
 # REPO_MAP.md
 
-> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.52.0
+> 2026-07-24 | Pure Markdown instructions + Node tooling (install/validate/metrics) | v0.52.0
 
 **最新优化**（v0.49-0.52）:
 
@@ -44,7 +44,7 @@
 | `tdd-guide.md`            | 测试驱动开发                                               |
 | `verification.md`         | 输出标准 `VerifyReport` 的对抗性验证                       |
 
-## skills/（23 个）
+## skills/（39 个正式 skill + community 占位）
 
 | Skill                      | 用途                                                    |
 | -------------------------- | ------------------------------------------------------- |

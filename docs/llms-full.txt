@@ -7,7 +7,7 @@ auto-cli is an intelligent Agent orchestration system for Claude Code and Codex.
 **Version**: v0.52.0
 **Repository**: https://github.com/ktyyer/auto-cli
 **License**: MIT
-**Tech Stack**: Pure Markdown instruction system (no JavaScript runtime)
+**Tech Stack**: Pure Markdown instruction system + Node tooling (install / validate / metrics only; not a slash business runtime)
 
 ---
 

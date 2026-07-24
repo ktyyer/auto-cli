@@ -4,7 +4,9 @@
 
 ## Positioning
 
-Pure Markdown instruction repository, running through Claude Code's slash command mechanism. Contains no JS runtime code.
+Pure Markdown instruction repository, running through Claude Code's slash command mechanism.
+
+**Boundary**: slash-command business instructions are pure Markdown; Node under `scripts/` is only for install / validate / cache / metrics tooling — not a product business runtime.
 
 ## Project Structure
 - `commands/auto.md`: `/auto` main command, defining 6 PHASE workflow

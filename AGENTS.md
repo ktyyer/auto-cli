@@ -57,7 +57,7 @@ Auto CLI 在 Codex 中的详细规则以仓库内 `commands/auto.codex.md` 为�
 - `hooks/` — Claude Code 自动化 hook（Codex 不支持，忽略）
 - `.auto/` — 运行产物真源（runs / insights / feedback / cache）
 
-当前版本 `v0.52.0`，38 个 skill，16 个 VERIFY gate。
+当前版本 `v0.52.0`，39 个 skill（另有 `skills/community/` 占位），16 个 VERIFY gate。
 
 ## Avoid
 

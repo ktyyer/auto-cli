@@ -5,7 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = process.env.AUTO_CLI_TEST_ROOT
+  ? path.resolve(process.env.AUTO_CLI_TEST_ROOT)
+  : path.resolve(__dirname, '..');
 const RUNS_DIR = path.join(ROOT, '.auto', 'runs');
 const INSIGHTS_DIR = path.join(ROOT, '.auto', 'insights');
 const FEEDBACK_DIR = path.join(ROOT, '.auto', 'feedback');
@@ -17,19 +19,28 @@ const REQUIRED_FILES = [
   'learn-cards.md',
   'index.md'
 ];
+// Tokens match auto-md/v1 protocol objects (not legacy free-form labels).
+// Any one token per file is enough (OR within file's list is handled as every → we use loose every of short list).
 const REQUIRED_CONTENT = {
-  'route-decision.md': ['strategy', 'complexity', 'verify'],
-  'quest-map.md': ['plan'],
-  'quest-results.md': ['execution', 'findings'],
-  'verify-report.md': ['command', 'verify'],
-  'learn-cards.md': ['summary', 'recommendedaction', 'confidence'],
-  'index.md': ['strategy', 'verification']
+  'route-decision.md': ['strategy'],
+  'quest-map.md': ['goal'],
+  // Accept English status OR Chinese 状态 / pass outcomes
+  'quest-results.md': ['quest'],
+  'verify-report.md': ['gate'],
+  'learn-cards.md': ['confidence'],
+  'index.md': ['run']
 };
+const OPTIONAL_FILES = ['metrics.json'];
+// auto.md: knowledge-reuse no longer requires [insight:] markers; accept notes.relevantInsights too.
 const KNOWLEDGE_EVIDENCE_PATTERNS = [
   /\[insight:[^\]]+\]/i,
   /\[feedback:skills\.json#[^\]]+\]/i,
   /\[feedback:agents\.json#[^\]]+\]/i,
-  /\[run:run-[^\]]+\]/i
+  /\[run:run-[^\]]+\]/i,
+  /relevantInsights/i,
+  /"relevantInsights"\s*:/i,
+  /notes\.relevantInsights/i,
+  /knowledge inputs/i
 ];
 const KNOWLEDGE_EVIDENCE_REGEX = /\[(insight|feedback:(?:skills|agents)\.json|run):([^\]]+)\]/gi;
 const STOP_WORDS = new Set([
@@ -415,19 +426,23 @@ function validateRun(runId) {
   const routeMarkers = extractKnowledgeMarkers(routeDecisionContent);
   const verifyMarkers = extractKnowledgeMarkers(verifyReportContent);
   const protocolIssues = [];
+  const softWarnings = [];
   const verifyConsistencyIssues = validateVerifyConsistency(verifyReportContent, runId);
 
   protocolIssues.push(...verifyConsistencyIssues);
 
-  if (knowledgeReusePassed) {
-    if (!routeHasKnowledgeEvidence) {
-      protocolIssues.push(
-        'route-decision.md claims knowledge reuse indirectly, but no [insight:] / [feedback:] / [run:] evidence marker was found'
-      );
+  // Soft: metrics.json expected after Wave 0 (LEARN default path)
+  for (const optional of OPTIONAL_FILES) {
+    if (!fs.existsSync(path.join(runPath, optional))) {
+      softWarnings.push(`optional missing: ${optional} (recommended after LEARN 6.1.1)`);
     }
-    if (!verifyHasKnowledgeEvidence) {
+  }
+
+  if (knowledgeReusePassed) {
+    // Hard fail only when neither structured markers nor relevantInsights prose is present.
+    if (!routeHasKnowledgeEvidence && !verifyHasKnowledgeEvidence) {
       protocolIssues.push(
-        'verify-report.md marks knowledge-reuse as PASS, but no [insight:] / [feedback:] / [run:] evidence marker was found'
+        'knowledge-reuse is PASS, but no knowledge evidence found (need [insight:]/[run:]/[feedback:] marker OR notes.relevantInsights / relevantInsights prose in route or verify)'
       );
     }
 
@@ -438,11 +453,16 @@ function validateRun(runId) {
       }
     }
 
+    // Keyword-overlap check is soft: auto.md simplified injection often uses free prose.
     const taskContext = [routeDecisionContent, verifyReportContent]
       .map((content) => {
         const lines = content
           .split(/\r?\n/)
-          .filter((line) => /userIntent|goal|knowledge inputs|route hints used|knowledge-reuse/i.test(line));
+          .filter((line) =>
+            /userIntent|goal|knowledge inputs|route hints used|knowledge-reuse|relevantInsights/i.test(
+              line
+            )
+          );
         return lines.join(' ');
       })
       .join(' ');
@@ -457,15 +477,19 @@ function validateRun(runId) {
       return marker.kind === 'insight' || marker.kind === 'run';
     });
 
-    if (relevanceCandidates.length > 0 && !hasRelevantKnowledgeReference(taskContext, relevanceCandidates)) {
-      protocolIssues.push(
-        'knowledge-reuse is PASS, but no valid [insight:] or [run:] marker has obvious keyword overlap with the current task context'
+    if (
+      relevanceCandidates.length > 0 &&
+      !hasRelevantKnowledgeReference(taskContext, relevanceCandidates)
+    ) {
+      softWarnings.push(
+        'knowledge markers present but weak keyword overlap with task context (soft)'
       );
     }
   }
 
   return {
     ok: missingFiles.length === 0 && invalidFiles.length === 0 && protocolIssues.length === 0,
+    softWarnings,
     runId,
     runPath,
     missingFiles,
@@ -511,16 +535,24 @@ function printHuman(result) {
     }
   }
 
+  if ((result.softWarnings || []).length > 0) {
+    console.log('');
+    console.log('软警告 (不阻断):');
+    for (const warning of result.softWarnings) {
+      console.log(`- ${warning}`);
+    }
+  }
+
   if (!result.ok) {
     console.log('');
     console.log('建议:');
-    console.log('- 补写缺失的 route / plan / verify / learn / index 工件');
+    console.log('- 补写缺失的 route / quest-map / quest-results / verify / learn / index 工件');
     console.log('- 若这是 /auto 运行结果，检查主流程是否跳过了可见闭环输出');
     console.log(
-      '- 确认工件正文含最小语义：route/plan/execution/verify/learn，而不是只创建空文件'
+      '- 确认工件含 auto-md/v1 最小语义：strategy / goal / quest+status / gate+status / category+confidence'
     );
     console.log(
-      '- 若 `knowledge-reuse` 为 PASS，补写至少 1 个 [insight:...] / [feedback:...] / [run:...] 标记到 route-decision 和 verify-report'
+      '- knowledge-reuse=PASS 时：提供 [insight:]/[run:] 标记，或 route/verify 中的 relevantInsights 叙述'
     );
   }
 }

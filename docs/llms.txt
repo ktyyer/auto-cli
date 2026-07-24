@@ -4,7 +4,7 @@
 
 ## Overview
 
-auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN）实现协议驱动的 Agent 编排。提供 38 个 Skills + 10 个 Agents + 知识闭环系统。
+auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN）实现协议驱动的 Agent 编排。提供 39 个 Skills（另有 `skills/community/` 占位目录）+ 10 个 Agents + 知识闭环系统。
 
 ## Core Components
 

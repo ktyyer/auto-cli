@@ -1,6 +1,6 @@
 # REPO_MAP.md
 
-> 2026-06-13 | Pure Markdown — 0 JS runtime | v0.52.0
+> 2026-07-24 | Pure Markdown instructions + Node tooling (install/validate/metrics) | v0.52.0
 
 **Latest Optimizations** (v0.49-0.52):
 

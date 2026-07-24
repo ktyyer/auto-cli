@@ -1,18 +1,21 @@
 {
   "name": "auto-cli",
-  "description": "Claude Code /auto 超级命令 - 6 PHASE 工作流（SCAN→PLAN→EXECUTE→VERIFY→SUMMARIZE→LEARN）+ 协议驱动 5 标准对象 + 知识闭环 insights/feedback 反查 + 跨会话续接",
+  "description": "Claude Code / Codex /auto: 6-phase protocol orchestration + LearnCard knowledge loop. Pure Markdown instructions; Node only for install/validate/metrics.",
   "version": "0.52.0",
   "author": {
     "name": "Auto CLI Team"
   },
   "keywords": [
     "claude-code",
+    "codex",
     "ai",
     "agents",
+    "agent-skills",
     "workflow",
     "automation",
     "slash-command",
     "skills",
-    "orchestration"
+    "orchestration",
+    "markdown"
   ]
 }

@@ -68,6 +68,32 @@ REPO_MAP.md 写 skills "11 个"、hooks "17 个"；实际 12 / 18（skill-evalua
 **推荐动作**: 发布前 checklist 强制 REPO_MAP + README 计数一致；或写 `scripts/sync-counts.js` 自动校验
 **反模式**: 把 README 当唯一真源，REPO_MAP 自生自灭
 
+### 脚手架提交 ≠ 能力完成（metrics / cases / 索引）
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: scaffold, honesty, metrics, case-studies
+**scope**: project
+
+P0.1–P0.3 / P1.1 已有文件（llms.txt、generate-metrics.js、case-studies 模板、build-context-index.js），但默认真路径未闭合：`log-metrics.sh` 未进 hooks.json、案例数 0、CONTRIBUTING 写了不存在的 `lint`/`test:coverage`、索引把本仓标成 nodejs/esm 且 root 空。
+
+**误区**: git commit 了脚本/模板 = 世界级能力已交付
+
+**推荐动作**:
+1. VERIFY 验收「声称已完成」项时必须查默认接线 + 样例输出
+2. Wave 0 优先修信任债（见 run-20260724-110043/action-plan.md）
+
+**来源**: run-20260724-110043
+
+### 「无 JS 运行时」被读成「仓库零 JS」
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: positioning, docs, scripts
+**scope**: project
+
+CLAUDE.md「不包含 JS 运行时代码」与 `scripts/*.js`（install/validate/metrics）并存。严格读者会认为叙事撒谎。真含义是：**slash 业务逻辑纯 MD；Node 仅工具链**。
+
+**推荐动作**: 对外固定边界句；避免「零 JS」绝对化。
+
+**来源**: run-20260724-111116
+
 ---
 
 ### jq 依赖导致 CHECKER 失败的降级方案
@@ -488,3 +514,12 @@ wshobson/agents (34.8K star) / VoltAgent (1K+ skills) 规模庞大但混入大�
 
 **避坑动作**: 评估高 star agent/skill 库时，第一步看是否需要 MCP server 或 JS 运行时，是即放弃；第二步看是否破坏单一入口设计，是即放弃。
 
+
+### validate-run 内容 token 与协议漂移
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: validate-run, protocol
+**scope**: project
+
+REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMap/QuestResults 会被 PARTIAL。应对齐 strategy/goal/quest/gate/confidence，knowledge-reuse 接受 relevantInsights。
+
+**来源**: run-20260724-142922

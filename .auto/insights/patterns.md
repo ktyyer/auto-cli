@@ -17,6 +17,19 @@
 
 ---
 
+### Wave 0 信任默认四件套（指令包）
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: wave0, honesty, metrics, index, dogfood
+**scope**: project
+
+纯 Markdown 指令包的优先交付顺序：① 文档/计数/CONTRIBUTING 诚实 ② LEARN+Stop 强制 metrics.json ③ 上下文索引识别 instruction monorepo 分层 ④ dogfood 真实案例 0→1。证据：run-20260724-141527。
+
+**推荐动作**: 新审计后先闭信任默认，再开发现层（awesome）与 skill 健康。
+
+**来源**: run-20260724-141527
+
+---
+
 ### 诚实披露功能限制胜于隐藏
 
 **日期**: 2026-06-29 | **置信度**: high | **标签**: documentation, transparency, feature-limitation
@@ -1030,3 +1043,21 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 全仓审计发现 8 处版本/计数声明滞后（README 双语徽章差 2-5 个 minor、plugin.json 差 9 个 minor、"33 Skills" vs 实际 36、manifest 卸载清单缺 9 个 skill）。根因：发布流程只更新 package.json + CHANGELOG，散落在徽章 / 插件清单 / 桥接文档 / 英文版中的同一数字无人巡检。双端文档（auto.md vs auto.codex.md）同理：新能力只加 Claude 端，Codex 端欠账累积到 9 项。关键词：版本徽章 / 计数漂移 / 双端对齐 / 发布检查清单。
 
 **推荐动作**: 版本发布前 grep 全仓旧版本号字符串（如 `0\.4[0-9]\.0`）+ 实算 skill/gate/agent 计数对照所有声明处；给 auto.md 加能力时同步检查 auto.codex.md 是否需要等价条目或降级说明。
+
+### 零激活 skill 先分 tier 再谈删除
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: skill-debt, tier
+**scope**: project
+
+指令包 skill 的 usageCount=0 常为 situational/domain-reserve。Wave1 用 tier=core|situational|domain-reserve 写入 skills.json，SCAN 按 tier 跳过 frontmatter，禁止因零激活直接删 skill。
+
+**来源**: run-20260724-142922
+
+### Community skill 安装前缀 community-
+
+**日期**: 2026-07-24 | **置信度**: high | **标签**: community, install
+**scope**: project
+
+`skills/community/<name>` 安装为 `community-<name>`，并复制 references。样例：hello-auto。
+
+**来源**: run-20260724-143824

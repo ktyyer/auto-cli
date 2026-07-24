@@ -37,6 +37,8 @@ AI (runs 6 phases automatically):
 | A **protocol-driven** AI workflow that makes AI behavior repeatable & auditable | Not a model replacement — just makes existing models work more reliably |
 | A **knowledge loop** that learns your project (LearnCard → insights)            | Not a black box — all artifacts are human-readable `.md` files          |
 
+> **Boundary**: business instructions are pure Markdown; Node under `scripts/` is only for install / validate / cache / metrics tooling, not a slash business runtime.
+
 ---
 
 ## 🚀 Quick Start (3 minutes)

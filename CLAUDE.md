@@ -4,7 +4,9 @@
 
 ## 定位
 
-纯 Markdown 指令仓库，通过 Claude Code 的 slash command 机制运行。不包含 JS 运行时代码。
+纯 Markdown 指令仓库，通过 Claude Code 的 slash command 机制运行。
+
+**边界**：slash 业务指令为纯 Markdown；`scripts/` 中的 Node 仅用于安装 / 校验 / 缓存 / 观测工具链，不是产品业务 runtime。
 
 ## 项目结构
 - `commands/auto.md`：`/auto` 主命令，定义 6 PHASE 工作流

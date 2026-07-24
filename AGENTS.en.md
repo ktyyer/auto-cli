@@ -57,7 +57,7 @@ This repository is a pure Markdown instruction repository, running through Claud
 - `hooks/` — Claude Code automation hooks (Codex doesn't support, ignore)
 - `.auto/` — Run artifact source (runs / insights / feedback / cache)
 
-Current version `v0.52.0`, 38 skills, 16 VERIFY gates.
+Current version `v0.52.0`, 39 skills (plus `skills/community/` placeholder), 16 VERIFY gates.
 
 ## Avoid
 

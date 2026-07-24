@@ -1,95 +1,73 @@
 # 贡献指南
 
-感谢你对 Auto CLI 的关注！以下是参与贡献的指南。
+感谢你对 Auto CLI 的关注。
+
+## 项目定位
+
+本仓库是 **纯 Markdown 指令包**（`commands/` / `agents/` / `skills/` / `rules/` / `hooks/` 声明），通过 Claude Code / Codex 的 slash command 机制运行。
+
+`scripts/` 中的 Node 仅用于 **安装、校验、缓存、观测** 工具链，不是 slash 业务 runtime。
 
 ## 开发环境
 
 ```bash
-# 克隆仓库
 git clone https://github.com/ktyyer/auto-cli.git
 cd auto-cli
-
-# 安装依赖
 npm install
 
-# 运行测试
+# 与 package.json 一致的检查（format + 引用/包/run 校验）
 npm test
+# 等价于
+npm run check
 
-# 运行测试（覆盖率）
-npm run test:coverage
-
-# 代码检查
-npm run lint
-
-# 格式化代码
+# 仅格式检查 / 格式化
+npm run format:check
 npm run format
+
+# 安装到本机 Claude/Codex
+npm run sync
 ```
+
+> 仓库 **没有** `npm run lint` 或 `npm run test:coverage`。请勿在文档或 CI 中引用不存在的脚本。
 
 ## 开发流程
 
 1. Fork 本仓库
-2. 创建特性分支：`git checkout -b feat/your-feature`
-3. 编写代码和测试
-4. 确保通过所有检查：
-   ```bash
-   npm run lint
-   npm run format:check
-   npm test
-   ```
-5. 提交变更（遵循 Conventional Commits 格式）
-6. 推送到你的 Fork 并创建 Pull Request
+2. 创建分支：`git checkout -b feat/your-feature`
+3. 按最小 diff 修改 Markdown / 工具脚本
+4. 运行 `npm test` 与（如改了 md）`npm run format:check`
+5. 使用 Conventional Commits 提交
+6. 推送并创建 Pull Request
 
 ## 提交信息格式
 
 ```
 <type>: <description>
-
-<optional body>
 ```
 
-**类型**：
-- `feat` -- 新功能
-- `fix` -- Bug 修复
-- `refactor` -- 代码重构（不改变行为）
-- `test` -- 添加或修改测试
-- `docs` -- 文档更新
-- `chore` -- 构建/工具/依赖变更
-- `perf` -- 性能优化
+类型：`feat` · `fix` · `refactor` · `test` · `docs` · `chore` · `perf` · `ci`
 
-## 项目结构
+## 项目结构（现行）
 
 ```
 auto-cli/
-  bin/cli.js          # CLI 入口
-  src/                # 核心源码
-    config.js         # 配置常量
-    index.js          # 主入口
-    installer.js      # 安装/卸载逻辑
-    logger.js         # 日志工具
-    loop-state-machine.js  # 循环状态机
-    mcp-installer.js  # MCP 自动配置
-    prompts.js        # CLI 交互
-    utils.js          # 工具函数
-  tests/              # 测试文件
-  agents/             # Agent 定义（.md）
-  commands/           # 斜杠命令定义（.md）
-  plugins/            # 插件
-  skills/             # 技能
-  rules/              # 规则
+  commands/     # root：/auto 与子命令（Markdown）
+  skills/       # dev：39 个正式 skill + community 占位
+  agents/       # infra：10 个业务 Agent + 共享原则
+  rules/        # guard：编码规范
+  hooks/        # guard：hooks.json + lib 脚本
+  scripts/      # Node 工具链（install / validate / metrics / index）
+  docs/         # llms.txt、案例等
+  tests/        # scripts 的单元测试
 ```
 
-## 代码规范
+## 文档一致性
 
-- **ESM 模块**：项目使用 `"type": "module"`，所有 import/export 使用 ES Modules 语法
-- **ESLint**：使用 ESLint 9 flat config（`eslint.config.js`）
-- **Prettier**：单引号、分号、尾逗号 none（`.prettierrc`）
-- **测试**：使用 vitest，测试文件放在 `tests/` 目录
-- **pre-commit**：husky + lint-staged 自动运行 ESLint 和 Prettier
+- 文档必须与真实行为一致；禁止承诺未实现能力
+- skills 计数以 `skills/*/` 正式目录为准（当前 **39**；`community/` 为占位）
+- 修改子命令后检查 Agent/Skill 引用是否存在
 
-## 报告 Bug
+## 报告 Bug / 功能建议
 
-请使用 [Bug Report](https://github.com/ktyyer/auto-cli/issues/new?template=bug_report.yml) 模板。
-
-## 提出功能建议
-
-请使用 [Feature Request](https://github.com/ktyyer/auto-cli/issues/new?template=feature_request.yml) 模板。
+- [Bug Report](https://github.com/ktyyer/auto-cli/issues/new?template=bug_report.yml)
+- [Feature Request](https://github.com/ktyyer/auto-cli/issues/new?template=feature_request.yml)

@@ -233,7 +233,7 @@ function copySkills(src, tools) {
     }
   }
 
-  // 处理社区 Skill（单独校验）
+  // 处理社区 Skill（单独校验；安装名加 community- 前缀，避免覆盖核心 skill）
   const communityDir = path.join(src, 'community');
   if (fs.existsSync(communityDir)) {
     const communitySkills = fs.readdirSync(communityDir, { withFileTypes: true });
@@ -246,18 +246,29 @@ function copySkills(src, tools) {
         continue;
       }
 
-      const skillName = entry.name;
+      const skillName = `community-${entry.name}`;
+      const refSrc = path.join(communityDir, entry.name, 'references');
 
       for (const tool of tools) {
         if (tool.skillFileName) {
-          // Codex: skills/<name>/SKILL.md
+          // Codex: skills/community-<name>/SKILL.md
           const skillDir = path.join(tool.skillsDir, skillName);
           ensureDir(skillDir);
           fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
+          if (fs.existsSync(refSrc)) {
+            const refDir = path.join(skillDir, 'references');
+            ensureDir(refDir);
+            totalCopied += copyDir(refSrc, refDir);
+          }
         } else {
-          // Claude: skills/<name>.md
+          // Claude: skills/community-<name>.md
           ensureDir(tool.skillsDir);
           fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
+          if (fs.existsSync(refSrc)) {
+            const destRefDir = path.join(tool.skillsDir, `${skillName}.references`);
+            ensureDir(destRefDir);
+            totalCopied += copyDir(refSrc, destRefDir);
+          }
         }
         totalCopied++;
       }

@@ -780,6 +780,7 @@ SCAN 完成后立即建立预算感知：
 - `verify-report.md`
 - `learn-cards.md`
 - `index.md`
+- `metrics.json`（LEARN 结束前强制：`node scripts/generate-metrics.js <runId>`；缺失则在 index 标注 `metrics: missing`）
 
 轻量任务可不额外生成复杂卡片，但不能完全缺失这些基础工件。
 

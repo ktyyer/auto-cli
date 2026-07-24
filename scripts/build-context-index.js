@@ -80,14 +80,34 @@ function scanDirectory(dir, extensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '
   return files;
 }
 
+function isMarkdownInstructionPack() {
+  // auto-cli style: slash commands + skills + agents, no application src/
+  return (
+    fs.existsSync('commands') &&
+    fs.existsSync('skills') &&
+    fs.existsSync('agents') &&
+    !fs.existsSync('src') &&
+    !fs.existsSync('app')
+  );
+}
+
 function detectTechStack() {
   const techStack = [];
 
+  if (isMarkdownInstructionPack()) {
+    techStack.push('markdown-instructions');
+  }
+
   if (fs.existsSync('package.json')) {
-    techStack.push('nodejs'); // 直接标记 Node.js 项目
+    // Tooling-only package.json (install/validate) vs application runtime
+    if (!isMarkdownInstructionPack()) {
+      techStack.push('nodejs');
+    } else {
+      techStack.push('nodejs-tooling');
+    }
     try {
       const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-      if (pkg.type === 'module') techStack.push('esm');
+      if (pkg.type === 'module' && !isMarkdownInstructionPack()) techStack.push('esm');
       if (pkg.dependencies) {
         if (pkg.dependencies.react) techStack.push('react');
         if (pkg.dependencies.vue) techStack.push('vue');
@@ -119,10 +139,26 @@ function buildArchitecture() {
     root: [],
     dev: [],
     infra: [],
+    guard: [],
     config: []
   };
 
-  // Detect common directories
+  // auto-cli / karpathy-style root-dev split for instruction packs
+  if (isMarkdownInstructionPack()) {
+    if (fs.existsSync('commands')) architecture.root.push('commands/');
+    if (fs.existsSync('skills')) architecture.dev.push('skills/');
+    if (fs.existsSync('agents')) architecture.infra.push('agents/');
+    if (fs.existsSync('rules')) architecture.guard.push('rules/');
+    if (fs.existsSync('hooks')) architecture.guard.push('hooks/');
+    if (fs.existsSync('scripts')) architecture.dev.push('scripts/');
+    if (fs.existsSync('tests')) architecture.dev.push('tests/');
+    if (fs.existsSync('.github')) architecture.infra.push('.github/');
+    if (fs.existsSync('docs')) architecture.config.push('docs/');
+    if (fs.existsSync('package.json')) architecture.config.push('package.json');
+    return architecture;
+  }
+
+  // Detect common application directories
   if (fs.existsSync('src')) architecture.root.push('src/');
   if (fs.existsSync('lib')) architecture.root.push('lib/');
   if (fs.existsSync('app')) architecture.root.push('app/');
