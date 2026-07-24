@@ -134,6 +134,7 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 5. **Adaptive validation gates** — multiple quality gates by strategy (stricter on hard tasks); missing evidence reflows. Not “lint passed = done”.
 6. **Context Engineering · manage AI attention budget** — green/yellow/red compression; long runs drift less.
 7. **Loop engine · `/auto 5m <goal>`** — DOER+CHECKER on an interval; **needs host scheduler support**, otherwise falls back to one-shot (see main command docs).
+
 > The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
 
 ---
