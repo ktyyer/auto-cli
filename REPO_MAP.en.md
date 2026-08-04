@@ -44,7 +44,7 @@
 | `tdd-guide.md`            | Test-driven development                                           |
 | `verification.md`         | Adversarial verification that outputs standard `VerifyReport`     |
 
-## skills/ (38 total)
+## skills/ (39 total)
 
 | Skill                      | Purpose                                                    |
 | -------------------------- | ---------------------------------------------------------- |
@@ -86,10 +86,11 @@
 | `test-plan-writer`         | Test plan writing (6-dimension matrix)                     |
 | `using-git-worktrees`      | Parallel Quest execution via git worktrees                 |
 | `workflow-patterns`        | Workflow patterns                                          |
+| `world-class-code-standards` | Quantified complexity / coverage / tech-debt standards   |
 
 ## hooks/
 
-- `hooks.json` — 19 Hook configurations (PreToolUse 6 / PostToolUse 7 / PreCompact 1 / PostCompact 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 1)
+- `hooks.json` — 23 Hook configurations (PreToolUse 7 / PostToolUse 8 / SessionStart 1 / PreCompact 1 / PostCompact 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 2)
 - `lib/tdd-guard.js` — TDD guard logic
 - `lib/tdd-guard-cli.js` — TDD guard CLI entry
 - `lib/codemaps-hook.sh` — Codemaps hook script

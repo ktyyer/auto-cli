@@ -44,6 +44,7 @@ tags: [plan-ensemble, planning, perspectives, parallel, synthesis, plan-phase, d
 - [ ] 触发门槛核验：重构 / 实现+high / brainstorming 升级 / 用户显式要求，四者满足其一
 - [ ] 视角先选：从视角菜单选 2-3 个**真正异质**的视角（同质视角无收益）
 - [ ] 隔离并行出案：每视角一个只读 subagent，最小上下文（需求原话 + 技术栈 + 视角章程），零共享，各产出 ≤ 30 行草案
+- [ ] 合成者先独立立论：读草案**之前**先写自己的 3-5 条计划要点（顺序不可颠倒）
 - [ ] 分歧点清单先行：合成前先列出草案间分歧点（= 硬问题），写入 QuestMap.pitfalls
 - [ ] 评分矩阵合成：目标契合 / 风险 / 成本 / 可演进四维选主案，嫁接 runner-up 最佳元素
 - [ ] 产出唯一 QuestMap 走既有 2.6 流程，ensemble 过程落盘 plan-ensemble.md
@@ -52,12 +53,14 @@ tags: [plan-ensemble, planning, perspectives, parallel, synthesis, plan-phase, d
 
 - 视角数严格 2-3 个，禁止 ≥ 4（成本失控且评审疲劳）
 - 发散期零共享上下文：subagent 之间不可见彼此草案（防锚定）
+- **合成者必须先独立立论再读草案**（Commit-Before-Compare）
 - 合成不是多数投票：必须给出评分矩阵 + 嫁接说明
+- 推翻多数共识必须附独立证据（执行结果 / 代码事实 / 已知 trap），不凭辩论
 - 门槛未命中时禁止触发；红区禁止触发
 
 **输出模板** (output):
 
-- 视角清单（含选择理由）→ 各视角草案（≤30 行/个）→ 分歧点清单 → 评分矩阵 → 合成决策（主案 + 嫁接项）→ 唯一 QuestMap
+- 视角清单（含选择理由）→ 合成者独立稿 → 各视角草案（≤30 行/个）→ 分歧点清单 → 评分矩阵 → 合成决策（主案 + 嫁接项 + 覆盖证据）→ 唯一 QuestMap
 
 **反模式** (anti-patterns):
 
@@ -119,10 +122,12 @@ tags: [plan-ensemble, planning, perspectives, parallel, synthesis, plan-phase, d
 
 ### 第 4 步：评审合成（非多数投票）
 
+0. **合成者先独立立论**：在读任何草案之前，合成者先就该目标写下自己的 3-5 条计划要点与最担心的失败点。**顺序不可颠倒** —— 先读草案再评，评的是"哪个看起来更顺眼"，不是"哪个更对"；先独立作答再看，可把假阳性率从 0.719 压到 0.012（arXiv:2607.05904）。该独立稿参与评分矩阵，但不享有优先权。
 1. **分歧点清单先行**：对比草案，列出结构性分歧（拆解顺序 / 回滚策略 / 抽象层次等）。**分歧点 = 任务真正的硬问题**，全部写入 `QuestMap.pitfalls`
 2. **评分矩阵**（每草案 0-10 × 4 维）：目标契合（对 userIntent 原话的覆盖）/ 风险（失败半径与可恢复性）/ 成本（token + 改动量）/ 可演进（后续需求兼容）
 3. **选主案 + 嫁接**：最高分为主骨架；逐条检查 runner-up 草案，其单项更优的元素（如风险派的回滚步骤）嫁接进主案，标注来源视角
-4. **合成唯一 QuestMap**：进入既有 2.6 流程（quest-designer 或 Micro QuestMap）；ensemble 全过程落盘 `.auto/runs/<runId>/plan-ensemble.md`
+4. **覆盖需证据，不靠讨论**：推翻多数草案共识的决定，必须有独立证据（执行结果 / 现有代码事实 / 已知 trap），不能只凭"辩论出来的分歧"。无证据覆盖的净收益为负（改坏率 21%，arXiv:2605.26172）。
+5. **合成唯一 QuestMap**：进入既有 2.6 流程（quest-designer 或 Micro QuestMap）；ensemble 全过程落盘 `.auto/runs/<runId>/plan-ensemble.md`
 
 ---
 

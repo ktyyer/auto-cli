@@ -204,6 +204,22 @@ function copyCommands(src, tools) {
   return totalCopied;
 }
 
+function removeLegacyFlatSkill(tool, skillName) {
+  // v0.52 前 Claude 端写扁平 <name>.md，Claude Code 不识别该形态。
+  // 升级到目录形态后清掉同名旧文件，避免留下不生效的孤儿副本。
+  const legacy = path.join(tool.skillsDir, `${skillName}.md`);
+  if (fs.existsSync(legacy) && fs.statSync(legacy).isFile()) {
+    fs.rmSync(legacy);
+  }
+}
+
+function removeLegacyFlatReferences(tool, skillName) {
+  const legacyRefs = path.join(tool.skillsDir, `${skillName}.references`);
+  if (fs.existsSync(legacyRefs) && fs.statSync(legacyRefs).isDirectory()) {
+    fs.rmSync(legacyRefs, { recursive: true, force: true });
+  }
+}
+
 function copySkills(src, tools) {
   // 读取 skills/<name>/SKILL.md 源结构（Anthropic 开放标准对齐）
   const entries = fs.readdirSync(src, { withFileTypes: true });
@@ -219,16 +235,12 @@ function copySkills(src, tools) {
     const skillName = entry.name;
 
     for (const tool of tools) {
-      if (tool.skillFileName) {
-        // Codex: skills/<name>/SKILL.md（与源结构一致）
-        const skillDir = path.join(tool.skillsDir, skillName);
-        ensureDir(skillDir);
-        fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
-      } else {
-        // Claude: skills/<name>.md (flat，兼容旧用户路径，无需迁移)
-        ensureDir(tool.skillsDir);
-        fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
-      }
+      // Claude / Codex 统一 skills/<name>/SKILL.md（Anthropic 开放标准）
+      // Claude Code 只识别目录形态，扁平 <name>.md 不会被加载
+      const skillDir = path.join(tool.skillsDir, skillName);
+      ensureDir(skillDir);
+      fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
+      removeLegacyFlatSkill(tool, skillName);
       totalCopied++;
     }
   }
@@ -250,26 +262,16 @@ function copySkills(src, tools) {
       const refSrc = path.join(communityDir, entry.name, 'references');
 
       for (const tool of tools) {
-        if (tool.skillFileName) {
-          // Codex: skills/community-<name>/SKILL.md
-          const skillDir = path.join(tool.skillsDir, skillName);
-          ensureDir(skillDir);
-          fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
-          if (fs.existsSync(refSrc)) {
-            const refDir = path.join(skillDir, 'references');
-            ensureDir(refDir);
-            totalCopied += copyDir(refSrc, refDir);
-          }
-        } else {
-          // Claude: skills/community-<name>.md
-          ensureDir(tool.skillsDir);
-          fs.copyFileSync(skillFile, path.join(tool.skillsDir, `${skillName}.md`));
-          if (fs.existsSync(refSrc)) {
-            const destRefDir = path.join(tool.skillsDir, `${skillName}.references`);
-            ensureDir(destRefDir);
-            totalCopied += copyDir(refSrc, destRefDir);
-          }
+        // 社区 Skill 同样统一目录形态
+        const skillDir = path.join(tool.skillsDir, skillName);
+        ensureDir(skillDir);
+        fs.copyFileSync(skillFile, path.join(skillDir, tool.skillFileName));
+        if (fs.existsSync(refSrc)) {
+          const refDir = path.join(skillDir, 'references');
+          ensureDir(refDir);
+          totalCopied += copyDir(refSrc, refDir);
         }
+        removeLegacyFlatSkill(tool, skillName);
         totalCopied++;
       }
     }
@@ -292,17 +294,11 @@ function copyReferences(src, tools) {
     const skillName = entry.name;
 
     for (const tool of tools) {
-      if (tool.skillFileName) {
-        // Codex: skills/<name>/references/（与源结构一致）
-        const refDir = path.join(tool.skillsDir, skillName, 'references');
-        ensureDir(refDir);
-        totalCopied += copyDir(refSrc, refDir);
-      } else {
-        // Claude: skills/<name>.references/（flat 兼容）
-        const destRefDir = path.join(tool.skillsDir, `${skillName}.references`);
-        ensureDir(destRefDir);
-        totalCopied += copyDir(refSrc, destRefDir);
-      }
+      // 统一 skills/<name>/references/（与源结构一致）
+      const refDir = path.join(tool.skillsDir, skillName, 'references');
+      ensureDir(refDir);
+      totalCopied += copyDir(refSrc, refDir);
+      removeLegacyFlatReferences(tool, skillName);
     }
   }
 
@@ -383,17 +379,11 @@ function mergeHooksIntoSettings(hooksJsonSrc, settingsPath) {
 
   for (const [event, srcEntries] of Object.entries(srcHooks)) {
     if (!settings.hooks[event]) settings.hooks[event] = [];
-    const existing = settings.hooks[event];
-
+    // Remove all prior entries with auto-cli tag (handles renames/splits/merges)
+    settings.hooks[event] = settings.hooks[event].filter((e) => e._source !== AUTO_CLI_SOURCE_TAG);
+    // Append current auto-cli hooks
     for (const srcEntry of srcEntries) {
-      const tagged = { ...srcEntry, _source: AUTO_CLI_SOURCE_TAG };
-      // Remove any previous entry with same description (tagged or legacy untagged)
-      const matchIdx = existing.findIndex((e) => e.description === srcEntry.description);
-      if (matchIdx >= 0) {
-        existing[matchIdx] = tagged;
-      } else {
-        existing.push(tagged);
-      }
+      settings.hooks[event].push({ ...srcEntry, _source: AUTO_CLI_SOURCE_TAG });
     }
   }
 

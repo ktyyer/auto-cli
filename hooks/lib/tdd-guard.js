@@ -66,6 +66,13 @@ export class TDDGuard {
   isExempt(filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
 
+    // 测试文件自身豁免：否则守卫会为 x.test.js 索要 x.test.test.js，
+    // 导致任何测试文件都无法创建或修改。
+    const base = normalizedPath.split('/').pop() || '';
+    if (/\.(test|spec|cy)\.[cm]?[jt]sx?$/.test(base)) {
+      return true;
+    }
+
     // Check if any excluded directory is in the path
     for (const excludedDir of this.options.excludedDirs) {
       if (normalizedPath.includes(`/${excludedDir}/`) ||
@@ -121,6 +128,20 @@ export class TDDGuard {
       } else {
         // Generic pattern
         testPaths.push(path.join(dir, `${base}${pattern}`));
+      }
+    }
+
+    // 镜像测试根目录：scripts/x.js → tests/scripts/x.test.js
+    // JS 生态常把测试集中放在独立 tests/ 树；缺这条会把这类项目的所有源码
+    // 误判为「无测试」，让 TDD Guard 对每次编辑都发出拦截。
+    const mirrorRoots = ['tests', 'test', 'spec'];
+    const suffixes = patterns.filter((p) => p.startsWith('.'));
+    const normalizedDir = dir.replace(/\\/g, '/');
+    for (const root of mirrorRoots) {
+      // 已在测试树内则跳过，避免拼出 tests/tests/... 之类的无效路径
+      if (normalizedDir === root || normalizedDir.startsWith(`${root}/`)) continue;
+      for (const suffix of suffixes) {
+        testPaths.push(path.join(root, normalizedDir, `${base}${suffix}`));
       }
     }
 

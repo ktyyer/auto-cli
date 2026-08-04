@@ -398,7 +398,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 
 > `agents/_shared-principles.md` defines shared principles, not invoked as a standalone agent.
 
-### 38 Skills (cross-platform Anthropic Agent Skills standard)
+### 39 Skills (cross-platform Anthropic Agent Skills standard)
 
 <details>
 <summary><b>Expand full skill list</b></summary>
@@ -439,6 +439,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `quality-gates`         | VERIFY 16-gate definitions                                            |
 | `knowledge-management`  | LEARN knowledge distillation + distribution + archive workflow        |
 | `protocol-validator`    | Protocol object schema / handoff completeness validation              |
+| `world-class-code-standards` | Quantified standards: cyclomatic complexity / coverage / tech debt |
 | `feedback-loop`         | I/O system self-verification loop (bot/daemon/CLI tools)              |
 | `agentless-repair`      | Two-phase bug repair (localization + multi-candidate filtering)       |
 | `predict-verify`        | Predict before impactful commands; wrong prediction = stop & rethink |

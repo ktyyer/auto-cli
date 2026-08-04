@@ -103,9 +103,11 @@ function generateDashboard(limit = 10) {
     return;
   }
 
-  const runs = fs.readdirSync(runsDir)
-    .filter(f => f.startsWith('run-') && fs.statSync(path.join(runsDir, f)).isDirectory())
-    .filter(f => !f.includes('archive'))
+  // 不限定 run- 前缀：历史 run 目录名多为 <YYYYMMDD>-<desc>，写死前缀会让 dashboard 永远无数据
+  const runs = fs
+    .readdirSync(runsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== 'archive')
+    .map((e) => e.name)
     .sort()
     .reverse()
     .slice(0, limit);

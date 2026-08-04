@@ -111,7 +111,8 @@ node scripts/generate-metrics.js
 node scripts/generate-metrics.js run-20260629-135957
 
 # 批量生成所有 run 的 metrics
-for run in $(ls -d .auto/runs/run-* | xargs -n1 basename); do
+# 不用 run-* glob：历史 run 目录名多为 <YYYYMMDD>-<desc>，写死前缀会一个都匹配不到
+for run in $(ls -d .auto/runs/*/ | xargs -n1 basename | grep -v '^archive$'); do
   node scripts/generate-metrics.js "$run"
 done
 ```

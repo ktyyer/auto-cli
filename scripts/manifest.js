@@ -47,8 +47,18 @@ const CODEX_SKILL_DIRS = [
   'systematic-debugging',
   'test-plan-writer',
   'using-git-worktrees',
-  'workflow-patterns'
+  'workflow-patterns',
+  'world-class-code-standards'
 ];
+
+// 社区 skill 安装名带 community- 前缀（见 install.js），卸载需按安装名清理
+const COMMUNITY_SKILL_DIRS = ['community-hello-auto'];
+
+// 所有 skill 的安装目录名（Claude 与 Codex 均为 <name>/SKILL.md 目录形态）
+const ALL_SKILL_DIRS = [...CODEX_SKILL_DIRS, ...COMMUNITY_SKILL_DIRS];
+
+// v0.40 之前安装为扁平 <name>.md + <name>.references/，卸载时一并清理历史残留
+
 const CODEX_ALLOWED_COMMAND_FILES = ['auto.md'];
 const CODEX_ALLOWED_COMMAND_SUBDIR_FILES = {
   auto: ['dashboard.md', 'doctor.md', 'learn.md', 'route.md', 'status.md']
@@ -68,8 +78,8 @@ export function detectTools() {
       skillsDir: path.join(CLAUDE_DIR, 'skills'),
       rulesDir: path.join(CLAUDE_DIR, 'rules'),
       hooksDir: path.join(CLAUDE_DIR, 'hooks'),
-      // skills: flat .md per skill
-      skillFileName: null,
+      // skills: dir per skill, SKILL.md inside（Claude Code 只识别目录形态）
+      skillFileName: 'SKILL.md',
       // agents / rules / hooks 是否支持
       hasAgents: true,
       hasRules: true,
@@ -137,47 +147,10 @@ export const MANAGED_FILES = [
   },
   {
     dir: path.join(CLAUDE_DIR, 'skills'),
-    files: [
-      'agentless-repair.md',
-      'api-design.md',
-      'brainstorming.md',
-      'code-analyzer.md',
-      'code-style-enforcer.md',
-      'comment-standards.md',
-      'constitution.md',
-      'context-engineering.md',
-      'dependency-analyzer.md',
-      'error-patterns.md',
-      'feedback-loop.md',
-      'git-workflow.md',
-      'incremental-review.md',
-      'init-project.md',
-      'java-patterns.md',
-      'knowledge-management.md',
-      'logging-patterns.md',
-      'loop-engineering.md',
-      'performance-patterns.md',
-      'plan-ensemble.md',
-      'predict-verify.md',
-      'prd-writer.md',
-      'production-governance.md',
-      'production-standards.md',
-      'protocol-validator.md',
-      'quality-gates.md',
-      'refactoring-patterns.md',
-      'requirement-clarifier.md',
-      'research-analyst.md',
-      'robustness-patterns.md',
-      'self-critique.md',
-      'skill-creator.md',
-      'skill-evaluator.md',
-      'spec-driven.md',
-      'systematic-debugging.md',
-      'test-plan-writer.md',
-      'using-git-worktrees.md',
-      'workflow-patterns.md'
-    ],
+    // 当前形态：skills/<name>/SKILL.md 目录；同时清理 v0.40 之前的扁平残留
+    files: ALL_SKILL_DIRS.map((name) => `${name}.md`),
     subdirs: [
+      ...ALL_SKILL_DIRS,
       'api-design.references',
       'code-analyzer.references',
       'comment-standards.references',

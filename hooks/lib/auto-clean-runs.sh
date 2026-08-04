@@ -47,7 +47,9 @@ archived_count=0
 skipped_count=0
 
 # 遍历所有 run 目录
-for run_dir in "$RUNS_DIR"/run-*; do
+# 不限定 run-* 前缀：历史 run 目录名多为 <YYYYMMDD>-<desc> / <YYYY-MM-DD>-<desc>，
+# 写死前缀会让这些 run 永远无法归档
+for run_dir in "$RUNS_DIR"/*; do
   # 跳过不存在的匹配（glob 未命中时）
   [ -d "$run_dir" ] || continue
 
@@ -56,20 +58,35 @@ for run_dir in "$RUNS_DIR"/run-*; do
 
   run_name=$(basename "$run_dir")
 
-  # 提取时间戳（支持两种格式）
-  # 格式 1: run-<unix_timestamp> (e.g., run-1776525672)
-  # 格式 2: run-<YYYYMMDD>-<description> (e.g., run-20260521-local-verify)
-  if [[ "$run_name" =~ ^run-([0-9]{10})$ ]]; then
+  # 提取时间戳（支持 run- 前缀与无前缀两类命名）
+  # 格式 1: [run-]<unix_timestamp>            (e.g., run-1776525672)
+  # 格式 2: [run-]<YYYYMMDD>-<description>    (e.g., run-20260521-local-verify / 20260517-second-audit)
+  # 格式 3: [run-]<YYYY-MM-DD>-<description>  (e.g., 2026-05-17-fix-codex-sync)
+  date_str=""
+  if [[ "$run_name" =~ ^(run-)?([0-9]{10})$ ]]; then
     # 格式 1: 直接使用 Unix 时间戳
-    run_ts="${BASH_REMATCH[1]}"
-  elif [[ "$run_name" =~ ^run-([0-9]{8})- ]]; then
+    run_ts="${BASH_REMATCH[2]}"
+  elif [[ "$run_name" =~ ^(run-)?([0-9]{4})-([0-9]{2})-([0-9]{2})(-|$) ]]; then
+    # 格式 3: 带连字符的日期，先于格式 2 判定（否则 2026-05-17 会被 8 位规则误读）
+    year="${BASH_REMATCH[2]}"
+    month="${BASH_REMATCH[3]}"
+    day="${BASH_REMATCH[4]}"
+    date_str="present"
+  elif [[ "$run_name" =~ ^(run-)?([0-9]{8})(-|$) ]]; then
     # 格式 2: 解析 YYYYMMDD，跨平台兼容
-    date_str="${BASH_REMATCH[1]}"
+    date_str="${BASH_REMATCH[2]}"
     year="${date_str:0:4}"
     month="${date_str:4:2}"
     day="${date_str:6:2}"
+    date_str="present"
+  else
+    # 无法解析时间戳，跳过
+    skipped_count=$((skipped_count + 1))
+    continue
+  fi
 
-    # 跨平台日期转时间戳
+  # 日期型（格式 2/3）统一在此转时间戳，跨平台兼容
+  if [ "$date_str" = "present" ]; then
     if command -v date >/dev/null 2>&1 && date -d "$year-$month-$day" +%s >/dev/null 2>&1; then
       # GNU date
       run_ts=$(date -d "$year-$month-$day" +%s 2>/dev/null || echo 0)
@@ -85,10 +102,6 @@ for run_dir in "$RUNS_DIR"/run-*; do
     else
       run_ts=0
     fi
-  else
-    # 无法解析时间戳，跳过
-    skipped_count=$((skipped_count + 1))
-    continue
   fi
 
   # 跳过解析失败的 run

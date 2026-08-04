@@ -15,9 +15,9 @@ if (!filePath) {
 
 try {
   const result = await checkTDD(filePath);
-  if (result && result.hasTestFile === false) {
+  if (result && result.hasTest === false && result.exempt !== true) {
     console.error(`[TDD Guard] BLOCKED: No corresponding test file for ${filePath}`);
-    console.error(`[TDD Guard] Expected test paths checked: ${result.checkedPaths?.join(', ') || 'N/A'}`);
+    console.error(`[TDD Guard] Expected test paths checked: ${result.testPaths?.join(', ') || 'N/A'}`);
     console.error('');
     console.error('[TDD Guard] TDD workflow:');
     console.error('[TDD Guard] 1. Write the test first (RED)');

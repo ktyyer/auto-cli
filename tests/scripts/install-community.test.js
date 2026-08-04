@@ -27,17 +27,21 @@ test('install copies community skill with community- prefix and references', () 
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
 
-  const skillPath = path.join(claudeRoot, 'skills', 'community-hello-auto.md');
+  const skillPath = path.join(claudeRoot, 'skills', 'community-hello-auto', 'SKILL.md');
   assert.ok(fs.existsSync(skillPath), `missing ${skillPath}\n${result.stdout}`);
 
   const refPath = path.join(
     claudeRoot,
     'skills',
-    'community-hello-auto.references',
+    'community-hello-auto',
+    'references',
     'install-name.md'
   );
   assert.ok(fs.existsSync(refPath), `missing references ${refPath}`);
 
   // Must not install unprefixed name that could shadow a core skill
-  assert.equal(fs.existsSync(path.join(claudeRoot, 'skills', 'hello-auto.md')), false);
+  assert.equal(fs.existsSync(path.join(claudeRoot, 'skills', 'hello-auto')), false);
+
+  // Claude Code 只加载目录形态，扁平 <name>.md 不得再产出
+  assert.equal(fs.existsSync(path.join(claudeRoot, 'skills', 'community-hello-auto.md')), false);
 });

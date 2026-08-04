@@ -168,8 +168,11 @@ if (!runId) {
     process.exit(1);
   }
 
-  const runs = fs.readdirSync(runsDir)
-    .filter(f => f.startsWith('run-') && !f.includes('archive'))
+  // 不限定 run- 前缀：真实 run 目录名多为 <YYYYMMDD>-<desc>，写死前缀会让本分支永不生效
+  const runs = fs
+    .readdirSync(runsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== 'archive')
+    .map((e) => e.name)
     .sort()
     .reverse();
 

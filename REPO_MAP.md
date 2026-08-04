@@ -48,33 +48,49 @@
 
 | Skill                      | 用途                                                    |
 | -------------------------- | ------------------------------------------------------- |
-| `api-design.md`            | API 设计规范（RESTful、分页、错误码、OpenAPI）          |
-| `code-analyzer.md`         | tree-sitter 驱动的代码分析（AST 提取、代码结构理解）    |
-| `code-style-enforcer.md`   | 代码风格强制执行                                        |
-| `comment-standards.md`     | 注释规范                                                |
-| `dependency-analyzer.md`   | 依赖分析                                                |
-| `error-patterns.md`        | 错误模式库                                              |
-| `git-workflow.md`          | Git 工作流规范                                          |
-| `init-project.md`          | 项目初始化                                              |
-| `java-patterns.md`         | Java/Spring Boot 编码模式                               |
-| `logging-patterns.md`      | 日志和可观测性模式                                      |
-| `performance-patterns.md`  | 性能优化模式                                            |
-| `prd-writer.md`            | PRD 需求文档写作（两阶段：概念版 → 落地板）             |
-| `production-standards.md`  | 生产环境标准                                            |
-| `refactoring-patterns.md`  | 安全重构方法论（测试保护网、分批策略、常见重构手法）    |
-| `requirement-clarifier.md` | 需求澄清（模糊需求回问用户）                            |
-| `research-analyst.md`      | 自主调研方法论（先调研再动手）                          |
-| `robustness-patterns.md`   | 鲁棒性模式（重试、熔断、限流）                          |
-| `skill-creator.md`         | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
-| `skill-evaluator.md`       | Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径）         |
-| `spec-driven.md`           | 规格驱动开发（需求 → 接口契约 → 可执行 acceptance）     |
-| `systematic-debugging.md`  | 系统化调试方法论（4 阶段强制流程）                      |
-| `test-plan-writer.md`      | 测试计划编写（6 维矩阵）                                |
-| `workflow-patterns.md`     | 工作流模式                                              |
+| `agentless-repair`         | 两阶段 Bug 修复（精确定位 → 多候选 patch 测试筛选）     |
+| `api-design`               | API 设计规范（RESTful、分页、错误码、OpenAPI）          |
+| `brainstorming`            | 方案探索（动手前列 2-3 个实现方案对比）                 |
+| `code-analyzer`            | tree-sitter 驱动的代码分析（AST 提取、代码结构理解）    |
+| `code-style-enforcer`      | 代码风格强制执行                                        |
+| `comment-standards`        | 注释规范                                                |
+| `constitution`             | `.auto/constitution.md` 硬约束载体                      |
+| `context-engineering`      | 上下文工程（预算感知、渐进披露、压缩降级）              |
+| `dependency-analyzer`      | 依赖分析                                                |
+| `error-patterns`           | 错误模式库                                              |
+| `feedback-loop`            | 无 UI 的 I/O 系统自验证闭环                             |
+| `git-workflow`             | Git 工作流规范                                          |
+| `incremental-review`       | 会话末增量代码审查                                      |
+| `init-project`             | 项目初始化                                              |
+| `java-patterns`            | Java/Spring Boot 编码模式                               |
+| `knowledge-management`     | LEARN 知识蒸馏 + 分发 + 归档全流程                      |
+| `logging-patterns`         | 日志和可观测性模式                                      |
+| `loop-engineering`         | `/auto` 自主循环引擎（DOER + CHECKER 迭代）             |
+| `performance-patterns`     | 性能优化模式                                            |
+| `plan-ensemble`            | 视角集成规划（异质视角并行出案 → 评分矩阵合成）         |
+| `prd-writer`               | PRD 需求文档写作（两阶段：概念版 → 落地板）             |
+| `predict-verify`           | 影响性命令前预测结果，预测错即理解错                    |
+| `production-governance`    | 生产治理闭环（目标收敛、产物真源、成本质量）            |
+| `production-standards`     | 生产环境标准                                            |
+| `protocol-validator`       | 协议对象 Schema / handoff 完整性校验                    |
+| `quality-gates`            | VERIFY 16 Gate 门禁定义                                 |
+| `refactoring-patterns`     | 安全重构方法论（测试保护网、分批策略、常见重构手法）    |
+| `requirement-clarifier`    | 需求澄清（模糊需求回问用户）                            |
+| `research-analyst`         | 自主调研方法论（先调研再动手）                          |
+| `robustness-patterns`      | 鲁棒性模式（重试、熔断、限流）                          |
+| `self-critique`            | 每关 Reflexion 自纠                                     |
+| `skill-creator`            | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
+| `skill-evaluator`          | Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径）         |
+| `spec-driven`              | 规格驱动开发（需求 → 接口契约 → 可执行 acceptance）     |
+| `systematic-debugging`     | 系统化调试方法论（4 阶段强制流程）                      |
+| `test-plan-writer`         | 测试计划编写（6 维矩阵）                                |
+| `using-git-worktrees`      | Git Worktree 多 Agent 并行                              |
+| `workflow-patterns`        | 工作流模式                                              |
+| `world-class-code-standards` | 圈复杂度 / 覆盖率 / 技术债量化标准                    |
 
 ## hooks/
 
-- `hooks.json` — 19 个 Hook 配置（PreToolUse 6 / PostToolUse 7 / PreCompact 1 / PostCompact 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 1）
+- `hooks.json` — 23 个 Hook 配置（PreToolUse 7 / PostToolUse 8 / SessionStart 1 / PreCompact 1 / PostCompact 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 2）
 - `lib/tdd-guard.js` — TDD 守卫逻辑
 - `lib/tdd-guard-cli.js` — TDD 守卫 CLI 入口
 - `lib/codemaps-hook.sh` — Codemaps 钩子脚本

@@ -35,6 +35,8 @@ tags:
 
 **关键告诫**(2026 社区数据):过夜自主产出约 **25% 被丢弃**。原因不是模型,是 **CHECKER 缺位** —— 没人定义「done 长什么样」。**没有可度量的收敛判据,就不准开 loop。**
 
+**迭代上限为什么是 10 而非更大**:不完美 verifier 的非零假阳性率给准确率设了**与算力无关的上限**,实测最优重采样次数通常 < 10,超过后假阳性伤害超过收益,把 scaling 曲线向下弯折(arXiv:2411.17501)。收敛型 loop 达到 `maxIterations` 仍未收敛时,正确动作是**换策略**(改 prompt / 换模型 / 补 held-out 测试),而不是调高上限继续刷。
+
 ## 激活摘要
 
 **何时激活**：
@@ -64,7 +66,7 @@ tags:
 **检查清单**(开 loop 前必过)：
 
 - [ ] 收敛判据已写成**可度量条件**(命令退出码 / 正则 / 数值阈值),不是「感觉差不多了」
-- [ ] 预算已设(按模式):收敛型 `maxIterations=20` + `maxBudgetUsd=300` + `maxWallClock=72h`;监听型免 `maxIterations`(靠 `maxBudgetUsd` + `maxWallClock` 兜底,不因高频轮询早夭)
+- [ ] 预算已设(按模式):收敛型 `maxIterations=10` + `maxBudgetUsd=300` + `maxWallClock=72h`;监听型免 `maxIterations`(靠 `maxBudgetUsd` + `maxWallClock` 兜底,不因高频轮询早夭)
 - [ ] 预算可 per-loop 覆盖:入参 `--budget <USD|unlimited>` / `--max-time <h>` 覆盖默认;`unlimited` 仅免费用上限,**仍受 maxWallClock + CHECKER + 用户中断约束**(无 CHECKER 的目标即便 unlimited 也不开 loop)
 - [ ] 关键路径已 commit,可回滚(loop 改坏能 `git reset`)
 - [ ] 调度机制已选:会话内动态 → ScheduleWakeup;跨会话持久 → CronCreate
@@ -103,7 +105,7 @@ tags:
 
 > 默认走「目标收敛」—— 它有自然退出,最安全。无明确退出条件的改问用户或降级为单次。
 
-> 预算按类别(详见 Step 4/5):**监听型** = 固定间隔巡检 + 持续维持(`mode: fixed | sustain`)—— 免 `maxIterations` + 每轮 CHECKER-first;**收敛型** = 目标收敛(`mode: convergent`)—— `maxIterations=20` + 每轮全量 DOER。
+> 预算按类别(详见 Step 4/5):**监听型** = 固定间隔巡检 + 持续维持(`mode: fixed | sustain`)—— 免 `maxIterations` + 每轮 CHECKER-first;**收敛型** = 目标收敛(`mode: convergent`)—— `maxIterations=10` + 每轮全量 DOER。
 
 ---
 
@@ -193,7 +195,7 @@ tags:
     { "iter": 1, "metric": "覆盖率 62%", "status": "progress" },
     { "iter": 7, "metric": "覆盖率 79%", "status": "progress" }
   ],
-  "budget": { "spentIterations": 7, "maxIterations": 20, "spentUsd": 1.2, "maxUsd": 300 },
+  "budget": { "spentIterations": 7, "maxIterations": 10, "spentUsd": 1.2, "maxUsd": 300 },
   "lastStrategy": "补 service 层测试",
   "rollbackRef": "refs/auto-snapshots/<ts>"
 }
@@ -207,7 +209,7 @@ tags:
 
 1. ✅ **CHECKER 达成** —— 收敛判据满足,写 LearnCard(pattern: 怎么收敛的),停
 2. 🛑 **预算耗尽**(按模式):
-   - **收敛型**:`iteration ≥ maxIterations(20)` 或 `spentUsd ≥ maxUsd` → 停,写 LearnCard(trap: 卡在哪)
+   - **收敛型**:`iteration ≥ maxIterations(10)` 或 `spentUsd ≥ maxUsd` → 停,写 LearnCard(trap: 卡在哪)
    - **监听型**:**不受 maxIterations 限制**(轮询次数不计数耗尽,避免高频轮询早夭),仅 `spentUsd ≥ maxUsd` → 停
 3. 🛑 **到期** —— wall clock ≥ `maxWallClock(72h)`,停
 4. 🛑 **退化超阈**(仅收敛型)—— 连续 3 轮收敛度回退,写 LearnCard(trap: 根因假设),停
@@ -245,7 +247,7 @@ loop 的飞轮靠**跨轮知识复用**:
 
 | 风险                  | 防护                                                            |
 | --------------------- | --------------------------------------------------------------- |
-| **3am 滚屏烧钱**      | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 20) |
+| **3am 滚屏烧钱**      | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 10) |
 | **改坏无法回滚**      | 关键路径先 commit;每轮 PreToolUse auto-snapshot hook 兜底       |
 | **幽灵 tick**         | 终止时必清 ScheduleWakeup / CronCreate;loop-state 标 converged  |
 | **25% 丢弃率**        | 强制 CHECKER(可度量判据)+ 每轮 clean-state gate,无判据不开 loop |

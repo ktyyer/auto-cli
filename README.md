@@ -453,6 +453,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `quality-gates`         | VERIFY 16 Gate 门禁定义                       |
 | `knowledge-management`  | LEARN 知识蒸馏 + 分发 + 归档全流程            |
 | `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
+| `world-class-code-standards` | 圈复杂度 / 覆盖率 / 技术债量化标准       |
 | `feedback-loop`         | I/O 系统自验证闭环（bot/daemon/CLI 工具）     |
 | `agentless-repair`      | 两阶段 Bug 修复（定位 + 多候选过滤）          |
 | `predict-verify`        | 影响性命令前预测，预测错即停下重想           |

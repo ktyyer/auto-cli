@@ -3,67 +3,67 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\n\n# Check if tmux is available first\nif ! command -v tmux >/dev/null 2>&1; then\n  echo \"$input\"\n  exit 0\nfi\n\ncmd=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\n\n# Block dev servers that aren't run in tmux\nif [ -z \"$TMUX\" ]; then\n  echo '[Hook] BLOCKED: Dev server must run in tmux for log access' >&2\n  echo '[Hook] Use this command instead:' >&2\n  echo \"[Hook] tmux new-session -d -s dev 'npm run dev'\" >&2\n  echo '[Hook] Then: tmux attach -t dev' >&2\n  exit 2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\ninput=$(cat)\nc=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\nif ! echo \"$c\" | grep -qE '(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)'; then echo \"$input\"; exit 0; fi\n\n# Check if tmux is available first\nif ! command -v tmux >/dev/null 2>&1; then\n  echo \"$input\"\n  exit 0\nfi\n\ncmd=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\n\n# Block dev servers that aren't run in tmux\nif [ -z \"$TMUX\" ]; then\n  echo '[Hook] BLOCKED: Dev server must run in tmux for log access' >&2\n  echo '[Hook] Use this command instead:' >&2\n  echo \"[Hook] tmux new-session -d -s dev 'npm run dev'\" >&2\n  echo '[Hook] Then: tmux attach -t dev' >&2\n  exit 2\nfi\n\necho \"$input\""
           }
         ],
         "description": "Block dev servers outside tmux - ensures you can access logs"
       },
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm (install|test)|pnpm (install|test)|yarn (install|test)|bun (install|test)|cargo build|make|docker|pytest|vitest|playwright)\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\nif [ -z \"$TMUX\" ] && command -v tmux >/dev/null 2>&1; then\n  echo '[Hook] Consider running in tmux for session persistence' >&2\n  echo '[Hook] tmux new -s dev  |  tmux attach -t dev' >&2\nfi\necho \"$input\""
+            "command": "#!/bin/bash\ninput=$(cat)\nc=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\nif ! echo \"$c\" | grep -qE '(npm (install|test)|pnpm (install|test)|yarn (install|test)|bun (install|test)|cargo build|make|docker|pytest|vitest|playwright)'; then echo \"$input\"; exit 0; fi\nif [ -z \"$TMUX\" ] && command -v tmux >/dev/null 2>&1; then\n  echo '[Hook] Consider running in tmux for session persistence' >&2\n  echo '[Hook] tmux new -s dev  |  tmux attach -t dev' >&2\nfi\necho \"$input\""
           }
         ],
         "description": "Reminder to use tmux for long-running commands"
       },
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn before pushing (non-interactive - Claude Code hooks are non-interactive)\necho '[Hook] WARNING: git push detected. Review changes carefully.' >&2\necho '[Hook] Use git diff to review before pushing.' >&2\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn before pushing (non-interactive - Claude Code hooks are non-interactive)\ninput=$(cat)\nc=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.command||'')\")\n# 先剥掉引号串，避免 commit message 里的 \"git push\" 误报\nc=$(echo \"$c\" | sed 's/\"[^\"]*\"//g; s/'\\''[^'\\'']*'\\''//g')\nif ! echo \"$c\" | grep -qE '(^|[;&|])[[:space:]]*git[[:space:]][^;&|]*push'; then echo \"$input\"; exit 0; fi\necho '[Hook] WARNING: git push detected. Review changes carefully.' >&2\necho '[Hook] Use git diff to review before pushing.' >&2\necho \"$input\""
           }
         ],
         "description": "Pause before git push to review changes"
       },
       {
-        "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.(md|txt)$\" && !(tool_input.file_path matches \"README\\\\.md|CLAUDE\\\\.md|AGENTS\\\\.md|CONTRIBUTING\\\\.md\") && !(tool_input.file_path matches \"[\\\\\\\\/]skills[\\\\\\\\/].*\\\\.md$\")",
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Block creation of unnecessary documentation files\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [[ \"$file_path\" =~ \\.(md|txt)$ ]] && [[ ! \"$file_path\" =~ (README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$ ]]; then\n  echo \"[Hook] BLOCKED: Unnecessary documentation file creation\" >&2\n  echo \"[Hook] File: $file_path\" >&2\n  echo \"[Hook] Use README.md for documentation instead\" >&2\n  exit 2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Block creation of unnecessary documentation files\n# 豁免：文档正典 / skills 与 agents 定义 / .auto 协议产物 / docs 与 tests 目录\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\np=$(echo \"$file_path\" | tr '\\\\\\\\' '/')\n\ncase \"$p\" in\n  *.md|*.txt) ;;\n  *) echo \"$input\"; exit 0 ;;\nesac\n\ncase \"$p\" in\n  */README*|README*|*/CLAUDE*|CLAUDE*|*/AGENTS*|AGENTS*|*/CONTRIBUTING*|CONTRIBUTING*|*/CHANGELOG*|CHANGELOG*|*/REPO_MAP*|REPO_MAP*|*/LICENSE*|LICENSE*) echo \"$input\"; exit 0 ;;\n  */skills/*|skills/*|*/agents/*|agents/*|*/commands/*|commands/*|*/rules/*|rules/*) echo \"$input\"; exit 0 ;;\n  */.auto/*|.auto/*|*/docs/*|docs/*|*/tests/*|tests/*|*/.github/*|.github/*) echo \"$input\"; exit 0 ;;\nesac\n\necho \"[Hook] BLOCKED: Unnecessary documentation file creation\" >&2\necho \"[Hook] File: $file_path\" >&2\necho \"[Hook] Use README.md for documentation instead\" >&2\nexit 2"
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
       },
       {
-        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(js|ts|jsx|tsx|java|py|go|rs)$\"",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn when writing large files (>500 lines)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  line_count=$(wc -l < \"$file_path\" 2>/dev/null || echo 0)\n  if [ \"$line_count\" -gt 500 ]; then\n    echo \"[Hook] WARNING: $file_path already has $line_count lines\" >&2\n    echo \"[Hook] Consider splitting into smaller modules (recommended < 400 lines)\" >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn when writing large files (>500 lines)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(js|ts|jsx|tsx|java|py|go|rs)$'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  line_count=$(wc -l < \"$file_path\" 2>/dev/null || echo 0)\n  if [ \"$line_count\" -gt 500 ]; then\n    echo \"[Hook] WARNING: $file_path already has $line_count lines\" >&2\n    echo \"[Hook] Consider splitting into smaller modules (recommended < 400 lines)\" >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Warn when editing files that are already >500 lines - suggests splitting into smaller modules"
       },
       {
-        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(js|ts|jsx|tsx|java|py|go|rs)$\"",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# TDD Guard (Node.js): Enforce Test-Driven Development\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Use fixed path for TDD guard script\nCLAUDE_HOME=\"${HOME}/.claude\"\nguard_script=\"${CLAUDE_HOME}/hooks/lib/tdd-guard-cli.js\"\nif [ -f \"$guard_script\" ]; then\n  node \"$guard_script\" \"$file_path\" 2>&1 >&2\n  exit_code=$?\n  if [ $exit_code -ne 0 ]; then\n    exit 2\n  fi\n  echo \"$input\"\n  exit 0\nfi\n\n# Fallback: inline bash check for .js/.ts only\ndir=$(dirname \"$file_path\")\nbase_name=$(basename \"$file_path\")\nbase_noext=\"${base_name%.*}\"\nfound_test=false\n\nfor ext in test.js spec.js test.ts spec.ts; do\n  if [ -f \"$dir/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\n  if [ -f \"$dir/__tests__/${base_noext}.${ext}\" ]; then\n    found_test=true\n    break\n  fi\ndone\n\nif [ \"$found_test\" = false ]; then\n  echo '[TDD Guard] BLOCKED: No corresponding test file for' \"$file_path\" >&2\n  echo '[TDD Guard] Follow TDD: Write test first (RED) → Implement (GREEN) → Refactor' >&2\n  exit 2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# TDD Guard: 缺少对应测试文件时请求确认（permissionDecision=ask，非硬阻断）\n# 设 AUTO_TDD_STRICT=true 可恢复 deny 硬阻断\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(js|ts|jsx|tsx|java|py|go|rs)$'; then exit 0; fi\n\ndecision=\"ask\"\n[ \"$AUTO_TDD_STRICT\" = \"true\" ] && decision=\"deny\"\n\nemit() {\n  node -e \"const d=process.argv[1];process.stdout.write(JSON.stringify({hookSpecificOutput:{hookEventName:'PreToolUse',permissionDecision:process.argv[2],permissionDecisionReason:d}}))\" \"$1\" \"$decision\"\n  exit 0\n}\n\nCLAUDE_HOME=\"${HOME}/.claude\"\nguard_script=\"${CLAUDE_HOME}/hooks/lib/tdd-guard-cli.js\"\nif [ -f \"$guard_script\" ]; then\n  reason=$(node \"$guard_script\" \"$fp\" 2>&1)\n  rc=$?\n  if [ $rc -ne 0 ]; then\n    paths=$(echo \"$reason\" | grep \"Expected test paths\" | sed \"s/.*checked: //\")\n    emit \"未找到 $fp 的对应测试文件（期望之一：${paths:-<none>}）。TDD 建议先写测试（RED）再实现（GREEN）。\"\n  fi\n  exit 0\nfi\n\n# 回退：无 guard 脚本时做内联检查\ndir=$(dirname \"$fp\"); base=$(basename \"$fp\"); noext=\"${base%.*}\"\nfor ext in test.js spec.js test.ts spec.ts; do\n  [ -f \"$dir/${noext}.${ext}\" ] && exit 0\n  [ -f \"$dir/__tests__/${noext}.${ext}\" ] && exit 0\ndone\nemit \"TDD Guard: 未找到 $fp 的对应测试文件。建议先写测试（RED）再实现（GREEN）。\""
           }
         ],
-        "description": "TDD Guard: Enforce Test-Driven Development - uses tdd-guard.js for multi-language support with bash fallback"
+        "description": "TDD Guard: 缺测试文件时以 permissionDecision=ask 请求确认（AUTO_TDD_STRICT=true 时改为 deny 硬阻断）"
       },
       {
-        "matcher": "(tool == \"Write\" || tool == \"Edit\")",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
@@ -75,7 +75,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "tool == \"Bash\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -85,47 +85,47 @@
         "description": "Log PR URL and provide review command after PR creation"
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Auto-lint-fix: format + lint + auto-fix loop (Aider pattern)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -f \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Step 1: Prettier format\nif command -v prettier >/dev/null 2>&1; then\n  prettier --write \"$file_path\" 2>/dev/null\nfi\n\n# Step 2: ESLint auto-fix (if available)\ndir=$(dirname \"$file_path\")\nproject_root=\"$dir\"\nwhile [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n  project_root=$(dirname \"$project_root\")\ndone\n\nif [ -f \"$project_root/.eslintrc.json\" ] || [ -f \"$project_root/.eslintrc.js\" ] || [ -f \"$project_root/.eslintrc.cjs\" ] || [ -f \"$project_root/eslint.config.js\" ] || [ -f \"$project_root/eslint.config.mjs\" ]; then\n  cd \"$project_root\"\n  npx eslint --fix \"$file_path\" 2>/dev/null\n  \n  # Step 3: Check if lint errors remain after auto-fix\n  lint_errors=$(npx eslint \"$file_path\" --format compact 2>/dev/null | grep -c 'Error' || true)\n  if [ \"$lint_errors\" -gt 0 ]; then\n    echo \"[Hook] LINT: $lint_errors error(s) remain after auto-fix in $file_path\" >&2\n    npx eslint \"$file_path\" --format compact 2>/dev/null | head -5 >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Auto-lint-fix: format + lint + auto-fix loop (Aider pattern)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(ts|tsx|js|jsx)$'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -f \"$file_path\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Step 1: Prettier format\nif command -v prettier >/dev/null 2>&1; then\n  prettier --write \"$file_path\" 2>/dev/null\nfi\n\n# Step 2: ESLint auto-fix (if available)\ndir=$(dirname \"$file_path\")\nproject_root=\"$dir\"\nwhile [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n  project_root=$(dirname \"$project_root\")\ndone\n\nif [ -f \"$project_root/.eslintrc.json\" ] || [ -f \"$project_root/.eslintrc.js\" ] || [ -f \"$project_root/.eslintrc.cjs\" ] || [ -f \"$project_root/eslint.config.js\" ] || [ -f \"$project_root/eslint.config.mjs\" ]; then\n  cd \"$project_root\"\n  npx eslint --fix \"$file_path\" 2>/dev/null\n  \n  # Step 3: Check if lint errors remain after auto-fix\n  lint_errors=$(npx eslint \"$file_path\" --format compact 2>/dev/null | grep -c 'Error' || true)\n  if [ \"$lint_errors\" -gt 0 ]; then\n    echo \"[Hook] LINT: $lint_errors error(s) remain after auto-fix in $file_path\" >&2\n    npx eslint \"$file_path\" --format compact 2>/dev/null | head -5 >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Auto-lint-fix: Prettier format → ESLint --fix → report remaining errors"
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx)$\"",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# TypeScript check with actionable error output\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\"\n    tsc_output=$(npx tsc --noEmit --pretty false 2>&1 | grep \"$(basename \"$file_path\")\" | head -10)\n    if [ -n \"$tsc_output\" ]; then\n      error_count=$(echo \"$tsc_output\" | wc -l)\n      echo \"[Hook] TSC: $error_count type error(s) in $file_path\" >&2\n      echo \"$tsc_output\" >&2\n      echo \"[Hook] Fix these type errors before proceeding\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# TypeScript check with actionable error output\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(ts|tsx)$'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  dir=$(dirname \"$file_path\")\n  project_root=\"$dir\"\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  \n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\"\n    tsc_output=$(npx tsc --noEmit --pretty false 2>&1 | grep \"$(basename \"$file_path\")\" | head -10)\n    if [ -n \"$tsc_output\" ]; then\n      error_count=$(echo \"$tsc_output\" | wc -l)\n      echo \"[Hook] TSC: $error_count type error(s) in $file_path\" >&2\n      echo \"$tsc_output\" >&2\n      echo \"[Hook] Fix these type errors before proceeding\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "TypeScript check with error count and actionable output"
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\" && !(tool_input.file_path matches \"scripts/\")",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Warn about console.log in edited files\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  console_logs=$(grep -n \"console\\\\.log\" \"$file_path\" 2>/dev/null || true)\n  \n  if [ -n \"$console_logs\" ]; then\n    echo \"[Hook] WARNING: console.log found in $file_path\" >&2\n    echo \"$console_logs\" | head -5 >&2\n    echo \"[Hook] Remove console.log before committing\" >&2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Warn about console.log in edited files\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(ts|tsx|js|jsx)$'; then echo \"$input\"; exit 0; fi\nif echo \"$fp\" | grep -qE 'scripts/'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  console_logs=$(grep -n \"console\\\\.log\" \"$file_path\" 2>/dev/null || true)\n  \n  if [ -n \"$console_logs\" ]; then\n    echo \"[Hook] WARNING: console.log found in $file_path\" >&2\n    echo \"$console_logs\" | head -5 >&2\n    echo \"[Hook] Remove console.log before committing\" >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
         "description": "Warn about console.log statements after edits"
       },
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(js|ts|jsx|tsx|java|py|go|rs)$\"",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Frequent commit reminder - suggest committing after 5+ edits\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -d \".git\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count uncommitted changes\nuncommitted=$(git diff --name-only 2>/dev/null | wc -l)\nunstaged=$(git diff --cached --name-only 2>/dev/null | wc -l)\ntotal=$((uncommitted + unstaged))\n\nif [ \"$total\" -ge 5 ]; then\n  echo \"[Hook] REMINDER: You have $total uncommitted file changes\" >&2\n  echo '[Hook] Consider committing your progress:' >&2\n  echo '[Hook]   git add -p && git commit -m \"feat: description\"' >&2\n  echo '[Hook] Frequent commits reduce risk and make rollback easier' >&2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Frequent commit reminder - suggest committing after 5+ edits\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(js|ts|jsx|tsx|java|py|go|rs)$'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -z \"$file_path\" ] || [ ! -d \".git\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# Count uncommitted changes\nuncommitted=$(git diff --name-only 2>/dev/null | wc -l)\nunstaged=$(git diff --cached --name-only 2>/dev/null | wc -l)\ntotal=$((uncommitted + unstaged))\n\nif [ \"$total\" -ge 5 ]; then\n  echo \"[Hook] REMINDER: You have $total uncommitted file changes\" >&2\n  echo '[Hook] Consider committing your progress:' >&2\n  echo '[Hook]   git add -p && git commit -m \"feat: description\"' >&2\n  echo '[Hook] Frequent commits reduce risk and make rollback easier' >&2\nfi\n\necho \"$input\""
           }
         ],
         "description": "Remind to commit when 5+ files have uncommitted changes - encourages frequent incremental commits"
       },
       {
-        "matcher": "tool == \"Bash\"",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -135,21 +135,21 @@
         "description": "Coverage check after test runs"
       },
       {
-        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"([\\\\\\\\/]skills[\\\\\\\\/].*\\\\.md$|SKILL\\\\.md$)\"",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Skill health reminder: warn never block (philosophy: SkillCompass)\ninput=$(cat)\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ]; then\n  echo \"[Hook] Skill edited: $file_path\" >&2\n  echo \"[Hook] Consider a health check with skill-evaluator:\" >&2\n  echo \"[Hook]   - D1 name / D2 description / D3 progressive-disclosure (static, main agent)\" >&2\n  echo \"[Hook]   - D8 effect (Task(subagent_type: verification), A/B with/without skill)\" >&2\n  echo \"[Hook] See skills/skill-evaluator.md for the full loop\" >&2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Skill health reminder: warn never block (philosophy: SkillCompass)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '([\\\\/]skills[\\\\/].*\\.md$|SKILL\\.md$)'; then echo \"$input\"; exit 0; fi\nfile_path=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\n\nif [ -n \"$file_path\" ]; then\n  echo \"[Hook] Skill edited: $file_path\" >&2\n  echo \"[Hook] Consider a health check with skill-evaluator:\" >&2\n  echo \"[Hook]   - D1 name / D2 description / D3 progressive-disclosure (static, main agent)\" >&2\n  echo \"[Hook]   - D8 effect (Task(subagent_type: verification), A/B with/without skill)\" >&2\n  echo \"[Hook] See skills/skill-evaluator.md for the full loop\" >&2\nfi\n\necho \"$input\""
           }
         ],
         "description": "Skill health reminder: suggest skill-evaluator after editing skills/*.md or SKILL.md (warn never block)"
       },
       {
-        "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx|java|py|go|rs|md)$\"",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Incremental review: accumulate dirty file list per latest run (no blocking)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif [ -z \"$fp\" ]; then echo \"$input\"; exit 0; fi\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ] && [ -d \".auto/runs/$latest_run\" ]; then\n  touch \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\n  grep -qxF \"$fp\" \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null || echo \"$fp\" >> \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\nfi\necho \"$input\""
+            "command": "#!/bin/bash\n# Incremental review: accumulate dirty file list per latest run (no blocking)\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif ! echo \"$fp\" | grep -qE '\\.(ts|tsx|js|jsx|java|py|go|rs|md)$'; then echo \"$input\"; exit 0; fi\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif [ -z \"$fp\" ]; then echo \"$input\"; exit 0; fi\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | grep -v '^archive$' | head -1)\nif [ -n \"$latest_run\" ] && [ -d \".auto/runs/$latest_run\" ]; then\n  touch \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\n  grep -qxF \"$fp\" \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null || echo \"$fp\" >> \".auto/runs/$latest_run/dirty.txt\" 2>/dev/null\nfi\necho \"$input\""
           }
         ],
         "description": "Incremental review: accumulate dirty file list at .auto/runs/<latest>/dirty.txt for per-run incremental code review. See skills/incremental-review/SKILL.md"
@@ -161,7 +161,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Cold-start: surface critical project knowledge so the new session opens with context\nfiles=()\n[ -f 'CLAUDE.md' ] && files+=('CLAUDE.md (project instructions)')\n[ -f '.auto/constitution.md' ] && files+=('.auto/constitution.md (non-negotiable hard constraints)')\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ]; then\n  cont=\".auto/runs/$latest_run/session-continuity.md\"\n  [ -f \"$cont\" ] && files+=(\"$cont (last run continuity)\")\nfi\nif [ ${#files[@]} -gt 0 ]; then\n  echo '[Hook] SessionStart - consider Read on:' >&2\n  for f in \"${files[@]}\"; do echo \"[Hook]   - $f\" >&2; done\nfi\nexit 0"
+            "command": "#!/bin/bash\n# Cold-start: surface critical project knowledge so the new session opens with context\nfiles=()\n[ -f 'CLAUDE.md' ] && files+=('CLAUDE.md (project instructions)')\n[ -f '.auto/constitution.md' ] && files+=('.auto/constitution.md (non-negotiable hard constraints)')\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | grep -v '^archive$' | head -1)\nif [ -n \"$latest_run\" ]; then\n  cont=\".auto/runs/$latest_run/session-continuity.md\"\n  [ -f \"$cont\" ] && files+=(\"$cont (last run continuity)\")\nfi\nif [ ${#files[@]} -gt 0 ]; then\n  echo '[Hook] SessionStart - consider Read on:' >&2\n  for f in \"${files[@]}\"; do echo \"[Hook]   - $f\" >&2; done\nfi\nexit 0"
           },
           {
             "type": "command",
@@ -225,10 +225,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Quality gate: check for uncommitted changes before allowing task completion\ninput=$(cat)\n\nif git rev-parse --git-dir > /dev/null 2>&1; then\n  uncommitted=$(git status --porcelain 2>/dev/null | head -20)\n  \n  if [ -n \"$uncommitted\" ]; then\n    echo '[Hook] QUALITY GATE: Uncommitted changes detected!' >&2\n    echo '[Hook] Files with pending changes:' >&2\n    echo \"$uncommitted\" | head -10 >&2\n    echo '[Hook] Commit or stash changes before marking task as completed' >&2\n    exit 2\n  fi\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Quality reminder: surface uncommitted changes at task completion (never blocks).\n# 正常工作流是「先完成任务再提交」，硬阻断会让任务永远无法标记完成。\ninput=$(cat)\n\nif git rev-parse --git-dir > /dev/null 2>&1; then\n  uncommitted=$(git status --porcelain 2>/dev/null | head -20)\n\n  if [ -n \"$uncommitted\" ]; then\n    echo '[Hook] REMINDER: Uncommitted changes present at task completion' >&2\n    echo \"$uncommitted\" | head -10 >&2\n    echo '[Hook] Commit or stash when the change set is complete' >&2\n  fi\nfi\n\necho \"$input\""
           }
         ],
-        "description": "Quality gate - block task completion if uncommitted changes exist (exit 2 = reject)"
+        "description": "Quality reminder - surface uncommitted changes when a task completes (warn only, never blocks)"
       }
     ],
     "Stop": [
@@ -247,7 +247,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\n# Ensure latest .auto/runs/<runId>/metrics.json exists (Wave 0 default observability)\ninput=$(cat)\n\nif [ ! -d .auto/runs ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | grep '^run-' | grep -v archive | head -1)\nif [ -z \"$latest_run\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nmetrics_file=\".auto/runs/$latest_run/metrics.json\"\nif [ -f \"$metrics_file\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nif [ -f scripts/generate-metrics.js ]; then\n  node scripts/generate-metrics.js \"$latest_run\" >/dev/null 2>&1 && \\\n    echo \"[Hook] metrics.json generated for $latest_run\" >&2 || \\\n    echo \"[Hook] WARNING: failed to generate metrics.json for $latest_run\" >&2\nfi\n\necho \"$input\""
+            "command": "#!/bin/bash\n# Ensure latest .auto/runs/<runId>/metrics.json exists (Wave 0 default observability)\ninput=$(cat)\n\nif [ ! -d .auto/runs ]; then\n  echo \"$input\"\n  exit 0\nfi\n\n# 不限定 run- 前缀：历史 run 目录名多为 <YYYYMMDD>-<desc>，写死前缀会让本 hook 永不生效\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | grep -v '^archive$' | head -1)\nif [ -z \"$latest_run\" ] || [ ! -d \".auto/runs/$latest_run\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nmetrics_file=\".auto/runs/$latest_run/metrics.json\"\nif [ -f \"$metrics_file\" ]; then\n  echo \"$input\"\n  exit 0\nfi\n\nif [ -f scripts/generate-metrics.js ]; then\n  node scripts/generate-metrics.js \"$latest_run\" >/dev/null 2>&1 && \\\n    echo \"[Hook] metrics.json generated for $latest_run\" >&2 || \\\n    echo \"[Hook] WARNING: failed to generate metrics.json for $latest_run\" >&2\nfi\n\necho \"$input\""
           }
         ],
         "description": "If latest run lacks metrics.json, run scripts/generate-metrics.js (LEARN default path backup)"
