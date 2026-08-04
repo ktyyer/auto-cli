@@ -655,7 +655,7 @@ node scripts/generate-metrics.js <runId>
 
 运行超过 30 天的 run 自动移入 `.auto/runs/archive/`（由 SessionStart Hook 触发）。SCAN 1.6 预匹配只扫描未归档的 run。归档 run 可手动删除释放空间。
 
-> **已知限制**：`hooks/lib/auto-clean-runs.sh` 目前只匹配 `run-*` 前缀的目录名。历史 run 若命名为 `<YYYYMMDD>-<desc>`（无 `run-` 前缀）不会被自动归档，需手动 `mv` 到 `archive/`。同一前缀假设也影响 `scripts/dashboard.js` 与 `scripts/generate-metrics.js` 的 run 自动发现。
+> **Run 目录命名**：`auto-clean-runs.sh` / `dashboard.js` / `generate-metrics.js` 均识别 `[run-]<YYYYMMDD>-*`、`[run-]<YYYY-MM-DD>-*` 与 `[run-]<unix_ts>`，并排除 `archive/`。协议上仍推荐新 run 使用 `run-<id>`；历史无前缀目录可被发现与归档，无需手工改名。
 
 **配置**：通过环境变量覆盖默认行为
 

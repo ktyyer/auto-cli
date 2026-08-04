@@ -8,7 +8,10 @@ const originalHome = os.homedir;
 
 async function importManifestWithHome(homePath) {
   os.homedir = () => homePath;
-  const moduleUrl = new URL(`../../scripts/manifest.js?home=${encodeURIComponent(homePath)}&t=${Date.now()}`, import.meta.url);
+  const moduleUrl = new URL(
+    `../../scripts/manifest.js?home=${encodeURIComponent(homePath)}&t=${Date.now()}`,
+    import.meta.url
+  );
   return import(moduleUrl);
 }
 
@@ -47,9 +50,13 @@ test('managed file lists expose expected core entries', async () => {
 
   assert.ok(manifest.CODEX_MANAGED_FILES.prompts.includes('auto.md'));
   assert.ok(manifest.CODEX_MANAGED_FILES.skills.includes('loop-engineering'));
+  assert.ok(manifest.CODEX_MANAGED_FILES.skills.includes('world-class-code-standards'));
+  // install 会装 community-hello-auto；卸载清单必须同名，否则 Codex 侧泄漏
+  assert.ok(manifest.CODEX_MANAGED_FILES.skills.includes('community-hello-auto'));
   assert.ok(
     manifest.MANAGED_FILES.some(
-      (entry) => entry.dir === path.join(tempHome, '.claude', 'commands') && entry.files.includes('auto.md')
+      (entry) =>
+        entry.dir === path.join(tempHome, '.claude', 'commands') && entry.files.includes('auto.md')
     )
   );
 });

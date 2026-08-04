@@ -118,7 +118,9 @@ export const CODEX_MANAGED_FILES = {
   rootFiles: CODEX_MANAGED_ROOT_FILES,
   prompts: CODEX_ALLOWED_COMMAND_FILES,
   promptDirs: ['auto'],
-  skills: CODEX_SKILL_DIRS
+  // 必须与 install 实际安装名一致：核心 skill + community-* 前缀
+  // 只用 CODEX_SKILL_DIRS 会让 uninstall 漏删 community-hello-auto
+  skills: ALL_SKILL_DIRS
 };
 
 // Auto CLI 管理的具体文件清单（install --clean 与 uninstall 共用）
