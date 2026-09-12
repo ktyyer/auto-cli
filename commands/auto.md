@@ -338,7 +338,7 @@ node scripts/fast-scan.js
 
    | 字段              | 收敛型默认 | 监听型默认 | 触发动作                                                             |
    | ----------------- | ---------- | ---------- | -------------------------------------------------------------------- |
-   | `maxIterations`   | 20         | 不限(∞)    | 收敛型超限终止；监听型**不以此终止**（避免 1m 高频轮询 20 分钟早夭） |
+   | `maxIterations`   | 10         | 不限(∞)    | 收敛型超限终止；监听型**不以此终止**（避免 1m 高频轮询 10 分钟早夭） |
    | `maxBudgetUsd`    | 300        | 300        | 超限 → 终止 loop                                                     |
    | `maxWallClock`    | 72h        | 72h        | 到期 → 终止 loop（对齐官方 3 天上限）                                |
    | `noProgressLimit` | 3          | 不适用     | 收敛型连续 3 轮收敛度不增 → 强制换策略 / 终止                        |
@@ -348,7 +348,7 @@ node scripts/fast-scan.js
 6. **跨迭代锚点（关键）**：`ScheduleWakeup` / `CronCreate` 的 prompt 必须带 `#loop=<loopId>`（如 `/auto 5m 盯CI #loop=run-xxx`）。不带则下一轮 SCAN 当成新 loop，`loopBudgets` 与 `convergenceHistory` 全部 reset —— 预算耗尽永不触发、退化检测失效、反复用同一失败策略。`loopId` = 本 loop 首轮 run 的 `runId`，全程不变。
 7. **预算 / 时长覆盖（per-loop）**：入参含 `--budget <USD|unlimited>` 或 `--max-time <h>` → 覆盖 loopBudgets 默认（默认 `maxBudgetUsd=300` / `maxWallClock=72h`）。例：`/auto 5m --budget 10000 把整个模块重构到测试全过`、`/auto 5m --budget unlimited 持续盯生产`。`unlimited` 仅免费用上限，**仍受 maxWallClock + CHECKER + 用户中断约束**（无 CHECKER 的目标即便 unlimited 也不开 loop）。
 
-> **监听型（fixed/sustain）CHECKER-first**：每轮先跑超轻量状态检查（`gh pr checks` / 退出码 / 接口状态），**无变化跳过 DOER（近乎零成本）**，状态变化才升级聚焦 6 PHASE。这让 `1m` 高频轮询不烧钱，且因监听型免 `maxIterations`，不会被 20 次早夭。
+> **监听型（fixed/sustain）CHECKER-first**：每轮先跑超轻量状态检查（`gh pr checks` / 退出码 / 接口状态），**无变化跳过 DOER（近乎零成本）**，状态变化才升级聚焦 6 PHASE。这让 `1m` 高频轮询不烧钱，且因监听型免 `maxIterations`，不会被 10 次早夭。
 
 > **反幻觉约束**：interval 转 `delaySeconds` 时偏移避开整点（`5m`→270s/330s），不卡 `:00`/`:30` 撞峰；Codex / 无原生调度运行时降级为外部 cron/schtasks 或人手触发，**不伪造「正在后台跑」**。
 
@@ -657,35 +657,7 @@ node scripts/generate-metrics.js <runId>
 
 > **Run 目录命名**：`auto-clean-runs.sh` / `dashboard.js` / `generate-metrics.js` 均识别 `[run-]<YYYYMMDD>-*`、`[run-]<YYYY-MM-DD>-*` 与 `[run-]<unix_ts>`，并排除 `archive/`。协议上仍推荐新 run 使用 `run-<id>`；历史无前缀目录可被发现与归档，无需手工改名。
 
-**配置**：通过环境变量覆盖默认行为
-
-```bash
-# 修改保留天数（默认 30 天）
-export AUTO_CLEAN_RETENTION_DAYS=60
-
-# 启用 DRY RUN 模式（仅预览，不实际归档）
-export AUTO_CLEAN_DRY_RUN=true
-```
-
-**手动触发清理**：
-
-```bash
-# 立即归档超过 30 天的 run
-bash ~/.claude/hooks/lib/auto-clean-runs.sh
-
-# 预览将被归档的 run
-AUTO_CLEAN_DRY_RUN=true bash ~/.claude/hooks/lib/auto-clean-runs.sh
-```
-
-**恢复已归档 run**：
-
-```bash
-# 列出已归档 run
-ls .auto/runs/archive/
-
-# 恢复指定 run
-mv .auto/runs/archive/run-<id> .auto/runs/
-```
+配置（`AUTO_CLEAN_RETENTION_DAYS` / `AUTO_CLEAN_DRY_RUN`）、手动触发清理与恢复已归档 run 的完整命令见 `skills/knowledge-management/SKILL.md`「步骤 5：归档检查」。
 
 ### 6.5 LEARN 对 SCAN 的回灌
 

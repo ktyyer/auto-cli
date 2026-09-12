@@ -523,3 +523,30 @@ wshobson/agents (34.8K star) / VoltAgent (1K+ skills) 规模庞大但混入大�
 REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMap/QuestResults 会被 PARTIAL。应对齐 strategy/goal/quest/gate/confidence，knowledge-reuse 接受 relevantInsights。
 
 **来源**: run-20260724-142922
+
+### 参数变更无单一真源声明 → 同提交多文件漏改
+
+**日期**: 2026-09-12 | **置信度**: high | **标签**: loop-budgets, single-source, sync
+**scope**: project
+
+0c712eb 把 loop-engineering skill 的收敛型 maxIterations 20→10（含 arXiv:2411.17501 论证），但 auto.md / auto.codex.md / README 中英共 5 处默认值未同步，漂移至 2026-09-12 审计才消除。根因：loopBudgets 默认值没有声明单一真源文件。规避：改 loopBudgets 默认时以 `skills/loop-engineering/SKILL.md` 为真源先改，其余层 grep `maxIterations` 全量同步；新参数引入时在设计说明中写明真源文件。
+
+**来源**: run-20260912-positioning-audit
+
+### uninstall.js 忽略未知 flag，--dry-run 会真实卸载
+
+**日期**: 2026-09-12 | **置信度**: high | **标签**: uninstall, cli-safety
+**scope**: project
+
+`scripts/uninstall.js` 不解析/拒绝未知参数，`node scripts/uninstall.js --dry-run` 会被静默忽略并真实执行卸载（2026-09-12 探测时误触，68 项被移除）。规避：探测卸载范围用 `node -e "import('./scripts/manifest.js').then(...)"` 读 MANAGED_FILES，或先读脚本再执行；改进方向（候选）：给 uninstall.js 加 `--dry-run` 支持或未知 flag 报错。
+
+**来源**: run-20260912-repack-reinstall
+
+### validate:package 校验后删除 tgz，需保留产物要后置 pack
+
+**日期**: 2026-09-12 | **置信度**: high | **标签**: npm-pack, validate, artifacts
+**scope**: project
+
+`scripts/validate-package-contents.js` 自己跑 `npm pack --json` 校验文件清单后删除 tgz（:56-58 清理逻辑），所以「npm pack && npm run validate:package」结束时磁盘上没有 tgz。规避：需要留存分发产物时，先 `npm run validate:package` 再 `npm pack`（本次重装 run 的实际顺序）；或接受校验即清理、用时再打。
+
+**来源**: run-20260912-repack-reinstall

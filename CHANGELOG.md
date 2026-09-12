@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plugin / marketplace 描述与 keywords 面向发现层
 - SCAN：skill `tier` 分层 + `skills/community/*/SKILL.md` 发现
 
+### Fixed
+
+- loopBudgets 数值漂移：收敛型 maxIterations 统一为 10（`commands/auto.md` / `commands/auto.codex.md` / README 中英原为 20，对齐 `loop-engineering` skill 论证依据 arXiv:2411.17501 与 commit 0c712eb 定稿）；CLAUDE.md 路线图记录 maxIterations 20 / maxBudgetUsd 10 → 10 / 300
+- agentless-repair 撤下过时 SWE-bench Lite 分数与「超越所有 Agent-based 方法」表述（2024-07 快照已被后续方法超越；保留方法论与论文引用）
+- CLAUDE.md 路线图同步：社区 skills 机制已随 Wave 2 接通，从「进行中」收口进「已完成」；「计划中（v0.52 候选）」标题更新为「下一版本候选」
+- auto.md 6.4 Run 归档配置细节下沉 `knowledge-management` skill「步骤 5：归档检查」（root 层瘦身，主命令保留一行指针）
+
 ## [0.52.0] - 2026-06-28
 
 ### Added

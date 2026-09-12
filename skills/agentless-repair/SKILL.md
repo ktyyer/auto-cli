@@ -15,7 +15,7 @@ tags:
 
 # Agentless Repair — 两阶段 Bug 修复流水线
 
-> 理论来源：Agentless（Zhang et al., arXiv:2407.01489），在 SWE-bench Lite 上以 27.33% 解决率超越所有 Agent-based 方法（对比 SWE-agent 的 12.5%）。核心洞察：**简单的并行采样 + 测试过滤，往往优于复杂的单链 Agent 迭代。**
+> 理论来源：Agentless（Zhang et al., arXiv:2407.01489）。核心洞察：**简单的并行采样 + 测试过滤，往往优于复杂的单链 Agent 迭代。**
 
 ## 激活摘要
 

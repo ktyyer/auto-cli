@@ -1061,3 +1061,12 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 `skills/community/<name>` 安装为 `community-<name>`，并复制 references。样例：hello-auto。
 
 **来源**: run-20260724-143824
+
+### 参数值跨层漂移用 git log -S 溯源，勿信 commit message
+
+**日期**: 2026-09-12 | **置信度**: high | **标签**: drift, git-archaeology, single-source
+**scope**: universal
+
+行为参数（默认值/阈值）同时出现在 command 主文件、skill、README、CLAUDE 多层时易漂移：loopBudgets maxIterations 曾在 auto.md=20 / skill=10 / CLAUDE.md 记录 20+10，漂移数月。定位真源用 `git log -S "<值>" -- <file>`（本次引出 0c712eb），而非读 commit message 推断——26759f4 的 message 明文写「maxIterations=20 兜底」，据此归因会反向统一到错误值（本次由 code-reviewer 实测纠正）。与「声明性数字随版本演进系统性滞后」互补：该卡管发布巡检，本卡管运行参数溯源。
+
+**来源**: run-20260912-positioning-audit

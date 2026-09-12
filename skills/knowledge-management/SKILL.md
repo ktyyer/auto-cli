@@ -181,6 +181,36 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 
 扫描 `.auto/runs/` 下的目录，创建时间超过 30 天的移入 `.auto/runs/archive/`。
 
+**配置**（环境变量覆盖默认行为）：
+
+```bash
+# 修改保留天数（默认 30 天）
+export AUTO_CLEAN_RETENTION_DAYS=60
+
+# 启用 DRY RUN 模式（仅预览，不实际归档）
+export AUTO_CLEAN_DRY_RUN=true
+```
+
+**手动触发清理**（Codex 无 SessionStart Hook 时同样适用）：
+
+```bash
+# 立即归档超过 30 天的 run
+bash ~/.claude/hooks/lib/auto-clean-runs.sh
+
+# 预览将被归档的 run
+AUTO_CLEAN_DRY_RUN=true bash ~/.claude/hooks/lib/auto-clean-runs.sh
+```
+
+**恢复已归档 run**：
+
+```bash
+# 列出已归档 run
+ls .auto/runs/archive/
+
+# 恢复指定 run
+mv .auto/runs/archive/run-<id> .auto/runs/
+```
+
 ---
 
 ## 知识注入（SCAN 阶段）

@@ -291,7 +291,7 @@ flowchart LR
 **会发生什么**：
 
 - SCAN 解析 interval 参数 → 进入 loop 模式，激活 `loop-engineering` skill
-- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（默认 maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h；`--budget` / `--max-time` 可 per-loop 覆盖）
+- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（默认 maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h；`--budget` / `--max-time` 可 per-loop 覆盖）
 - 用 `ScheduleWakeup`（会话内）或 `CronCreate`（过夜持久）按时触发每一轮
 - 每轮跑聚焦版 6 PHASE → CHECKER 跑判据命令 → 收敛度↑ 续跑 / 回退则 `git reset` 换策略 / 达成则停
 - LEARN 跨迭代回灌：上轮 trap 下轮自动避坑，直到收敛或预算耗尽

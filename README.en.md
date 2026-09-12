@@ -277,7 +277,7 @@ Open session B, type `/auto`:
 **What happens**:
 
 - SCAN parses the interval → enters loop mode, activates the `loop-engineering` skill
-- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (default maxIterations 20 / maxBudgetUsd 300 / maxWallClock 72h; `--budget` / `--max-time` override per-loop)
+- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (default maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h; `--budget` / `--max-time` override per-loop)
 - Schedules each iteration via `ScheduleWakeup` (in-session) or `CronCreate` (overnight, durable)
 - Each iteration runs a focused 6-PHASE pass → CHECKER runs the criterion command → progress: continue / regress: `git reset` + new strategy / met: stop
 - LEARN feeds back across iterations: last run's traps are auto-avoided next run, until convergence or budget exhaustion

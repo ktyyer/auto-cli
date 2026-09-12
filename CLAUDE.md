@@ -62,25 +62,26 @@
 
 ### 进行中
 
-- [ ] 社区 skills 机制：`skills/community/` 目录支持第三方扩展
+- （暂无）
 
-### 计划中（v0.52 候选）
+### 计划中（下一版本候选）
 
 - Agent Teams 双模执行：并行 Quest 在 git-worktrees 之外提供原生 Agent Teams 模式（含分层模型成本指引）
 - OpenSpec delta specs：`spec-driven` skill 吸收 ADDED/MODIFIED/REMOVED 标记与 proposal→apply→archive 状态机
 - hook `agent_id`/`agent_type` 字段利用 + 重评 PostToolUseFailure
-- agentless-repair 撤下过时 SWE-bench 分数表述（保留方法论）
 
 ### 已完成
 
-- [x] v0.52.0: **loop-engineering skill（/auto 自主循环引擎）**：新增 `skills/loop-engineering/SKILL.md`，把 `/auto` 从单次流水线升级为按 interval 参数（`5m`/`30m`/`2h`）触发的 DOER+CHECKER 自主循环。理论依据 2026 loop engineering 范式（Boris Cherny "My job is to write loops"）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop + Agent SDK budget caps + 非退化性收敛。落地：`commands/auto.md` 新增「Loop 模式（正交于策略）」节 + SCAN 1.8 Loop 参数解析（含持续型/收敛型语义自动触发）+ 兜底索引触发项 + LEARN 6.6 跨迭代回灌；`commands/auto.codex.md` 双端对齐（Codex 无原生调度工具 → 外部 cron/schtasks 或人手触发降级，严禁伪造后台运行）；RouteDecision 增 `loopBudgets`（maxIterations 20 / maxBudgetUsd 10 / maxWallClock 72h / noProgressLimit 3）；收敛判据硬门禁（无可度量 CHECKER 不开 loop）；skills 从 37 升为 38（顺带补 predict-verify 入 README 表，修正长期计数滞后）
+- [x] Unreleased: **定位审计 + 一致性修复**：loopBudgets 数值统一（收敛型 maxIterations 20→10，对齐 `loop-engineering` skill 的论证依据 arXiv:2411.17501 与 commit 0c712eb 定稿；maxBudgetUsd 修正为 300；同步 auto.md / auto.codex.md / README 中英）；agentless-repair 撤下过时 SWE-bench 分数表述（保留方法论）；auto.md 6.4 Run 归档配置细节下沉 `knowledge-management` skill；社区 skills 机制收口（Wave 2 已接通：SCAN 发现 + `community-<name>` 安装 + hello-auto 样例）
+
+- [x] v0.52.0: **loop-engineering skill（/auto 自主循环引擎）**：新增 `skills/loop-engineering/SKILL.md`，把 `/auto` 从单次流水线升级为按 interval 参数（`5m`/`30m`/`2h`）触发的 DOER+CHECKER 自主循环。理论依据 2026 loop engineering 范式（Boris Cherny "My job is to write loops"）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop + Agent SDK budget caps + 非退化性收敛。落地：`commands/auto.md` 新增「Loop 模式（正交于策略）」节 + SCAN 1.8 Loop 参数解析（含持续型/收敛型语义自动触发）+ 兜底索引触发项 + LEARN 6.6 跨迭代回灌；`commands/auto.codex.md` 双端对齐（Codex 无原生调度工具 → 外部 cron/schtasks 或人手触发降级，严禁伪造后台运行）；RouteDecision 增 `loopBudgets`（maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3）；收敛判据硬门禁（无可度量 CHECKER 不开 loop）；skills 从 37 升为 38（顺带补 predict-verify 入 README 表，修正长期计数滞后）
 
 - [x] v0.51.0: **自动 run 清理机制**：SessionStart Hook 自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能；新增 `hooks/lib/auto-clean-runs.sh` 跨平台脚本（支持 Linux/macOS/Windows Git Bash/Node.js/Python 降级）；`hooks/hooks.json` SessionStart Hook 集成（< 50ms 开销）；`commands/auto.md` PHASE 6.4 补充配置/手动触发/恢复说明；`commands/auto.codex.md` LEARN 章节同步（标注 Codex 暂无 Hook）；`rules/hooks.md` SessionStart 章节补充；`skills/community/README.md` 顶部显式声明组织目录身份；`scripts/validate-references.js` 白名单补齐
 
 - [x] v0.50.0: **全仓审计修复（27 项）**：Codex 双端对齐（constitution / self-critique / VERIFY gate 集补齐 + adversarial 降级模式 / LEARN 反馈真实化 / Curator 完整化 / Session Continuity / Portable Patterns）；版本计数全链路统一（README 双语徽章 / plugin.json / marketplace.json / REPO_MAP）；幽灵引用清除（doctor.md `auto install`/`RepoIndexer`、community README 未实现承诺改为"开发中"）；CHANGELOG 补回 0.46/0.47 条目；quest-designer 瘦身 464→440 行；knowledge-management + quality-gates 补激活摘要。审计方法：2 个并行 Explore agent（文档一致性 / 双端对齐）+ 机械检查，清单见 `.auto/runs/run-20260613-top-down-audit/index.md`
 - [x] v0.49.0: **plan-ensemble skill（视角集成规划）**：新增 `skills/plan-ensemble/SKILL.md`，PLAN 阶段对高复杂度任务（重构 / 实现+high / brainstorming 后 trade-off 不明 / 用户显式要求）并行派出 2-3 个异质视角只读 subagent 隔离出计划草案（≤30 行/个，零共享上下文防锚定），再以分歧点清单（喂 QuestMap.pitfalls）+ 四维评分矩阵合成唯一 QuestMap；理论依据 NeurIPS 2025 多 agent 辩论评审（arXiv:2510.12697）+ ChatEval 视角多样性 + ACL 2026 受控研究（一轮异质出案即获大部分收益）；`brainstorming` 加升级路由；`auto.md` + `auto.codex.md`（含 Codex 降级模式）+ README 同步；skill 实际计数修正为 36（旧文档"36"虚高一位，实际为 35 + 新增 plan-ensemble）
 - [x] v0.48.0: **知识闭环演化升级（ACE + AWM）**：`knowledge-management` 新增 Curator 检查（查重 / 矛盾检测 / merge-or-append，来源 ACE arXiv:2510.04618）+ Insight 复用计数（helpful/harmful/lastConfirmed 反馈环）；`/auto:learn` 新增 `--workflows` 工作流归纳（≥3 个同策略 run 归纳子任务粒度 Quest 序列模板，来源 AWM arXiv:2409.07429）；`skill-evaluator` 新增触发率评估（正/反例语料 60/40 切分量化 D2，对抗 skill debt）；`auto.md` + `auto.codex.md` + `learn.codex.md` 同步
-- [x] v0.47.0: **feedback-loop + agentless-repair skill**：新增 `skills/feedback-loop/SKILL.md`（I/O 系统自验证闭环，融合 SWE-agent ACI / Reflexion / 非退化性理论，含生产级退化防护）+ `skills/agentless-repair/SKILL.md`（两阶段 Bug 修复流水线，来源 Agentless 论文 arXiv:2407.01489，SWE-bench Lite 27.33%）；`refactoring-patterns` 追加维度驱动收敛节；`auto.md` + `auto.codex.md` + README 同步更新；skills 从 34 升为 36
+- [x] v0.47.0: **feedback-loop + agentless-repair skill**：新增 `skills/feedback-loop/SKILL.md`（I/O 系统自验证闭环，融合 SWE-agent ACI / Reflexion / 非退化性理论，含生产级退化防护）+ `skills/agentless-repair/SKILL.md`（两阶段 Bug 修复流水线，来源 Agentless 论文 arXiv:2407.01489）；`refactoring-patterns` 追加维度驱动收敛节；`auto.md` + `auto.codex.md` + README 同步更新；skills 从 34 升为 36
 - [x] v0.46.0: **production-governance skill**：新增 `skills/production-governance/SKILL.md`，引入第 15 个 VERIFY gate，覆盖目标收敛 / 产物真源 / run 状态 / 成本质量 / skill 健康度；`/auto:status` 增加治理状态字段；`skill-evaluator` 增加 `evidence_missing_count` / `governance_fail_count` 反馈信号；安全敏感路由硬约束补齐；skills 从 31 升为 32
 - [x] v0.45.0: **auto.md 精简 + 细节下沉**：1007 行 → 499 行；新增 `skills/quality-gates/SKILL.md`（14 Gate 定义 + Phase 交接自检表）+ `skills/knowledge-management/SKILL.md`（LEARN 全流程）；探索快速通道 / Skill 分层 / 知识注入简化 / Feedback 真实化 / Run 归档 / 编号修复 / 7 项断档补回
 - [x] v0.44.0: **B5 收尾 · PHASE 3.3 self-critique 触发钩子**：`commands/auto.md` PHASE 3.3 QuestResult 节追加每关 self-critique 强制触发说明，达成度 < 70 阻断进入下一关。补足 v0.43 留下的 EXECUTE 触发链
