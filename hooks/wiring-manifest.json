@@ -1,0 +1,28 @@
+{
+  "_README": "能力接线契约(单一注册表)。每条声明一个应存在于 hooks.json 的 hook,由 scripts/validate-capability-wiring.js 双向断言:forward=声明的 hook 必须真接线(可选 evidenceIncludes 校验 command 里的关键产物名);backward=hooks.json 里每个 hook 必须在此登记,杜绝孤儿。改 hooks.json 时必须同步本文件,否则 npm run check 红灯。descriptionIncludes 用稳定短语(非整句),降低措辞漂移误报。",
+  "capabilities": [
+    { "event": "PreToolUse", "descriptionIncludes": "Block dev servers outside tmux", "backs": "ops:tmux-guard" },
+    { "event": "PreToolUse", "descriptionIncludes": "Reminder to use tmux", "backs": "ops:tmux-reminder" },
+    { "event": "PreToolUse", "descriptionIncludes": "Pause before git push", "backs": "ops:git-push-pause" },
+    { "event": "PreToolUse", "descriptionIncludes": "Block creation of random .md", "backs": "ops:md-guard" },
+    { "event": "PreToolUse", "descriptionIncludes": ">500 lines", "backs": "ops:large-file-warn" },
+    { "event": "PreToolUse", "descriptionIncludes": "TDD Guard", "backs": "skill:tdd-guide", "evidenceIncludes": "AUTO_TDD_STRICT" },
+    { "event": "PreToolUse", "descriptionIncludes": "Auto-snapshot", "backs": "feature:auto-snapshot", "evidenceIncludes": "auto-snapshots" },
+    { "event": "PostToolUse", "descriptionIncludes": "Log PR URL", "backs": "ops:pr-url-log" },
+    { "event": "PostToolUse", "descriptionIncludes": "Auto-lint-fix", "backs": "skill:code-style-enforcer" },
+    { "event": "PostToolUse", "descriptionIncludes": "TypeScript check", "backs": "skill:build-error-resolver" },
+    { "event": "PostToolUse", "descriptionIncludes": "console.log statements after edits", "backs": "ops:console-log-warn" },
+    { "event": "PostToolUse", "descriptionIncludes": "Remind to commit when 5+ files", "backs": "ops:commit-reminder" },
+    { "event": "PostToolUse", "descriptionIncludes": "Coverage check after test runs", "backs": "gate:coverage" },
+    { "event": "PostToolUse", "descriptionIncludes": "Skill health reminder", "backs": "skill:skill-evaluator", "evidenceIncludes": "skill-evaluator" },
+    { "event": "PostToolUse", "descriptionIncludes": "Incremental review: accumulate dirty file list", "backs": "skill:incremental-review", "evidenceIncludes": "dirty.txt" },
+    { "event": "SessionStart", "descriptionIncludes": "SessionStart: surface CLAUDE.md", "backs": "skill:constitution+knowledge-management", "evidenceIncludes": "constitution" },
+    { "event": "PostCompact", "descriptionIncludes": "Re-inject critical project context", "backs": "skill:context-engineering" },
+    { "event": "PreCompact", "descriptionIncludes": "Save quest progress before context compaction", "backs": "feature:interrupt-resume" },
+    { "event": "UserPromptSubmit", "descriptionIncludes": "Warn if user prompt contains potential secrets", "backs": "ops:secret-warn" },
+    { "event": "TeammateIdle", "descriptionIncludes": "Remind team lead to check task list", "backs": "ops:teammate-idle" },
+    { "event": "TaskCompleted", "descriptionIncludes": "surface uncommitted changes when a task completes", "backs": "ops:task-complete-reminder" },
+    { "event": "Stop", "descriptionIncludes": "Final audit for console.log", "backs": "ops:console-log-final" },
+    { "event": "Stop", "descriptionIncludes": "lacks metrics.json", "backs": "feature:metrics-backup", "evidenceIncludes": "generate-metrics.js" }
+  ]
+}
