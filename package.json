@@ -10,11 +10,14 @@
     "format": "prettier --write \"commands/**/*.md\" \"agents/**/*.md\" \"skills/**/*.md\"",
     "format:check": "prettier --check \"commands/**/*.md\" \"agents/**/*.md\" \"skills/**/*.md\"",
     "validate:references": "node scripts/validate-references.js",
+    "validate:capacity": "node scripts/validate-capacity-contract.js",
+    "validate:wiring": "node scripts/validate-capability-wiring.js",
     "validate:package": "node scripts/validate-package-contents.js",
     "validate:run": "node scripts/validate-run-completeness.js --latest --allow-missing",
     "rebuild:cache": "node scripts/rebuild-skill-extracts.js && node scripts/rebuild-insight-index.js",
-    "check": "npm run format:check && npm run validate:references && npm run validate:package && npm run validate:run",
-    "test": "npm run check"
+    "check": "npm run format:check && npm run validate:references && npm run validate:capacity && npm run validate:wiring && npm run validate:package && npm run validate:run",
+    "test:unit": "node --test \"tests/scripts/*.test.js\"",
+    "test": "npm run check && npm run test:unit"
   },
   "keywords": [
     "claude",

@@ -555,6 +555,8 @@ SCAN 完成后立即建立预算感知：
 
 **假设证伪**：列完假设必须主动找反例 — "我的假设可能错在哪？" 至少 1 个反例 + 1 个备选方案。
 
+**容量假设（强制）**：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”的反例，但不把 ×100 当作固定容量阈值。必须检查无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存；不涉及这些对象时标记 `capacity: not-applicable` 并说明理由。
+
 **Premortem（事前验尸）**：“假设 6 个月后本次改动引发 P0，复盘报告最可能写哪 3 个原因？”—— 把这 3 条塞进计划的风险缓解中。
 
 **白话复述（Rubber Duck）**：执行计划或写代码**之前**，用 ≤ 3 句不含技术术语的白话把方案讲给“完全不懂技术的用户”听。讲不顺 = 自己也没真懂 → 回头重新整理再继续。
@@ -652,7 +654,7 @@ SCAN 完成后立即建立预算感知：
 
 ## PHASE 4: VERIFY
 
-按任务类型选择真实验证（gate 详细定义见 `skills/quality-gates/SKILL.md` 16-gate 体系）：
+按任务类型选择真实验证（gate 详细定义见 `skills/quality-gates/SKILL.md` 18-gate 体系）：
 
 | 场景 | 最少验证                                                                                                           |
 | ---- | ------------------------------------------------------------------------------------------------------------------ |
@@ -661,7 +663,7 @@ SCAN 完成后立即建立预算感知：
 | 实现 | build + test + 必要 lint + coverage（有测试基建时实算覆盖率）+ self-verification + self-critique                   |
 | 重构 | build + test + coverage + security（敏感面自查）+ adversarial（降级模式，见下）+ self-verification + self-critique |
 
-**adversarial 降级模式**（Codex 无 verification subagent）：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径，两段互不引用对方结论，标注 `degraded: no-isolation`。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
+**adversarial 降级模式**（Codex 无 verification subagent）：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径 / **容量伸缩性**，两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
 
 **验证上下文最小化**（2026 Context Engineering 核心实践）：
 
@@ -683,8 +685,8 @@ SCAN 完成后立即建立预算感知：
 5. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
 6. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
 7. **constitution**：若 `.auto/constitution.md` 存在，逐条核对本次变更未违反任何硬约束；违反即整体 fail
-8. **doctor-lite consistency**（Codex 端补充检查，非 16-gate 体系成员）：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-9. **run-completeness**（Codex 端补充检查，非 16-gate 体系成员）：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+8. **doctor-lite consistency**（Codex 端补充检查，非 18-gate 体系成员）：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+9. **run-completeness**（Codex 端补充检查，非 18-gate 体系成员）：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：

@@ -1,6 +1,6 @@
 ---
 name: quality-gates
-description: VERIFY 门禁定义 — 16 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
+description: VERIFY 门禁定义 — 18 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
 tags:
   - verify
   - gate
@@ -18,7 +18,7 @@ tags:
 **检查清单** (checklist):
 
 - [ ] 按当前策略查"各策略必需 gate"表，确定本次必检 gate 集合
-- [ ] 按需加载对应 gate 的详细定义（不预加载全量 16 个）
+- [ ] 按需加载对应 gate 的详细定义（不预加载全量 18 个）
 - [ ] 每个 gate 输出 `status` + `evidence`（实际命令 + 输出，不接受"看起来没问题"）
 - [ ] 任一 gate fail 必须同时给出 `recommendedNext`
 - [ ] gate 状态与 verify-report.md 同步收口（命令已 PASS 的 gate 不得仍标 pending）
@@ -33,7 +33,7 @@ tags:
 
 - 用主观判断代替命令实测 → Run-Don't-Claim 违规
 - fail 只写结论不写下一步 → 下游无法回流修复
-- 一次性加载全部 16 个 gate 定义 → 上下文浪费
+- 一次性加载全部 18 个 gate 定义 → 上下文浪费
 
 ## Gate Taxonomy
 
@@ -203,15 +203,16 @@ tags:
 
 **触发**：策略 = 实现/重构，每关完成后由 `verification` agent 执行（红蓝对抗）。
 
-**验证维度**：边界值攻击 | 并发场景 | 幂等性验证 | 异常路径覆盖 | 注入攻击
+**验证维度**：边界值攻击 | 并发场景 | 幂等性验证 | 异常路径覆盖 | 注入攻击 | **容量/伸缩性**
 
-**对抗场景**（至少执行 3 种）：
+**对抗场景**（至少执行 3 种；涉及数据/集合/I/O 的任务必须包含容量探针）：
 
 1. **边界值攻击** — 0, -1, null, undefined, 空字符串, 超长字符串 (10MB), MAX_INT, MIN_INT, Infinity, NaN
 2. **并发场景** — 并行请求同一接口，检查竞态条件、重复创建、数据损坏
 3. **幂等性验证** — 同一请求提交两次，结果必须一致（或安全失败）
 4. **异常路径** — 网络超时、磁盘满、OOM、依赖服务故障
 5. **注入攻击** — SQL 注入、XSS、命令注入、路径穿越
+6. **容量/伸缩性探针** — 列出规模假设（当前规模、峰值并发、单项大小、内存/磁盘预算），对数据量 ×100 或明确的容量上限做反例；检查无界查询（无 `LIMIT`）、全量加载/累积集合、未分页接口、无背压消费者、固定内存缓存；验证分页/流式/背压/限流/超时/取消或给出 `capacity: not-applicable` 理由
 
 **输出格式**：
 
@@ -246,6 +247,15 @@ tags:
       "actual": "Second request charged again",
       "status": "fail",
       "evidence": "curl /api/charge (twice) → balance -= 20"
+    },
+    {
+      "scenario": "capacity-scale",
+      "target": "repository.findAll",
+      "payload": "Current dataset ×100 or declared capacity ceiling",
+      "expected": "Bounded memory, paginated/streamed result, or explicit safe rejection",
+      "actual": "Unbounded query accumulates all rows in memory",
+      "status": "fail",
+      "evidence": "query/file:line + row estimate + memory/latency measurement"
     }
   ],
   "summary": "发现 3 个关键漏洞：边界值未验证、并发重复创建、支付非幂等",

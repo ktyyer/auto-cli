@@ -447,6 +447,8 @@ node scripts/fast-scan.js
 
 **假设证伪**：至少 1 个反例 + 1 个备选。**Premortem**：假设 6 个月后 P0 事故的 3 个原因 → 塞入 `QuestMap.pitfalls`。
 
+**容量假设（强制）**：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须显式记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”这一反例，但不得把 ×100 当作所有系统的固定容量阈值。必须说明无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存的处置；不涉及上述对象时显式标记 `capacity: not-applicable` 及理由。
+
 > **澄清优先于假设**：≥ 1 个歧义项时先调 `requirement-clarifier` skill。
 
 ### 2.5 推理摘要
@@ -467,6 +469,7 @@ node scripts/fast-scan.js
 > **方案探索前置**：策略=实现/重构且有 ≥2 条路径时，先调 `brainstorming` skill。
 > **视角集成升级**：策略=重构、或实现且复杂度=high、或 brainstorming 后 trade-off 仍不明时，调 `plan-ensemble` skill — 2-3 个异质视角隔离并行出草案，分歧点 + 评分矩阵合成唯一 QuestMap（上下文红区禁用）。
 > **测试计划前置**：策略=实现/重构时，先调 `test-plan-writer` skill。
+> **调试前置**：策略=修复，或任一策略遇到 bug / 测试失败 / 构建失败时，先调 `systematic-debugging` skill（根因优先，未定位不改；同一修复失败 3 次强制质疑架构）。
 > **调研前置**：触发 `research-analyst` skill 时，先产出 `.auto/runs/<runId>/research-brief.md`，再进入 quest-designer 调用。
 > **白话复述（Rubber Duck）**：调用 quest-designer 前，用 ≤3 句白话讲方案。讲不顺 → 回 2.2。
 
@@ -578,7 +581,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 - `self-verification`：语法/逻辑/边界/错误处理/性能自动检查
 - `world-class-standards`：圈复杂度 ≤ 10、测试覆盖率 ≥ 80%、严重问题 = 0 等量化指标（详见 `skills/world-class-code-standards/SKILL.md`）
 - `production-readiness`：错误处理完整 + 无硬编码配置 + 日志结构化 + 安全头完整 + 输入验证（详见 `skills/production-standards/SKILL.md`）
-- `adversarial`：边界值攻击 + 并发场景 + 幂等性验证 + 异常路径 + 注入攻击（详见 `agents/verification.md`）
+- `adversarial`：边界值攻击 + 并发场景 + 幂等性验证 + 异常路径 + 注入攻击 + **容量/伸缩性探针**（详见 `agents/verification.md`）
 - `self-critique`：objective 满足度 + 盲点暴露 + 达成度评分（<70 回流）
 - `production-governance`：目标收敛 + 产物真源 + run 状态 + 成本质量 + skill 健康度
 - `protocol-validator`：Phase handoff 检查校验上游协议对象必填字段；VERIFY 中仅汇总截至 EXECUTE→VERIFY 已完成的 handoff 检查结果
@@ -599,12 +602,15 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 - **幂等性验证** — 同一请求提交两次，结果必须一致（或安全失败）
 - **异常路径** — 网络超时、磁盘满、OOM、依赖服务故障
 - **注入攻击** — SQL 注入、XSS、命令注入、路径穿越
+- **容量/伸缩性探针** — 数据量 ×100 或声明上限、无界查询、全量集合、分页/流式/背压、内存/延迟上界
 
 **硬约束**：
 
 - 边界值导致 500 错误 → 必须加输入验证
 - 并发导致数据损坏 → 必须加锁或幂等性保证
 - 注入攻击成功 → 必须修复（不可放行）
+- 容量探针发现无界查询/全量累积集合/无分页/无背压/无内存上界 → 必须补充容量边界、分页/流式/背压，或显式记录并批准容量上限；不得以“当前数据量很小”放行
+- 容量假设无法实测 → VerifyReport 必须标记 `warning` 或 `skipped`，写明缺少的规模数据与下一步，不得标记 `pass`
 
 ---
 
