@@ -73,7 +73,7 @@
 | `production-governance`    | 生产治理闭环（目标收敛、产物真源、成本质量）            |
 | `production-standards`     | 生产环境标准                                            |
 | `protocol-validator`       | 协议对象 Schema / handoff 完整性校验                    |
-| `quality-gates`            | VERIFY 16 Gate 门禁定义                                 |
+| `quality-gates`            | VERIFY 18 Gate 门禁定义                                 |
 | `refactoring-patterns`     | 安全重构方法论（测试保护网、分批策略、常见重构手法）    |
 | `requirement-clarifier`    | 需求澄清（模糊需求回问用户）                            |
 | `research-analyst`         | 自主调研方法论（先调研再动手）                          |

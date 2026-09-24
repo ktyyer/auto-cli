@@ -104,7 +104,7 @@ const OrderSchema = z.object({
 ## 2-8. 实现模式详情
 
 > 按需加载完整实现（重试/熔断/限流/幂等/并发/超时/优雅关闭）
-> Read `skills/robustness-patterns.references/implementation-patterns.md`
+> Read `skills/robustness-patterns/references/implementation-patterns.md`
 > 仅在需要编码实现时加载，日常检查看激活摘要 checklist 即可。
 
 ### 快速决策表

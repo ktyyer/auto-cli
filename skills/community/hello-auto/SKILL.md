@@ -65,7 +65,7 @@ hello-auto: OK
 test -f skills/community/hello-auto/SKILL.md
 node scripts/validate-references.js
 # sync 后（Claude）:
-# test -f ~/.claude/skills/community-hello-auto.md
+# test -f ~/.claude/skills/community-hello-auto/SKILL.md
 ```
 
 ## 参考

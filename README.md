@@ -167,7 +167,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY 质检]
-        V1[16 个 Gate]
+        V1[18 个 Gate]
         V2{全过?}
     end
 
@@ -197,7 +197,7 @@ flowchart LR
 | **SCAN**      | 看项目家底、查历史踩坑、判断这事简单还是复杂                         | 装修前先量房、查老房子档案   |
 | **PLAN**      | 拆成几关，每关明确改哪些文件、不改哪些文件、怎么算完成               | 出施工图，写"承重墙绝不能动" |
 | **EXECUTE**   | 逐关施工，每关写盘，三件套防偷工（圈定文件 / 扩张词刹车 / 不偷捷径） | 工人按图施工，监工随时盯     |
-| **VERIFY**    | 16 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
+| **VERIFY**    | 18 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
 | **SUMMARIZE** | 给出人类可读总结，**不自动提交**——commit 权在你手里                  | 交付清单，由你签字           |
 | **LEARN**     | 把踩坑/模式提炼成 LearnCard，分发到 `.auto/insights/` 5 个文件       | 项目复盘，写进知识库         |
 
@@ -450,7 +450,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `constitution`          | `.auto/constitution.md` 硬约束载体            |
 | `incremental-review`    | 会话末增量审查                                |
 | `self-critique`         | 每关 Reflexion 自纠                           |
-| `quality-gates`         | VERIFY 16 Gate 门禁定义                       |
+| `quality-gates`         | VERIFY 18 Gate 门禁定义                       |
 | `knowledge-management`  | LEARN 知识蒸馏 + 分发 + 归档全流程            |
 | `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
 | `world-class-code-standards` | 圈复杂度 / 覆盖率 / 技术债量化标准       |
@@ -469,7 +469,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 
 低匹配 Skill 只读 20 行摘要，**最高可省约 80% 上下文**（摘要级 ~500 vs 深度级 ~5000 tokens，按三级 token 估算）。
 
-### 22 个 Hook（Claude Code 自动化）
+### 23 个 Hook（Claude Code 自动化）
 
 | 事件                                      | 数量 | 关键 Hook                                                                 |
 | ----------------------------------------- | ---- | ------------------------------------------------------------------------- |
@@ -478,7 +478,7 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `SessionStart`                            | 1    | 注入 CLAUDE.md + constitution + 上次 session-continuity                   |
 | `PreCompact` / `PostCompact`              | 2    | 上下文压缩前后救援                                                        |
 | `UserPromptSubmit`                        | 1    | 密钥泄露检测                                                              |
-| `TeammateIdle` / `TaskCompleted` / `Stop` | 3    | 协作 / 质量门禁 / 审计                                                    |
+| `TeammateIdle` / `TaskCompleted` / `Stop` | 4    | 协作 / 质量门禁 / 审计                                                    |
 
 ### 10 条 Rules（编码规范，Claude Code 自动加载）
 
@@ -498,13 +498,13 @@ node scripts/uninstall.js      # tgz 解压目录内
 SCAN     → RouteDecision   路由决策书（策略 + Agent + 预算 + 能力快照）
 PLAN     → QuestMap        闯关地图（Quest 列表 + outOfScope + 验收命令）
 EXECUTE  → QuestResult     每关战绩（diff + 验证 + skill 应用证据）
-VERIFY   → VerifyReport    质检报告（16 gate × 状态 + 实测证据）
+VERIFY   → VerifyReport    质检报告（18 gate × 状态 + 实测证据）
 LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 ```
 
 **类比**：工厂流水线工单——每个工位收上游标准件，出下游标准件，谁出问题精确定位。
 
-### 16 Gate 验证矩阵
+### 18 Gate 验证矩阵
 
 | Gate                     | 说明                   | 探索 | 修复 | 实现 | 重构 |
 | ------------------------ | ---------------------- | :--: | :--: | :--: | :--: |
@@ -516,6 +516,8 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | `security`               | 安全审查               |  —   |  —   |  —   |  ✓   |
 | `adversarial`            | 红蓝对抗               |  —   |  —   |  —   |  ✓   |
 | `self-verification`      | AI 自查代码            |  —   |  ✓   |  ✓   |  ✓   |
+| `world-class-standards`  | 圈复杂度 / 覆盖率量化  |  —   |  ✓   |  ✓   |  ✓   |
+| `production-readiness`   | 生产就绪标准           |  —   |  ✓   |  ✓   |  ✓   |
 | `self-critique`          | Reflexion 自纠（每关） |  —   |  —   |  ✓   |  ✓   |
 | `production-governance`  | 生产治理闭环           |  —   |  —   |  ✓   |  ✓   |
 | `protocol-validator`     | 协议对象完整性校验     |  —   |  ✓   |  ✓   |  ✓   |

@@ -167,7 +167,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY Gate]
-        V1[16 Gates]
+        V1[18 Gates]
         V2{All pass?}
     end
 
@@ -197,7 +197,7 @@ flowchart LR
 | **SCAN**      | Check project's existing assets, look up past traps, judge complexity                                                              | Surveyor measures the house & checks records before renovation |
 | **PLAN**      | Break into quests, each declares what files to touch / NOT touch / how to verify                                                   | Draft blueprints with "load-bearing wall MUST NOT be touched"  |
 | **EXECUTE**   | Build quest by quest, write to disk every step. 3 anti-cheating mechanisms (file lock / expansion-word brake / no-shortcut pledge) | Workers follow blueprint, foreman watches constantly           |
-| **VERIFY**    | Run 16 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
+| **VERIFY**    | Run 18 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
 | **SUMMARIZE** | Output human-readable summary. **No auto-commit** — commit power stays with YOU                                                    | Delivery checklist for YOUR signature                          |
 | **LEARN**     | Distill traps/patterns into LearnCards, dispatch to 5 files in `.auto/insights/`                                                   | Project retrospective, written to knowledge base               |
 
@@ -436,7 +436,7 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `constitution`          | `.auto/constitution.md` hard-constraint carrier                       |
 | `incremental-review`    | End-of-session incremental review                                     |
 | `self-critique`         | Per-quest Reflexion self-correction                                   |
-| `quality-gates`         | VERIFY 16-gate definitions                                            |
+| `quality-gates`         | VERIFY 18-gate definitions                                            |
 | `knowledge-management`  | LEARN knowledge distillation + distribution + archive workflow        |
 | `protocol-validator`    | Protocol object schema / handoff completeness validation              |
 | `world-class-code-standards` | Quantified standards: cyclomatic complexity / coverage / tech debt |
@@ -455,7 +455,7 @@ Each skill contains a `## Activation Summary` section, supporting 3-tier on-dema
 
 Low-match skills only read 20-line summary, **saving up to ~80% context** (summary ~500 vs deep ~5000 tokens, per tier token estimates).
 
-### 22 Hooks (Claude Code automation)
+### 23 Hooks (Claude Code automation)
 
 | Event                                     | Count | Key hooks                                                                   |
 | ----------------------------------------- | ----- | --------------------------------------------------------------------------- |
@@ -464,7 +464,7 @@ Low-match skills only read 20-line summary, **saving up to ~80% context** (summa
 | `SessionStart`                            | 1     | Inject CLAUDE.md + constitution + last session-continuity                   |
 | `PreCompact` / `PostCompact`              | 2     | Context compression rescue                                                  |
 | `UserPromptSubmit`                        | 1     | Secret leak detection                                                       |
-| `TeammateIdle` / `TaskCompleted` / `Stop` | 3     | Collaboration / quality gate / audit                                        |
+| `TeammateIdle` / `TaskCompleted` / `Stop` | 4     | Collaboration / quality gate / audit                                        |
 
 ### 10 Rules (coding standards, Claude Code auto-loaded)
 
@@ -484,13 +484,13 @@ Every `/auto` run is forced to produce these, landing in `.auto/runs/<runId>/`:
 SCAN     → RouteDecision   routing decision (strategy + agent + budget + capability snapshot)
 PLAN     → QuestMap        quest map (quest list + outOfScope + acceptance commands)
 EXECUTE  → QuestResult     per-quest result (diff + validation + skill application evidence)
-VERIFY   → VerifyReport    gate report (16 gates × status + actual evidence)
+VERIFY   → VerifyReport    gate report (18 gates × status + actual evidence)
 LEARN    → LearnCard       experience card (dispatched by category to insights/)
 ```
 
 **Analogy**: factory assembly line work orders — each station consumes upstream standard parts, produces downstream standard parts. Failures locate precisely.
 
-### 16-Gate validation matrix
+### 18-Gate validation matrix
 
 | Gate                     | Meaning                                | Explore | Fix | Implement | Refactor |
 | ------------------------ | -------------------------------------- | :-----: | :-: | :-------: | :------: |
@@ -502,6 +502,8 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | `security`               | Security review                        |    —    |  —  |     —     |    ✓     |
 | `adversarial`            | Red-team validation                    |    —    |  —  |     —     |    ✓     |
 | `self-verification`      | AI self-check (code)                   |    —    |  ✓  |     ✓     |    ✓     |
+| `world-class-standards`  | Cyclomatic / coverage quantification   |    —    |  ✓  |     ✓     |    ✓     |
+| `production-readiness`   | Production readiness standards         |    —    |  ✓  |     ✓     |    ✓     |
 | `self-critique`          | Reflexion self-correction (per quest)  |    —    |  —  |     ✓     |    ✓     |
 | `production-governance`  | Production governance loop             |    —    |  —  |     ✓     |    ✓     |
 | `protocol-validator`     | Protocol object completeness           |    —    |  ✓  |     ✓     |    ✓     |

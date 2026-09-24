@@ -73,7 +73,7 @@
 | `production-governance`    | Production governance (goal convergence, cost quality)     |
 | `production-standards`     | Production environment standards                           |
 | `protocol-validator`       | Phase handoff protocol validation                          |
-| `quality-gates`            | 14 VERIFY gates definitions                                |
+| `quality-gates`            | 18 VERIFY gates definitions                                |
 | `refactoring-patterns`     | Safe refactoring methodology (test safety net, batch strategy) |
 | `requirement-clarifier`    | Requirements clarification (ask user for ambiguous requirements) |
 | `research-analyst`         | Autonomous research methodology (research before implementation) |

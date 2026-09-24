@@ -116,7 +116,7 @@ tags: [error, debugging, patterns, build-fix, troubleshooting, python, go, rust,
 ### 6-10. 语言特定错误速查
 
 > 按需加载详细错误表：Java / Python / Go / Rust / TypeScript
-> → Read `skills/error-patterns.references/language-specific.md`
+> → Read `skills/error-patterns/references/language-specific.md`
 > 仅在遇到对应语言错误时加载，节省上下文。
 
 ## 修复策略模板
