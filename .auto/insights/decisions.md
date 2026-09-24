@@ -423,3 +423,54 @@ v0.40.x 引入 `.cursor-plugin/plugin.json` 与 `.opencode/plugin.json` 时，�
 
 **推荐动作**: v0.48.0 可发布（npm pack 由用户决定）。遗留：CHANGELOG 缺 0.46/0.47 历史条目待补录；P1 四项见 CLAUDE.md v0.49 候选。
 
+---
+
+### 2026 现状定位结论：纯 MD 指令包类别未死，但本仓须做减法
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: positioning, 2026, scope-discipline, skill-bloat
+**scope**: project
+
+**调研方法**：3 路并行 subagent（~30 次 web_search）+ 主窗口 anysearch + **5 个关键来源全文直取**（SkillsBench 1.1、OpenAI "Rethinking skills for GPT-6 Astra"、Codex custom-prompts 文档、SkillReducer arXiv:2603.29919、Anthropic multi-agent 博客）。
+
+**支持"类别仍有必要"的最强证据**：SkillsBench 1.1（arXiv:2602.12670，87 任务/8 域/18 配置）——策展 skill 平均 **+16.6pp**（33.9%→50.5%，25.5% 归一化增益），8 域全为正；而**模型自生成 skill 低于无 skill 基线**（−8.1/−11.3/−11.5pp）。即"策展 > 自生成 > 无"，这正是指令包的价值命题。
+
+**削弱"本仓差异化"的证据**：
+1. 宿主能力几乎全被一方化——Skills / Subagents / Hooks / Plan mode / Memory / Compaction / Checkpointing / Sandboxing / Marketplace / Agent Teams 均有原生等价物
+2. **Codex 已弃用 custom prompts**（原文："Custom prompts are deprecated. Use skills for reusable instructions that Codex can invoke explicitly or implicitly."），而本仓 Codex 侧入口 `/prompts:auto` 正依赖该机制
+3. SKILL.md 开放标准使"跨宿主可移植"不再独家（任何 markdown 包天然获得）
+4. 形态与实测最优区间相悖：skill 数量 2-3 最优（+19.0）vs 4+ 降至 +10.1；长度 Standard（+21.5）远优于 Comprehensive（+0.7）；本仓 39 个常驻 skill ≈ **3,900 tokens** 常驻开销（39 × ~100，实测 frontmatter 11,322 字符），且社区把 ">32 skills" 列为风险阈值
+
+**OpenAI 官方反证（2026-09-11）**：模型更强后 "what used to require a lot of handholding and scaffolding no longer does"；技能过多会导致运行时**截断 description** 使路由退化；描述可能互相矛盾；"把 skill 写成 elaborate itineraries or recipes" 现在**反而有害**。
+
+**结论**：类别未死（策展 > 自生成 > 无），但本仓应**做减法而非加能力**。可辩护的残余面：① 强约束 6 PHASE + 数值化 gate ② 项目本地 learn-card 复用（**未验证**是否有原生等价物，是最有希望的差异化候选）。
+
+**推荐动作**（后续 run 候选，本次未执行）：
+- skill 合并/瘦身 39→25~30（对齐 SkillsBench 测得区间）
+- Codex 入口从已弃用的 custom prompts 迁移到 Codex Skills
+- 评估 learn-card 复用的原生可替代性，若可替代则该护城河需重新论证
+
+**反模式**：用"新增 skill"回应能力缺口——本仓已有 39 个，越过实测最优区间。
+
+**来源**: run-20260920-ai-era-positioning
+
+---
+
+### 容量/伸缩性应成为 adversarial gate 的强制维度，而非新增第 19 个 gate
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: capacity, scalability, adversarial, review-governance
+**scope**: project
+
+**决策**：不新增独立 gate，扩展现有 `adversarial` gate。理由：当前 adversarial 已负责边界/并发/幂等/异常/注入；容量是同一类“主动破坏假设”的维度，新增 gate 会继续增加流程膨胀与 gate 计数漂移。
+
+**强制契约**：
+1. PLAN/QuestMap：涉及数据库、文件、消息、缓存、集合、批处理、导入导出或外部 API 时，显式记录当前规模、峰值并发、单项大小、内存/磁盘预算、放大因子
+2. 默认反例：数据量 ×100；但 ×100 只是探针，不是所有系统的固定容量阈值
+3. VERIFY：检查无 `LIMIT` 查询、全量加载/累积集合、未分页接口、无背压消费者、固定内存缓存
+4. 正向证据：分页、流式、背压、限流、超时、取消、内存/延迟上界，或明确且获批准的容量上限
+5. N/A：不涉及数据/集合/I/O 时必须写 `capacity: not-applicable` + 理由
+6. 证据不足：只能 `warning` / `skipped`，不得 `pass`
+
+**外部依据**：AWS Well-Architected Performance Efficiency 的 `PERF05-BP04 Load test your workload`；Google Cloud Well-Architected Framework 的性能效率与需求演进/资源效率原则；Anthropic `Demystifying evals for AI agents` 关于评估自身存在隐性失效模式的警告。
+
+**来源**: run-20260920-capacity-review
+

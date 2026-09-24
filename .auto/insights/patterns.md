@@ -948,6 +948,33 @@ PLAN 阶段编辑 `commands/auto.md` 或 `commands/auto.codex.md` 时强制执�
 **推荐动作**: 在 `/auto:create-hook` 中生成 PreToolUse hook：检测 Edit 命中 `commands/auto.md` 时主动提示"是否需要同步 auto.codex.md"，避免依赖 AI 自觉。
 **反模式**: 改 auto.md 不查 auto.codex.md（本仓库连续两个 run 都犯过）；把"双端核查"留在脑中不写入 outOfScope（看不见即等于不存在）。
 
+### 文档计数防漂移：去数字化 + 单一权威基准
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: doc-drift, single-source, count-hygiene
+**scope**: project
+
+"计数漂移"在本仓已第二次命中（`traps.md` 早有同题 trap：REPO_MAP 写 11、实际 12）。本次实测：gate 16 vs 18、hook 22 vs 23、`REPO_MAP.en.md` 甚至仍是 14。
+
+**做法（已落地）**：
+1. **确立权威基准**（每个数字一条可复现命令）：
+   - gate 以 `skills/quality-gates/SKILL.md` taxonomy 行为准（实测 18）
+   - hook 以 `hooks/hooks.json` 按事件实际遍历为准（实测 23）
+   - skill 以 `skills/` 下**排除 `community/` 组织目录**后的目录数为准（实测 39）
+2. **去数字化**：历史叙述性计数（"与 13 个 gate 互补"、"新增第 14 个 gate"）改为不带数字的表述，消除未来漂移面
+3. **补全矩阵**：README gate 矩阵补 2 个**策略表已必需**但矩阵缺失的 gate（`world-class-standards`、`production-readiness`）→ 16 行变 18 行，与 taxonomy 对齐
+
+**Why it works**：把计数从"多处独立维护的常量"变为"由可执行命令派生的值"，并对最容易腐烂的叙述性数字做去数字化。
+
+**CHECKER**（可自动验证）：
+
+```bash
+cd <repo>
+node -e "const j=JSON.parse(require('fs').readFileSync('hooks/hooks.json','utf8'));let n=0;for(const k of Object.keys(j.hooks))n+=j.hooks[k].length;console.log('hooks',n);process.exit(n===23?0:1)"
+node -e "const d=require('fs').readdirSync('skills',{withFileTypes:true}).filter(e=>e.isDirectory()&&e.name!=='community');console.log('skills',d.length);process.exit(d.length===39?0:1)"
+```
+
+**来源**: run-20260920-ai-era-positioning
+
 ### `/auto` 对 vibe coding 的最高 ROI 在护栏而不是加速
 
 **日期**: 2026-05-23 | **置信度**: high | **来源**: 20260523-vibe-coding-roi
@@ -1035,6 +1062,47 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 
 **推荐动作**: 实现外部调研建议前，先 Grep/Read 目标文件确认该能力是否已部分存在，再决定新建还是补强。
 
+
+### 容量/伸缩性假设必须显式化并可证伪
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: capacity, scalability, adversarial, data-volume
+**scope**: universal
+
+**适用条件**：任务涉及数据库、文件、消息、缓存、集合、批处理、导入导出或外部 API。
+
+**模式**：
+1. PLAN 记录当前规模、峰值并发、单项大小、内存/磁盘预算和放大因子
+2. 默认提出“数据量 ×100 后会怎样？”反例；×100 是探针，不是固定容量阈值
+3. VERIFY 对无 `LIMIT` 查询、全量加载/累积集合、未分页接口、无背压消费者、固定内存缓存逐项检查
+4. 要求分页/流式/背压/限流/超时/取消或明确容量上限的实测证据
+5. 不涉及数据/集合/I/O 时写 `capacity: not-applicable`；证据不足只能 warning/skipped
+
+**反模式**：只证明当前 674 条数据能跑通；用既有全量内存代码作为新实现的容量合理性证据；把“当前数据量小”当作放行理由。
+
+**来源**: run-20260920-capacity-review
+
+---
+
+### 容量契约需要可执行 validator，且词汇必须规范化
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: protocol-validator, capacity, vocabulary, static-check
+**scope**: project
+
+仅把容量规则写进 prompt 不足以防回归；本次新增 `scripts/validate-capacity-contract.js`，检查 4 个协议真源文件的 21 个 marker，并接入 `npm run check`。
+
+**真实失败案例**：首次校验失败，因为 `quality-gates` 写的是“无 `LIMIT` 查询”，validator 要求“无界查询”。修复为“无界查询（无 `LIMIT`）”后通过。
+
+**模式**：
+1. validator 使用短、稳定、规范化的 canonical phrase
+2. 文案可以补充同义解释，但必须包含 canonical phrase
+3. 第一次失败必须记录为 LearnCard，不得简单放宽 validator 以求 PASS
+4. 规则变更必须同时更新源文档、validator、run acceptance 与 LearnCard
+
+**证据**：`node scripts/validate-capacity-contract.js` → 4 files / 21 markers / PASS；`npm run check` → exit 0。
+
+**来源**: run-20260920-capacity-review
+
+---
 
 ### [pattern] 声明性数字随版本演进系统性滞后（run-20260613-v050-audit-fix）
 

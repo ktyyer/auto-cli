@@ -550,3 +550,64 @@ REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMa
 `scripts/validate-package-contents.js` 自己跑 `npm pack --json` 校验文件清单后删除 tgz（:56-58 清理逻辑），所以「npm pack && npm run validate:package」结束时磁盘上没有 tgz。规避：需要留存分发产物时，先 `npm run validate:package` 再 `npm pack`（本次重装 run 的实际顺序）；或接受校验即清理、用时再打。
 
 **来源**: run-20260912-repack-reinstall
+
+---
+
+### 无阈值的"优化标准"是臆造 — description ≤N 字即此类
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: anti-hallucination, invented-threshold, skill-bloat, regression-risk
+**scope**: universal
+
+把"最佳实践"表述成一个**具体数字**（字符数 / 行数 / 个数）却拿不出来源原文，是最隐蔽的幻觉形态。本次实例：我在定位分析中提出「统一 Skill description ≤120 字」并准备批量改写 39 个 skill，随后核实发现：
+
+- OpenAI 原文只说 "as short as possible while making it clear when the model should use them"，**未给任何字符阈值**
+- SkillReducer（arXiv:2603.29919）实测压缩后 **14.0% 的 skill 质量退化**（25.3% 提升），作者强调压缩必须配行为验证，否则是 "hopeful deletion"
+- 本仓 description 实测 27~242 字符（均值 ~175），落在合理区间，并非失控
+
+**若执行的后果**：本仓自身四信号路由（tags×2 + description 语义×1）依赖 description，批量改写属**行为回归**而非文档修复。
+
+**规避**：① 写入 acceptance 的每个数字必须有来源 URL + 原文引用，否则降级为"候选待验证"；② 批量修改前先问"这阈值来自哪份原文"，答不出即不执行；③ 压缩类改动必须配行为验证。
+
+**来源**: run-20260920-ai-era-positioning
+
+---
+
+### 评审只验证设计正确性，未验证容量/伸缩性
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: capacity, scalability, unbounded-query, review-blind-spot
+**scope**: universal
+
+**触发条件**：多轮评审都检查接口契约、逻辑正确性、边界输入、并发/幂等与安全，却没有挑战数据量假设。
+
+**本次实质缺陷**：早期“674 条可行”的规模结论在架构三次演进（全量镜像 → 全量复用 → 全量转换）中从未重估；既有代码的全量内存模式形成风格错觉；作者自审缺少外部容量质疑。结果是评审清单没有检查：无 `LIMIT` 查询、全量累积集合、未分页接口、无背压消费者、固定内存缓存。
+
+**强制修复**：已把容量/伸缩性探针并入 `adversarial` gate：
+- PLAN 必须记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子
+- 默认提出“数据量 ×100 后会怎样？”反例，但不把 ×100 当作固定容量阈值
+- VERIFY 必须给出分页/流式/背压/限流/超时/取消证据，或显式 `capacity: not-applicable` 理由
+- 容量无法实测只能 `warning/skipped`，不得 `pass`
+
+**来源**: run-20260920-capacity-review
+
+---
+
+### subagent 审计报告必须主窗口实测裁决 — 同一 run 内 3 项被推翻
+
+**日期**: 2026-09-20 | **置信度**: high | **标签**: subagent-verification, audit, count-drift, cross-check
+**scope**: universal
+
+**触发条件**：把 subagent 的机械审计结论直接写进最终报告或据以修复。
+
+| subagent 结论            | 主窗口实测                                               | 结果     |
+| ------------------------ | -------------------------------------------------------- | -------- |
+| skills 40，文档 39 漂移  | 40 目录含 `community/` **组织目录**，正式 39              | 文档正确 |
+| hooks 24                 | `hooks.json` 按事件遍历 = 23                             | 23       |
+| 双端 6 术语计数不一致=缺口 | 项目自身标准要求"术语**存在性**"而非计数相等，两端均存在 | 已合规   |
+
+**根因**：① 按目录数计数未识别 `community/` 是组织目录（其 README 明确声明该身份）；② 未实际遍历 `hooks.json` 嵌套结构（`hooks.<Event>[].length`），凭 README 分组行推断；③ 未读项目自身约定（`patterns.md`）就套用通用"计数应相等"直觉。
+
+**反模式**：把"独立的 subagent 说了"当作"已验证"——独立性 ≠ 正确性。
+
+**规避**：① subagent 报告的**每个数字**落盘前由主窗口用一条可复现命令复核；② 计数类审计必须写清**计数基准**（目录数？SKILL.md 数？排除组织目录？）；③ 审计 prompt 显式要求"先读项目自身约定，再套用通用直觉"。
+
+**来源**: run-20260920-ai-era-positioning
