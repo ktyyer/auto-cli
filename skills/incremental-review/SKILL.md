@@ -7,7 +7,7 @@ tags: [code-review, incremental, post-tool-use, stop-hook, dirty-files, ci-light
 # Incremental Review — 增量代码审查
 
 > 借鉴 [O'Reilly: Auto-Reviewing Claude's Code](https://www.oreilly.com/radar/auto-reviewing-claudes-code/) 与 Nick Tune (Medium) 的 Stop-hook critical-reviewer 模式。
-> 核心原则：**全量审太贵，全跳过又漏**。只审 dirty files，由 hook 自动驱动，与 13 个 gate 互补。
+> 核心原则：**全量审太贵，全跳过又漏**。只审 dirty files，由 hook 自动驱动，与 VERIFY gate 体系互补。
 
 ## 激活摘要
 
@@ -19,14 +19,14 @@ tags: [code-review, incremental, post-tool-use, stop-hook, dirty-files, ci-light
 
 **检查清单**：
 
-1. 是否存在 `.auto/runs/<runId>/dirty.json` 累积清单？（由 PostToolUse hook 维护）
+1. 是否存在 `.auto/runs/<runId>/dirty.txt` 累积清单？（由 PostToolUse hook 维护）
 2. Stop 阶段是否对 dirty 文件触发了 code-reviewer subagent？
 3. Review 结果是否落盘到 `.auto/runs/<runId>/incremental-review.md`？
 4. 严重问题（critical/high）是否阻塞会话结束？
 
 **机制三件套**：
 
-- **PostToolUse 累积**：每次 Write/Edit 完成后追加 `tool_input.file_path` 到 `.auto/runs/<latest>/dirty.json`（去重）
+- **PostToolUse 累积**：每次 Write/Edit 完成后追加 `tool_input.file_path` 到 `.auto/runs/<latest>/dirty.txt`（去重）
 - **Stop 触发**：会话结束前读取 dirty 清单，仅对清单内文件传给 code-reviewer subagent
 - **结果落盘**：review 报告写入 `.auto/runs/<runId>/incremental-review.md`，critical 问题以 exit 2 阻塞
 
@@ -62,7 +62,7 @@ tags: [code-review, incremental, post-tool-use, stop-hook, dirty-files, ci-light
 }
 ```
 
-> **注**：完整阻塞型实现需 Claude Code 支持 Stop hook 调用 subagent，目前以"提示"形式启用；阻塞版可在团队需要强制时升级。
+> **当前接线状态（以 `hooks/hooks.json` 为准）**：仅 PostToolUse 的 `dirty.txt` 累积已实际接入 hooks.json；上面的 **Stop 提示 hook 为参考模板，尚未安装**。要启用会话末增量审查提示，需手动把 Stop 段加入 hooks.json；阻塞型（critical 以 exit 2 拦截）需 Claude Code 支持 Stop hook 调用 subagent，仍为未来项。
 
 ## 与现有 gate 的关系
 
