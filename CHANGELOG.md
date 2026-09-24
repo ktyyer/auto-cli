@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **容量契约校验改为结构锚点**：`scripts/validate-capacity-contract.js` 不再逐文件维护一份中文短语清单（`auto.md` 与 `auto.codex.md` 各一份，措辞一改就假红或假绿）。改为校验 `<!-- capacity-contract: assumption|probe -->` 锚点数量，并在锚点所辖段落上套同一份共享需求集（规模放大反例 / 无界查询 / `capacity: not-applicable` 豁免）。四个契约文件补上锚点，新增 `tests/scripts/validate-capacity-contract.test.js`。
+- **反馈飞轮的空数据不再被当成判决**：`commands/auto.md` 1.1 明确 `skills.json` 缺记录的 skill 视为 core（零数据 = 还没测过，不是不重要）；6.2 与 `commands/auto/route.md` 路由加权增加样本门槛（agent `totalCalls` < 3、skill `usageCount` < 3 时 `successRate` 不参与加权）；`skills/knowledge-management/SKILL.md` 步骤 4 同步该门槛；`commands/auto.codex.md` 的四信号匹配、agent 排除规则与 LEARN 写侧补上同一门槛（原先不足 3 次也会按 `successRate` 加权或排除）。
 - plugin / marketplace 描述与 keywords 面向发现层
 - SCAN：skill `tier` 分层 + `skills/community/*/SKILL.md` 发现
 

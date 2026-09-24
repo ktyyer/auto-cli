@@ -176,7 +176,7 @@ Glob(".auto/constitution.md") → 如存在则 Read 全文，注入 RouteDecisio
 2. **情境层 Skill**（`tier=situational`）：默认跳过全文 frontmatter；兜底索引或策略关键词命中时再加载
 3. **领域储备层**（`tier=domain-reserve` 且 `usageCount=0`）：仅技术栈/显式意图命中时加载（如 `java-patterns`）
 4. **自动升降**：连续 10 个 run 未激活 → 可标为 situational/domain-reserve；被激活 1 次 → 升回 core
-5. 分层依据：`.auto/feedback/skills.json` 的 `usageCount` + 可选 `tier` 字段（见 skill-health 报告）
+5. 分层依据：`.auto/feedback/skills.json` 的 `usageCount` + 可选 `tier` 字段（见 skill-health 报告）。**缺记录即 core**：`skills.json` 没有条目的 skill 视为 `usageCount=0` 且无 `tier`，按本规则第 1 条落入核心层（正常读 frontmatter），不得当成 domain-reserve 跳过——零数据代表「还没测过」，不代表「不重要」。只有显式写出的 `tier` 才允许降层。
 
 ### 1.2 环境快检
 
@@ -447,7 +447,7 @@ node scripts/fast-scan.js
 
 **假设证伪**：至少 1 个反例 + 1 个备选。**Premortem**：假设 6 个月后 P0 事故的 3 个原因 → 塞入 `QuestMap.pitfalls`。
 
-**容量假设（强制）**：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须显式记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”这一反例，但不得把 ×100 当作所有系统的固定容量阈值。必须说明无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存的处置；不涉及上述对象时显式标记 `capacity: not-applicable` 及理由。
+**容量假设（强制）** <!-- capacity-contract: assumption -->：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须显式记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”这一反例，但不得把 ×100 当作所有系统的固定容量阈值。必须说明无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存的处置；不涉及上述对象时显式标记 `capacity: not-applicable` 及理由。
 
 > **澄清优先于假设**：≥ 1 个歧义项时先调 `requirement-clarifier` skill。
 
@@ -602,9 +602,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 - **幂等性验证** — 同一请求提交两次，结果必须一致（或安全失败）
 - **异常路径** — 网络超时、磁盘满、OOM、依赖服务故障
 - **注入攻击** — SQL 注入、XSS、命令注入、路径穿越
-- **容量/伸缩性探针** — 数据量 ×100 或声明上限、无界查询、全量集合、分页/流式/背压、内存/延迟上界
-
-**硬约束**：
+- **容量/伸缩性探针** <!-- capacity-contract: probe --> — 数据量 ×100 或声明上限、无界查询、全量集合、分页/流式/背压、内存/延迟上界；不涉及数据/集合/I/O 时显式标记 `capacity: not-applicable` 及理由
 
 - 边界值导致 500 错误 → 必须加输入验证
 - 并发导致数据损坏 → 必须加锁或幂等性保证
@@ -651,7 +649,8 @@ node scripts/generate-metrics.js <runId>
 - 被调度的 agent：`totalCalls` +1，更新 `lastUsed`，按结果更新 `successRate`
 - 被激活的 skill：`usageCount` +1，更新 `lastUsed`，按结果更新 `successRate`
 - 失败时追加 `knownIssues`
-- 数据新鲜度：>30 天未更新标记为 `stale`
+- 数据新鲜度：>30 天未更新标记为 `stale`，但 stale 只降权、不剔除
+- **稀疏数据不得当判决**：`successRate` 样本不足（agent `totalCalls` < 3，skill `usageCount` < 3）时，路由与分层都忽略它，按无记录处理。1 次调用的 `successRate=1.0` 与 `0.0` 同样没有统计意义，不能据此提权、降权或砍 skill
 
 ### 6.3 Session Continuity
 

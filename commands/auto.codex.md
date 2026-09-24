@@ -453,6 +453,7 @@ SCAN 完成后立即建立预算感知：
        + (上下文预算调节 × -0.5 ~ +0.5)
 
 历史反馈（来自 .auto/feedback/skills.json）：
+  样本门槛：usageCount < 3 或无记录 → 0（不加权；零数据 = 还没测过，不是不重要）
   successRate > 0.8 → +1.5
   successRate 0.5-0.8 → +0.5
   successRate < 0.5 → -1.0
@@ -516,7 +517,7 @@ SCAN 完成后立即建立预算感知：
 - 哪些 pattern 可直接复用
 - 哪些 traps 需要规避
 - 哪些 feedback 会影响 skill 选择或验证路径
-- 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：`successRate < 0.5` 的 agent 排除；有 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
+- 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：仅 `totalCalls` ≥ 3 时 `successRate < 0.5` 的 agent 才排除，样本不足按无记录处理；有 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
 - 若本次明确复用了某条知识，直接将命中摘要写入 `RouteDecision.notes.relevantInsights`，每条 ≤ 2 行
 - `QuestResult.validations` 记录这些 insight 在执行或验证中的参考证据
 - `selection.routeHintsUsed` 可记录 insight 标题、feedback key 或历史 runId，但不强制 `[insight:]` / `[feedback:]` / `[run:]` 标记
@@ -555,7 +556,7 @@ SCAN 完成后立即建立预算感知：
 
 **假设证伪**：列完假设必须主动找反例 — "我的假设可能错在哪？" 至少 1 个反例 + 1 个备选方案。
 
-**容量假设（强制）**：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”的反例，但不把 ×100 当作固定容量阈值。必须检查无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存；不涉及这些对象时标记 `capacity: not-applicable` 并说明理由。
+**容量假设（强制）** <!-- capacity-contract: assumption -->：凡涉及数据库/文件/消息/缓存/集合/批处理/导入导出或外部 API，必须记录当前规模、峰值并发、单项大小、内存/磁盘预算与放大因子；默认提出“数据量 ×100 后会怎样？”的反例，但不把 ×100 当作固定容量阈值。必须检查无界查询、全量累积集合、未分页接口、无背压消费者和固定内存缓存；不涉及这些对象时标记 `capacity: not-applicable` 并说明理由。
 
 **Premortem（事前验尸）**：“假设 6 个月后本次改动引发 P0，复盘报告最可能写哪 3 个原因？”—— 把这 3 条塞进计划的风险缓解中。
 
@@ -663,7 +664,7 @@ SCAN 完成后立即建立预算感知：
 | 实现 | build + test + 必要 lint + coverage（有测试基建时实算覆盖率）+ self-verification + self-critique                   |
 | 重构 | build + test + coverage + security（敏感面自查）+ adversarial（降级模式，见下）+ self-verification + self-critique |
 
-**adversarial 降级模式**（Codex 无 verification subagent）：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径 / **容量伸缩性**，两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
+**adversarial 降级模式**（Codex 无 verification subagent）<!-- capacity-contract: probe -->：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径 / **容量伸缩性**，两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消，否则显式标记 `capacity: not-applicable` 及理由。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
 
 **验证上下文最小化**（2026 Context Engineering 核心实践）：
 
@@ -762,7 +763,7 @@ SCAN 完成后立即建立预算感知：
 当任务较大、仓库本身在使用 `.auto/`，或用户明确要求沉淀时：
 
 - 把可复用经验写入 `.auto/insights/*`
-- 把 skill / 路由效果写入 `.auto/feedback/*`（**真实化更新**：被激活 skill 的 `usageCount` +1、更新 `lastUsed`、按结果更新 `successRate`；agent/视角调度记入 `agents.json` 的 `totalCalls`；失败追加 `knownIssues`；>30 天未更新标记 `stale`。PLAN 读侧消费 `successRate` 的前提是 LEARN 写侧持续更新 — 只读不写即反馈闭环断链）
+- 把 skill / 路由效果写入 `.auto/feedback/*`（**真实化更新**：被激活 skill 的 `usageCount` +1、更新 `lastUsed`、按结果更新 `successRate`；agent/视角调度记入 `agents.json` 的 `totalCalls`；失败追加 `knownIssues`；>30 天未更新标记 `stale`。PLAN 读侧消费 `successRate` 的前提是 LEARN 写侧持续更新 — 只读不写即反馈闭环断链。读侧另有样本门槛：agent `totalCalls` < 3、skill `usageCount` < 3 时忽略 `successRate`，不据此提权、降权或排除）
 - 把本次可复用的输入模式总结成短规则
 - **Run 归档**：运行超过 30 天的 run 自动移入 `.auto/runs/archive/`（由 SessionStart Hook 触发，Claude Code 专有机制；Codex 暂无 Hook 支持，可手动触发或在 LEARN 阶段提示），SCAN 预匹配只扫描未归档 run
 

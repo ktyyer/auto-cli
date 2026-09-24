@@ -175,6 +175,8 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
    - `successRate`：同步骤 3 逻辑
 4. 更新文件顶部 `lastUpdated` 为当前日期
 
+**样本门槛**：`successRate` 只在该 skill `usageCount` ≥ 3 后才对路由与分层生效（见 `commands/auto.md` 6.2 与 1.1）。不足 3 次时照常累加计数，但不得据此提权、降权或判定 skill 该留该砍。
+
 **scope 附加**：如果某张 LearnCard 的 `scope` 为 `stack` 或 `universal`，在该 skill 条目中追加 `portablePatterns` 条目。
 
 ### 步骤 5：归档检查
