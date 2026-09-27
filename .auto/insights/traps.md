@@ -611,3 +611,48 @@ REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMa
 **规避**：① subagent 报告的**每个数字**落盘前由主窗口用一条可复现命令复核；② 计数类审计必须写清**计数基准**（目录数？SKILL.md 数？排除组织目录？）；③ 审计 prompt 显式要求"先读项目自身约定，再套用通用直觉"。
 
 **来源**: run-20260920-ai-era-positioning
+
+---
+
+### DSH 侧 preset 文档计数随本地新增 skill 漂移（26 vs 实际 27→28）
+
+**日期**: 2026-09-24 | **置信度**: high | **标签**: count-drift, preset, dsh, docs-truth
+**scope**: project
+
+`~/.dsh/.agent-presets/auto-dsh/` 的 `preset.yml`/`README.md`/`skills/auto/SKILL.md` 写死"26 个 skill"，但本地直接往 preset 加 skill（如 `newapi-guardian`）不经仓库发布流程，三处计数全部滞后（实际已 27）。
+
+**根因**：preset 目录在 `~/.dsh` 下独立于本仓库，`npm run check` 的引用校验覆盖不到它；本地热加 skill 后无人改计数。
+
+**规避**：改 preset skill 集后必查三处计数（preset.yml description / README 结构树+对比表 / auto SKILL.md 渐进加载行），并跑 `node scripts/validate.js --runtime <DSH checkout>`（不传 `--runtime` 会 FATAL，见下条）。结构树还要核对是否有目录漏列（本次 j-space、newapi-guardian 均漏）。
+
+**来源**: run-20260924-preset-sync-v052
+
+---
+
+### preset 自带 validate.js 裸跑必 FATAL — 需要 --runtime 指向 DSH 安装目录
+
+**日期**: 2026-09-24 | **置信度**: high | **标签**: validation, dsh-runtime, js-yaml, cordis-plugin
+**scope**: project
+
+`node scripts/validate.js` 在 preset 目录裸跑直接 `[FATAL] cannot locate a DSH runtime (need js-yaml + @deepseek-ai/cordis-plugin-include). Pass --runtime <dir>.`（exit=1）。
+
+**根因**：校验器用真实 DSH loader 解析 `agent.cordis.yml`（含 `!!js` 方言），依赖只存在于 DSH 安装树的 node_modules，preset 目录自身零依赖。
+
+**规避**：本机正确调用为 `node scripts/validate.js --runtime "C:\Users\kashe\AppData\Roaming\npm\node_modules\@deepseek-ai\dsh"`；通过输出为 `[PASS] agent.cordis.yml ... [PASS] all 23 referenced packages exist ... [PASS] N skills ...`，exit=0。
+
+**来源**: run-20260924-preset-sync-v052
+
+---
+
+### claude -p 无头代跑长管线插件会被 600s 后台等待上限掐断
+
+**日期**: 2026-09-24 | **置信度**: high | **标签**: claude-code, headless, plugin-bridge, timeout, understand-anything
+**scope**: universal
+
+`claude -p "/understand ."` 无头执行插件可行（Phase 0→2 正常推进，`.ua/intermediate/assembled-graph.json` 等产物落盘），但跑到图谱合并后输出 `Background tasks still running after 600s; terminating` —— exit 0 却**收尾未完成**（架构/导览 agent 被掐）。
+
+**根因**：Claude Code 无头模式对后台子任务有 600s 等待上限；另无头默认拒写，需要写工作目录的插件会停在预检。
+
+**规避**：① 置 `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS='0'` 解除上限；② 需要写文件的插件加 `--dangerously-skip-permissions`（仅该次调用作用域）；③ 宿主侧（如 DSH）用后台作业承载长跑并等完成通知，勿前台同步等。前置一条模型路由警告（`grok-4.7[1m]` unrecognized）不影响执行但显著拖慢，排查代理模型名可提速。④ 遇 403 先探 `curl -H "Authorization: Bearer <tok>" <base>/v1/models`：200=瞬时故障（Clash 节点瞬断/中转瞬时限流）可重试，持续 403=查中转账户配额/key——实测 200 后重试即恢复。
+
+**来源**: run-20260924-preset-toolbridge

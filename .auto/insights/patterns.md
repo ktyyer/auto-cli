@@ -1138,3 +1138,14 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 行为参数（默认值/阈值）同时出现在 command 主文件、skill、README、CLAUDE 多层时易漂移：loopBudgets maxIterations 曾在 auto.md=20 / skill=10 / CLAUDE.md 记录 20+10，漂移数月。定位真源用 `git log -S "<值>" -- <file>`（本次引出 0c712eb），而非读 commit message 推断——26759f4 的 message 明文写「maxIterations=20 兜底」，据此归因会反向统一到错误值（本次由 code-reviewer 实测纠正）。与「声明性数字随版本演进系统性滞后」互补：该卡管发布巡检，本卡管运行参数溯源。
 
 **来源**: run-20260912-positioning-audit
+
+### 外部工具接入 preset 的稳定出口是 CLI,不是 MCP 注册
+
+**日期**: 2026-09-24 | **置信度**: high | **标签**: integration, codegraph, cli, preset, dsh
+**scope**: universal
+
+把外部智能工具（CodeGraph / Understand Anything）接进 DSH preset 时，MCP 注册状态因宿主而异（Claude Code/Codex 有，DSH settings.yaml 无 MCP 段），唯一三运行时通吃的出口是 **CLI + 退出码/stdout**（pwsh 可跑、输出可引用、可进 verify-gates 证据链）。codegraph 的 `status/context/query/affected/docs` 与其 MCP 同源等价；`affected --stdin/--json` 可直接接 `git diff --name-only` 组管线。
+
+**推荐动作**: 外部能力接入 preset 优先评估 CLI 出口；skill 内固化「探测→消费→降级」三段（status 探测、无索引降级 grep 不阻塞主线）；深度报告类（Understand Anything 的 /understand）按运行时路由，产物路径回填本 run 工件互认。
+
+**来源**: run-20260924-preset-toolbridge
