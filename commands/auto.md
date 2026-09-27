@@ -196,7 +196,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 - 触及文件 ≤ 2 个
 - 变更行数预估 < 20 行
 
-快速通道：跳过 QuestMap 设计，直接 Read → Edit → 验证 → SUMMARIZE。不调用 quest-designer，但产出最小 `QuestResult` 供 EXECUTE→VERIFY handoff 与 VERIFY gate 汇总。
+快速通道：跳过 QuestMap 设计，但不得跳过证据回路：确认真实符号与测试命令 → 保留失败证据或最小失败测试 → 最小修改 → 运行相关验证 → SUMMARIZE。不调用 quest-designer，但产出最小 `QuestResult` 供 EXECUTE→VERIFY handoff 与 VERIFY gate 汇总。
 
 **快速通道质量保证**（强制执行）：
 
@@ -428,7 +428,7 @@ node scripts/fast-scan.js
 | 执行影响性命令前（git commit/npm publish/Edit超50行）               | `predict-verify`             |
 | interval 参数（`5m`/`30m`/`2h`）/ 盯盘 / 自主迭代 / 自愈 / 周期巡检 | `loop-engineering`           |
 
-**Phase 敏感性调整**：实现/探索策略下 code-style-enforcer、comment-standards 匹配度 -1；重构策略恢复正常权重。**预算联动**：红区强制摘要级；黄区深度降全文级。
+**Phase 敏感性调整**：探索策略下 code-style-enforcer、comment-standards 匹配度 -1；实现/重构策略正常权重（写时风格属于交付质量，见 PHASE 3.2 团队规范与可读性纪律）。**预算联动**：红区强制摘要级；黄区深度降全文级。
 
 4. **Agent 交接**：上游产出 = 下游输入，显式声明交接数据
 5. **并行/串行**：无依赖可并行，有依赖按拓扑排序串行
@@ -517,7 +517,30 @@ node scripts/fast-scan.js
 4. 执行后在 QuestResult.validations 记录每个 skill 的应用证据
 5. 缓存回写到 `.auto/cache/skill-extracts/<skill>.md`
 
-每关执行序列：激活 Skills → Read 代码 → Write/Edit 或只读分析 → 必要验证。
+每关执行序列：激活 Skills → 证据锁定 → 失败证据 → 最小 Write/Edit 或只读分析 → 立即验证。
+
+**证据优先回路**（实现/修复默认启用；只读探索不适用）：
+
+1. 用搜索确认目标文件、符号、接口、配置和项目真实测试命令存在；无法确认时标为未知，禁止补造。
+2. Bug 先运行并保留失败输出；新功能先写或指定一个最小失败测试，确认它在修改前失败。
+3. 只做满足当前 acceptance 的最小修改，随后立即运行相关测试、类型检查或构建。
+4. 核对 diff 只覆盖原始需求。没有命令、输出和 exit code 时，不得声明完成，状态只能是 `skipped`。
+5. 同一路径连续两次无进展时，停止补丁并切换到 `agentless-repair`。
+
+**团队规范与可读性纪律**（实现/重构默认生效，目标 = 代码像本团队资深工程师写的）：
+
+1. **规范锁定（写前必做）**：读同模块 2-3 个邻近文件，模仿既有命名、错误处理、日志与注释风格（含注释语言）；检测 `.editorconfig` / lint / formatter 配置（ESLint、Prettier、checkstyle、spotless 等）并遵守；存在 `CONTRIBUTING` / 团队规范文档时以其为准。**项目实际配置 > skill 默认规则**（`code-style-enforcer` 的默认格式仅作无配置时的兜底）。
+2. **可读性**：命名自解释；函数单一职责、短小；早返回；不写聪明技巧。diff 自检标准 = 「新同事不看上下文能否读懂这段改动」。
+3. **注释**（按 `comment-standards`）：只写 WHY（业务约束 / 取舍 / 第三方坑 / workaround / 副作用），不写 WHAT；公开 API 与导出符号必须有文档注释；魔数 / 硬编码必须注明来源；复杂算法与非显然逻辑必须解释；注释语言跟随项目既有习惯。
+4. VERIFY 的 lint / code-reviewer 检查风格与注释一致性；与邻近文件风格冲突 → 回流修正，不得放行。
+
+**业务优先纪律**（改动涉及业务逻辑时生效——目标 = 实现的是正确的业务，而不只是能跑的代码）：
+
+1. **业务复述先行**：动笔前用 1-3 句话复述「这条改动让业务发生什么变化」，并列出该业务规则的不变量（如：金额不可为负、库存不可超卖、退款 T+3、状态只能单向流转）。复述不出来 = 没懂业务 → 先读领域代码（实体 / 核心服务 / 状态机）或回问用户，禁止直接开写。
+2. **领域真源**：涉及的业务实体与流程必须在代码里找到真源（领域模型、核心服务），沿调用链确认当前真实行为；测试与实现必须表达**业务规则**本身，而非仅覆盖技术路径。
+3. **业务红线自查**：资金 / 权限 / 数据一致性 / 幂等 / 并发 / 审计 六类风险点逐一过一遍；命中的必须在 acceptance 中显式覆盖（无法覆盖时标注风险交用户决策）。
+4. **测试有效性破坏验证（mutation spot-check）**：关键业务断言完成后，故意改坏实现中的一行使业务逻辑错误，确认测试**变红**；随后**还原并复跑同一测试确认变绿**（破坏仅允许在可精确还原的前提下进行，还原后用 diff / hash 自证无残留）。测试没红 = 测试无效或未测到业务规则，必须重写测试。至少对 1 个核心业务断言执行并在 QuestResult 记录证据（红 / 绿两次输出）。
+5. **业务反向翻译**：完成前把 diff 翻译成「业务行为变化描述」，与第 1 步复述对照；不一致 = 偏移，回流修正。
 
 **变更洁癖（Surgical Changes）**：每行变更可追溯到用户需求，禁止顺手改进无关代码、重构未损坏逻辑、或添加未要求的抽象。
 
@@ -590,7 +613,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 - `knowledge-distribution`：核对 LearnCard 是否分发到 `.auto/insights/`
 - `clean-state`：关门自检（启动测试通过 / 状态一致 / 无孤立变更 / 可标准路径重启）
 
-> **实测优先于断言（Run-Don't-Claim）**：任何验证声明必须附带实际命令 + 输出。
+> **实测优先于断言（Run-Don't-Claim）**：任何验证声明必须附带实际命令 + 输出 + exit code；无法实测的 gate 只能标记 `skipped`，不得标记 `pass`。
 > **预测后验证（Predict-Then-Verify）**：跑命令前先预测结果，预测错 = 理解错。
 
 ### 对抗验证（实现/重构策略强制执行）

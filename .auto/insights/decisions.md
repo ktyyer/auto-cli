@@ -474,3 +474,64 @@ v0.40.x 引入 `.cursor-plugin/plugin.json` 与 `.opencode/plugin.json` 时，�
 
 **来源**: run-20260920-capacity-review
 
+---
+
+### 2026-09-27 生态复核：减法方向获第二独立证据流确认，最终方案收敛为「瘦身 + 读时策展 + 难度拓扑」
+
+**日期**: 2026-09-27 | **置信度**: high | **标签**: positioning, skill-lifecycle, memory-curation, topology, rsi-governance
+**scope**: project
+
+本 run 以 arXiv API + GitHub API 实测复核（非闭门推导），与 run-20260920-ai-era-positioning 形成双源印证。新证据：记忆前沿在**读时策展**而非写时固化（Just-in-Time Memory arXiv:2609.27334：写时蒸馏在查询未知前决定"记什么"，是不可逆信息损失）；协作拓扑应按**难度**选择（arXiv:2609.13890：分层协作收益从最易 1/3 题的 +2.4pt 增至最难 1/3 的 +21.1pt → always-on teams 是成本浪费）；harness 递归自我改进必须**正则化**（RRSI arXiv:2609.24972）；失败轨迹的**偏差**可复用（Deviation-Guided arXiv:2609.29154）；Agent Skills 开放标准确认胜出（anthropics/skills 178k stars，spec/agent-skills-spec.md）；记忆基建已成独立品类（mem0 66k / graphiti 31k / letta 24k，但引 runtime 即违宪）。
+
+**推荐动作**: v0.53 方向 = P0 skill 减法 39→28±2（合并非删除，分组阈值由 skill-evaluator 触发率数据定）+ Codex 入口迁出已弃用的 custom prompts + retrieve-insight 读时重排（相关性 × 净 helpful × 新鲜度半衰）；P1 难度感知四档拓扑（solo→subagent→ensemble→Teams，易题禁 Teams）+ harness-edit 回归门（self-bench 10/10，扩展现有 gate 不新增）；P2 deviation LearnCard + self-bench 按版本追加追踪。
+**备选方案**: 保守延续（Pareto 被支配：未回应 skill 越界与 Codex 弃用风险）；平台化/图数据库（违纯 MD 宪法，不可行域）。
+**反模式**: 用"新增 skill"回应能力缺口——39 已越过 SkillsBench 实测最优区间 3 倍。
+**来源**: run-20260927-ecosystem-review
+
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-27
+
+---
+
+### 证据优先执行回路成为实现/修复默认路径（三端同步落地）
+
+**日期**: 2026-09-27 | **置信度**: high | **标签**: execution-order, anti-hallucination, first-pass-rate, run-don-t-claim
+**scope**: universal
+
+多轮评审收敛结论：提升一次写对率的最小杠杆不是新增流程/审查文案，而是把执行顺序从「读码→修改→必要时验证」改为「证据锁定→失败证据→最小修改→立即验证」，并把完成判定绑定真实命令+输出+exit code（无法实测只能 `skipped` 不能 `pass`）。`agentless-repair` 的可靠流水线（复现→定位→多候选→测试筛选）从"2 轮失败后的补救"语义升级为默认执行语义的一部分。
+
+**推荐动作**: 已落地——`commands/auto.md`（快速通道 L199 / PHASE 3.2 L520-528 / PHASE 4 Run-Don't-Claim）+ `auto.codex.md`（核心规则 14 / PHASE 3 原则 1 / PHASE 4）+ `auto.en.md`（PHASE Conventions）三端同步；CHANGELOG [Unreleased] + CLAUDE.md 路线图已记录。`npm test` EXIT=0（28/28 单测 + 六道校验）。
+**反模式**: 在没有失败证据时开始修 Bug；在未确认符号/测试命令存在时开始写码；用"应该能过"替代命令输出。
+**来源**: run-20260927-evidence-loop
+
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-27
+
+---
+
+### 顶级程序员风格层：写时规范锁定取代「VERIFY 才查风格」
+
+**日期**: 2026-09-27 | **置信度**: high | **标签**: code-style, conventions, readability, comments, write-time-quality
+**scope**: universal
+
+用户感知「不像顶级程序员」的根因（SCAN 实证）：`auto.md`/`auto.codex.md` 的 Phase 敏感性规则把 `code-style-enforcer`/`comment-standards` 在**实现策略下匹配度 -1**（旧假设：风格核心价值在 VERIFY）——导致写码时不管风格，事后 lint 才发现。真程序员是写时即符合规范。修正：实现/重构写前强制**规范锁定**（读同模块 2-3 邻近文件 + lint/formatter 配置，模仿既有命名/错误处理/注释风格）；**项目实际配置 > skill 默认规则**（防止 skill 自带默认格式强加外来风格破坏团队规范）；注释只写 WHY（挂接 comment-standards 的 WHY/REF/RISK）；diff 自检 = 新同事不看上下文能否读懂；仅探索策略保留 -1。
+
+**推荐动作**: 已四端落地（auto.md PHASE 3.2 / auto.codex 规则 15 / auto.en.md / Auto-DSH 预设纪律 9）并 sync 生效；npm test + preset validate 均 EXIT=0。
+**反模式**: 用 skill 默认格式覆盖项目既有配置；写完靠 lint 兜底风格；WHAT 注释充数。
+**来源**: run-20260927-style-layer
+
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-27
+
+---
+
+### 业务优先纪律：业务复述 + 破坏验证堵「AI 自证偏误」
+
+**日期**: 2026-09-27 | **置信度**: high | **标签**: business-correctness, mutation-testing, domain-understanding
+**scope**: universal
+
+证据优先（纪律 8）与规范锁定（纪律 9）都无法防住最后一类错误：**业务规则理解错 → 实现错 + AI 自写的测试同样错 → 双绿假阳性**（自证偏误）。对策：业务逻辑改动动笔前强制业务复述（1-3 句业务变化 + 不变量清单，复述不出 = 没懂业务，先读领域代码或回问）；业务实体在代码找真源沿调用链确认；六类业务红线（资金/权限/数据一致性/幂等/并发/审计）逐一过并进 acceptance；**关键业务断言破坏验证（mutation spot-check）**——故意改坏实现一行，测试必须变红再还原，没红 = 测试无效必须重写（这是变异测试思想的轻量落地，也是唯一能低成本识破「测试与实现同源错误」的手段）；完成前 diff 反向翻译成业务行为与复述对照。
+
+**推荐动作**: 已四端落地（auto.md PHASE 3.2 业务优先纪律 / auto.codex 规则 16 / auto.en.md / Auto-DSH 预设纪律 10）并 sync 生效；npm test + preset validate 均 EXIT=0。
+**反模式**: 技术路径全绿但没回答「业务规则是什么」；测试只断言「不抛异常」不断言业务结果；跳过破坏验证直接声明测试覆盖。
+**来源**: run-20260927-business-layer
+
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-27
+

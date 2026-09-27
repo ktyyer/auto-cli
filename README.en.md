@@ -26,7 +26,7 @@ AI (runs 6 phases automatically):
   1. SCAN       scan project + retrieve past experience
   2. PLAN       break into Quests + declare "won't-do" list
   3. EXECUTE    build quest by quest + live progress
-  4. VERIFY     pass through 16 quality gates
+  4. VERIFY     pass through 18 quality gates
   5. SUMMARIZE  delivery report (NO auto-commit)
   6. LEARN      sediment traps/patterns to .auto/insights, auto-reused next time
 ```

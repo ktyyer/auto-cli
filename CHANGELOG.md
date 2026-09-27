@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **证据优先执行回路（Evidence-First Execution Loop）**：实现/修复类任务的默认执行顺序从「读码 → 修改 → 必要时验证」改为「证据锁定（真实符号/测试命令）→ 失败证据或最小失败测试 → 最小修改 → 立即验证」；同一路径连续 2 轮无进展强制切换 `agentless-repair`；修复快速通道不再跳过证据回路；VERIFY 补强 Run-Don't-Claim——无命令输出 + exit code 的 gate 只能 `skipped` 不能 `pass`（`commands/auto.md` 快速通道 + PHASE 3.2 + PHASE 4 / `commands/auto.codex.md` 核心规则 14 + PHASE 3/4 / `commands/auto.en.md` PHASE Conventions 三端同步）
+- **顶级程序员风格层（团队规范与可读性纪律）**：实现/重构写码前强制「规范锁定」— 读同模块 2-3 个邻近文件 + lint/formatter 配置，模仿既有命名/错误处理/注释风格（**项目实际配置 > skill 默认规则**）；可读性硬标准（自解释命名/单一职责/早返回/diff 新同事可读）；注释只写 WHY 与边界、公开 API 必须文档化（挂接既有 `comment-standards` WHY/REF/RISK 模板）；**撤销实现策略下两 skill 的匹配度 -1 降权**（写时风格属于交付质量，仅探索策略保留 -1）；`commands/auto.md` PHASE 3.2 + Phase 敏感性 / `auto.codex.md` 核心规则 15 + Phase 敏感性 / `auto.en.md` / Auto-DSH 预设纪律 9 四端同步
+- **业务优先纪律（业务正确性层）**：业务逻辑改动动笔前强制「业务复述」——1-3 句业务变化描述 + 不变量清单（复述不出先读领域代码或回问，禁止开写）；业务实体在代码里找真源并沿调用链确认；资金/权限/数据一致性/幂等/并发/审计六类业务红线逐一过并进 acceptance；**关键业务断言破坏验证（mutation spot-check）**——故意改坏一行实现，测试必须变红再还原（没红 = 测试无效，堵住「AI 写的测试和实现一起错却双绿」的自证偏误）；完成前 diff 反向翻译成业务行为与复述对照；`commands/auto.md` PHASE 3.2 / `auto.codex.md` 核心规则 16 / `auto.en.md` / Auto-DSH 预设纪律 10 四端同步
 - **Wave 0–2 信任默认与发现扩展**（定位：纯 Markdown 指令包）
   - 文档诚实：skills 计数统一为 **39**（+ community 组织目录）；纯 MD 指令 + Node 工具链边界句（CLAUDE/README 中英）
   - `CONTRIBUTING.md` 与 `package.json` scripts 对齐（无虚构 `lint` / `test:coverage`）

@@ -26,7 +26,7 @@ AI（自动走 6 步）：
   1. SCAN     扫项目 + 查历史经验
   2. PLAN     拆 Quest + 列「不做清单」
   3. EXECUTE  逐关施工 + 实时进度
-  4. VERIFY   过 16 道质检关
+  4. VERIFY   过 18 道质检关
   5. SUMMARIZE 交付清单（不自动 commit）
   6. LEARN    踩坑/模式写进 .auto/insights，下次自动复用
 ```

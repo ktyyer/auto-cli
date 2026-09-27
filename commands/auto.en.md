@@ -88,8 +88,8 @@ Phase hard constraints, protocol headers, object responsibilities detailed in `_
 
 - `SCAN`: Produces `RouteDecision`, decides primary Agent, fallback chain, strategy, sensitivity.
 - `PLAN`: Consumes `RouteDecision`, produces `QuestMap`, solidifies Quest decomposition, dependencies, contracts, failure strategies.
-- `EXECUTE`: Execute quest-by-quest, produces `QuestResult`, records attempt counts, verification results, failure context.
-- `VERIFY`: Consumes `QuestResult`, produces `VerifyReport`, decides whether to continue execution, summarize or terminate.
+- `EXECUTE`: Execute quest-by-quest, produces `QuestResult`, records attempt counts, verification results, failure context. Implement/fix quests default to the evidence-first loop: confirm real symbols and the project's actual test commands → capture failing output (bug) or write a minimal failing test (feature) → minimal edit → immediately run relevant tests; two consecutive no-progress attempts switch to `agentless-repair`. Before writing, lock onto team conventions: read 2-3 sibling files plus lint/formatter configs and mimic existing naming, error-handling and comment style (project config overrides any default rules); comments explain WHY and edge cases, public APIs must be documented. For business-logic changes, first restate the business effect and its invariants, locate the domain source of truth along the call chain, and mutation-check at least one key business assertion (break one line, the test must turn red; then restore and re-run to confirm green, keeping both outputs as evidence — a test that stays green under mutation is invalid).
+- `VERIFY`: Consumes `QuestResult`, produces `VerifyReport`, decides whether to continue execution, summarize or terminate. Any verification claim must cite the actual command, output and exit code; a gate without measured output can only be `skipped`, never `pass`.
 - `SUMMARIZE`: Aggregates `QuestResult` and `VerifyReport`, does not auto-commit.
 - `LEARN`: Consolidates execution and verification results into `LearnCard`, then archives to `.auto/insights/` and `.auto/feedback/`.
 
