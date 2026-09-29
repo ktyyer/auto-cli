@@ -128,7 +128,7 @@ export const CODEX_MANAGED_FILES = {
 export const MANAGED_FILES = [
   {
     dir: path.join(CLAUDE_DIR, 'commands'),
-    files: ['auto.md'],
+    files: ['auto.md', 'auto.en.md'],
     subdirs: ['auto']
   },
   {
@@ -187,11 +187,15 @@ export const MANAGED_FILES = [
   },
   {
     dir: path.join(CLAUDE_DIR, 'hooks'),
-    files: ['hooks.json']
+    files: ['hooks.json', 'wiring-manifest.json']
   },
   {
     dir: path.join(CLAUDE_DIR, 'hooks', 'lib'),
-    files: ['auto-clean-runs.sh', 'codemaps-hook.sh', 'tdd-guard-cli.js', 'tdd-guard.js']
+    files: ['auto-clean-runs.sh', 'codemaps-hook.sh', 'log-metrics.sh', 'tdd-guard-cli.js', 'tdd-guard.js']
+  },
+  {
+    dir: path.join(CLAUDE_DIR, 'hooks', 'lib', '__tests__'),
+    files: ['tdd-guard.js']
   }
 ];
 

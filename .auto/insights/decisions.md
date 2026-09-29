@@ -535,3 +535,43 @@ v0.40.x 引入 `.cursor-plugin/plugin.json` 与 `.opencode/plugin.json` 时，�
 
 **复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-27
 
+**状态**: superseded by run-20260929-p0-trust（修正 mutation 能识破同源错误的结论；敏感性验证仍保留，业务正确性另需独立依据）。
+
+
+---
+
+### 业务验收与宿主能力以独立证据为准
+
+**日期**: 2026-09-29 | **置信度**: high | **关键词**: business-correctness, evidence, host-capability, evaluation
+**scope**: project
+
+mutation spot-check 只能证明断言对选定改动敏感，不能证明业务期望正确。业务验收绑定独立规则来源，宿主调度按当前工具、权限及生命周期核验。
+
+Auto CLI 定位为宿主原生能力上的编码工作流增强层，保留单入口、Markdown 指令、可审计 run 与知识复用；收益须用固定任务、模型与独立验收的对照试验验证。
+
+**来源**: run-20260929-strategic-research
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-29
+**修复说明**: 本条原中文编码损坏；据该 run 的 research-brief.md 重新摘要，原文保存在本轮 before 快照。
+
+### 区分工具验证与编码收益
+
+**日期**: 2026-09-29 | **置信度**: high | **scope**: project
+
+保持证据边界：协议与指标校验通过不能证明业务正确或编码提速；Auto CLI 的效果需要独立任务对照评测，缺失观测保留 unknown。
+
+**来源**: run-20260929-strategic-confirmation
+**修复说明**: 据该 run 的 LearnCard summary（Keep evidence boundaries explicit）及前述研究报告重述乱码条目，不恢复未经核验的收益结论。
+
+---
+
+### P0：共享协议契约与独立验收依据
+
+**日期**: 2026-09-29 | **置信度**: high | **scope**: project
+
+校验器、指标生成器和 dashboard 共用 scripts/run-protocol.js，读取规范 skills/gateResults，任务重试按最大 attempt 计最终状态。缺失观测保留 null，旧 Markdown 只做标明边界的兼容检查；技能声明和门禁通过率不代表生产力收益。
+
+业务验收必须绑定独立规则来源；mutation 只检查选定变化的敏感性。宿主调度按实际工具、权限和生命周期核验，不按产品名推断。下一步收益评测应固定模型、任务和验收，并隔离原生对照组的 Auto CLI 路由桥接。
+
+**证据**: npm.cmd test：34/34；计数破坏实验 6/7、还原后 7/7；历史 run 复核得到 3 skills、8 gates、7 pass、1 warning。
+**来源**: run-20260929-p0-trust
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-29

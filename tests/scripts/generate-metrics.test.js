@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { protocolRun, writeProtocolRun } from '../fixtures/protocol-run.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
@@ -30,6 +31,92 @@ function makeRun(runsDir, name) {
 function run(cwd, args = []) {
   return spawnSync(process.execPath, [script, ...args], { cwd, encoding: 'utf8' });
 }
+
+test('a later failed attempt in a different fence replaces the earlier completed observation', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  for (const fence of ['  ```', '~~~']) {
+    const docs = protocolRun('run-retry');
+    const dir = writeProtocolRun(tmp, 'run-retry', docs);
+    const failed = {
+      ...docs['quest-results.md'][0],
+      id: 'retry',
+      attempt: 2,
+      status: 'failed',
+      failureContext: { recommendedNext: 'repair' },
+      retry: {}
+    };
+    fs.appendFileSync(
+      path.join(dir, 'quest-results.md'),
+      `\n${fence}json\n${JSON.stringify(failed)}\n${fence}\n`
+    );
+    const result = run(tmp, ['run-retry']);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const metrics = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+    assert.deepEqual(metrics.quests, { total: 1, completed: 0, failed: 1 });
+  }
+});
+
+test('canonical counts ignore nested statuses and use latest quest attempt', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-counts');
+  const result = docs['quest-results.md'][0];
+  docs['quest-results.md'] = [
+    {
+      ...result,
+      id: 'failed',
+      status: 'failed',
+      failureContext: { recommendedNext: 'retry' },
+      retry: {}
+    },
+    { ...result, attempt: 2 }
+  ];
+  const dir = writeProtocolRun(tmp, 'run-counts', docs);
+  assert.equal(run(tmp, ['run-counts']).status, 0);
+  const m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.equal(m.skills.count, 2);
+  assert.deepEqual(m.quests, { total: 1, completed: 1, failed: 0 });
+  assert.equal(m.gates.total, 2);
+  assert.equal(m.gates.passed, 1);
+  assert.equal(m.gates.warning, 1);
+  assert.equal(m.gates.passRate, 0.5);
+  assert.equal(m.duration.total, null);
+  assert.equal(m.files.read, null);
+  assert.equal(m.agents.count, null);
+  assert.notEqual(m.status, 'completed');
+});
+
+test('legacy/missing observations stay unknown and invalid structured input is reported', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const dir = makeRun(path.join(tmp, '.auto', 'runs'), 'run-unknown');
+  assert.equal(run(tmp, ['run-unknown']).status, 0);
+  let m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.equal(m.skills.count, null);
+  assert.equal(m.gates.total, null);
+  assert.equal(m.status, 'unknown');
+  assert.ok(m.unavailable.length > 0);
+  fs.writeFileSync(path.join(dir, 'route-decision.md'), '```json\n{"skills": [}\n```');
+  assert.equal(run(tmp, ['run-unknown']).status, 1);
+  m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.equal(m.status, 'invalid');
+  assert.ok(m.protocolIssues.length > 0);
+});
+
+test('observed empty gates are zero with unknown rate, not missing data', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-empty');
+  docs['verify-report.md'].gateResults = [];
+  docs['route-decision.md'].skills = [];
+  const dir = writeProtocolRun(tmp, 'run-empty', docs);
+  assert.equal(run(tmp, ['run-empty']).status, 0);
+  const m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.equal(m.gates.total, 0);
+  assert.equal(m.gates.passRate, null);
+  assert.equal(m.skills.count, 0);
+});
 
 test('无参调用能定位无 run- 前缀的最新 run 并生成 metrics.json', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));

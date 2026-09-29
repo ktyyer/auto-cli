@@ -26,6 +26,7 @@ tags:
 **硬约束** (constraints):
 
 - 实测优先于断言：任何验证声明必须附实际命令 + 输出
+- 业务验收须附独立规则来源与版本；仅模型生成的测试或 mutation 结果不能证明业务预期正确。来源缺失且影响结论时标未验证，不得写 pass。
 - 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行探索 gate 集
 - `knowledge-distribution` 为全策略必检：LearnCard 未分发到 `.auto/insights/` 即 fail
 

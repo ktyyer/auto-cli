@@ -80,7 +80,7 @@ Loop 是叠加在上述任一策略之上的**重复模式**，由 SCAN 1.8 的 
 7. **协议先验验证** — Phase 交接前由 `protocol-validator` 校验上游对象完整性，缺关键字段不得继续
 8. **每轮可续接** — 需跨会话时补充 `session-continuity.md`
 
-Phase 硬约束、协议头部、对象职责等详见 `_shared-principles.md`。
+Phase 硬约束、对象职责等详见 `_shared-principles.md`。新 run 的五类对象采用 JSON（原始 JSON 或 `json` fenced block；结果/学习列表可为数组），序列化和字段以 `protocol-validator` 为准；旧 Markdown 仅作带警告的兼容检查。
 
 ---
 
@@ -237,8 +237,8 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 路由时优先读取 `.auto/feedback/agents.json` 中的 `preferences` 和 `successRate`：
 
-- `successRate < 0.5` 的 agent 排除出候选列表；安全敏感任务不得因此排除 `security-reviewer`
-- 有 `knownIssues` 的 agent 降优先
+- 按反馈契约，仅 `measuredCount >= 3` 且 `successRate < 0.5` 的 agent 排除出候选列表；安全敏感任务不得因此排除 `security-reviewer`
+- 有未解决 `knownIssues` 的 agent 降优先
 - `preferences` 字段注入到 agent 调度 prompt
 
 `RouteDecision` 内嵌字段：`capabilitySnapshot`（commands / agents / skillsCatalog / insightFiles / feedbackFiles）+ `selection`（selectedAgents / selectedSkills / rejectedCapabilities / routeHintsUsed）
@@ -350,7 +350,7 @@ node scripts/fast-scan.js
 
 > **监听型（fixed/sustain）CHECKER-first**：每轮先跑超轻量状态检查（`gh pr checks` / 退出码 / 接口状态），**无变化跳过 DOER（近乎零成本）**，状态变化才升级聚焦 6 PHASE。这让 `1m` 高频轮询不烧钱，且因监听型免 `maxIterations`，不会被 10 次早夭。
 
-> **反幻觉约束**：interval 转 `delaySeconds` 时偏移避开整点（`5m`→270s/330s），不卡 `:00`/`:30` 撞峰；Codex / 无原生调度运行时降级为外部 cron/schtasks 或人手触发，**不伪造「正在后台跑」**。
+> **反幻觉约束**：interval 转 `delaySeconds` 时偏移避开整点（`5m`→270s/330s），不卡 `:00`/`:30` 撞峰；先核验当前宿主实际调度工具与生命周期；不可用时降级为外部 cron/schtasks 或人手触发，**不伪造「正在后台跑」**。
 
 > **反幻觉全局守则**（贯穿全 PHASE）：
 >
@@ -536,10 +536,10 @@ node scripts/fast-scan.js
 
 **业务优先纪律**（改动涉及业务逻辑时生效——目标 = 实现的是正确的业务，而不只是能跑的代码）：
 
-1. **业务复述先行**：动笔前用 1-3 句话复述「这条改动让业务发生什么变化」，并列出该业务规则的不变量（如：金额不可为负、库存不可超卖、退款 T+3、状态只能单向流转）。复述不出来 = 没懂业务 → 先读领域代码（实体 / 核心服务 / 状态机）或回问用户，禁止直接开写。
+1. **业务复述先行**：动笔前用 1-3 句话复述「这条改动让业务发生什么变化」，并列出该业务规则的不变量（如：金额不可为负、库存不可超卖、退款 T+3、状态只能单向流转）。验收需绑定独立业务依据的路径/版本（用户确认条款、正式契约或可信领域实例）；模型推导标记假设，影响结果的未确认假设不得记为业务验证通过。复述不出来 = 没懂业务 → 先读领域代码（实体 / 核心服务 / 状态机）或回问用户，禁止直接开写。
 2. **领域真源**：涉及的业务实体与流程必须在代码里找到真源（领域模型、核心服务），沿调用链确认当前真实行为；测试与实现必须表达**业务规则**本身，而非仅覆盖技术路径。
 3. **业务红线自查**：资金 / 权限 / 数据一致性 / 幂等 / 并发 / 审计 六类风险点逐一过一遍；命中的必须在 acceptance 中显式覆盖（无法覆盖时标注风险交用户决策）。
-4. **测试有效性破坏验证（mutation spot-check）**：关键业务断言完成后，故意改坏实现中的一行使业务逻辑错误，确认测试**变红**；随后**还原并复跑同一测试确认变绿**（破坏仅允许在可精确还原的前提下进行，还原后用 diff / hash 自证无残留）。测试没红 = 测试无效或未测到业务规则，必须重写测试。至少对 1 个核心业务断言执行并在 QuestResult 记录证据（红 / 绿两次输出）。
+4. **测试有效性破坏验证（mutation spot-check）**：关键业务断言完成后，故意改坏实现中的一行使业务逻辑错误，确认测试**变红**；随后**还原并复跑同一测试确认变绿**（破坏仅允许在可精确还原的前提下进行，还原后用 diff / hash 自证无残留）。测试没红时先确认变异确实改变目标行为，再定位测试缺口。mutation 仅检查对选定变化的敏感性，不证明业务期望正确；必须与独立业务依据对照。至少对 1 个核心业务断言执行并在 QuestResult 记录证据（红 / 绿两次输出）。
 5. **业务反向翻译**：完成前把 diff 翻译成「业务行为变化描述」，与第 1 步复述对照；不一致 = 偏移，回流修正。
 
 **变更洁癖（Surgical Changes）**：每行变更可追溯到用户需求，禁止顺手改进无关代码、重构未损坏逻辑、或添加未要求的抽象。
@@ -649,7 +649,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 
 ### 6.1 LearnCard 产出与分发
 
-产出标准 LearnCard（必须含 category/scope/title/confidence 字段，模板见 `skills/knowledge-management/SKILL.md`），按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）。分发前执行 Curator 检查（查重 / 矛盾检测 / merge-or-append，含被复用 insight 的 helpful/harmful 计数更新，详见 `skills/knowledge-management/SKILL.md`）。硬约束：`scope: stack|universal` 额外写入 `skills.json` 的 `portablePatterns`。无 category 字段的 LearnCard 无效。
+产出标准 LearnCard（必须含 category/scope/title/confidence 字段，模板见 `skills/knowledge-management/SKILL.md`），按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）。分发前执行 Curator 检查（查重 / 矛盾检测 / merge-or-append，含被复用 insight 的 helpful/harmful 计数更新，详见 `skills/knowledge-management/SKILL.md`）。硬约束：`scope: stack|universal` 额外写入 `skills.json` 的顶层 `portablePatterns`。无 category 字段的 LearnCard 无效。
 
 ### 6.1.1 metrics.json 强制落盘（默认可观测）
 
@@ -661,19 +661,19 @@ node scripts/generate-metrics.js <runId>
 
 - 文件已存在则允许覆盖为更完整字段（strategy / gates / skills / quests）
 - 生成失败不得静默忽略：在 VerifyReport 或 index.md 标注 `metrics: missing`
-- `/auto:dashboard` 优先读 metrics.json；缺失时降级解析协议文件并标明 incomplete
+- `/auto:dashboard` 与指标脚本共用协议收集器，直接读取当前工件；缺失观测写 null，不进入均值/成功率，不从摘要词频推算遥测
 
-可选：`hooks/lib/log-metrics.sh` 可在 PostToolUse 追加 tool 调用轨迹；**权威汇总仍以 generate-metrics.js 为准**。
+可选：`hooks/lib/log-metrics.sh` 可在 PostToolUse 追加 tool 调用轨迹；当前 generate-metrics.js 不消费该轨迹，工具耗时与调用数保持 null。
 
 ### 6.2 Agent/Skill 路由反馈（真实化更新）
 
-**每次 run 结束后必须更新** `.auto/feedback/agents.json` 和 `skills.json`（文件缺失时先按 canonical seed 创建再更新）：
+**每次 run 结束后必须更新**实际使用能力的反馈，读写均遵循 `skills/knowledge-management/references/feedback-contract.md`（含 canonical seed、旧结构兼容与幂等规则）：
 
-- 被调度的 agent：`totalCalls` +1，更新 `lastUsed`，按结果更新 `successRate`
-- 被激活的 skill：`usageCount` +1，更新 `lastUsed`，按结果更新 `successRate`
-- 失败时追加 `knownIssues`
+- 被调度 agent 按 runId upsert observations，totalCalls 按新旧实际 uses 差量更新
+- 被激活 skill 每 run uses=1，幂等更新 usageCount / lastUsed；successRate = 已测成功 run / 已测 run，无观测为 null
+- 失败按 runId 合并 `knownIssues`；unknown 不计失败、不进成功率分母
 - 数据新鲜度：>30 天未更新标记为 `stale`，但 stale 只降权、不剔除
-- **稀疏数据不得当判决**：`successRate` 样本不足（agent `totalCalls` < 3，skill `usageCount` < 3）时，路由与分层都忽略它，按无记录处理。1 次调用的 `successRate=1.0` 与 `0.0` 同样没有统计意义，不能据此提权、降权或砍 skill
+- **稀疏数据不得当判决**：只有有效 success/failure 观测的 `measuredCount >= 3` 才消费 successRate；unknown、旧率无观测或无效数据不参与加权，调用量不替代已测样本量
 
 ### 6.3 Session Continuity
 

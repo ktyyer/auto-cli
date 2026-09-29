@@ -175,6 +175,9 @@ auto-cli 设计了完整的反馈系统（.auto/feedback/agents.json / skills.js
 
 **误区**: 设计了反馈系统 ≠ 反馈系统在运行
 
+**契约复核**: 2026-09-29 | **来源**: run-20260929-feedback-evaluation | **scope**: project。空 seed 在尚无实际使用时合法，文件存在或计数增长都不能证明收益；按 `skills/knowledge-management/references/feedback-contract.md` 逐 run 幂等记录局部验收，unknown 不进成功率分母，旧率保留但无观测不加权。18 场景工具对照与重复写入证据见本 run 的 `comparison-report.md`、`feedback-update-report.json`；不能替代尚未运行的编码试验。
+**lastConfirmed**: 2026-09-29
+
 **具体风险**:
 - 路由决策无历史数据支撑 → 重复选择失败的 agent
 - Skill 触发率无法量化 → skill debt 累积（usageCount=0 的 skills 占比未知）
@@ -412,6 +415,10 @@ tree-sitter CLI 依赖 C 编译器（gcc 或 clang）。用户环境如果缺少
 **日期**: 2026-05-17 | **置信度**: high | **来源**: run-20260517-skills-standardize
 
 改造扫描函数后立即跑 validate 并**核对"可用 X: N"计数**。如果计数变成 0 但 EXIT=0，说明 validate 静默失去了对该类资源的覆盖（failed=0 因为根本没扫到东西）。本仓库重组 skills 时 validate-references 一度报"可用 Skills: 0 / 通过: 20 / 失败: 0 / EXIT=0"，误导性极强。
+**复核**: 2026-09-29 | **置信度**: high | **来源**: run-20260929-p0-deep-review | **scope**: project
+共享协议解析器只识别顶格 JSON 围栏时，缩进的损坏块会被降级为 legacy，混合文档中的失败重试会被漏读；34 项回归全绿仍不足以证明覆盖。修复必须验证完整文档与混合围栏，且当前 run 使用显式 `--run <runId>` 校验，不能用跳过半成品的 `--latest` 结果代替。
+**修复复验**: 2026-09-29 | **来源**: run-20260929-requirements-closure。围栏、反馈引用和特殊技能名计数已修复，8 项新增回归先失败后通过，全套 42/42；原探测重放 7 项缺陷由失败转为符合预期。默认 latest 过滤、任务覆盖与证据语义仍有边界，不能把结构通过写成业务正确或效率最优。证据见该 run 的 `requirements-review.md` 与 `probe-comparison.md`。
+
 **反模式**: 仅看 EXIT code 不看计数
 
 ### 知识沉淀闭环失败 — LearnCard 停在 run 目录

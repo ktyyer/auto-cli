@@ -3,98 +3,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function loadMetrics(runDir) {
-  const metricsFile = path.join(runDir, 'metrics.json');
-  if (!fs.existsSync(metricsFile)) {
-    return null;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
-  } catch (e) {
-    return null;
-  }
-}
-
-function parseRunManually(runDir) {
-  // Fallback: parse from protocol files if metrics.json doesn't exist
-  const metrics = {
-    runId: path.basename(runDir),
-    strategy: 'unknown',
-    status: 'unknown',
-    quests: { total: 0, completed: 0, failed: 0 },
-    gates: { total: 0, passed: 0, failed: 0, passRate: 0 },
-    skills: { activated: [], count: 0 }
-  };
-
-  // Parse route-decision.md
-  const routeFile = path.join(runDir, 'route-decision.md');
-  if (fs.existsSync(routeFile)) {
-    const content = fs.readFileSync(routeFile, 'utf8');
-    const strategyMatch = content.match(/"strategy":\s*"([^"]+)"/);
-    if (strategyMatch) metrics.strategy = strategyMatch[1];
-
-    const skillsMatch = content.match(/"selectedSkills":\s*\[(.*?)\]/s);
-    if (skillsMatch) {
-      const skills = skillsMatch[1].match(/"([^"]+)"/g);
-      if (skills) {
-        metrics.skills.activated = skills.map(s => s.replace(/"/g, ''));
-        metrics.skills.count = metrics.skills.activated.length;
-      }
-    }
-  }
-
-  // Parse verify-report.md
-  const verifyFile = path.join(runDir, 'verify-report.md');
-  if (fs.existsSync(verifyFile)) {
-    const content = fs.readFileSync(verifyFile, 'utf8');
-    const gateMatches = content.match(/"gateId":/g);
-    if (gateMatches) metrics.gates.total = gateMatches.length;
-
-    const passedMatches = content.match(/"status":\s*"pass"/g);
-    const failedMatches = content.match(/"status":\s*"fail"/g);
-
-    if (passedMatches) metrics.gates.passed = passedMatches.length;
-    if (failedMatches) metrics.gates.failed = failedMatches.length;
-
-    if (metrics.gates.total > 0) {
-      metrics.gates.passRate = metrics.gates.passed / metrics.gates.total;
-    }
-  }
-
-  // Parse quest-results.md
-  const questResultsFile = path.join(runDir, 'quest-results.md');
-  if (fs.existsSync(questResultsFile)) {
-    const content = fs.readFileSync(questResultsFile, 'utf8');
-    const questMatches = content.match(/"questId":/g);
-    if (questMatches) metrics.quests.total = questMatches.length;
-
-    const completedMatches = content.match(/"status":\s*"completed"/g);
-    const failedMatches = content.match(/"status":\s*"failed"/g);
-
-    if (completedMatches) metrics.quests.completed = completedMatches.length;
-    if (failedMatches) metrics.quests.failed = failedMatches.length;
-  }
-
-  // Parse index.md for status
-  const indexFile = path.join(runDir, 'index.md');
-  if (fs.existsSync(indexFile)) {
-    const content = fs.readFileSync(indexFile, 'utf8');
-    if (content.includes('status: completed') || content.includes('COMPLETED')) {
-      metrics.status = 'completed';
-    } else if (content.includes('status: failed') || content.includes('FAILED')) {
-      metrics.status = 'failed';
-    } else if (content.includes('status: partial') || content.includes('PARTIAL')) {
-      metrics.status = 'partial';
-    }
-  }
-
-  return metrics;
-}
+import { collectRunMetrics } from './run-protocol.js';
 
 function generateDashboard(limit = 10) {
   const runsDir = path.join('.auto', 'runs');
@@ -122,10 +31,12 @@ function generateDashboard(limit = 10) {
   console.log(`**Total Runs**: ${runs.length}\n`);
 
   // Collect metrics
-  const allMetrics = runs.map(runId => {
-    const runDir = path.join(runsDir, runId);
-    return loadMetrics(runDir) || parseRunManually(runDir);
-  }).filter(m => m !== null);
+  const allMetrics = runs
+    .map((runId) => {
+      const runDir = path.join(runsDir, runId);
+      return collectRunMetrics(runDir);
+    })
+    .filter((m) => m !== null);
 
   if (allMetrics.length === 0) {
     console.log('No metrics data available. Generate metrics with:\n');
@@ -137,30 +48,39 @@ function generateDashboard(limit = 10) {
   console.log('## Strategy Distribution\n');
   const strategyCount = {};
   const strategySuccess = {};
-  allMetrics.forEach(m => {
+  allMetrics.forEach((m) => {
     strategyCount[m.strategy] = (strategyCount[m.strategy] || 0) + 1;
-    if (m.status === 'completed') {
+    if (['pass', 'pass-with-warnings'].includes(m.status)) {
       strategySuccess[m.strategy] = (strategySuccess[m.strategy] || 0) + 1;
     }
   });
 
-  console.log('| Strategy | Count | Success Rate | Avg Quests |');
+  console.log('| Strategy | Count | Reported Pass Rate | Avg Quests |');
   console.log('|----------|-------|--------------|------------|');
-  Object.keys(strategyCount).sort().forEach(strategy => {
-    const count = strategyCount[strategy];
-    const success = strategySuccess[strategy] || 0;
-    const successRate = ((success / count) * 100).toFixed(0);
-    const avgQuests = (allMetrics
-      .filter(m => m.strategy === strategy)
-      .reduce((sum, m) => sum + m.quests.total, 0) / count).toFixed(1);
-    console.log(`| ${strategy} | ${count} | ${successRate}% | ${avgQuests} |`);
-  });
+  Object.keys(strategyCount)
+    .sort()
+    .forEach((strategy) => {
+      const count = strategyCount[strategy];
+      const success = strategySuccess[strategy] || 0;
+      const group = allMetrics.filter((m) => m.strategy === strategy);
+      const knownStatus = group.filter((m) =>
+        ['pass', 'pass-with-warnings', 'fail'].includes(m.status)
+      );
+      const successRate = knownStatus.length
+        ? `${((success / knownStatus.length) * 100).toFixed(0)}% (${knownStatus.length} observed)`
+        : 'unknown';
+      const knownQuests = group.filter((m) => Number.isFinite(m.quests.total));
+      const avgQuests = knownQuests.length
+        ? (knownQuests.reduce((sum, m) => sum + m.quests.total, 0) / knownQuests.length).toFixed(1)
+        : 'unknown';
+      console.log(`| ${strategy} | ${count} | ${successRate} | ${avgQuests} |`);
+    });
   console.log('');
 
   // 2. Quality Gates Pass Rate
   console.log('## Quality Gates Pass Rate\n');
   const gateStats = {};
-  allMetrics.forEach(m => {
+  allMetrics.forEach((m) => {
     if (m.gates.total > 0) {
       if (!gateStats.total) gateStats.total = { passed: 0, total: 0 };
       gateStats.total.passed += m.gates.passed;
@@ -170,14 +90,18 @@ function generateDashboard(limit = 10) {
 
   if (gateStats.total) {
     const passRate = ((gateStats.total.passed / gateStats.total.total) * 100).toFixed(1);
-    console.log(`**Overall Pass Rate**: ${gateStats.total.passed}/${gateStats.total.total} (${passRate}%)\n`);
+    console.log(
+      `**Overall Pass Rate**: ${gateStats.total.passed}/${gateStats.total.total} (${passRate}%)\n`
+    );
+  } else {
+    console.log('**Overall Pass Rate**: unknown (no observed gates)\n');
   }
 
   // 3. Skill Activation Frequency
   console.log('## Skill Activation Frequency\n');
-  const skillCount = {};
-  allMetrics.forEach(m => {
-    m.skills.activated.forEach(skill => {
+  const skillCount = Object.create(null);
+  allMetrics.forEach((m) => {
+    (m.skills.activated || []).forEach((skill) => {
       skillCount[skill] = (skillCount[skill] || 0) + 1;
     });
   });
@@ -196,7 +120,7 @@ function generateDashboard(limit = 10) {
   // 4. Status Summary
   console.log('## Execution Summary\n');
   const statusCount = {};
-  allMetrics.forEach(m => {
+  allMetrics.forEach((m) => {
     statusCount[m.status] = (statusCount[m.status] || 0) + 1;
   });
 
@@ -209,17 +133,20 @@ function generateDashboard(limit = 10) {
 
   // 5. Recommendations
   console.log('## Recommendations\n');
-  const avgPassRate = gateStats.total ?
-    (gateStats.total.passed / gateStats.total.total) : 1;
+  const avgPassRate = gateStats.total ? gateStats.total.passed / gateStats.total.total : null;
 
-  if (avgPassRate < 0.9) {
-    console.log(`- ⚠️ Gate pass rate (${(avgPassRate * 100).toFixed(1)}%) below 90% - review failing gates`);
+  if (avgPassRate !== null && avgPassRate < 0.9) {
+    console.log(
+      `- ⚠️ Gate pass rate (${(avgPassRate * 100).toFixed(1)}%) below 90% - review non-passing gates`
+    );
   }
 
-  const neverActivated = 39 - Object.keys(skillCount).length;
-  if (neverActivated > 10) {
-    console.log(`- 📊 ${neverActivated} skills never activated - consider reviewing trigger conditions`);
-  }
+  console.log(
+    '- Unknown observations are excluded from rates and averages; skill counts describe declared activation, not measured benefit.'
+  );
+  console.log(
+    '- Strategy pass rates use explicit pass/pass-with-warnings/fail reports; other statuses appear in the execution summary.'
+  );
 
   if (strategyCount.explore && strategyCount.explore > allMetrics.length * 0.7) {
     console.log('- 🔍 High proportion of explore strategy - consider more implementation tasks');
@@ -228,7 +155,9 @@ function generateDashboard(limit = 10) {
   console.log('');
   console.log('---');
   console.log('Generated by `/auto:dashboard`');
-  console.log(`Data source: .auto/runs/ (${allMetrics.length} runs with metrics)`);
+  console.log(
+    `Data source: .auto/runs/ (${allMetrics.length} runs; current protocol artifacts, unknowns preserved)`
+  );
 }
 
 // CLI

@@ -119,7 +119,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 检测到 interval 参数（`/auto 5m <goal>`）或「盯盘 / 自主迭代 / 自愈 / 周期巡检」语义时进入 loop 模式，激活 `loop-engineering` skill，按时重复跑聚焦版 6 PHASE 直至目标收敛或预算耗尽。内层每轮仍是标准 SCAN→…→LEARN，协议对象照常落 `.auto/runs/`。
 
-> **Codex 调度降级声明**：Claude Code 端用 `ScheduleWakeup`（会话内动态）/ `CronCreate`（持久）驱动 tick；**Codex 无原生调度工具**，降级为外部 `cron` / Windows `schtasks` / `at`，或退化为「每轮结束后由用户/脚本手动触发下一轮」。**严禁伪造「正在后台跑」**—— loop-state.json 必须如实记录 `scheduler: external-cron | manual`。收敛判据、预算、跨迭代回灌等 CHECKER 逻辑两端一致，仅调度执行机制不同。
+> **宿主调度能力核验**：先核对当前界面、暴露工具、授权范围及任务持久性，记录 `supported | unavailable | unknown` 与证据。仅在实际工具可用且任务范围已授权时选择宿主调度；缺少该能力时选择可用的外部 cron / schtasks 或手动触发。`loop-state.json` 如实记录 `scheduler: host-native | external-cron | manual`、工具名、任务 ID 与生命周期；创建未成功不能记为已调度。会话内等待不等于持久任务，严禁伪造「正在后台跑」。
 
 ---
 
@@ -140,7 +140,7 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 13. 项目是 bot / daemon / 消息队列消费者 / CLI 工具 / 无浏览器 UI 的 I/O 系统时，必须激活 `feedback-loop` skill，构建 CLI 测试驱动器，禁止依赖人工手动测试。
 14. 实现/修复默认走证据优先回路：确认真实符号和测试命令 → 保留失败证据或最小失败测试 → 最小修改 → 立即验证。同一路径连续 2 轮无进展时，切换到 `agentless-repair`，不得继续单链重试。没有命令、输出和 exit code 时不得声明完成。
 15. 实现/重构写码前先做规范锁定：读同模块 2-3 个邻近文件 + lint/formatter 配置，模仿既有命名/错误处理/注释风格（项目实际配置优先于任何默认规则）；命名自解释、函数单一职责、早返回；注释只写 WHY 与边界（公开 API 必须文档化，注释语言随项目）；风格与邻近文件冲突不得放行。
-16. 业务逻辑改动先做业务复述：1-3 句说明业务变化 + 不变量清单（如金额不可负、状态单向流转），复述不出先读领域代码或回问；业务实体在代码里找到真源并沿调用链确认；资金/权限/数据一致性/幂等/并发/审计六类红线过一遍并进 acceptance；关键业务断言做**破坏验证**——故意改坏一行实现，测试必须变红；还原后复跑同一测试确认变绿并自证无残留（红/绿两次输出留证；没红 = 测试无效，重写）；完成前把 diff 反向翻译成业务行为与复述对照，不一致回流。
+16. 业务逻辑改动先做业务复述：1-3 句说明业务变化 + 不变量清单（如金额不可负、状态单向流转），复述不出先读领域代码或回问；业务实体在代码里找到真源并沿调用链确认；资金/权限/数据一致性/幂等/并发/审计六类红线过一遍并进 acceptance；验收绑定独立业务依据的路径/版本（用户确认条款、正式契约或可信领域实例），模型推导标记假设，影响结果的未确认假设不得记为业务验证通过；关键业务断言做**破坏验证**——故意改坏一行实现，测试必须变红；还原后复跑同一测试确认变绿并自证无残留（红/绿两次输出留证；没红先确认变异是否改变目标行为，再定位测试缺口）；mutation 仅验证对选定变化的敏感性，不证明业务期望正确；完成前把 diff 反向翻译成业务行为与复述对照，不一致回流。
 
 ---
 
@@ -371,6 +371,8 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 如果当前还是只读探索任务，文件可以简化，但不能省略 `index.md`，也不能只留下 JSON 草稿而没有人类可读闭环摘要。
 
+新 run 的五类协议对象使用 JSON（原始 JSON 或 `json` fenced block；结果/学习列表可为数组），格式与字段以 `protocol-validator` 为准；旧 Markdown 仅作带警告的兼容检查。指标缺观测写 null，不能将未知统计成零。
+
 如果项目还没有 `.auto/`：
 
 - 可以先用内存态完成这次闭环
@@ -429,7 +431,7 @@ SCAN 完成后立即建立预算感知：
 - **跨迭代锚点**：入参若含 `#loop=<loopId>` → 续接既有 loop（读 `.auto/runs/<loopId>/loop-state.json` 继承预算/迭代号/收敛史，非新 loop）；每次触发的 prompt 必须带 `#loop=<loopId>`，否则预算与收敛史每轮 reset
 - 进入 loop 模式后：激活 `loop-engineering` skill → 写 `.auto/runs/<loopId>/loop-contract.md`（目标 + 可度量收敛判据 + 预算）→ 初始化 `loopBudgets`（**模式相关**：收敛型 maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3；监听型免 maxIterations，靠 maxBudgetUsd + maxWallClock 兜底，且每轮 CHECKER-first 无变化跳过 DOER）；入参 `--budget <USD|unlimited>` / `--max-time <h>` 可 per-loop 覆盖默认
 - **收敛判据硬门禁**：写不出可度量 CHECKER（退出码 / 正则 / 数值阈值）→ 不开 loop，回退单次 `/auto`
-- **调度降级**：见上方「Loop 模式 · Codex 调度降级声明」
+- **调度降级**：见上方「Loop 模式 · 宿主调度能力核验」
 
 ---
 
@@ -455,7 +457,8 @@ SCAN 完成后立即建立预算感知：
        + (上下文预算调节 × -0.5 ~ +0.5)
 
 历史反馈（来自 .auto/feedback/skills.json）：
-  样本门槛：usageCount < 3 或无记录 → 0（不加权；零数据 = 还没测过，不是不重要）
+  样本门槛：measuredCount < 3 或无有效观测 → 0（不加权；零数据 = 还没测过，不是不重要）
+  仅按反馈契约 measuredCount >= 3 时消费以下 rate；unknown/旧率无观测不加权
   successRate > 0.8 → +1.5
   successRate 0.5-0.8 → +0.5
   successRate < 0.5 → -1.0
@@ -519,7 +522,7 @@ SCAN 完成后立即建立预算感知：
 - 哪些 pattern 可直接复用
 - 哪些 traps 需要规避
 - 哪些 feedback 会影响 skill 选择或验证路径
-- 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：仅 `totalCalls` ≥ 3 时 `successRate < 0.5` 的 agent 才排除，样本不足按无记录处理；有 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
+- 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：按反馈契约仅 `measuredCount` ≥ 3 时 `successRate < 0.5` 的 agent 才排除，样本不足按无记录处理；有未解决 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
 - 若本次明确复用了某条知识，直接将命中摘要写入 `RouteDecision.notes.relevantInsights`，每条 ≤ 2 行
 - `QuestResult.validations` 记录这些 insight 在执行或验证中的参考证据
 - `selection.routeHintsUsed` 可记录 insight 标题、feedback key 或历史 runId，但不强制 `[insight:]` / `[feedback:]` / `[run:]` 标记
@@ -760,12 +763,12 @@ SCAN 完成后立即建立预算感知：
    - `universal` — 跨项目通用（如错误处理模式、调试方法论）
 3. **Curator 检查（去重 / 矛盾检测 / merge-or-append）**：分发前与 `.auto/insights/` 已有条目对比，同主题 merge 更新而非追加；新旧结论矛盾时旧条目末尾标 `**状态**: superseded by run-<runId>`，不静默并存；本次被复用且生效的 insight `helpful` +1、被复用但误导的 `harmful` +1，并刷新 `lastConfirmed`（详见 `skills/knowledge-management/SKILL.md`）
 
-**跨项目复用**：`scope: stack|universal` 的 LearnCard 额外写入 `.auto/feedback/skills.json` 的 `portablePatterns` 字段，供同技术栈新项目复用。
+**跨项目复用**：`scope: stack|universal` 的 LearnCard 额外写入 `.auto/feedback/skills.json` 的顶层 `portablePatterns` 字段，供同技术栈新项目复用。
 
 当任务较大、仓库本身在使用 `.auto/`，或用户明确要求沉淀时：
 
 - 把可复用经验写入 `.auto/insights/*`
-- 把 skill / 路由效果写入 `.auto/feedback/*`（**真实化更新**：被激活 skill 的 `usageCount` +1、更新 `lastUsed`、按结果更新 `successRate`；agent/视角调度记入 `agents.json` 的 `totalCalls`；失败追加 `knownIssues`；>30 天未更新标记 `stale`。PLAN 读侧消费 `successRate` 的前提是 LEARN 写侧持续更新 — 只读不写即反馈闭环断链。读侧另有样本门槛：agent `totalCalls` < 3、skill `usageCount` < 3 时忽略 `successRate`，不据此提权、降权或排除）
+- 把实际使用能力的反馈按 `skills/knowledge-management/references/feedback-contract.md` 写入 `.auto/feedback/*`：逐 run 幂等更新计数与 observations；unknown 不计失败、不进分母；只有有效已测 run 的 measuredCount ≥ 3 才让 successRate 影响路由；历史率保留为 legacyMetrics，不推算收益。
 - 把本次可复用的输入模式总结成短规则
 - **Run 归档**：运行超过 30 天的 run 自动移入 `.auto/runs/archive/`（由 SessionStart Hook 触发，Claude Code 专有机制；Codex 暂无 Hook 支持，可手动触发或在 LEARN 阶段提示），SCAN 预匹配只扫描未归档 run
 

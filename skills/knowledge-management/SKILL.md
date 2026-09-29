@@ -24,7 +24,7 @@ tags:
 - [ ] LearnCard 含全部必填字段（category/scope/title/confidence 等），无 category 的卡无效
 - [ ] 分发前执行 Curator 检查：查重（同主题 merge）/ 矛盾检测（旧条目标 superseded）/ 复用计数（helpful/harmful/lastConfirmed）
 - [ ] 按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）
-- [ ] feedback 真实化：被激活 skill `usageCount` +1、被调度 agent `totalCalls` +1、更新 successRate/lastUsed
+- [ ] feedback 真实化：按反馈契约逐 run 幂等更新计数与观测；successRate 使用已测 run 分母
 - [ ] 需跨会话续接时写 `session-continuity.md`；>30 天 run 移入 `.auto/runs/archive/`
 
 **硬约束** (constraints):
@@ -141,43 +141,15 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 
 ### 步骤 3：更新 agents.json
 
-**必须执行**。使用 Read → Edit 更新 `.auto/feedback/agents.json`。
-
-对本次 run 中被调度的每个 agent：
-
-1. Read `.auto/feedback/agents.json`
-2. 找到对应 agent 条目
-3. Edit 更新以下字段：
-   - `totalCalls`：当前值 +1
-   - `lastUsed`：设为 `YYYY-MM-DD`
-   - `successRate`：成功时保持或上调（最高 1.0），失败时下调（最低 0.0）
-   - `knownIssues`：失败时追加一条描述
-4. 更新文件顶部 `lastUpdated` 为当前日期
-
-**最小更新示例**（假设 quest-designer 在本次 run 中被调度且成功）：
-
-```diff
-- "totalCalls": 0,
-- "lastUsed": null,
-+ "totalCalls": 1,
-+ "lastUsed": "2026-05-27",
-```
+按 [反馈契约](references/feedback-contract.md) Read → 校验 → 合并写入 `.auto/feedback/agents.json`；缺文件用该契约 canonical seed。只记录实际调用，以 runId upsert observations，按新旧 uses 差量更新 totalCalls；未知结果写 unknown，successRate 只由已测 run 推导。保留历史和扩展字段，同 run 重做 LEARN 不重复计数。
 
 ### 步骤 4：更新 skills.json
 
-**必须执行**。对本次 run 中被激活（Read + 提取要素）的每个 skill：
+被实际激活（Read + 提取要素）的 skill 按同一契约更新 `.auto/feedback/skills.json`，每 run 的 uses=1；未激活不计数。局部验收结果需要应用证据，不把整 run 的通过率或调用量当 skill 收益。
 
-1. Read `.auto/feedback/skills.json`
-2. 找到对应 skill 条目
-3. Edit 更新以下字段：
-   - `usageCount`：当前值 +1
-   - `lastUsed`：设为 `YYYY-MM-DD`
-   - `successRate`：同步骤 3 逻辑
-4. 更新文件顶部 `lastUpdated` 为当前日期
+**样本门槛**：有效 success/failure 观测的 measuredCount ≥ 3 才允许 rate 影响路由和分层；unknown、无观测历史率与无效数据不参与加权。
 
-**样本门槛**：`successRate` 只在该 skill `usageCount` ≥ 3 后才对路由与分层生效（见 `commands/auto.md` 6.2 与 1.1）。不足 3 次时照常累加计数，但不得据此提权、降权或判定 skill 该留该砍。
-
-**scope 附加**：如果某张 LearnCard 的 `scope` 为 `stack` 或 `universal`，在该 skill 条目中追加 `portablePatterns` 条目。
+**scope 附加**：stack/universal LearnCard 写 skills.json **顶层** portablePatterns，附来源 skill，按 (runId, id, skill) 去重；旧条目内数组按反馈契约迁移。
 
 ### 步骤 5：归档检查
 

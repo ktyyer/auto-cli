@@ -22,7 +22,7 @@ description: Codex 版运行数据聚合 - 从 .auto/runs 提取趋势，不依�
 - `quest-results.md` → Quest 数量、成功率
 - `learn-cards.md` → 知识沉淀频率
 - `index.md` → 变更统计
-- `metrics.json` → 若存在则优先（LEARN 6.1.1 / `generate-metrics.js`）
+- `metrics.json` → 指标快照；dashboard 与 generate-metrics 共用 `scripts/run-protocol.js` 读取当前协议工件，避免旧缓存覆盖新证据。缺失观测为 null，未知值不进入均值或成功率，技能声明次数不代表效果。
 
 ## 输出内容
 
@@ -58,9 +58,11 @@ ls -d .auto/runs/*/ 2>/dev/null | grep -v '/archive' | sort -r | head -10
 for run in $(ls -d .auto/runs/*/ 2>/dev/null | grep -v '/archive' | sort -r | head -10); do
   echo "== $run =="
   grep -E "strategy|complexity" "$run/route-decision.md" 2>/dev/null | head -3
-  grep -c "pass" "$run/verify-report.md" 2>/dev/null
+  cat "$run/verify-report.md" 2>/dev/null
 done
 ```
+
+手动模式只定位和展示工件；按 `protocol-validator` 契约读取 `gateResults` 后再统计，不能用关键词出现次数代替门禁数。旧自由 Markdown 的协议指标标为 unknown。
 
 ## 使用场景
 

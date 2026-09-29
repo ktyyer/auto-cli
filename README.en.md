@@ -114,18 +114,20 @@ cat .auto/insights/patterns.md # may be empty on first run — OK
 
 ## 💡 Why use it
 
-Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further solves **"how to make AI understand YOUR project better over time"**.
+Auto CLI enhances the host's native coding workflow: one `/auto` entry connects project rules, implementation, acceptance evidence and knowledge across runs. It suits projects that need consistent working methods and auditable task records.
 
-### Core differences vs alternatives
+### Relationship to alternatives
 
-| Tool                     | Positioning                            | Auto CLI difference                                                          |
-| ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------- |
-| Native Claude Code       | Single-conversation AI assistant       | Enforces 6-PHASE protocol, every run produces 5 auditable standard objects   |
-| Superpowers              | 7-stage TDD pipeline (strong workflow) | 4 adaptive strategies (explore/fix/implement/refactor), TDD not forced       |
-| GitHub Spec Kit          | spec → plan → tasks doc-driven         | Built-in constitution + spec-driven skill, **plus** LearnCard knowledge loop |
-| Generic prompt templates | One-shot, no memory                    | `.auto/insights/` cross-run persistent memory, auto-injected next time       |
+Mechanisms checked on 2026-09-29; this is not an exclusivity claim or an effectiveness ranking. Capabilities depend on the host version and interface.
 
-### 7 unique features
+| Tool | Reusable mechanisms | Auto CLI organization |
+| --- | --- | --- |
+| Native Claude Code / Codex | Tools, project instructions and skills | Stages, acceptance and run artifacts on available host capabilities |
+| Superpowers | Composable skills and development practices | Strategy-based selection through a single entry |
+| GitHub Spec Kit | Traceability across specs, plans and tasks | Business acceptance and knowledge within the workflow |
+| Project prompts / conventions | Project rules and task guidance | Relevant rules and verified experience throughout a task |
+
+### 7 workflow capabilities
 
 1. **Protocol-driven · 5 standard objects written to disk immediately** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` land in `.auto/runs/<runId>/`. Failures trace precisely to the failing Quest.
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
@@ -135,7 +137,7 @@ Mainstream AI coding tools solve **"how to use it stably"**. Auto CLI further so
 6. **Context Engineering · manage AI attention budget** — green/yellow/red compression; long runs drift less.
 7. **Loop engine · `/auto 5m <goal>`** — DOER+CHECKER on an interval; **needs host scheduler support**, otherwise falls back to one-shot (see main command docs).
 
-> The #1 quality bottleneck for AI agents in 2026 is NOT model capability, **it's context management**. Auto CLI makes "the right tokens at the right time" the default behavior.
+> Context relevance, business acceptance and feedback quality affect coding outcomes. Productivity gains require controlled comparisons with the native host; no speed multiplier is claimed.
 
 ---
 

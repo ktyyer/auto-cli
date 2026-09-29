@@ -57,3 +57,17 @@
 1. 不新增平行入口；不引入业务 runtime  
 2. 每题 max 1 次 scope-expand  
 3. 对外引用本表时标注「self-bench / dogfood」，勿与 SWE-Bench 混淆  
+
+
+## P0 指标与协议回归
+
+指标文件存在仅证明落盘。运行 `node --test tests/scripts/generate-metrics.test.js tests/scripts/validate-run-completeness.test.js tests/scripts/dashboard.test.js` 检查规范 skills/gateResults 计数、任务重试、缺失观测、错误 ID 与失败门禁证据。字段契约见 `scripts/run-protocol.js`，指标语义见 `skills/protocol-validator/SKILL.md`。
+
+这些用例保护工具链正确性，不是编码生产力基线。后续比较原生宿主、当前版本、候选版本时，固定任务、模型、权限和仓库快照，保留普通项目规范但禁用原生组的 Auto CLI 路由桥接；记录独立业务验收、回归、首次正确完成时间、用户介入和实际成本，未知观测不记零。试点从明确 bug、跨模块功能、业务规则陷阱、安全/并发、UI/API、恢复/脏工作树六类任务开始，任务和验收需预先冻结。
+
+
+## 2026-09-29 反馈契约对照
+
+本轮工具试验冻结 18 个契约场景、每组重复 3 次。修复前符合期望 10/18，修复后 18/18；54 次执行中的误放行从 24 降至 0，均无误拒。Node 进程耗时中位数 116.583 ms → 119.759 ms，无速度收益结论。原始记录与快照哈希见 `.auto/runs/run-20260929-feedback-evaluation/comparison-report.md`（本地 run 工件，未随包发布）。这些是针对已知缺口的工具正确性证据。
+
+编码收益试点已冻结 2 个合成 Python 任务、独立验收与 12 个分组重复单元；缺陷实现 2/2 验收失败、参考实现 2/2 通过。尚未调用模型，不能将验收器校准或工具通过率当成编码生产力提升。

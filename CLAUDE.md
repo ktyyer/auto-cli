@@ -74,13 +74,13 @@
 
 - [x] Unreleased: **证据优先执行回路**：实现/修复默认顺序改为「证据锁定（真实符号/测试命令）→ 失败证据或最小失败测试 → 最小修改 → 立即验证」，连续 2 轮无进展切换 `agentless-repair`；VERIFY 强化 Run-Don't-Claim（无命令+输出+exit code 只能 `skipped` 不能 `pass`）；修复快速通道不得跳过证据回路；`auto.md` / `auto.codex.md` / `auto.en.md` 三端同步
 
-- [x] Unreleased: **业务优先纪律（业务正确性层）**：业务复述先行 + 领域真源 + 六类业务红线 + 关键业务断言破坏验证（mutation spot-check，堵自证偏误）+ 业务反向翻译；auto.md / auto.codex.md / auto.en.md / Auto-DSH 预设四端同步
+- [x] Unreleased: **业务优先纪律（业务正确性层）**：业务复述先行 + 领域真源 + 六类业务红线 + 关键业务断言破坏验证（mutation spot-check，检查断言敏感性；业务正确性另需独立规则依据）+ 业务反向翻译；auto.md / auto.codex.md / auto.en.md / Auto-DSH 预设四端同步
 
 - [x] Unreleased: **顶级程序员风格层（团队规范与可读性纪律）**：写前规范锁定（邻近文件 + lint/formatter 配置 + 项目配置优先于 skill 默认）；可读性硬标准 + 注释只写 WHY（挂接 comment-standards / code-style-enforcer，撤销实现策略下 -1 降权，仅探索保留）；auto.md / auto.codex.md / auto.en.md / Auto-DSH 预设四端同步
 
 - [x] Unreleased: **定位审计 + 一致性修复**：loopBudgets 数值统一（收敛型 maxIterations 20→10，对齐 `loop-engineering` skill 的论证依据 arXiv:2411.17501 与 commit 0c712eb 定稿；maxBudgetUsd 修正为 300；同步 auto.md / auto.codex.md / README 中英）；agentless-repair 撤下过时 SWE-bench 分数表述（保留方法论）；auto.md 6.4 Run 归档配置细节下沉 `knowledge-management` skill；社区 skills 机制收口（Wave 2 已接通：SCAN 发现 + `community-<name>` 安装 + hello-auto 样例）
 
-- [x] v0.52.0: **loop-engineering skill（/auto 自主循环引擎）**：新增 `skills/loop-engineering/SKILL.md`，把 `/auto` 从单次流水线升级为按 interval 参数（`5m`/`30m`/`2h`）触发的 DOER+CHECKER 自主循环。理论依据 2026 loop engineering 范式（Boris Cherny "My job is to write loops"）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop + Agent SDK budget caps + 非退化性收敛。落地：`commands/auto.md` 新增「Loop 模式（正交于策略）」节 + SCAN 1.8 Loop 参数解析（含持续型/收敛型语义自动触发）+ 兜底索引触发项 + LEARN 6.6 跨迭代回灌；`commands/auto.codex.md` 双端对齐（Codex 无原生调度工具 → 外部 cron/schtasks 或人手触发降级，严禁伪造后台运行）；RouteDecision 增 `loopBudgets`（maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3）；收敛判据硬门禁（无可度量 CHECKER 不开 loop）；skills 从 37 升为 38（顺带补 predict-verify 入 README 表，修正长期计数滞后）
+- [x] v0.52.0: **loop-engineering skill（/auto 自主循环引擎）**：新增 `skills/loop-engineering/SKILL.md`，把 `/auto` 从单次流水线升级为按 interval 参数（`5m`/`30m`/`2h`）触发的 DOER+CHECKER 自主循环。理论依据 2026 loop engineering 范式（Boris Cherny "My job is to write loops"）+ Anthropic 官方 DOER/CHECKER 模型 + Ralph Loop + Agent SDK budget caps + 非退化性收敛。落地：`commands/auto.md` 新增「Loop 模式（正交于策略）」节 + SCAN 1.8 Loop 参数解析（含持续型/收敛型语义自动触发）+ 兜底索引触发项 + LEARN 6.6 跨迭代回灌；`commands/auto.codex.md` 双端对齐（按实际宿主工具与生命周期核验，缺少调度能力时外部 cron/schtasks 或人手触发降级，严禁伪造后台运行）；RouteDecision 增 `loopBudgets`（maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h / noProgressLimit 3）；收敛判据硬门禁（无可度量 CHECKER 不开 loop）；skills 从 37 升为 38（顺带补 predict-verify 入 README 表，修正长期计数滞后）
 
 - [x] v0.51.0: **自动 run 清理机制**：SessionStart Hook 自动归档超过 30 天（可配置）的历史 run，保持 SCAN 性能；新增 `hooks/lib/auto-clean-runs.sh` 跨平台脚本（支持 Linux/macOS/Windows Git Bash/Node.js/Python 降级）；`hooks/hooks.json` SessionStart Hook 集成（< 50ms 开销）；`commands/auto.md` PHASE 6.4 补充配置/手动触发/恢复说明；`commands/auto.codex.md` LEARN 章节同步（标注 Codex 暂无 Hook）；`rules/hooks.md` SessionStart 章节补充；`skills/community/README.md` 顶部显式声明组织目录身份；`scripts/validate-references.js` 白名单补齐
 

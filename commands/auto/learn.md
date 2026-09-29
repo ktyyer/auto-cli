@@ -252,7 +252,7 @@ LEARN 除产出 `LearnCard` 外，还应把可复用的选择信号回灌给下�
    - `scope: stack` — 同技术栈项目通用
    - `scope: universal` — 跨项目跨栈通用
 3. **去重合并**：与 `.auto/insights/` 已有条目对比，同主题则更新而非追加
-4. **跨项目复用**：`scope: stack|universal` 的条目同步写入 `.auto/feedback/skills.json` 的 `portablePatterns` 数组
+4. **跨项目复用**：`scope: stack|universal` 的条目同步写入 `.auto/feedback/skills.json` 的顶层 `portablePatterns` 数组
 
 ### Portable Patterns 导入机制（冷启动加速）
 

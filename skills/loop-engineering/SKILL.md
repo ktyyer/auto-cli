@@ -70,7 +70,7 @@ tags:
 - [ ] 预算可 per-loop 覆盖:入参 `--budget <USD|unlimited>` / `--max-time <h>` 覆盖默认;`unlimited` 仅免费用上限,**仍受 maxWallClock + CHECKER + 用户中断约束**(无 CHECKER 的目标即便 unlimited 也不开 loop)
 - [ ] 关键路径已 commit,可回滚(loop 改坏能 `git reset`)
 - [ ] 调度机制已选:会话内动态 → ScheduleWakeup;跨会话持久 → CronCreate
-- [ ] 每轮产物落 `.auto/runs/<runId-iter-N>/`,跨迭代可追溯；涉及 LEARN 路由反馈时，若 `.auto/feedback/agents.json` 或 `skills.json` 缺失，先按 canonical seed 创建再更新
+- [ ] 每轮产物落 `.auto/runs/<runId-iter-N>/`,跨迭代可追溯；涉及 LEARN 路由反馈时，若 `.auto/feedback/agents.json` 或 `skills.json` 缺失，先按 `skills/knowledge-management/references/feedback-contract.md` 的 canonical seed 创建并按 runId 幂等更新
 
 **硬约束**：
 
@@ -146,7 +146,7 @@ tags:
 | `ScheduleWakeup` | 会话内动态自调度(/loop 动态模式) | 跟随当前 session | 目标收敛、短中期(< 数小时)   |
 | `CronCreate`     | 跨会话持久定时                   | 可 durable 写盘  | 持续维持、跨天盯盘、重启不断 |
 
-**选择规则**:
+**选择规则**（先核验工具实际可用及生命周期，以下工具名不是宿主通用保证）:
 
 - 目标有自然终止 + 同一会话内能完成 → **ScheduleWakeup**(轻量,免持久化)
 - 用户要关终端也不断 / 跨天 / 重启后仍跑 → **CronCreate(durable: true)**
@@ -154,7 +154,7 @@ tags:
 
 **Claude Code 侧**:优先用本 session 的 ScheduleWakeup,把 `/auto <interval> <goal> #loop=<loopId>` 作为下次唤醒的 prompt 回灌 —— `#loop=<loopId>` 是跨迭代状态锚点,下一轮 SCAN 据此定位 `.auto/runs/<loopId>/loop-state.json` 续上预算与收敛史(不带锚点则每轮 reset,`maxBudgetUsd` 永不耗尽、退化检测失效)。interval 转 `delaySeconds`(`5m`=300,但避开整点:`5m`→270s 或 330s 防 fleet 撞峰)。`CronCreate` 同理,prompt 字段同样带 `#loop=<loopId>`。
 
-**Codex / 无 ScheduleWakeup 运行时降级**:用系统 `cron` / `schtasks`(Windows)/ `at` 外部调度,或退化为人手触发 —— 文档明示降级,不伪造「正在后台跑」。
+**宿主能力核验与降级**：先检查当前界面、实际工具、授权范围和生命周期，记录 `supported | unavailable | unknown` 与依据。宿主具备其他原生调度工具时按其真实接口使用，不因宿主名为 Codex 就判为不可用。只有工具创建成功才记录 `scheduler: host-native`、工具名和任务 ID；外部调度成功记 `external-cron`，否则记 `manual`。会话内等待不等于持久调度。所有默认选择均以实际可用为前提，不伪造「正在后台跑」。
 
 ---
 
@@ -245,14 +245,14 @@ loop 的飞轮靠**跨轮知识复用**:
 
 ## 生产级防护
 
-| 风险                  | 防护                                                            |
-| --------------------- | --------------------------------------------------------------- |
-| **3am 滚屏烧钱**      | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 10) |
-| **改坏无法回滚**      | 关键路径先 commit;每轮 PreToolUse auto-snapshot hook 兜底       |
-| **幽灵 tick**         | 终止时必清 ScheduleWakeup / CronCreate;loop-state 标 converged  |
-| **25% 丢弃率**        | 强制 CHECKER(可度量判据)+ 每轮 clean-state gate,无判据不开 loop |
-| **撞峰 fleet**        | interval 转秒时偏移(5m→270s/330s),不卡整点                      |
-| ** Codex 无原生调度** | 降级外部 cron/schtasks 或人手触发,文档明示,不伪造后台运行       |
+| 风险                   | 防护                                                              |
+| ---------------------- | ----------------------------------------------------------------- |
+| **3am 滚屏烧钱**       | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 10)   |
+| **改坏无法回滚**       | 关键路径先 commit;每轮 PreToolUse auto-snapshot hook 兜底         |
+| **幽灵 tick**          | 终止时必清 ScheduleWakeup / CronCreate;loop-state 标 converged    |
+| **25% 丢弃率**         | 强制 CHECKER(可度量判据)+ 每轮 clean-state gate,无判据不开 loop   |
+| **撞峰 fleet**         | interval 转秒时偏移(5m→270s/330s),不卡整点                        |
+| **当前宿主无可用调度** | 记录不可用证据，降级外部 cron/schtasks 或人手触发，不伪造后台运行 |
 
 **成本经验值**(社区实测,供 maxBudgetUsd 估算):
 

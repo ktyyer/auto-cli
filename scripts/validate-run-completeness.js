@@ -3,6 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readRunProtocol } from './run-protocol.js';
+import { validateFeedbackReference } from './feedback-contract.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.AUTO_CLI_TEST_ROOT
@@ -19,8 +21,7 @@ const REQUIRED_FILES = [
   'learn-cards.md',
   'index.md'
 ];
-// Tokens match auto-md/v1 protocol objects (not legacy free-form labels).
-// Any one token per file is enough (OR within file's list is handled as every → we use loose every of short list).
+// Legacy content checks are not schema validation; structured runs use the shared contract.
 const REQUIRED_CONTENT = {
   'route-decision.md': ['strategy'],
   'quest-map.md': ['goal'],
@@ -34,15 +35,16 @@ const OPTIONAL_FILES = ['metrics.json'];
 // auto.md: knowledge-reuse no longer requires [insight:] markers; accept notes.relevantInsights too.
 const KNOWLEDGE_EVIDENCE_PATTERNS = [
   /\[insight:[^\]]+\]/i,
-  /\[feedback:skills\.json#[^\]]+\]/i,
-  /\[feedback:agents\.json#[^\]]+\]/i,
+  /\[feedback:skills\.json[#:][^\]]+\]/i,
+  /\[feedback:agents\.json[#:][^\]]+\]/i,
   /\[run:run-[^\]]+\]/i,
   /relevantInsights/i,
   /"relevantInsights"\s*:/i,
   /notes\.relevantInsights/i,
   /knowledge inputs/i
 ];
-const KNOWLEDGE_EVIDENCE_REGEX = /\[(insight|feedback:(?:skills|agents)\.json|run):([^\]]+)\]/gi;
+const KNOWLEDGE_EVIDENCE_REGEX =
+  /\[(?:(insight|run):|(feedback:(?:skills|agents)\.json)[#:])([^\]]+)\]/gi;
 const STOP_WORDS = new Set([
   'the',
   'and',
@@ -108,8 +110,8 @@ function extractKnowledgeMarkers(content) {
   while ((match = KNOWLEDGE_EVIDENCE_REGEX.exec(content)) !== null) {
     markers.push({
       raw: match[0],
-      kind: match[1],
-      target: match[2]
+      kind: (match[1] || match[2]).toLowerCase(),
+      target: match[3]
     });
   }
 
@@ -232,7 +234,11 @@ function validateVerifyConsistency(verifyReportContent, runId) {
     }
   }
 
-  if (runValidationResult && /pass/i.test(runValidationResult) && runCompletenessStatus === 'pending') {
+  if (
+    runValidationResult &&
+    /pass/i.test(runValidationResult) &&
+    runCompletenessStatus === 'pending'
+  ) {
     issues.push(
       'verify-report.md marks current run validation as PASS, but `run-completeness` is still pending'
     );
@@ -274,11 +280,15 @@ function validateKnowledgeMarker(marker) {
       return `${marker.raw} points to missing feedback file: ${fileName}`;
     }
 
-    const parsed = JSON.parse(fs.readFileSync(resolvedFile, 'utf-8'));
-    const topLevel = fileName === 'skills.json' ? parsed.skills || {} : parsed.agents || {};
-    return Object.prototype.hasOwnProperty.call(topLevel, key)
-      ? null
-      : `${marker.raw} points to missing feedback key: ${key}`;
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(resolvedFile, 'utf-8'));
+    } catch (error) {
+      return `${marker.raw} points to invalid feedback JSON: ${error.message}`;
+    }
+    const collection = fileName === 'skills.json' ? 'skills' : 'agents';
+    const issue = validateFeedbackReference(parsed, collection, key);
+    return issue ? `${marker.raw} points to ${issue}` : null;
   }
 
   return null;
@@ -323,7 +333,7 @@ function listRuns() {
 
   return fs
     .readdirSync(RUNS_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && entry.name !== 'archive')
     .map((entry) => {
       const runPath = path.join(RUNS_DIR, entry.name);
       const stats = fs.statSync(runPath);
@@ -425,8 +435,9 @@ function validateRun(runId) {
   );
   const routeMarkers = extractKnowledgeMarkers(routeDecisionContent);
   const verifyMarkers = extractKnowledgeMarkers(verifyReportContent);
-  const protocolIssues = [];
-  const softWarnings = [];
+  const protocol = readRunProtocol(runPath, { requireAll: true });
+  const protocolIssues = [...protocol.issues];
+  const softWarnings = [...protocol.warnings];
   const verifyConsistencyIssues = validateVerifyConsistency(verifyReportContent, runId);
 
   protocolIssues.push(...verifyConsistencyIssues);
@@ -490,6 +501,7 @@ function validateRun(runId) {
   return {
     ok: missingFiles.length === 0 && invalidFiles.length === 0 && protocolIssues.length === 0,
     softWarnings,
+    protocolMode: protocol.mode,
     runId,
     runPath,
     missingFiles,
@@ -498,11 +510,11 @@ function validateRun(runId) {
     protocolIssues,
     message:
       missingFiles.length === 0 && invalidFiles.length === 0 && protocolIssues.length === 0
-        ? 'run 闭环完整'
+        ? protocol.mode === 'legacy'
+          ? 'legacy run 基础工件完整（未验证协议字段）'
+          : 'run 闭环完整'
         : [
-            missingFiles.length > 0
-              ? `run 缺少基础工件: ${missingFiles.join(', ')}`
-              : null,
+            missingFiles.length > 0 ? `run 缺少基础工件: ${missingFiles.join(', ')}` : null,
             invalidFiles.length > 0
               ? `run 工件缺少最小内容: ${invalidFiles
                   .map(({ file, missingTokens }) => `${file} -> ${missingTokens.join('/')}`)

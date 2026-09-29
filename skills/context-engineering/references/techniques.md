@@ -51,7 +51,7 @@
        + (上下文预算调节 × -0.5 ~ +0.5) ← 新增
 
 历史反馈信号来源:
-  - .auto/feedback/skills.json 中的 successRate
+  - 按 skills/knowledge-management/references/feedback-contract.md 读取 successRate；仅有效 measuredCount >= 3 时使用，unknown/旧率无观测不加权
   - 最近 3 次 run 中该 skill 的实际应用效果
   - successRate > 0.8 → +1.5
   - successRate 0.5-0.8 → +0.5

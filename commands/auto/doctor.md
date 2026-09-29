@@ -106,7 +106,7 @@ Bash("ls skills/*/SKILL.md | wc -l") vs Bash("ls .auto/cache/skill-extracts/*.md
   -> Skill 数 > 缓存数 -> WARN: "新增 Skill 未缓存，建议 npm run rebuild:cache"
   -> 相等 -> PASS
 
-# Portable Patterns 检测
+# Portable Patterns 检测（反馈契约的 skills.json 顶层数组；旧条目内数组先迁移）
 Bash("test -f .auto/feedback/skills.json && jq '.portablePatterns | length' .auto/feedback/skills.json")
   -> >= 1 -> INFO: "<N> 条可复用模式已沉淀"
   -> 0 或不存在 -> INFO: "暂无跨项目可复用模式"

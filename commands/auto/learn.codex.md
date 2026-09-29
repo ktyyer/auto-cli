@@ -79,7 +79,7 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 每张卡至少要有：
 
 - `category`
-- `scope`（`project | stack | universal`，必填；`stack|universal` 额外写入 `skills.json` 的 `portablePatterns`）
+- `scope`（`project | stack | universal`，必填；`stack|universal` 额外写入 `skills.json` 的顶层 `portablePatterns`）
 - `title`
 - `summary`
 - `context`
@@ -101,7 +101,7 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 
 ### feedback
 
-按需更新：
+按 `skills/knowledge-management/references/feedback-contract.md` 逐 run 幂等更新实际使用能力的计数与观测；unknown 不进成功率分母：
 
 - `.auto/feedback/agents.json`
 - `.auto/feedback/skills.json`

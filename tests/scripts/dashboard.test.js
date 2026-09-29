@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { protocolRun, writeProtocolRun } from '../fixtures/protocol-run.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
@@ -31,6 +32,40 @@ function makeRun(runsDir, name) {
 function runDashboard(cwd) {
   return spawnSync(process.execPath, [dashboardScript], { cwd, encoding: 'utf8' });
 }
+
+test('prototype-named skills have numeric activation counts and deduplicate within a run', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  for (const id of ['run-first', 'run-second']) {
+    const docs = protocolRun(id);
+    docs['route-decision.md'].skills = ['constructor', '__proto__', 'toString', 'constructor'];
+    writeProtocolRun(tmp, id, docs);
+  }
+  const result = runDashboard(tmp);
+  assert.equal(result.status, 0, result.stderr);
+  for (const skill of ['constructor', '__proto__', 'toString']) {
+    assert.match(result.stdout, new RegExp(`\\| \\d+ \\| ${skill} \\| 2 \\|`));
+  }
+  assert.doesNotMatch(result.stdout, /function|NaN/);
+});
+
+test('dashboard parses canonical artifacts and labels unknown observations', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const dir = writeProtocolRun(tmp, 'run-known');
+  // A stale pre-contract cache must not override source artifacts.
+  fs.writeFileSync(path.join(dir, 'metrics.json'), JSON.stringify({ skills: { count: 0 } }));
+  const partial = protocolRun('run-partial');
+  writeProtocolRun(tmp, 'run-partial', { 'route-decision.md': partial['route-decision.md'] });
+  makeRun(path.join(tmp, '.auto', 'runs'), 'run-unknown');
+  const result = runDashboard(tmp);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/2 \(50.0%\)/);
+  assert.match(result.stdout, /protocol-validator/);
+  assert.match(result.stdout, /unknown/);
+  assert.match(result.stdout, /\| fix \| 2 \| 100% \(1 observed\) \| 1\.0 \|/);
+  assert.doesNotMatch(result.stdout, /never activated/);
+});
 
 test('dashboard 能发现无 run- 前缀的历史 run 目录', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));

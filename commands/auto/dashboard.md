@@ -89,19 +89,19 @@ node scripts/dashboard.js 20  # 聚合最近 20 次 run
 # 读取最近 N 次 run（默认 10）
 ls -d .auto/runs/*/ | sort -r | head -10
 
-# 对每个 run 提取关键指标
+# 对每个 run 展示工件，再按协议字段读取
 for run in $(ls -d .auto/runs/*/ | sort -r | head -10); do
   # 策略
   grep -o "strategy.*" "$run/route-decision.md" | head -1
-  # gate 结果
-  grep -c "status.*pass" "$run/verify-report.md"
-  grep -c "status.*fail\|status.*warning" "$run/verify-report.md"
-  # quest 数
-  grep -c "questId" "$run/quest-results.md"
+  cat "$run/verify-report.md" "$run/quest-results.md"
 done
 ```
 
+手动模式按 `protocol-validator` 契约读取 gateResults，Quest 按最大 attempt 取最终状态；不能用关键词出现次数代替统计。旧自由 Markdown 的协议指标标为 unknown。
+
 ### 生成 metrics.json（首次使用）
+
+当前 dashboard 与 generate-metrics 共用 `scripts/run-protocol.js`，直接读取当前协议工件，避免旧指标缓存覆盖源码证据。`auto-metrics/v2` 缺失观测为 null；未知值不进入均值或通过率，技能声明次数不代表效果。旧自由 Markdown 仅显示有限信息。
 
 ```bash
 # 为最近的 run 生成 metrics.json

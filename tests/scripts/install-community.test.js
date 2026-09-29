@@ -45,3 +45,52 @@ test('install copies community skill with community- prefix and references', () 
   // Claude Code 只加载目录形态，扁平 <name>.md 不得再产出
   assert.equal(fs.existsSync(path.join(claudeRoot, 'skills', 'community-hello-auto.md')), false);
 });
+
+test('dual-host uninstall removes installed resources and preserves personal configuration', () => {
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-reinstall-'));
+  const listFiles = (dir) =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const location = path.join(dir, entry.name);
+      return entry.isDirectory() ? listFiles(location) : [location];
+    });
+  const run = (script) => {
+    const result = spawnSync(process.execPath, [path.join(repoRoot, 'scripts', script)], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, HOME: tempHome, USERPROFILE: tempHome }
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+  };
+  const personal = [];
+  for (const host of ['.claude', '.codex']) {
+    const file = path.join(tempHome, host, 'skills', 'personal', 'SKILL.md');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, 'personal skill\n');
+    personal.push(file);
+  }
+  const settingsPath = path.join(tempHome, '.claude', 'settings.json');
+  const settings = {
+    theme: 'dark',
+    hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'echo personal' }] }] }
+  };
+  fs.writeFileSync(settingsPath, JSON.stringify(settings));
+  personal.push(settingsPath);
+  run('install.js');
+  const installed = new Map(
+    listFiles(tempHome)
+      .filter((file) => !personal.includes(file))
+      .map((file) => [file, fs.readFileSync(file)])
+  );
+  assert.ok(installed.size > 0);
+  run('uninstall.js');
+  assert.deepEqual(
+    listFiles(tempHome).sort(),
+    personal.sort(),
+    'only personal files should remain'
+  );
+  assert.deepEqual(JSON.parse(fs.readFileSync(settingsPath, 'utf8')), settings);
+  run('install.js');
+  for (const [file, contents] of installed) assert.deepEqual(fs.readFileSync(file), contents);
+  for (const file of personal.filter((file) => file !== settingsPath))
+    assert.equal(fs.readFileSync(file, 'utf8'), 'personal skill\n');
+});

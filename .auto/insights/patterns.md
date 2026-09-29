@@ -208,6 +208,9 @@ en_docs=$(find . -maxdepth 2 -name "*.en.md" | wc -l)
 
 ---
 
+**复核**: 2026-09-29 | **来源**: run-20260929-feedback-evaluation | **scope**: project。安装器递归复制文件时仍可能超出卸载清单；本轮修复 4 个残留路径，并用临时双端目录完成安装→卸载→重装，核对仅个人配置保留、重装文件逐项一致。真实升级前备份并核对明确目标，不能用脚本 exit 0 替代完整性检查。
+
+
 ### validator 应识别 markdown 表格引用
 
 **日期**: 2026-04-19
@@ -1149,3 +1152,9 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 **推荐动作**: 外部能力接入 preset 优先评估 CLI 出口；skill 内固化「探测→消费→降级」三段（status 探测、无索引降级 grep 不阻塞主线）；深度报告类（Understand Anything 的 /understand）按运行时路由，产物路径回填本 run 工件互认。
 
 **来源**: run-20260924-preset-toolbridge
+
+### 区分运行完整性、协议正确性与行为效果
+
+**日期**: 2026-09-29 | **置信度**: high | **来源**: run-run-20260929-optimization-assessment
+
+scope: project。基础工件和关键词检查通过，不代表协议字段及 correlationId 已被自动校验，更不代表指令优化已改善执行效果。分别使用完整性检查、缺字段/错关联 ID 负例及实际任务场景评估，避免扩大验证结论。
