@@ -22,7 +22,7 @@ description: Codex 版运行数据聚合 - 从 .auto/runs 提取趋势，不依�
 - `quest-results.md` → Quest 数量、成功率
 - `learn-cards.md` → 知识沉淀频率
 - `index.md` → 变更统计
-- `metrics.json` → 指标快照；dashboard 与 generate-metrics 共用 `scripts/run-protocol.js` 读取当前协议工件，避免旧缓存覆盖新证据。缺失观测为 null，未知值不进入均值或成功率，技能声明次数不代表效果。
+- `metrics.json` → 指标快照；dashboard 与 generate-metrics 共用 `scripts/run-protocol.js` 读取当前协议工件，避免旧缓存覆盖新证据。缺失观测为 null，未知值不进入均值或成功率，`not_applicable` 门禁不计入通过率分母，技能声明次数不代表效果。
 
 ## 输出内容
 

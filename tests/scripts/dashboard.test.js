@@ -118,3 +118,44 @@ test('确实没有 run 时仍然给出 No runs found 提示', () => {
 
   assert.match(result.stdout, /No runs found/, '空 runs 目录应明确提示无数据');
 });
+
+test('dashboard excludes not_applicable gates from the overall pass rate', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-na');
+  docs['verify-report.md'].gateResults.push({
+    name: 'security',
+    status: 'not_applicable',
+    evidence: 'docs-only change'
+  });
+  writeProtocolRun(tmp, 'run-na', docs);
+  const result = runDashboard(tmp);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\*\*Overall Pass Rate\*\*: 1\/2 \(50\.0%\)/);
+});
+
+test('dashboard reports no applicable gates when every gate is not_applicable', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-all-na');
+  docs['verify-report.md'].gateResults = [
+    { name: 'test', status: 'not_applicable', evidence: 'explore strategy, no code change' }
+  ];
+  docs['verify-report.md'].overallStatus = 'not_applicable';
+  writeProtocolRun(tmp, 'run-all-na', docs);
+  const result = runDashboard(tmp);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\*\*Overall Pass Rate\*\*: unknown \(no applicable gates\)/);
+});
+
+test('dashboard reports no observed gates when no run recorded a verify report', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-dashboard-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = Object.fromEntries(
+    Object.entries(protocolRun('run-no-verify')).filter(([file]) => file !== 'verify-report.md')
+  );
+  writeProtocolRun(tmp, 'run-no-verify', docs);
+  const result = runDashboard(tmp);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\*\*Overall Pass Rate\*\*: unknown \(no observed gates\)/);
+});

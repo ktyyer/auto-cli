@@ -57,6 +57,48 @@ const types = {
   object: isObject,
   positiveInteger: (v) => Number.isInteger(v) && v > 0
 };
+// Evidence must carry real content: blank strings, nulls and empty containers say nothing.
+const hasEvidence = (value) => {
+  const pending = [{ value, nested: false }];
+  while (pending.length) {
+    const current = pending.pop();
+    if (isString(current.value)) return true;
+    if (current.nested && (typeof current.value === 'number' || typeof current.value === 'boolean'))
+      return true;
+    if (Array.isArray(current.value)) {
+      for (const item of current.value) pending.push({ value: item, nested: true });
+    } else if (isObject(current.value)) {
+      for (const item of Object.values(current.value)) pending.push({ value: item, nested: true });
+    }
+  }
+  return false;
+};
+
+// Status enums. v2 values are additive; v1 values stay valid so old runs keep validating.
+const QUEST_STATUSES = [
+  'pending',
+  'running',
+  'completed',
+  'succeeded',
+  'failed',
+  'cancelled',
+  'suspended',
+  'skipped',
+  'blocked'
+];
+const QUEST_SUCCESS_STATUSES = ['completed', 'succeeded'];
+const GATE_STATUSES = ['pass', 'fail', 'warning', 'skipped', 'pending', 'not_applicable'];
+const OVERALL_STATUSES = [
+  'pass',
+  'pass-with-warnings',
+  'fail',
+  'warning',
+  'pending',
+  'skipped',
+  'blocked',
+  'partial',
+  'not_applicable'
+];
 
 /** Parse raw JSON or protocol fences; distinguish legacy text from malformed structured data. */
 export function parseProtocolDocument(content) {
@@ -194,8 +236,7 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
     'QuestResult questId/attempt'
   );
   for (const q of results) {
-    if (!['pending', 'running', 'completed', 'succeeded', 'failed', 'cancelled', 'suspended', 'skipped', 'blocked'].includes(q.status))
-      issues.push('QuestResult.status: invalid status');
+    if (!QUEST_STATUSES.includes(q.status)) issues.push('QuestResult.status: invalid status');
     if (plan && !questIds.includes(q.questId))
       issues.push(`QuestResult.questId: unknown quest ${q.questId}`);
     if (q.status === 'failed') {
@@ -204,37 +245,20 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
     }
   }
   for (const v of documents['verify-report.md']?.objects || []) {
-    if (
-      ![
-        'pass',
-        'pass-with-warnings',
-        'fail',
-        'warning',
-        'pending',
-        'skipped',
-        'blocked',
-        'partial',
-        'not_applicable'
-      ].includes(v.overallStatus)
-    )
+    if (!OVERALL_STATUSES.includes(v.overallStatus))
       issues.push('VerifyReport.overallStatus: invalid status');
     const gates = Array.isArray(v.gateResults) ? v.gateResults : [];
     for (const gate of gates) {
       check(gate, { name: 'string', status: 'string' }, 'VerifyReport.gateResults[]');
       if (!isObject(gate)) continue;
-      if (!['pass', 'fail', 'warning', 'skipped', 'pending', 'not_applicable'].includes(gate.status))
-        issues.push('VerifyReport gate: invalid status');
+      if (!GATE_STATUSES.includes(gate.status)) issues.push('VerifyReport gate: invalid status');
       if (gate.status === 'fail') {
         check(gate, { recommendedNext: 'string' }, 'VerifyReport failed gate');
-        if (
-          !(
-            isString(gate.evidence) ||
-            (Array.isArray(gate.evidence) && gate.evidence.length) ||
-            (isObject(gate.evidence) && Object.keys(gate.evidence).length)
-          )
-        )
-          issues.push('VerifyReport failed gate: evidence required');
+        if (!hasEvidence(gate.evidence)) issues.push('VerifyReport failed gate: evidence required');
       }
+      // Without a stated reason, not_applicable cannot be told apart from a gate nobody ran.
+      if (gate.status === 'not_applicable' && !hasEvidence(gate.evidence))
+        issues.push('VerifyReport not_applicable gate: evidence (reason) required');
     }
     unique(
       gates.filter(isObject).map((g) => g.name),
@@ -245,6 +269,14 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
       gates.some((g) => ['fail', 'pending'].includes(g?.status))
     )
       issues.push('VerifyReport.overallStatus: cannot pass with failed or pending gates');
+    // Report-level not_applicable must mirror the gates exactly: it would otherwise hide a gate
+    // that ran, and any other verdict over all-N/A gates claims a result nobody verified.
+    const allGatesNotApplicable =
+      gates.length > 0 && gates.every((g) => g?.status === 'not_applicable');
+    if (v.overallStatus === 'not_applicable' && !allGatesNotApplicable)
+      issues.push('VerifyReport.overallStatus: not_applicable requires all gates not_applicable');
+    if (allGatesNotApplicable && v.overallStatus !== 'not_applicable')
+      issues.push('VerifyReport.overallStatus: all gates not_applicable requires not_applicable');
   }
   for (const card of documents['learn-cards.md']?.objects || []) {
     for (const [field, allowed] of Object.entries({
@@ -274,6 +306,8 @@ export function collectRunMetrics(runDir) {
   }
   const gates = verify?.gateResults;
   const gateCount = (status) => (gates ? gates.filter((g) => g.status === status).length : null);
+  // not_applicable gates are outside this change's scope, so they leave the pass-rate denominator.
+  const applicableGates = gates ? gates.length - gateCount('not_applicable') : null;
   const unavailable = [
     ...protocol.warnings,
     'duration, files and agent invocations: no tool telemetry source'
@@ -291,7 +325,7 @@ export function collectRunMetrics(runDir) {
     quests: {
       total: plan ? plan.quests.length : null,
       completed: results
-        ? [...latest.values()].filter((q) => q.status === 'completed').length
+        ? [...latest.values()].filter((q) => QUEST_SUCCESS_STATUSES.includes(q.status)).length
         : null,
       failed: results ? [...latest.values()].filter((q) => q.status === 'failed').length : null
     },
@@ -302,7 +336,9 @@ export function collectRunMetrics(runDir) {
       skipped: gateCount('skipped'),
       warning: gateCount('warning'),
       pending: gateCount('pending'),
-      passRate: gates?.length ? gateCount('pass') / gates.length : null
+      notApplicable: gateCount('not_applicable'),
+      applicable: applicableGates,
+      passRate: applicableGates ? gateCount('pass') / applicableGates : null
     },
     skills: {
       activated: route ? [...new Set(route.skills)] : null,

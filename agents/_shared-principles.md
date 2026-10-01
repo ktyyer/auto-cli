@@ -583,7 +583,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "runId": "run-<id>",
   "correlationId": "corr-<id>",
   "phase": "EXECUTE",
-  "status": "pending | running | completed | failed | skipped | blocked",
+  "status": "pending | running | succeeded | completed | failed | cancelled | suspended | skipped | blocked",
   "summary": "一句话说明本关结果",
   "source": "执行该关的 command/agent",
   "refs": {
@@ -604,7 +604,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
     {
       "name": "build | test | lint | analysis | skill-activation",
       "command": "<命令>",
-      "status": "pass | fail | skipped",
+      "status": "pass | fail | skipped | not_applicable",
       "evidence": "<验证证据：命令输出摘要、文件路径、或具体行号范围>"
     }
   ],
@@ -656,13 +656,13 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
       "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | self-critique | production-governance | protocol-validator | skill-activation | knowledge-reuse | clean-state | cost",
       "required": true,
       "command": "<命令>",
-      "status": "pass | fail | skipped",
-      "evidence": "<输出摘要；knowledge-reuse=pass 时说明被复用的 insight 与应用证据>",
+      "status": "pass | fail | warning | skipped | pending | not_applicable",
+      "evidence": "<输出摘要；not_applicable 时写明不适用理由；knowledge-reuse=pass 时说明被复用的 insight 与应用证据>",
       "owner": "main | verification",
       "recommendedNext": "<失败时下一步建议动作；非失败可省略>"
     }
   ],
-  "overallStatus": "pass | pass-with-warnings | fail | warning | pending | skipped | blocked | partial",
+  "overallStatus": "pass | pass-with-warnings | fail | warning | pending | skipped | blocked | partial | not_applicable",
   "failedGates": ["<gate>"],
   "evidence": ["<证据1>", "<证据2>"],
   "remediationPlan": ["<修复动作1>", "<修复动作2>"],

@@ -41,9 +41,9 @@ function generateMetrics(runId) {
   );
   const rate =
     metrics.gates.passRate === null ? 'unknown' : `${(metrics.gates.passRate * 100).toFixed(1)}%`;
-  console.log(
-    `Gates: ${display(metrics.gates.passed)}/${display(metrics.gates.total)} passed (${rate})`
-  );
+  const { passed, applicable, notApplicable } = metrics.gates;
+  const naNote = notApplicable ? `, ${notApplicable} not applicable` : '';
+  console.log(`Gates: ${display(passed)}/${display(applicable)} passed (${rate})${naNote}`);
   console.log(`Skills: ${display(metrics.skills.count)} activated`);
   if (metrics.protocolIssues.length) {
     console.error(metrics.protocolIssues.join('\n'));

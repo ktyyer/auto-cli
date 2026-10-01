@@ -80,11 +80,14 @@ function generateDashboard(limit = 10) {
   // 2. Quality Gates Pass Rate
   console.log('## Quality Gates Pass Rate\n');
   const gateStats = {};
+  let notApplicableGates = 0;
   allMetrics.forEach((m) => {
-    if (m.gates.total > 0) {
+    // not_applicable gates are outside the run's scope and do not count against the pass rate.
+    notApplicableGates += m.gates.notApplicable ?? 0;
+    if (m.gates.applicable > 0) {
       if (!gateStats.total) gateStats.total = { passed: 0, total: 0 };
       gateStats.total.passed += m.gates.passed;
-      gateStats.total.total += m.gates.total;
+      gateStats.total.total += m.gates.applicable;
     }
   });
 
@@ -93,6 +96,8 @@ function generateDashboard(limit = 10) {
     console.log(
       `**Overall Pass Rate**: ${gateStats.total.passed}/${gateStats.total.total} (${passRate}%)\n`
     );
+  } else if (notApplicableGates > 0) {
+    console.log('**Overall Pass Rate**: unknown (no applicable gates)\n');
   } else {
     console.log('**Overall Pass Rate**: unknown (no observed gates)\n');
   }

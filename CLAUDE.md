@@ -76,10 +76,11 @@
 - Agent Teams 双模执行：并行 Quest 在 git-worktrees 之外提供原生 Agent Teams 模式（含分层模型成本指引）
 - OpenSpec delta specs：`spec-driven` skill 吸收 ADDED/MODIFIED/REMOVED 标记与 proposal→apply→archive 状态机
 - hook `agent_id`/`agent_type` 字段利用 + 重评 PostToolUseFailure
-- 协议状态机 v2 枚举扩展：QuestResult 增 `succeeded`/`cancelled`/`suspended`、gate/overallStatus 增 `not_applicable`——须与 `scripts/run-protocol.js` + `tests/` 同批迁移（scripts 改动授权暂缓，文档已回退现行枚举并标注迁移原则）
 - 超级编码辅助升级批次 4：复杂能力对照实验（A/B 决定去留）。批次1（一致性与执行安全）见 `run-20261001-consistency-safety`；批次2/3（业务契约/三证据链/专家协作/证据可信度）已随批次 1 后的入口规范重构于 2026-10-01 落盘，见 `run-20261001-spec-refactor`
 
 ### 已完成
+
+- [x] Unreleased: **协议状态机 v2 枚举扩展（校验器 + 消费者 + 文档同批）**：QuestResult.status 增 `succeeded`/`cancelled`/`suspended`，gate.status 与 overallStatus 增 `not_applicable`，v1 值持续接受（commit bd7f6f8 落地校验器）。补齐收口：枚举抽为常量；`not_applicable` gate 必须带 evidence 理由（空白内容不算证据），overallStatus `not_applicable` 与「全部 gate 均不适用」双向绑定；`collectRunMetrics` 把 `succeeded` 计为完成、新增 `gates.notApplicable` / `gates.applicable` 并把不适用门禁移出通过率分母，dashboard 与 generate-metrics 改读 `gates.applicable`；补拒绝非法值、overall/gate 双向一致性、空白证据与消费者测试（隔离副本 mutation spot-check 9/9 变红，记录于 run verify-report）；auto.md / auto.codex.md / \_shared-principles / verification / quality-gates / protocol-validator / dashboard 文档统一为「不适用记 `not_applicable`、缺证据记 `skipped`」；run-20261001-optimal-audit
 
 - [x] Unreleased: **自上而下剪枝（孤儿清除 + 陈旧计数收口）**：引用审计（双源判定：产品面 grep + scripts/manifest.js 装运清单）后删除 6 个零引用文件（docs/outreach-zh.md、install-auto-cli.bat、install-from-tgz.bat、CLAUDE.en.md、AGENTS.en.md、REPO_MAP.en.md）与 .ua/ 本地工具缓存（1.5MB 未跟踪）；codemaps-hook.sh 因装运清单消费保留。同步修正 AGENTS.md/README.md gate 计数 18→17、patterns.md 悬空 i18n 卡加 superseded 标注。孤儿判定硬约束：产品面引用与装运清单**同时**为零才删（防破坏 validate:package）；CHANGELOG 历史提及不算活引用；insights 旧推荐用 superseded 标注保留演化轨迹。run-20261001-topdown-prune
 

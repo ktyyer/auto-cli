@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - community 样例 `skills/community/hello-auto/`；安装名为 **`community-<name>`** 并复制 `references/`
   - `validate-run-completeness.js` 对齐 auto-md/v1 内容 token；knowledge-reuse 接受 `relevantInsights`；支持 `AUTO_CLI_TEST_ROOT`
 
+- **协议状态机 v2 枚举**：QuestResult.status 增 `succeeded` / `cancelled` / `suspended`，gate.status 与 overallStatus 增 `not_applicable`，v1 值持续接受。`not_applicable` gate 必须在 evidence 写明理由（空白内容不算证据），overallStatus 记 `not_applicable` 当且仅当全部 gate 均为 `not_applicable`（双向，校验器强制）；`metrics.json` 把 `succeeded` 计为完成、新增 `gates.notApplicable` 与 `gates.applicable`，不适用门禁不计入通过率分母（`scripts/run-protocol.js` / `dashboard.js` / `generate-metrics.js` + `tests/scripts/`）；文档统一为「不适用记 `not_applicable`，应做但缺证据记 `skipped`」
+
 ### Changed
 
 - **容量契约校验改为结构锚点**：`scripts/validate-capacity-contract.js` 不再逐文件维护一份中文短语清单（`auto.md` 与 `auto.codex.md` 各一份，措辞一改就假红或假绿）。改为校验 `<!-- capacity-contract: assumption|probe -->` 锚点数量，并在锚点所辖段落上套同一份共享需求集（规模放大反例 / 无界查询 / `capacity: not-applicable` 豁免）。四个契约文件补上锚点，新增 `tests/scripts/validate-capacity-contract.test.js`。

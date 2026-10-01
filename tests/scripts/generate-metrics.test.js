@@ -78,6 +78,7 @@ test('canonical counts ignore nested statuses and use latest quest attempt', (t)
   assert.equal(m.skills.count, 2);
   assert.deepEqual(m.quests, { total: 1, completed: 1, failed: 0 });
   assert.equal(m.gates.total, 2);
+  assert.equal(m.gates.applicable, 2);
   assert.equal(m.gates.passed, 1);
   assert.equal(m.gates.warning, 1);
   assert.equal(m.gates.passRate, 0.5);
@@ -95,6 +96,7 @@ test('legacy/missing observations stay unknown and invalid structured input is r
   let m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
   assert.equal(m.skills.count, null);
   assert.equal(m.gates.total, null);
+  assert.equal(m.gates.applicable, null);
   assert.equal(m.status, 'unknown');
   assert.ok(m.unavailable.length > 0);
   fs.writeFileSync(path.join(dir, 'route-decision.md'), '```json\n{"skills": [}\n```');
@@ -175,4 +177,64 @@ test('显式传入 runId 时仍按该 runId 生成', () => {
 
   assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
   assert.ok(targeted, '显式 runId 必须优先于自动发现');
+});
+
+test('v2 statuses: succeeded counts as completed and not_applicable leaves the pass rate', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-v2');
+  docs['quest-results.md'][0].status = 'succeeded';
+  docs['verify-report.md'].gateResults.push({
+    name: 'security',
+    status: 'not_applicable',
+    evidence: 'docs-only change'
+  });
+  const dir = writeProtocolRun(tmp, 'run-v2', docs);
+  const result = run(tmp, ['run-v2']);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.deepEqual(m.quests, { total: 1, completed: 1, failed: 0 });
+  assert.equal(m.gates.total, 3);
+  assert.equal(m.gates.notApplicable, 1);
+  assert.equal(m.gates.applicable, 2);
+  assert.equal(m.gates.passRate, 0.5);
+  assert.match(result.stdout, /Gates: 1\/2 passed \(50\.0%\), 1 not applicable/);
+});
+
+test('only not_applicable gates give an unknown pass rate, not zero', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const docs = protocolRun('run-na');
+  docs['verify-report.md'].gateResults = [
+    { name: 'test', status: 'not_applicable', evidence: 'explore strategy' }
+  ];
+  docs['verify-report.md'].overallStatus = 'not_applicable';
+  const dir = writeProtocolRun(tmp, 'run-na', docs);
+  const result = run(tmp, ['run-na']);
+  assert.equal(result.status, 0, result.stderr);
+  const m = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json')));
+  assert.equal(m.gates.total, 1);
+  assert.equal(m.gates.notApplicable, 1);
+  assert.equal(m.gates.applicable, 0);
+  assert.equal(m.gates.passRate, null);
+  assert.match(result.stdout, /Gates: 0\/0 passed \(unknown\), 1 not applicable/);
+});
+
+test('CLI exits non-zero without writing metrics when the run or runs directory is missing', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const noRunsDir = run(tmp);
+  assert.equal(noRunsDir.status, 1);
+  assert.match(noRunsDir.stderr, /No runs directory found/);
+
+  const runsDir = path.join(tmp, '.auto', 'runs');
+  fs.mkdirSync(path.join(runsDir, 'archive'), { recursive: true });
+  const onlyArchive = run(tmp);
+  assert.equal(onlyArchive.status, 1);
+  assert.match(onlyArchive.stderr, /No runs found/);
+
+  const unknownRun = run(tmp, ['run-missing']);
+  assert.equal(unknownRun.status, 1);
+  assert.match(unknownRun.stderr, /Run directory not found/);
+  assert.equal(fs.existsSync(path.join(runsDir, 'run-missing')), false);
 });

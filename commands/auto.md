@@ -116,20 +116,21 @@ Loop 是叠加在上述任一策略之上的**重复模式**（执行方式层�
 **任务状态**（`QuestResult.status`，其余对象 `status` 同语义；枚举由 `scripts/run-protocol.js` 强制校验）：
 
 ```
-pending | running | completed | failed | skipped | blocked
+pending | running | succeeded | completed | failed | cancelled | suspended | skipped | blocked
 ```
 
-- `completed` 即「成功完成」语义；`blocked` 附 `blockingIssues` 表达等待外部事件 / 预算暂停；`skipped` + 理由表达取消
-- 规划中的 v2 扩展（`succeeded` / `cancelled` / `suspended` / `not_applicable`）须与校验器及测试**同批迁移**后启用（见「协议版本化迁移」）；迁移前新 run 一律使用上表值
+- `succeeded` 表达成功完成；`completed` 为 v1 等价值，持续接受，指标中两者都计为完成
+- `cancelled` + 理由表达主动取消；`suspended` 表达预算耗尽或暂停、可从 session-continuity 续接；`blocked` 附 `blockingIssues` 表达等待外部事件
+- `skipped` + 理由表达该关按计划未执行，区别于主动取消
 
 **验证状态**（`VerifyReport.gateResults[].status` / 验证项）：
 
 ```
-pass | fail | warning | skipped | pending
+pass | fail | warning | skipped | pending | not_applicable
 ```
 
-- 无法实测（应做但缺证据）→ `skipped`；不适用（与本次变更无关，如纯文档变更对注入攻击）→ `skipped` 且在 evidence 注明 not-applicable 理由
-- `pass-with-warnings` / `partial` 保留为报告级聚合值（`overallStatus`）
+- 无法实测（应做但缺证据）→ `skipped`；不适用（与本次变更无关，如纯文档变更对注入攻击）→ `not_applicable`，evidence 必须写明理由（校验器强制），且不计入通过率分母
+- `pass-with-warnings` / `partial` 保留为报告级聚合值（`overallStatus`）；全部 gate 均不适用时 `overallStatus` 必须记 `not_applicable`，且仅此情形允许（双向，校验器强制）
 
 ### 合法回流（默认单向 + 受控回流）
 
@@ -144,7 +145,7 @@ pass | fail | warning | skipped | pending
 ### 协议版本化迁移
 
 - schema 变更必须**同批**更新 `scripts/run-protocol.js` 与 `tests/`，保持文档-校验器一致；未核对消费者之前不得只改文档假定兼容
-- 旧 run 只读兼容：legacy Markdown → 有限检查 + 警告；旧枚举值（如 `completed`）持续接受
+- 旧 run 只读兼容：legacy Markdown → 有限检查 + 警告；v1 枚举值（如 `completed`）持续接受，v2 枚举只做新增
 - 新能力以**可选字段**引入（v2 扩展：`businessContract` / `qualityContract` / `workspaceBaseline` / `assurance`），不破坏旧 run 校验
 
 ## 核心编排规则
@@ -772,7 +773,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 
 ### 4.3 对抗验证（实现/重构策略强制；场景按风险选择）
 
-调度 `verification` agent 进行红蓝对抗。**从以下六类场景中，凡与本次变更风险相关的都必须覆盖，不固定凑数量**；每类选中与否都写明风险依据，无相关的在 VerifyReport 记 `skipped` 并注明 not-applicable 理由：
+调度 `verification` agent 进行红蓝对抗。**从以下六类场景中，凡与本次变更风险相关的都必须覆盖，不固定凑数量**；每类选中与否都写明风险依据，无相关的在 VerifyReport 记 `not_applicable` 并在 evidence 写明理由：
 
 - **边界值攻击** — 0, -1, null, 空字符串, 超长字符串, MAX_INT
 - **并发场景** — 并行请求同一接口，检查竞态条件、数据重复/损坏

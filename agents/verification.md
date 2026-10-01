@@ -163,13 +163,13 @@ grep -n "MAX_VALUE\|MIN_VALUE\|Infinity\|0\\b" <file>
       "name": "build | test | lint | security | adversarial",
       "required": true,
       "command": "<实际执行命令>",
-      "status": "pass | fail | skipped",
-      "evidence": "<输出摘要>",
+      "status": "pass | fail | skipped | not_applicable",
+      "evidence": "<输出摘要；not_applicable 时写明不适用理由>",
       "owner": "verification",
       "fixHint": "<修复建议>"
     }
   ],
-  "overallStatus": "pass | warn | fail",
+  "overallStatus": "pass | pass-with-warnings | fail | not_applicable",
   "failedGates": ["<gate>"],
   "evidence": ["<证据1>", "<证据2>"],
   "remediationPlan": ["<修复动作1>", "<修复动作2>"],

@@ -618,6 +618,8 @@ knowledge-distribution 迁出 VERIFY gate 体系（18→17 gate），分发核�
 
 ### v2 枚举语义：succeeded 超额完成 / cancelled 用户取消 / suspended 暂停续接 / not_applicable 策略不适用
 
+> **状态**: superseded by run-20261001-optimal-audit —— 「succeeded 超额完成」与实际实现不符：`succeeded` 与 `completed` 等价（指标中都计为完成），`cancelled` 主动取消，`suspended` 预算耗尽/暂停可续接，`not_applicable` 必须在 evidence 写明理由且不计入通过率分母；`overallStatus` 记 `not_applicable` 当且仅当全部 gate 均为 `not_applicable`（双向，校验器强制）。现行语义以 `commands/auto.md` 任务状态节与 `scripts/run-protocol.js` 为准；合法回流表无需为新枚举扩展。
+
 **日期**: 2026-10-01 | **置信度**: high | **标签**: protocol, enum, state-machine
 **scope**: project
 

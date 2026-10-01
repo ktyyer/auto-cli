@@ -83,8 +83,8 @@ tags:
 - 所有对象具有非空 `id / runId / correlationId / status / summary`；同 run 的关联 ID 一致，runId 等于目录名。
 - RouteDecision 使用 `skills` 字符串数组；`selection.selectedSkills` 仅可作辅助说明，不能替代该字段。
 - QuestMap 的 `routeDecisionId` 指向 RouteDecision；questId 唯一，acceptance 为字符串数组。实现/重构还需 `assumptions / alternatives / riskMatrix` 数组与 `reflexionNote`。
-- QuestResult 的 attempt 为正整数，`questId + attempt` 唯一；已提供计划时必须引用其中的 Quest。失败需 `failureContext.recommendedNext` 与 `retry` 对象。
-- VerifyReport 使用 `gateResults`，每项有 `name / status`；状态为 `pass / fail / warning / skipped / pending`。失败项需要 evidence 和 recommendedNext；存在 fail/pending 时 overallStatus 不能标 pass。
+- QuestResult 的 status 为 v1 `pending / running / completed / failed / skipped / blocked` 或 v2 新增 `succeeded / cancelled / suspended`；attempt 为正整数，`questId + attempt` 唯一；已提供计划时必须引用其中的 Quest。失败需 `failureContext.recommendedNext` 与 `retry` 对象。
+- VerifyReport 使用 `gateResults`，每项有 `name / status`；状态为 `pass / fail / warning / skipped / pending / not_applicable`。失败项需要 evidence 和 recommendedNext；`not_applicable` 需要 evidence 写明理由；evidence 必须含实际内容（空白字符串、null 与空容器不算）；存在 fail/pending 时 overallStatus 不能标 pass；overallStatus 为 `not_applicable` 当且仅当 gateResults 非空且全部为 `not_applicable`。
 - LearnCard 的 category 为 `trap / pattern / decision / prompt / feedback`，scope 为 `project / stack / universal`，confidence 为 `low / medium / high`。
 
 旧自由 Markdown 仅做基础完整性检查，输出 `protocolMode: legacy` 警告，不等同协议校验通过；新 run 不混用两种格式。结构化对象缺字段、类型错误或 JSON 损坏时必须失败，不回退为关键词检查。
@@ -93,7 +93,7 @@ tags:
 
 ## 指标边界
 
-`metrics.json` 使用 `auto-metrics/v2`：技能来自 `skills`，门禁来自 `gateResults`；Quest 完成/失败数按最大 attempt 的结果统计。门禁通过率为 pass / 全部门禁（含 warning、skipped、pending），总数为零时通过率为 null。
+`metrics.json` 使用 `auto-metrics/v2`：技能来自 `skills`，门禁来自 `gateResults`；Quest 完成/失败数按最大 attempt 的结果统计，`completed` 与 `succeeded` 都计为完成。门禁通过率为 pass / 适用门禁（全部门禁减去 `not_applicable`，含 warning、skipped、pending），适用数为零时通过率为 null；`gates.applicable` 记录该分母，`gates.notApplicable` 单独计数。
 
 缺失或无效观测写 `null` 并记录 unavailable；仅真实空数组计零。耗时、文件读写、agent 调用当前没有遥测来源，不能从摘要文字或 primaryAgent 推算。status 来自 VerifyReport.overallStatus，缺失为 unknown；非法协议为 invalid。声明使用技能不等于实际应用收益。
 

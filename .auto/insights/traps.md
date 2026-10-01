@@ -691,3 +691,38 @@ DSH 0.1.5-rc.3 goal 只管理同会话目标,恢复需用户请求 resume 并传
 **规避**：设计 gate 时先核对被检产物的生产时序；产出在检查之后的，检查归属其真实产出阶段（收口检查），不占 VERIFY gate 位。
 
 **来源**: run-20261001-consistency-safety
+
+### 格式校验覆盖面 ≠ 变更面：format:check 只管 Markdown，JS 格式回归漏网
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: verify, lint, evidence-scope
+**scope**: project
+
+`npm run format:check` 的 Prettier glob 只覆盖 Markdown，bd7f6f8 改动的 2 个 JS 文件未过 Prettier，却以「format:check 无格式冲突」记为 lint pass。gate 证据的命令覆盖面小于本次变更面时，pass 结论不成立（违反契约 5 证据绑定产物）。
+
+**规避**：lint gate 证据必须覆盖本次 changedFiles 的全部文件类型；JS 变更追加 `npx prettier --check <changed js files>`。仓库内另有 13 个既有 JS 测试文件未过 Prettier，属既存基线，单独决策是否扩大 format:check 范围。
+
+**来源**: run-20261001-optimal-audit
+
+### 证据存在性必须区分根级标量与嵌套有效值，并避免递归深度风险
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: protocol, evidence, validation, robustness
+**scope**: universal
+
+协议证据校验若只判断字段“存在”，会把空字符串、`null`、空容器以及根级数字/布尔值误判为有效证据；若使用递归遍历嵌套结构，极深输入还可能触发调用栈溢出。测试必须覆盖空值、根级标量、嵌套有效值和极深结构。
+
+**规避**：定义明确的证据语义，拒绝空值与根级非证据标量，同时保留嵌套结构中的有效值；深层遍历改用显式栈，并以针对性测试和全量测试共同验证。
+
+**来源**: run-20261001-confirmation
+
+---
+
+### 改协议枚举 / schema 必须同批改消费者并补拒绝测试
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: protocol, enum, schema-migration, testing
+**scope**: universal
+
+v2 枚举只在校验器放行，消费者未同步：`collectRunMetrics` 不把 `succeeded` 计为完成，`not_applicable` 进入通过率分母，dashboard 同样；测试只验「新值被接受」，没有「未知值被拒绝」与「消费者计数正确」用例，因此全绿但行为错误。mutation spot-check 证实补测后 5 类变异全部变红。
+
+**规避**：schema 变更的同批清单 = 校验器 + 全部消费者（metrics / dashboard / 报表）+ 文档 + 接受测试 + 拒绝测试 + 消费者测试；用 codegraph_callers 或 grep 字段名枚举消费者后再宣称完成。跨字段一致性规则（如 overallStatus ↔ gateResults）必须双向断言并各配一个拒绝测试；只强制一个方向时，反方向的矛盾记录（全部 gate 不适用却报 pass）照样通过校验并被看板计为成功。
+
+**来源**: run-20261001-optimal-audit

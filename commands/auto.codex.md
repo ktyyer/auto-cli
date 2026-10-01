@@ -694,7 +694,7 @@ SCAN 完成后立即建立预算感知：
 
 **退出码零不充分**：exit code 0 只说明命令没报错，不构成通过；每条链结论绑定命令 + 输出摘要 + 退出码，无法实测只能 `skipped`。
 
-**adversarial 降级模式**（Codex 无 verification subagent）<!-- capacity-contract: probe -->：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份**按风险选择**攻击场景（边界值 / 并发 / 幂等性 / 异常路径 / 注入 / 容量伸缩性六类中凡与本次变更风险相关的都必须覆盖，通常 2-4 类，不固定凑数量；无相关的记 `skipped` + not-applicable 理由），两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消，否则显式标记 `capacity: not-applicable` 及理由。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
+**adversarial 降级模式**（Codex 无 verification subagent）<!-- capacity-contract: probe -->：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份**按风险选择**攻击场景（边界值 / 并发 / 幂等性 / 异常路径 / 注入 / 容量伸缩性六类中凡与本次变更风险相关的都必须覆盖，通常 2-4 类，不固定凑数量；无相关的记 `not_applicable` 并在 evidence 写明理由），两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消，否则显式标记 `capacity: not-applicable` 及理由。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
 
 **验证上下文最小化**（2026 Context Engineering 核心实践）：
 

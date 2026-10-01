@@ -101,7 +101,7 @@ done
 
 ### 生成 metrics.json（首次使用）
 
-当前 dashboard 与 generate-metrics 共用 `scripts/run-protocol.js`，直接读取当前协议工件，避免旧指标缓存覆盖源码证据。`auto-metrics/v2` 缺失观测为 null；未知值不进入均值或通过率，技能声明次数不代表效果。旧自由 Markdown 仅显示有限信息。
+当前 dashboard 与 generate-metrics 共用 `scripts/run-protocol.js`，直接读取当前协议工件，避免旧指标缓存覆盖源码证据。`auto-metrics/v2` 缺失观测为 null；未知值不进入均值或通过率，`not_applicable` 门禁不计入通过率分母，技能声明次数不代表效果。旧自由 Markdown 仅显示有限信息。
 
 ```bash
 # 为最近的 run 生成 metrics.json
