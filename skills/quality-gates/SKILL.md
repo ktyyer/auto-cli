@@ -18,7 +18,7 @@ tags:
 **检查清单** (checklist):
 
 - [ ] 按当前策略查"各策略必需 gate"表，确定本次必检 gate 集合
-- [ ] 按需加载对应 gate 的详细定义（不预加载全量 18 个）
+- [ ] 按需加载对应 gate 的详细定义（不预加载全量 17 个）
 - [ ] 每个 gate 输出 `status` + `evidence`（实际命令 + 输出，不接受"看起来没问题"）
 - [ ] 任一 gate fail 必须同时给出 `recommendedNext`
 - [ ] gate 状态与 verify-report.md 同步收口（命令已 PASS 的 gate 不得仍标 pending）
@@ -28,28 +28,28 @@ tags:
 - 实测优先于断言：任何验证声明必须附实际命令 + 输出
 - 业务验收须附独立规则来源与版本；仅模型生成的测试或 mutation 结果不能证明业务预期正确。来源缺失且影响结论时标未验证，不得写 pass。
 - 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行探索 gate 集
-- `knowledge-distribution` 为全策略必检：LearnCard 未分发到 `.auto/insights/` 即 fail
+- `knowledge-distribution` 收口检查归属 LEARN（VERIFY 时 LearnCard 尚未产出，时序上不可能通过）：LearnCard 未分发到 `.auto/insights/` 即 run 收口 fail，由 `knowledge-management` skill 执行
 
 **反模式** (anti-patterns):
 
 - 用主观判断代替命令实测 → Run-Don't-Claim 违规
 - fail 只写结论不写下一步 → 下游无法回流修复
-- 一次性加载全部 18 个 gate 定义 → 上下文浪费
+- 一次性加载全部 17 个 gate 定义 → 上下文浪费
 
 ## Gate Taxonomy
 
-`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `production-readiness` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `knowledge-distribution` | `clean-state` | `cost`
+`analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `production-readiness` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `clean-state` | `cost`
 
 ## 各策略必需 gate
 
 > 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
 
-| 策略 | 必需 gate                                                                                                                                                                                                                                                                                                  |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `knowledge-distribution` + `clean-state`                                                                                                                                                               |
-| 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `production-readiness` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `knowledge-distribution` + `clean-state`                                                                                   |
-| 实现 | `build` + `test` + `lint` + `coverage` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `knowledge-distribution` + `clean-state`                     |
-| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `knowledge-distribution` + `clean-state` |
+| 策略 | 必需 gate                                                                                                                                                                                                                                                                       |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `clean-state`                                                                                                                                                               |
+| 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `production-readiness` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `clean-state`                                                                                   |
+| 实现 | `build` + `test` + `lint` + `coverage` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse` + `clean-state`                     |
+| 重构 | `build` + `test` + `coverage` + `security` + `adversarial` + `self-verification` + `world-class-standards` + `production-readiness` + `self-critique` + `production-governance` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: full) + `clean-state` |
 
 ---
 
@@ -155,13 +155,13 @@ tags:
 | self-verification | 代码语法/逻辑/边界/错误处理              | 代码缺陷修正                      |
 | self-critique     | 本关是否真满足 objective（主线漂移防范） | 达成度评分 + 盲点 + 是否回退 PLAN |
 
-**验证维度**：objective 满足度 | 盲点暴露（≥1 条「最不放心的事」）| outOfScope 合规 | 达成度评分 0-100
+**验证维度**：objective 满足度 | 盲点暴露（≥1 条「最不放心的事」）| outOfScope 合规 | 达成度自评分（仅参考信号）
 
 **处置**：
 
-- pass：达成度 ≥ 70 且盲点已处理 → 继续
-- warning：达成度 70-85 但盲点未完全处理 → 记录放行
-- fail：达成度 < 70 或 outOfScope 违规 → 回流 PLAN
+- pass：acceptance 全部满足且盲点已处理 → 继续
+- warning：存在已声明的次要盲点但不影响 acceptance → 记录放行
+- fail：acceptance 存在未满足项或 outOfScope 违规 → 修补或回流 PLAN（自评分不构成量化放行/阻断门槛）
 
 **跳过**：策略=探索；策略=修复且单关 < 20 行。
 
@@ -206,7 +206,7 @@ tags:
 
 **验证维度**：边界值攻击 | 并发场景 | 幂等性验证 | 异常路径覆盖 | 注入攻击 | **容量/伸缩性**
 
-**对抗场景**（至少执行 3 种；涉及数据/集合/I/O 的任务必须包含容量探针）：
+**对抗场景**（按风险选择：凡与本次变更风险相关的都必须覆盖，选中/不选均写明风险依据，无相关的记 `skipped` + not-applicable 理由；不固定凑数量，通常 2-4 类；涉及数据/集合/I/O 的任务必须包含容量探针）：
 
 1. **边界值攻击** — 0, -1, null, undefined, 空字符串, 超长字符串 (10MB), MAX_INT, MIN_INT, Infinity, NaN
 2. **并发场景** — 并行请求同一接口，检查竞态条件、重复创建、数据损坏
@@ -420,7 +420,7 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 ---
 
-## `knowledge-distribution` gate
+## `knowledge-distribution` 收口检查（LEARN 期执行，非 VERIFY gate）
 
 **验证逻辑**：核对 LearnCard 是否已从 `learn-cards.md` 分发（Edit append）到 `.auto/insights/` 对应文件。只停留在 `learn-cards.md` 未 append = 未分发。
 
@@ -444,7 +444,7 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 | ------- | ----------------------------------------------- | ---------- |
 | pass    | 所有 LearnCard 已 append 到对应文件             | 关闭 run   |
 | warning | <50% 未分发但全部 trap/critical decision 已分发 | 记录放行   |
-| fail    | ≥50% 未分发或任意 trap 未进 traps.md            | 回流 LEARN |
+| fail    | ≥50% 未分发或任意 trap 未进 traps.md            | 当场补分发 |
 
 **最小 append 格式**：
 

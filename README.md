@@ -169,7 +169,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY 质检]
-        V1[18 个 Gate]
+        V1[17 个 Gate]
         V2{全过?}
     end
 
@@ -525,7 +525,7 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | `protocol-validator`     | 协议对象完整性校验     |  —   |  ✓   |  ✓   |  ✓   |
 | `skill-activation`       | Skill 应用证据         |  ✓   |  ✓   |  ✓   |  ✓   |
 | `knowledge-reuse`        | 历史经验复用           |  ✓   |  ✓   |  ✓   |  ✓   |
-| `knowledge-distribution` | LearnCard 分发硬约束   |  ✓   |  ✓   |  ✓   |  ✓   |
+| `knowledge-distribution` | LearnCard 分发（LEARN 收口，非 VERIFY gate） |  ✓   |  ✓   |  ✓   |  ✓   |
 | `clean-state`            | 仓库可续接             |  ✓   |  ✓   |  ✓   |  ✓   |
 | `cost`                   | Token 成本审计         |  —   |  ✓   |  ✓   |  ✓   |
 

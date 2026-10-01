@@ -634,6 +634,8 @@ REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMa
 
 **来源**: run-20260924-preset-sync-v052
 
+
+**2026-09-29 复核**: [run:run-20260929-dsh-preset-sync] 新增 protocol-validator 后实际为 30 个 skill;同步 preset.yml、README、auto 技能计数,router persona 移除易漂移的固定数字。真实 loader 仍需显式 --runtime。
 ---
 
 ### preset 自带 validate.js 裸跑必 FATAL — 需要 --runtime 指向 DSH 安装目录
@@ -663,3 +665,29 @@ REQUIRED_CONTENT 使用 plan/execution/findings 等旧标签时，合法 QuestMa
 **规避**：① 置 `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS='0'` 解除上限；② 需要写文件的插件加 `--dangerously-skip-permissions`（仅该次调用作用域）；③ 宿主侧（如 DSH）用后台作业承载长跑并等完成通知，勿前台同步等。前置一条模型路由警告（`grok-4.7[1m]` unrecognized）不影响执行但显著拖慢，排查代理模型名可提速。④ 遇 403 先探 `curl -H "Authorization: Bearer <tok>" <base>/v1/models`：200=瞬时故障（Clash 节点瞬断/中转瞬时限流）可重试，持续 403=查中转账户配额/key——实测 200 后重试即恢复。
 
 **来源**: run-20260924-preset-toolbridge
+
+
+---
+
+### DSH 预设同步必须核对宿主工具生命周期和观测脚本根路径
+
+**日期**: 2026-09-29 | **置信度**: high | **scope**: project
+
+DSH 0.1.5-rc.3 goal 只管理同会话目标,恢复需用户请求 resume 并传真实 goal_id/revision;schedule 使用 after_seconds/every_seconds 且每次间隔至少300秒。预设迁移应核验实际运行时,不能按工具名称推断生命周期或预算。
+
+安装在 scripts/auto-cli 后,validate-run-completeness 必须用 AUTO_CLI_TEST_ROOT 指向工作项目;metrics/dashboard 以工作目录为根。先外部备份与暂存回归,再逐文件同步并核对哈希,保留本地扩展。
+
+**来源**: [run:run-20260929-dsh-preset-sync] | learn-dsh-runtime-contract
+
+---
+
+### gate 设计的时序矛盾：检查发生在被检产物产出之前
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: gate, verify, sequencing, protocol-design
+**scope**: universal
+
+`knowledge-distribution` 作为 VERIFY gate 要求「LearnCard 已分发到 .auto/insights/」，但 LearnCard 在 LEARN（VERIFY 之后）才产出——首过在时序上不可能通过，只能靠回流补分发空转。任何「检查点引用检查时刻尚不存在的产物」的 gate 设计都会退化为永久 fail 或形式化放行。
+
+**规避**：设计 gate 时先核对被检产物的生产时序；产出在检查之后的，检查归属其真实产出阶段（收口检查），不占 VERIFY gate 位。
+
+**来源**: run-20261001-consistency-safety

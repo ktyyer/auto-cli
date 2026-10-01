@@ -54,7 +54,7 @@ auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN
 #### Testing & Verification
 - `test-plan-writer` → 测试计划编写（单元/集成/E2E 全覆盖）
 - `self-verification` → 自我验证（语法/逻辑/边界/性能检查）
-- `self-critique` → 自我批判（达成度评分 <70 回流）
+- `self-critique` → 自我批判（acceptance 未满足或盲点暴露回流，自评分仅参考）
 - `predict-verify` → 预测后验证（影响性命令前先预测结果）
 
 #### Security & Robustness
@@ -109,10 +109,10 @@ auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN
 - ACE Curator → 查重/矛盾检测/merge-or-append 决策（ICLR 2026 论文级实现）
 - AWM 工作流归纳 → ≥3 同策略 run 提取可复用 Quest 序列模板（ICML 2025）
 
-### Quality Gates (16)
+### Quality Gates (15)
 - `build` / `test` / `lint` / `coverage` / `security` / `adversarial`
 - `self-verification` / `self-critique` / `production-governance` / `protocol-validator`
-- `skill-activation` / `knowledge-reuse` / `knowledge-distribution` / `clean-state`
+- `skill-activation` / `knowledge-reuse` / `clean-state`
 - `analysis` / `documentation`
 
 ## Documentation Structure

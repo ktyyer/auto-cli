@@ -177,7 +177,7 @@ tags:
        SCAN 增量 → PLAN ≤3 关 → EXECUTE 最小变更 → VERIFY clean-state → CHECKER
          ├─ 达成 → loop-state.converged=true,进 Step 5 终止
          ├─ 收敛度↑ → 写 state, 续跑
-         └─ 收敛度↓/回退 → git reset 本轮, 换策略, 续跑
+         └─ 收敛度↓/回退 → 安全撤销本轮可归属变更(归属不明保留现场), 换策略, 续跑
        LEARN:跨迭代 trap/pattern 回灌(Step 6)
 ```
 
@@ -219,7 +219,7 @@ tags:
 
 - 清理 ScheduleWakeup / CronCreate(避免幽灵 tick)
 - 写 `.auto/runs/<loopId>/loop-summary.md`(N 轮 / 是否收敛 / 总成本 / 关键 trap)
-- 收敛则 commit;未收敛则保留工作树 + session-continuity,交用户决策
+- 收敛仅标记 loop-state.converged,不自动 commit(提交仅用户明确要求);未收敛则保留工作树 + session-continuity,交用户决策
 
 ---
 
@@ -231,13 +231,13 @@ loop 的飞轮靠**跨轮知识复用**:
 | -------------------- | -------------------------------------------------------------------------------- |
 | **trap 即时回灌**    | 第 N 轮 CHECKER 失败 → 立即写 LearnCard(trap) → 第 N+1 轮 SCAN 自动注入 pitfalls |
 | **pattern 复用**     | 第 N 轮收敛度↑ 的策略 → 写 LearnCard(pattern) → 下轮优先复用                     |
-| **退化检测**         | 收敛度 < 上轮 → 不写新 trap,先 git reset,根因分析后才记                          |
+| **退化检测**         | 收敛度 < 上轮 → 不写新 trap,先安全撤销本轮可归属变更,根因分析后才记              |
 | **portablePatterns** | scope=stack/universal 的 loop 经验 → 写 skills.json,跨项目复用                   |
 
 **防退化协议**(借鉴 feedback-loop 非退化性):
 
 1. 每轮记录收敛度数值(metric)
-2. 第 N 轮 metric < 第 N-1 轮 metric → **立即 git reset 本轮所有变更**
+2. 第 N 轮 metric < 第 N-1 轮 metric → **立即按变更归属撤销本轮可归属变更**(工作树含任务外修改或归属不明时保留现场,记录 rollbackRef)
 3. 连续 2 轮回退 → 强制换策略(不能只改措辞 / 重试同一路径)
 4. 连续 3 轮回退 → 终止 loop,写 trap 请求人工介入
 
@@ -245,14 +245,14 @@ loop 的飞轮靠**跨轮知识复用**:
 
 ## 生产级防护
 
-| 风险                   | 防护                                                              |
-| ---------------------- | ----------------------------------------------------------------- |
-| **3am 滚屏烧钱**       | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 10)   |
-| **改坏无法回滚**       | 关键路径先 commit;每轮 PreToolUse auto-snapshot hook 兜底         |
-| **幽灵 tick**          | 终止时必清 ScheduleWakeup / CronCreate;loop-state 标 converged    |
-| **25% 丢弃率**         | 强制 CHECKER(可度量判据)+ 每轮 clean-state gate,无判据不开 loop   |
-| **撞峰 fleet**         | interval 转秒时偏移(5m→270s/330s),不卡整点                        |
-| **当前宿主无可用调度** | 记录不可用证据，降级外部 cron/schtasks 或人手触发，不伪造后台运行 |
+| 风险                   | 防护                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| **3am 滚屏烧钱**       | `maxIterations` + `maxBudgetUsd` 硬上限,默认保守(iterations 10)                                  |
+| **改坏无法回滚**       | 每轮 PreToolUse auto-snapshot hook 兜底(refs/auto-snapshots);回滚只撤销可归属变更,不覆盖用户修改 |
+| **幽灵 tick**          | 终止时必清 ScheduleWakeup / CronCreate;loop-state 标 converged                                   |
+| **25% 丢弃率**         | 强制 CHECKER(可度量判据)+ 每轮 clean-state gate,无判据不开 loop                                  |
+| **撞峰 fleet**         | interval 转秒时偏移(5m→270s/330s),不卡整点                                                       |
+| **当前宿主无可用调度** | 记录不可用证据，降级外部 cron/schtasks 或人手触发，不伪造后台运行                                |
 
 **成本经验值**(社区实测,供 maxBudgetUsd 估算):
 
@@ -266,7 +266,7 @@ loop 的飞轮靠**跨轮知识复用**:
 
 | PHASE         | loop 模式下的变化                                             |
 | ------------- | ------------------------------------------------------------- |
-| SCAN 1.8      | 解析 interval → 判定 loop 模式 → 激活本 skill                 |
+| SCAN 1.9      | 解析 interval → 判定 loop 模式 → 激活本 skill                 |
 | SCAN          | 增量扫:读 loop-state.json + 上轮 trap,不全量重扫              |
 | PLAN          | Micro QuestMap(≤3 关),不调 quest-designer                     |
 | EXECUTE       | 最小变更;遵守 Touch-set Lock + 扩张词刹车                     |

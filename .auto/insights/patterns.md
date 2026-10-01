@@ -102,6 +102,8 @@ Claude 端与 Codex 端两套 `/auto` 主命令文件本质是同一套行为协
 
 auto-cli 有中英双语 README（README.md / README.en.md），章节对齐度 98%，但核心技术文档（CLAUDE.md / commands/auto.md / REPO_MAP.md）只有中文版，国际化覆盖率停滞在 33%（2/6 核心文档）。
 
+> **状态**: superseded by run-20261001-topdown-prune —— CLAUDE.en.md / AGENTS.en.md / REPO_MAP.en.md 已按「零引用孤儿 + 停止双语镜像人肉维护」删除；本卡翻译流程仅对仍存在的 README.en.md / auto.en.md 有参考价值。
+
 **成功模式**: 系统化翻译流程（3 步）
 
 1. **优先级排序**（按用户首次接触路径）:
@@ -1158,3 +1160,28 @@ incremental-review 模式来自 O'Reilly / Nick Tune 实战：PostToolUse 累积
 **日期**: 2026-09-29 | **置信度**: high | **来源**: run-run-20260929-optimization-assessment
 
 scope: project。基础工件和关键词检查通过，不代表协议字段及 correlationId 已被自动校验，更不代表指令优化已改善执行效果。分别使用完整性检查、缺字段/错关联 ID 负例及实际任务场景评估，避免扩大验证结论。
+
+---
+
+### 结构性 run 收尾后的「计数与孤儿」收口检查
+
+**日期**: 2026-10-01 | **置信度**: medium | **标签**: structural-run, count-sync, closure-check
+**scope**: project
+
+批次 1 迁移 gate（18→17）落盘后，AGENTS.md 与 README mermaid 两处计数仍留旧值——结构性修改的同步面容易漏「非 commands/auto.* 的周边叙述性计数」。本次用 grep『18 个 VERIFY gate|18 个 Gate』全仓收口为 0。
+
+**推荐动作**: 每次结构性 run 的 VERIFY 阶段加一条：对变更涉及的数字（gate/skill/hook 计数）做全仓字面 grep 收口。
+**来源**: run-20261001-topdown-prune
+
+
+---
+
+### 协议枚举扩展需测试夹具完整性对齐校验器
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: protocol, enum-expansion, test-fixture
+**scope**: project
+
+扩展协议枚举（如 QuestResult.status 增 succeeded/cancelled/suspended）时，测试用例必须模拟完整 run 目录结构（route-decision + quest-map + quest-results / verify-report），且 quest-map 需按 strategy 补齐条件字段（implement/refactor 需 assumptions/alternatives/riskMatrix/reflexionNote）。首次测试失败因 quest-map 缺少这 4 个字段触发校验器报错，补齐后通过。测试数据不完整会导致误报枚举扩展失败，实际是夹具不符合协议契约。
+
+**推荐动作**: 未来协议扩展测试：1) 复用 readRunProtocol 真实校验器（不 mock）；2) 按目标 strategy 补齐 QuestMap 条件字段；3) 先跑一遍校验器确认夹具完整性，再测新枚举。
+**来源**: run-20261001-v2-final

@@ -9,6 +9,7 @@
 **边界**：slash 业务指令为纯 Markdown；`scripts/` 中的 Node 仅用于安装 / 校验 / 缓存 / 观测工具链，不是产品业务 runtime。
 
 ## 项目结构
+
 - `commands/auto.md`：`/auto` 主命令，定义 6 PHASE 工作流
 - `commands/auto/`：子命令（doctor、learn、status、route、create-hook、dashboard）
 - `agents/`：内置 agent 清单与说明
@@ -17,29 +18,35 @@
 - `hooks/`：默认 hooks 配置
 
 ## 架构约束
+
 - `/auto` 是唯一编排入口，新增能力优先接入 auto.md，不新增平行入口。
 - 文档必须以当前真实行为为准，不能承诺尚未实现的功能。
 - PHASE 1 SCAN 默认只读；只有显式 `--fix` 才允许执行安全自动修复。
 - 子命令是自包含的 Markdown 指令，不依赖外部 JS 运行时。
 
 ## 编码规范
+
 - 修改 Markdown 文件时保持最小 diff。
 - 不顺手重构与当前需求无关的内容。
 - 不新增无根据的兜底或兼容说明。
 
 ## 验证
+
 - 修改后运行 `npm run format:check` 确保格式一致。
 - 修改子命令后检查内部引用是否一致。
 
 ## 安装与卸载
+
 - `npm run sync` — 复制 commands/agents/skills/hooks 到 ~/.claude/（主推路径）
 - `npm run uninstall` — 移除已安装的文件
 
 ## Git 与发布
+
 - 提交信息遵循 conventional commits：`feat: ...` / `fix: ...` / `docs: ...`
 - 仅在用户明确要求时提交 commit。
 
 ## AI 工作方式
+
 - 先读相关文件再改，不猜实现。
 - 多文件或有多种实现路径的任务先规划再动手。
 - 对删除文件、git 提交等可见操作要谨慎，按用户请求范围执行。
@@ -49,12 +56,12 @@
 
 借鉴 karpathy/llm.c 的 root/dev 分离设计：
 
-| 层 | 目录 | 职责 | 复杂度容忍度 |
-|----|------|------|-------------|
-| **root** | `commands/` | 用户可直接调用的入口，简单可读 | 低 — 拒绝无显著收益的复杂度 |
-| **dev** | `skills/` | 被 commands 调用的能力库，可实验 | 中 — 允许局部复杂 |
-| **infra** | `agents/` | Agent 定义与协议 | 低 — 保持 < 450 行 |
-| **guard** | `rules/` + `hooks/` | 编码规范与自动化 | 低 — 声明式为主 |
+| 层        | 目录                | 职责                             | 复杂度容忍度                |
+| --------- | ------------------- | -------------------------------- | --------------------------- |
+| **root**  | `commands/`         | 用户可直接调用的入口，简单可读   | 低 — 拒绝无显著收益的复杂度 |
+| **dev**   | `skills/`           | 被 commands 调用的能力库，可实验 | 中 — 允许局部复杂           |
+| **infra** | `agents/`           | Agent 定义与协议                 | 低 — 保持 < 450 行          |
+| **guard** | `rules/` + `hooks/` | 编码规范与自动化                 | 低 — 声明式为主             |
 
 新增能力时优先放 `skills/`，不修改主命令。主命令只做路由和编排。
 
@@ -69,8 +76,16 @@
 - Agent Teams 双模执行：并行 Quest 在 git-worktrees 之外提供原生 Agent Teams 模式（含分层模型成本指引）
 - OpenSpec delta specs：`spec-driven` skill 吸收 ADDED/MODIFIED/REMOVED 标记与 proposal→apply→archive 状态机
 - hook `agent_id`/`agent_type` 字段利用 + 重评 PostToolUseFailure
+- 协议状态机 v2 枚举扩展：QuestResult 增 `succeeded`/`cancelled`/`suspended`、gate/overallStatus 增 `not_applicable`——须与 `scripts/run-protocol.js` + `tests/` 同批迁移（scripts 改动授权暂缓，文档已回退现行枚举并标注迁移原则）
+- 超级编码辅助升级批次 4：复杂能力对照实验（A/B 决定去留）。批次1（一致性与执行安全）见 `run-20261001-consistency-safety`；批次2/3（业务契约/三证据链/专家协作/证据可信度）已随批次 1 后的入口规范重构于 2026-10-01 落盘，见 `run-20261001-spec-refactor`
 
 ### 已完成
+
+- [x] Unreleased: **自上而下剪枝（孤儿清除 + 陈旧计数收口）**：引用审计（双源判定：产品面 grep + scripts/manifest.js 装运清单）后删除 6 个零引用文件（docs/outreach-zh.md、install-auto-cli.bat、install-from-tgz.bat、CLAUDE.en.md、AGENTS.en.md、REPO_MAP.en.md）与 .ua/ 本地工具缓存（1.5MB 未跟踪）；codemaps-hook.sh 因装运清单消费保留。同步修正 AGENTS.md/README.md gate 计数 18→17、patterns.md 悬空 i18n 卡加 superseded 标注。孤儿判定硬约束：产品面引用与装运清单**同时**为零才删（防破坏 validate:package）；CHANGELOG 历史提及不算活引用；insights 旧推荐用 superseded 标注保留演化轨迹。run-20261001-topdown-prune
+
+- [x] Unreleased: **入口规范结构性重构（批次 2/3 并入）**：`commands/auto.md` 按用户 12 节规范重写——全局执行契约 10 条（事实假设分离/业务先于实现/自主不越权/保护既有工作/证据绑定产物/最小充分交付/失败如实交代/能力缺失显式降级/资料不授权/经验需依据）；策略×保障等级×执行方式三维正交路由（`RouteDecision.assurance` / `QuestMap.executionMode`，快速通道「压缩的是编排不是验收」）；任务/验证状态分离并对齐校验器现行枚举 + 合法回流表 + 协议版本化迁移原则；SCAN 1.0 七步执行序（运行能力确认/工作区基线不截断/业务链路定位/既有失败盘点）+ 缓存只作导航；PLAN 2.0 业务契约与质量契约（acceptance 独立于实现）+ 2.8 专家协作 owner 制 5 纪律；EXECUTE 3.2 八步序列 + 范围变化处置；VERIFY 4.1 三条证据链（A 业务期望正确 / B 实现符合期望 / C 验证能发现错误）+ 退出码零不充分 + 测试发现检查 + 4.3 对抗场景按风险选择；工作区保护与恢复 5 条；SUMMARIZE 五部分（行为变化/实际变更/验证结果/残余风险/交付状态）；LEARN 有依据积累（来源锚点+样本量）；运行层验收场景 8 项表（纪律 vs 校验器强制分栏）。四端同步：auto.codex.md（8 处）/ auto.en.md（6 处）/ \_shared-principles（assurance/businessContract/qualityContract/枚举修正）/ quality-gates（self-critique 语义门槛 + 对抗按风险选择）/ loop-engineering（1.9 引用）/ docs/llms 中英；run-20261001-spec-refactor
+
+- [x] Unreleased: **一致性与执行安全修复（升级批次 1/4）**：消除规则自冲突——Loop「收敛则 commit」改为不自动 commit（对齐「仅用户明确要求时提交」）；收敛度回退以变更归属撤销替代 `git reset`（含任务外修改保留现场）；`knowledge-distribution` 因时序矛盾（VERIFY 时 LearnCard 尚未产出）迁出 VERIFY gate 体系（18→17），收口检查归属 LEARN；修复快速通道必须产出最小 QuestMap；gate fail 改为「禁止宣称成功但必须输出失败总结」；Phase 流动改「默认单向 + 受控回流」；quest rollback 全线补归属不明保留现场；mutation spot-check 改隔离副本执行；伪精确规则清理（16k 推理预算 / 达成度 <70 硬门槛 / 模型名推窗口 / 预测错=理解错）；验证 subagent 上下文补 acceptance + 业务依据。同步：auto.md / auto.codex.md / auto.en.md / \_shared-principles / quality-gates / loop-engineering / self-critique / README 中英 / docs/llms；run-20261001-consistency-safety
 
 - [x] Unreleased: **证据优先执行回路**：实现/修复默认顺序改为「证据锁定（真实符号/测试命令）→ 失败证据或最小失败测试 → 最小修改 → 立即验证」，连续 2 轮无进展切换 `agentless-repair`；VERIFY 强化 Run-Don't-Claim（无命令+输出+exit code 只能 `skipped` 不能 `pass`）；修复快速通道不得跳过证据回路；`auto.md` / `auto.codex.md` / `auto.en.md` 三端同步
 
@@ -116,6 +131,7 @@
 - [x] v0.31.0: 从 JS 运行时迁移到纯 Markdown 指令系统
 
 ## 当前仓库高价值关注点
+
 - `commands/auto.md` 是统一动作入口。
 - 子命令 md 中的能力描述需要持续与实际行为同步。
 - 包产物只保留当前需要的版本，旧 tgz 可在确认无用后删除。

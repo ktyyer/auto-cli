@@ -211,7 +211,7 @@ Documentation and code map expert.
 
 **test-plan-writer** - Test plan writing (unit/integration/E2E full coverage)
 **self-verification** - Self-verification (syntax/logic/boundary/performance checks)
-**self-critique** - Self-critique (achievement scoring, <70 flows back)
+**self-critique** - Self-critique (unmet acceptance or exposed blind spots flow back; score is reference-only)
 **predict-verify** - Predict-then-verify (predict results before impactful commands)
 
 ### Security & Robustness (3)
@@ -278,7 +278,7 @@ All strategies must pass minimum required gates (see `skills/quality-gates/SKILL
 ### Knowledge Gates
 11. **skill-activation** - Skill activation (verify application evidence for activated Skills)
 12. **knowledge-reuse** - Knowledge reuse (verify referenced insights from RouteDecision.notes.relevantInsights)
-13. **knowledge-distribution** - Knowledge distribution (verify LearnCard distribution to .auto/insights/)
+13. **knowledge-distribution** - Knowledge distribution (LearnCard distribution check, executed at LEARN close, not a VERIFY gate)
 
 ### State Gates
 14. **clean-state** - Clean state (startup tests pass / state consistent / no orphaned changes / standard restart path)

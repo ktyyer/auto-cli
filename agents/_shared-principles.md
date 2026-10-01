@@ -337,7 +337,9 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 ### RouteDecision 标准对象（v0.52 人类可读格式）
 
 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `userIntent`, `strategy`, `primaryAgent`, `skills`, `next`。
-选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`, `notes`。
+选填：`normalizedTask`, `complexity`, `sensitivity`, `fallbackAgents`, `reasoning`, `preflight`, `capabilitySnapshot`（完整 SCAN 必填）, `selection`, `notes`, `assurance`（保障等级：`routine | reinforced | high-assurance`，判定规则见 `commands/auto.md`「保障等级」）。
+
+> `notes` 常用子字段：`relevantInsights`（知识注入）、`constitution`（项目宪法）、`workspaceBaseline`（SCAN 工作区基线，工作区保护依据）、`capability`（宿主能力确认与降级记录）。
 
 **人类可读格式**（优先）：
 
@@ -481,7 +483,9 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 ### QuestMap 标准对象
 
 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `routeDecisionId`, `goal`, `executionMode`, `quests[]`（每关必填 `questId`, `objective`, `ownerAgent`, `acceptance`）。
-选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, `costCaps`, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
+选填：`contracts`, `globalAcceptance`, `failurePolicy`, `knowledgeHints`, `costCaps`, `businessContract`（业务契约：`restatement` / `invariants[]` / `evidenceRefs[]` / `openAssumptions[]`，定义见 `commands/auto.md` 2.0）, `qualityContract`（质量契约：gate 基线 + 附加阈值 + acceptance 独立性声明）, quest 内 `skills`, `dependsOn`, `inputs`, `outputs`, `touchFiles`, `risk`, `rollback`, `decisionNotes`, `pitfalls`, `thinkingDepth`（`light | standard | deep`，映射执行侧 think/ultrathink 深度）。
+
+> `executionMode` 取值：`single-executor | expert-collaboration | bounded-iteration | continuous-monitoring`（定义见 `commands/auto.md`「执行方式」）；历史值 `direct | sequential | parallel | orchestrated` 继续被读取。
 
 **实现 / 重构策略下的额外必填字段**（思考充分度门禁）：
 
@@ -514,7 +518,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   },
   "routeDecisionId": "route-<id>",
   "goal": "<任务总目标>",
-  "executionMode": "direct | sequential | parallel | orchestrated",
+  "executionMode": "single-executor | expert-collaboration | bounded-iteration | continuous-monitoring",
   "contracts": [
     {
       "name": "CONTRACT-1",
@@ -579,7 +583,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "runId": "run-<id>",
   "correlationId": "corr-<id>",
   "phase": "EXECUTE",
-  "status": "success | partial | failed | skipped | cost_exceeded",
+  "status": "pending | running | completed | failed | skipped | blocked",
   "summary": "一句话说明本关结果",
   "source": "执行该关的 command/agent",
   "refs": {
@@ -649,7 +653,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "targetIds": ["quest-result-<id>"],
   "gateResults": [
     {
-      "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | self-critique | production-governance | protocol-validator | skill-activation | knowledge-reuse | knowledge-distribution | clean-state | cost",
+      "name": "analysis | build | test | lint | coverage | security | adversarial | self-verification | self-critique | production-governance | protocol-validator | skill-activation | knowledge-reuse | clean-state | cost",
       "required": true,
       "command": "<命令>",
       "status": "pass | fail | skipped",
@@ -658,7 +662,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
       "recommendedNext": "<失败时下一步建议动作；非失败可省略>"
     }
   ],
-  "overallStatus": "pass | warn | fail",
+  "overallStatus": "pass | pass-with-warnings | fail | warning | pending | skipped | blocked | partial",
   "failedGates": ["<gate>"],
   "evidence": ["<证据1>", "<证据2>"],
   "remediationPlan": ["<修复动作1>", "<修复动作2>"],
@@ -754,7 +758,7 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 1. **attempt 1 — same_path**：沿当前方案做最小差异修复
 2. **attempt 2 — alternative_path_or_agent**：切换实现路径或更换 Agent
 3. **escalate — build-error-resolver**：仍失败时升级到 `build-error-resolver`
-4. **fail — quest rollback / abort**：若升级后仍失败，只回滚当前 Quest 触及的文件并终止当前 run
+4. **fail — quest rollback / abort**：若升级后仍失败，只撤销当前 Quest 产出且归属明确的变更（触及文件含任务外修改或归属不明时保留现场并记录）并终止当前 run
 5. **budget_exhausted — run abort**：run 级 budget 超限触发，按 `## 运行级 Budget 与循环检测` 处置
 
 禁止默认使用仓库级全局回滚作为常规失败策略。
@@ -773,7 +777,7 @@ Quest 级 attempt 1/2/escalate 只控制单关；run 级失控（无限循环、
 触发 `budget_exhausted` 时必须：
 
 1. 立即产出 `LearnCard(category=trap, failureClass=resource)`，记录已用 iterations / 同动作次数 / 触发位置
-2. 当前 Quest 回滚（不做仓库级回滚）
+2. 当前 Quest 回滚（不做仓库级回滚；触及文件含任务外修改或归属不明时保留现场并记录）
 3. 写 `session-continuity.md(status=suspended, blockingIssues:["run-budget-exhausted"])`
 4. 不允许自动重启 run；新会话由用户显式确认后再续接
 
@@ -853,7 +857,7 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 3. **失败升级** — 两次尝试后仍失败才升级到 build-error-resolver
 4. **结果回传** — 最终结果回传给编排器，由编排器决定进入 VERIFY / SUMMARIZE / LEARN
 5. **先协议后正文** — 先输出标准 JSON 块，再输出人类可读摘要
-6. **Quest 级回滚** — 回滚范围仅限当前 Quest 触及文件，不做仓库级默认回滚
+6. **Quest 级回滚** — 回滚范围仅限当前 Quest 产出且归属明确的变更，不做仓库级默认回滚
 
 ## 边界约束
 
@@ -881,7 +885,7 @@ Skill 注入和并行/串行编排规则见 `workflow-patterns.md`。
 1. `QuestMap` 可选字段 `costCaps` 覆盖默认值（通常不需要）
 2. EXECUTE 阶段每个操作后递增计数器（`Read` / `Write` / `Edit` / `Bash`）
 3. 接近上限（≥ 80%）时输出 WARN 日志
-4. 达到上限时停止当前 Quest，产出 `QuestResult.status=cost_exceeded`，进入 VERIFY
+4. 达到上限时停止当前 Quest，产出 `QuestResult.status=blocked`（`failureContext.errorType=cost`），进入 VERIFY
 5. VERIFY 检查已完成的 Quest 是否满足验收标准，未完成的部分标记 `deferred`
 
 - 不把 `cache/` 当作知识真源，长期复用只写入 `.auto/insights/`、`.auto/feedback/` 或 `.auto/memory/`

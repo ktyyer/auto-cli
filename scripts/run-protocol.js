@@ -194,7 +194,7 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
     'QuestResult questId/attempt'
   );
   for (const q of results) {
-    if (!['pending', 'running', 'completed', 'failed', 'skipped', 'blocked'].includes(q.status))
+    if (!['pending', 'running', 'completed', 'succeeded', 'failed', 'cancelled', 'suspended', 'skipped', 'blocked'].includes(q.status))
       issues.push('QuestResult.status: invalid status');
     if (plan && !questIds.includes(q.questId))
       issues.push(`QuestResult.questId: unknown quest ${q.questId}`);
@@ -213,7 +213,8 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
         'pending',
         'skipped',
         'blocked',
-        'partial'
+        'partial',
+        'not_applicable'
       ].includes(v.overallStatus)
     )
       issues.push('VerifyReport.overallStatus: invalid status');
@@ -221,7 +222,7 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
     for (const gate of gates) {
       check(gate, { name: 'string', status: 'string' }, 'VerifyReport.gateResults[]');
       if (!isObject(gate)) continue;
-      if (!['pass', 'fail', 'warning', 'skipped', 'pending'].includes(gate.status))
+      if (!['pass', 'fail', 'warning', 'skipped', 'pending', 'not_applicable'].includes(gate.status))
         issues.push('VerifyReport gate: invalid status');
       if (gate.status === 'fail') {
         check(gate, { recommendedNext: 'string' }, 'VerifyReport failed gate');

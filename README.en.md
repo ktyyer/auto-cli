@@ -511,7 +511,7 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | `protocol-validator`     | Protocol object completeness           |    —    |  ✓  |     ✓     |    ✓     |
 | `skill-activation`       | Skill application evidence             |    ✓    |  ✓  |     ✓     |    ✓     |
 | `knowledge-reuse`        | Historical experience reuse            |    ✓    |  ✓  |     ✓     |    ✓     |
-| `knowledge-distribution` | LearnCard distribution hard-constraint |    ✓    |  ✓  |     ✓     |    ✓     |
+| `knowledge-distribution` | LearnCard distribution (LEARN close-out, not a VERIFY gate) |    ✓    |  ✓  |     ✓     |    ✓     |
 | `clean-state`            | Repo resumable                         |    ✓    |  ✓  |     ✓     |    ✓     |
 | `cost`                   | Token cost audit                       |    —    |  ✓  |     ✓     |    ✓     |
 

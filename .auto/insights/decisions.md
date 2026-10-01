@@ -575,3 +575,53 @@ Auto CLI 定位为宿主原生能力上的编码工作流增强层，保留单�
 **证据**: npm.cmd test：34/34；计数破坏实验 6/7、还原后 7/7；历史 run 复核得到 3 skills、8 gates、7 pass、1 warning。
 **来源**: run-20260929-p0-trust
 **复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-29
+
+---
+
+### 一致性与执行安全批次：gate 时序迁移 + Loop/回滚安全语义统一
+
+**日期**: 2026-10-01 | **置信度**: high | **scope**: project
+
+knowledge-distribution 迁出 VERIFY gate 体系（18→17 gate），分发核对改为 LEARN 收口硬约束（未分发或 trap 未进 traps.md → run 标记 fail 并当场补分发）。同批统一安全语义：Loop 收敛不自动 commit；收敛度回退按「变更归属」撤销替代 git reset（含任务外修改保留现场）；quest rollback 仅撤销归属明确变更；mutation spot-check 在隔离副本执行；伪精确规则（16k 推理预算 / 达成度 <70 硬门槛 / 模型名推窗口）改为语义化或保守默认。
+
+**证据**: npm run check 全链 PASS；旧表述残留 grep 0 命中。
+**来源**: run-20261001-consistency-safety
+
+---
+
+### 入口规范结构性重构：/auto 升级为业务驱动交付契约系统
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: auto-md, refactor, protocol, spec
+**scope**: project
+
+按用户 12 节重写规范对 `commands/auto.md` 做结构级重构（批次 2/3 并入）：全局执行契约 10 条；策略×保障等级×执行方式三维正交路由（`RouteDecision.assurance` / `QuestMap.executionMode`）；任务/验证状态机对齐 `run-protocol.js` 现行枚举；SCAN 1.0 七步执行序（能力确认/工作区基线/业务链路定位/既有失败盘点）；PLAN 2.0 业务契约与质量契约；2.8 专家协作 owner 制；EXECUTE 八步序列；VERIFY 三条证据链 + 对抗场景按风险选择；工作区保护 5 条；SUMMARIZE 五部分；运行层验收场景 8 项表。`run-protocol.js` 状态机 v2 枚举扩展（succeeded/cancelled/suspended/not_applicable）经用户暂缓授权 → 文档回退现行枚举，v2 列入「协议版本化迁移」（须与校验器 + tests 同批）。
+
+**推荐动作**: 结构性文档重构沿用「规范落点逐节映射 + 校验器枚举真源」双约束；保留既有小节编号体系防 skills/README 交叉引用断裂；scripts 授权被拒时立即回退文档到现行行为，未来状态只进规划不进正文。
+**备选方案**: 整文替换为规范原文 — 拒绝（丢失兜底索引/分层扫描/预算表等运营机制，且状态机与校验器冲突）。
+**证据**: npm run check 全链 PASS；npm test 52/52；validate-run-completeness PASS（9/9 gate）。
+**来源**: run-20261001-spec-refactor
+**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-10-01
+
+---
+
+### 孤儿判定以「产品面引用 + 装运清单」双源为准
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: orphan-detection, dual-source, pruning
+**scope**: project
+
+删除候选不能只 grep 文档引用：codemaps-hook.sh 无任何运行时消费者（hooks.json / wiring-manifest / commands / skills 零引用），但被 scripts/manifest.js:194 装运清单消费——删它会破坏 validate:package。孤儿 = 产品面引用与装运清单**同时**为零引用；CHANGELOG 历史提及不算活引用，不改写历史；insights 知识卡中指向已删资产的推荐用 superseded 标注而非删除（保留演化轨迹）。
+
+**推荐动作**: 未来剪枝 run 沿用双源判定；双语镜像维护已停止（对齐战略方向 Phase 1），新增 .en 镜像需先过双源判定。
+**来源**: run-20261001-topdown-prune
+
+---
+
+### v2 枚举语义：succeeded 超额完成 / cancelled 用户取消 / suspended 暂停续接 / not_applicable 策略不适用
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: protocol, enum, state-machine
+**scope**: project
+
+QuestResult.status v2 枚举语义：`succeeded` 表示超额完成（区别于 `completed` 基本达标），`cancelled` 表示用户主动取消（非失败），`suspended` 表示暂停待跨会话续接；gate.status / overallStatus v2 枚举：`not_applicable` 表示该 gate 或整体状态在当前策略下不适用（如探索策略无需 build gate，可显式标记而非强行 `skipped`）。对应合法回流表需更新（文档已标注原则，scripts/ 合法回流逻辑待后续按需扩展）。
+
+**推荐动作**: 文档更新：commands/auto.md / agents/_shared-principles.md / skills/quality-gates 同步 v2 枚举语义与使用场景示例；skills/knowledge-management 补充 QuestResult 状态转换图。
+**来源**: run-20261001-v2-final

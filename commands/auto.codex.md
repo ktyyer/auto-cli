@@ -113,11 +113,17 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 
 满足以上条件时，仍要做最小 PLAN，但不要把流程机械化。
 
+**保障等级**（按风险选择，只升不降）：常规（默认 gate 集）| 强化（多文件协同 / 业务核心 / 并发 / 外部集成 / 安全敏感 → 追加 mutation spot-check 证据 + 链 A 显式结论）| 高保障（资金 / 权限 / 数据迁移 / 不可逆 / 用户显式要求 → 六类对抗场景全覆盖 + 残余风险逐项确认）。判定写入 `RouteDecision.assurance`。
+
+**执行方式**：单执行者（默认）| 专家协作（用户明确要求多 agent 时）| 有限迭代 | 持续监听（loop 监听型）。判定写入 `QuestMap.executionMode`。
+
+**快速通道原则**：压缩的是编排，不是验收——证据回路与对应验证不可省（见核心规则 14/16）。
+
 > **双端设计分歧声明**：Claude 端探索策略走快速通道（跳过 QuestMap/VerifyReport 等协议产出，SCAN 后直接回答）；Codex 端探索仍走完整闭环 + 固定输出骨架。这是**有意为之**的纪律强化 — Codex 无 hooks 兜底，强制闭环防止 `/auto` 退化为普通问答，不视为双端行为不一致。
 
 ### Loop 模式（正交于策略）
 
-检测到 interval 参数（`/auto 5m <goal>`）或「盯盘 / 自主迭代 / 自愈 / 周期巡检」语义时进入 loop 模式，激活 `loop-engineering` skill，按时重复跑聚焦版 6 PHASE 直至目标收敛或预算耗尽。内层每轮仍是标准 SCAN→…→LEARN，协议对象照常落 `.auto/runs/`。
+检测到 interval 参数（`/auto 5m <goal>`）或「盯盘 / 自主迭代 / 自愈 / 周期巡检」语义时进入 loop 模式，激活 `loop-engineering` skill，按时重复跑聚焦版 6 PHASE 直至目标收敛或预算耗尽。内层每轮仍是标准 SCAN→…→LEARN，协议对象照常落 `.auto/runs/`。收敛仅标记 `loop-state.converged`，不自动 commit；回退按变更归属撤销（归属不明保留现场）。
 
 > **宿主调度能力核验**：先核对当前界面、暴露工具、授权范围及任务持久性，记录 `supported | unavailable | unknown` 与证据。仅在实际工具可用且任务范围已授权时选择宿主调度；缺少该能力时选择可用的外部 cron / schtasks 或手动触发。`loop-state.json` 如实记录 `scheduler: host-native | external-cron | manual`、工具名、任务 ID 与生命周期；创建未成功不能记为已调度。会话内等待不等于持久任务，严禁伪造「正在后台跑」。
 
@@ -140,7 +146,9 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 13. 项目是 bot / daemon / 消息队列消费者 / CLI 工具 / 无浏览器 UI 的 I/O 系统时，必须激活 `feedback-loop` skill，构建 CLI 测试驱动器，禁止依赖人工手动测试。
 14. 实现/修复默认走证据优先回路：确认真实符号和测试命令 → 保留失败证据或最小失败测试 → 最小修改 → 立即验证。同一路径连续 2 轮无进展时，切换到 `agentless-repair`，不得继续单链重试。没有命令、输出和 exit code 时不得声明完成。
 15. 实现/重构写码前先做规范锁定：读同模块 2-3 个邻近文件 + lint/formatter 配置，模仿既有命名/错误处理/注释风格（项目实际配置优先于任何默认规则）；命名自解释、函数单一职责、早返回；注释只写 WHY 与边界（公开 API 必须文档化，注释语言随项目）；风格与邻近文件冲突不得放行。
-16. 业务逻辑改动先做业务复述：1-3 句说明业务变化 + 不变量清单（如金额不可负、状态单向流转），复述不出先读领域代码或回问；业务实体在代码里找到真源并沿调用链确认；资金/权限/数据一致性/幂等/并发/审计六类红线过一遍并进 acceptance；验收绑定独立业务依据的路径/版本（用户确认条款、正式契约或可信领域实例），模型推导标记假设，影响结果的未确认假设不得记为业务验证通过；关键业务断言做**破坏验证**——故意改坏一行实现，测试必须变红；还原后复跑同一测试确认变绿并自证无残留（红/绿两次输出留证；没红先确认变异是否改变目标行为，再定位测试缺口）；mutation 仅验证对选定变化的敏感性，不证明业务期望正确；完成前把 diff 反向翻译成业务行为与复述对照，不一致回流。
+16. 业务逻辑改动先做业务复述：1-3 句说明业务变化 + 不变量清单（如金额不可负、状态单向流转），复述不出先读领域代码或回问；业务实体在代码里找到真源并沿调用链确认；资金/权限/数据一致性/幂等/并发/审计六类红线过一遍并进 acceptance；验收绑定独立业务依据的路径/版本（用户确认条款、正式契约或可信领域实例），模型推导标记假设，影响结果的未确认假设不得记为业务验证通过；关键业务断言做**破坏验证**——在隔离副本（git worktree 临时目录或目录复制）中故意改坏一行实现，测试必须变红；删除副本后在原工作树复跑同一测试确认变绿（红/绿两次输出留证；禁止在用户工作树上直接变异；没红先确认变异是否改变目标行为，再定位测试缺口）；mutation 仅验证对选定变化的敏感性，不证明业务期望正确；完成前把 diff 反向翻译成业务行为与复述对照，不一致回流。
+17. 三维判定入协议：策略之外同时判定保障等级（`routine | reinforced | high-assurance`，只升不降，写入 `RouteDecision.assurance`）与执行方式（写入 `QuestMap.executionMode`）；高保障任务六类对抗场景全覆盖。
+18. 工作区基线保护：EXECUTE 前把完整 `git status`（不截断）记入 `RouteDecision.notes.workspaceBaseline`；他人/既有未提交修改视为不可变输入，不覆盖、不回退、不混入；写前检查目标文件是否含基线中的任务外修改，无法避开先告知用户；失败回滚仅撤销归属明确变更，归属不明保留现场。
 
 ---
 
@@ -400,6 +408,9 @@ Codex 运行时要求在动手前先给用户 commentary 进度更新。命中 `
 - 执行 doctor-lite：环境和安装前提快检
 - 执行 capability-scan：项目能力快照 / 命令清单 / skills 清单 / feedback 可用性检查
 - 判断策略：探索 / 修复 / 实现 / 重构
+- 工作区基线：完整 `git status --porcelain`（不截断）记入 `RouteDecision.notes.workspaceBaseline`；既有 dirty 文件视为不可变输入
+- 业务链路定位：从需求提取业务域，定位领域真源（实体 / 核心服务 / 状态机）；找不到标记 `domainModel: not-found`，业务验证降级为假设驱动
+- 既有失败盘点：CI / 测试 / 构建当前是否已红；已红项作为基线，区分「本 run 引入 vs 既已存在」
 - 判断风险：安全敏感、数据敏感、是否需要先澄清
 - 判断验证路径：build / test / lint / 只读分析
 - 判断是否需要激活 skill
@@ -436,6 +447,12 @@ SCAN 完成后立即建立预算感知：
 ---
 
 ## PHASE 2: PLAN
+
+### 2.0 业务契约与质量契约（实现/重构必产出）
+
+**业务契约 `businessContract`**（QuestMap 可选字段）：`restatement`（1-3 句业务行为变化复述，复述不出先读领域代码或回问）、`invariants[]`（业务不变量，命中项必须进 acceptance）、`evidenceRefs[]`（独立业务依据锚点：用户确认原话 / 契约文档 / 领域真源 / 可信实例；纯模型推断标记 `assumed: true`，验证链 A 结论随之降级）、`openAssumptions[]`（影响结果且未确认的假设，验证前消解或交用户）。
+
+**质量契约 `qualityContract`**：gate 基线 + 附加阈值；acceptance 以业务可观察行为表述（非「调用了 X 函数」）；业务断言以独立业务依据为准，不以实现自述为准。
 
 ### 2.1 技能激活
 
@@ -479,7 +496,7 @@ SCAN 完成后立即建立预算感知：
 - **深度级**：全文级 + 读 `references/` 目录文件
 - 缓存优先：若 `.auto/cache/skill-extracts/<skill>.md` 存在，直接读缓存跳过全文读取
 - **上下文预算联动**：当上下文进入黄区(40-70%)时所有 Skill 降级一档；红区(>70%)时强制摘要级
-- **Claude 端机制降级说明**：核心/储备层分层扫描与 Extended Thinking（16k 推理预算）在 Codex 端不可用；Codex 以缓存优先 + 渐进式加载近似前者，深度推理由模型默认推理能力承担
+- **Claude 端机制降级说明**：核心/储备层分层扫描与 Extended Thinking 在 Codex 端不可用；Codex 以缓存优先 + 渐进式加载近似前者，深度推理由模型默认推理能力承担
 
 激活时至少产出这四项内部结论：
 
@@ -502,7 +519,7 @@ SCAN 完成后立即建立预算感知：
 - API 设计：`api-design`
 - 有现有源码且实现前需要理解结构：`code-analyzer`
 - 项目存在 `.auto/constitution.md`：`constitution`（项目级硬约束载体，违反即 VERIFY fail）
-- 实现 / 重构策略每关完成后：`self-critique`（达成度评分 < 70 必须修补或回流 PLAN）
+- 实现 / 重构策略每关完成后：`self-critique`（acceptance 存在未满足项必须修补或回流 PLAN；达成度自评分仅参考信号）
 
 ### 2.2 知识复用
 
@@ -622,7 +639,7 @@ SCAN 完成后立即建立预算感知：
 触发 `budget_exhausted` 时硬约束：
 
 1. 立即产出 `LearnCard(category=trap, failureClass=resource)`，记录已用次数 / 触发位置
-2. 当前 Quest 回滚（不做仓库级回滚）
+2. 当前 Quest 回滚（不做仓库级回滚；触及文件含任务外修改或归属不明时保留现场并记录）
 3. 写 `session-continuity.md(status=suspended, blockingIssues:["run-budget-exhausted"])`
 4. 不自动重启 run；用户显式确认后再续接
 
@@ -642,7 +659,7 @@ SCAN 完成后立即建立预算感知：
 - 当前验证状态
 - 是否需要把失败经验记入 `trap`
 
-**Self-Critique 触发**（策略 = 实现/重构，每关必做）：每关 QuestResult 落盘前按 `skills/self-critique/SKILL.md` 自评 objective 满足度 + 盲点暴露 + 达成度评分；达成度 < 70 必须修补或回流 PLAN，不得带病进入下一关。
+**Self-Critique 触发**（策略 = 实现/重构，每关必做）：每关 QuestResult 落盘前按 `skills/self-critique/SKILL.md` 自评 objective 满足度 + 盲点暴露；acceptance 存在未满足项或暴露明显盲点时必须修补或回流 PLAN，不得带病进入下一关（达成度自评分仅作参考信号）。
 
 **条件分支执行**：当 QuestMap 中 Quest 含 `conditionalNext` 时，按 `QuestResult.status` 自动路由到 `on_success` / `on_fail` / `on_partial` 对应的 questId。Fallback Quest（`isFallback=true`）的验收标准可适当放宽。
 
@@ -660,7 +677,7 @@ SCAN 完成后立即建立预算感知：
 
 ## PHASE 4: VERIFY
 
-按任务类型选择真实验证（gate 详细定义见 `skills/quality-gates/SKILL.md` 18-gate 体系）：
+按任务类型选择真实验证（gate 详细定义见 `skills/quality-gates/SKILL.md` 17-gate 体系；`knowledge-distribution` 收口检查归属 LEARN，不在 VERIFY gate 体系内）：
 
 | 场景 | 最少验证                                                                                                           |
 | ---- | ------------------------------------------------------------------------------------------------------------------ |
@@ -669,7 +686,15 @@ SCAN 完成后立即建立预算感知：
 | 实现 | build + test + 必要 lint + coverage（有测试基建时实算覆盖率）+ self-verification + self-critique                   |
 | 重构 | build + test + coverage + security（敏感面自查）+ adversarial（降级模式，见下）+ self-verification + self-critique |
 
-**adversarial 降级模式**（Codex 无 verification subagent）<!-- capacity-contract: probe -->：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份攻击边界值 / 并发场景 / 幂等性 / 错误路径 / **容量伸缩性**，两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消，否则显式标记 `capacity: not-applicable` 及理由。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
+**三条证据链**（所有验证结论按此组织，逐链给结论与证据）：
+
+- **链 A 业务期望正确** — 独立业务依据对照测试与业务反向翻译；依据缺失 → 标记假设驱动并降级结论，写入残余风险
+- **链 B 实现符合期望** — acceptance 逐项对照 + build / test / lint / review
+- **链 C 验证能发现错误** — mutation spot-check（隔离副本）+ 对抗验证 + 测试发现检查（输出含用例计数 / `--list` / `--dry-run` 核对；静默通过视为未验证）
+
+**退出码零不充分**：exit code 0 只说明命令没报错，不构成通过；每条链结论绑定命令 + 输出摘要 + 退出码，无法实测只能 `skipped`。
+
+**adversarial 降级模式**（Codex 无 verification subagent）<!-- capacity-contract: probe -->：同窗口分段红蓝对抗 — 先以蓝方身份陈述实现正确性论据，再切换红方身份**按风险选择**攻击场景（边界值 / 并发 / 幂等性 / 异常路径 / 注入 / 容量伸缩性六类中凡与本次变更风险相关的都必须覆盖，通常 2-4 类，不固定凑数量；无相关的记 `skipped` + not-applicable 理由），两段互不引用对方结论，标注 `degraded: no-isolation`。涉及数据/集合/I/O 时，必须挑战数据量 ×100 或声明的容量上限，并检查无界查询、全量加载、分页、流式、背压、超时与取消，否则显式标记 `capacity: not-applicable` 及理由。`security` gate 为安全敏感文件的清单式自查（密钥 / 注入 / 输入验证），与 subagent 无关，不得省略。
 
 **验证上下文最小化**（2026 Context Engineering 核心实践）：
 
@@ -687,12 +712,11 @@ SCAN 完成后立即建立预算感知：
 1. **protocol-validator**：Phase handoff 前校验上游协议对象必填字段、条件字段、同一 run 的 `correlationId` 一致性；VERIFY 中仅汇总截至 EXECUTE→VERIFY 已完成的 handoff 检查结果；失败项必须给出 `recommendedNext`
 2. **skill-activation**：说明哪些 skill 真被用了，分别影响了什么
 3. **knowledge-reuse**：若用了 `.auto/insights` / `.auto/feedback`，说明复用了什么，并在 `QuestResult.validations` 留下参考证据
-4. **knowledge-distribution**：本 run 产出的 LearnCard 是否已分发到 `.auto/insights/<category>.md`（详见 PHASE 6 硬约束）
-5. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
-6. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
-7. **constitution**：若 `.auto/constitution.md` 存在，逐条核对本次变更未违反任何硬约束；违反即整体 fail
-8. **doctor-lite consistency**（Codex 端补充检查，非 18-gate 体系成员）：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
-9. **run-completeness**（Codex 端补充检查，非 18-gate 体系成员）：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
+4. **clean-state**：说明是否完成了该任务要求下应做的验证；没跑成要讲清原因
+5. **cost**：纯信息性 gate，记录本次 run 的 read/write/agent 调用次数，上下文使用 > 70% 时在 SUMMARIZE 中提示
+6. **constitution**：若 `.auto/constitution.md` 存在，逐条核对本次变更未违反任何硬约束；违反即整体 fail
+7. **doctor-lite consistency**（Codex 端补充检查，非 17-gate 体系成员）：若前置检查已发现缺口，验证阶段必须说明这些缺口是否影响结果可信度
+8. **run-completeness**（Codex 端补充检查，非 17-gate 体系成员）：若项目存在 `.auto/runs/`，应优先使用仓库提供的运行完整性校验，确认最近或当前 run 至少具备基础工件
 
 不要声称“已验证”如果实际没跑命令。
 如果这次只是只读审查，也必须明确写出：
@@ -703,7 +727,7 @@ SCAN 完成后立即建立预算感知：
 
 **实测优先于断言（Run-Don't-Claim）**：任何"测试通过 / 构建成功 / 类型检查通过 / 运行无报错"类陈述必须附实际执行的命令 + 输出尾部 ≥ 3 行作为 evidence。输出含 warning 必须列出。"我假定它能跑"是最常见的偷懒——强制贴输出让"想当然"无处遁形。无法实测的 gate 只能标记 `skipped`，不得标记 `pass`。
 
-**预测后验证（Predict-Then-Verify）**：跑任何验证命令前先预测结果（pass/fail + 预期通过数 / 预期错误位置）写到 verify-report；预测错 = 理解错，必须停下修理解再继续，不许"哦原来挂了再改"。不预测的人是在用工具掩盖无知。
+**预测后验证（Predict-Then-Verify）**：跑任何验证命令前先预测结果（pass/fail + 预期通过数 / 预期错误位置）写到 verify-report；预测错 → 必须停下修正对系统的理解再继续，不许"哦原来挂了再改"。不预测的人是在用工具掩盖无知。
 
 如果仓库存在 `scripts/validate-run-completeness.js` 且项目使用 `.auto/runs/`：
 
@@ -726,12 +750,13 @@ SCAN 完成后立即建立预算感知：
 
 ## PHASE 5: SUMMARIZE
 
-结束时优先给用户这些信息：
+结束时按五部分结构总结（成功与失败都必须总结，禁止静默结束）：
 
-- 做了什么
-- 为什么这么改
-- 验证跑了什么，结果如何
-- 哪些地方还没验证或存在风险
+1. **行为变化** — 业务语言描述系统行为有何不同（对照业务契约）
+2. **实际变更** — 文件清单 + 行数统计（命令实算）
+3. **验证结果** — 三条证据链各一句结论 + 证据指针
+4. **残余风险** — 未验证项 / 未消解假设 / 跳过的 gate 及理由
+5. **交付状态** — `pass` / `partial` / `blocked`（含阻塞原因与建议下一步）
 
 简单任务用短段落；复杂任务用少量高信号列表。
 
@@ -798,7 +823,7 @@ SCAN 完成后立即建立预算感知：
 - 校验路径是否有效
 - 是否暴露出新的 trap / pattern
 
-### `knowledge-distribution` 硬约束（必检 · 所有策略）
+### `knowledge-distribution` 硬约束（LEARN 收口检查 · 所有策略）
 
 LearnCard 仅写到 `runs/<runId>/learn-cards.md` **不算沉淀**，必须按 category 分发到 `.auto/insights/<category>.md`，否则下次 SCAN 反查不到，等同未沉淀。
 
@@ -828,7 +853,7 @@ LearnCard 仅写到 `runs/<runId>/learn-cards.md` **不算沉淀**，必须按 c
 
 - **pass**: 所有 LearnCard 已 append 到对应 insights 文件
 - **warning**: < 50% 未分发，但 trap / critical decision 已分发
-- **fail**: ≥ 50% 未分发，或任意 `category=trap` 未进 traps.md → 回流 LEARN 补分发后再 verify
+- **fail**: ≥ 50% 未分发，或任意 `category=trap` 未进 traps.md → 当场补分发后再收口 run
 
 反模式：
 

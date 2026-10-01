@@ -27,3 +27,17 @@
 **结论**：Codex 端 commands/auto.codex.md L404-412 "高频硬规则"仅覆盖 7 个 skill 触发场景，依赖 LLM 自主语义判断其他 18 个 skill。当新增**强制前置类** skill（如 brainstorming 多路径强制前置 / using-git-worktrees 自动并行触发）未列入硬规则时，Codex 端 LLM 可能完全忽略。
 **推荐动作**：(1) 关键 skill（强制前置 / 自动触发类）必须进 Codex 端硬规则；(2) 一般性 skill 可保留 LLM 自主判断；(3) 25 个 skill 完整兜底索引在 Codex 端是否需要待观察。
 **置信度**：medium
+
+### 预设效果评估先确认实际选中版本
+
+**日期**: 2026-09-30 | **置信度**: high | **来源**: run-20260930-dsh-usage-evaluation | **Scope**: project
+
+DSH 预设已安装不等于相关会话已使用。完整读取本次 v4 日志的 142 个 zstd 帧并按 header + agent-preset/selected 重建后，同步后的活动属于 standard；本次检查范围内没有可归因于新版 auto-dsh 的编码样本。单次 zstdDecompressSync 仅消费首帧，不能据此宣称没有活动。
+
+推荐动作：先核对会话预设投影与实际技能应用，再记录编码效果；按明确 runId 取证，dashboard 当前按目录名倒序的 Last N 不能保证时间顺序。静态回归、局部验收率与因果提效分别报告。证据见本 run 的 assessment.md、compressed-session-evidence.json 与 dashboard-reproduction.json。
+
+### 方案级请求不等于最小 diff 请求 / 2026-10-01 / feedback · 来源 run-20261001-spec-refactor
+
+**结论**：用户基于完整 12 节重写规范说「按照最优方案开始全面优化」时，按最小 diff 分批执行被质疑（「我看起来像是要重构的样子，为什么只是简单的修改呢？」）。最小 diff 是编码级规范，不适用于方案级落地请求。
+**推荐动作**：用户已给出成体系重写方案且要求「全面/按方案」执行时，默认按结构级重构落盘；若仍选增量路径，动手前显式声明「这是分批执行的第 N 批」并等用户确认。
+**置信度**：medium
