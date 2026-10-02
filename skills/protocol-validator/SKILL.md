@@ -30,6 +30,10 @@ tags:
 - [ ] QuestResult 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `questId`, `attempt`, `ownerAgent`, `changedFiles`
 - [ ] VerifyReport 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `gateResults[]`（每项必填 `name`, `status`）, `overallStatus`, `nextAction`
 - [ ] LearnCard 必填：`id`, `runId`, `correlationId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`
+- [ ] Knowledge Governance 2.1 必填字段（定义见 canonical contract 的 Validator Requirements）：`insightScore`, `lifecycleStatus`, `evidenceStrength`
+- [ ] 关系治理校验：关系字段完整性符合 canonical contract 的 Relationship Graph 要求
+- [ ] 检索治理校验：检索排除行为符合 canonical contract 的 Retrieval Governance 要求
+- [ ] 冲突治理校验：conflicts 的处理符合 canonical contract 的 Conflict Resolution 要求
 
 **硬约束** (constraints):
 
@@ -86,6 +90,9 @@ tags:
 - QuestResult 的 status 为 v1 `pending / running / completed / failed / skipped / blocked` 或 v2 新增 `succeeded / cancelled / suspended`；attempt 为正整数，`questId + attempt` 唯一；已提供计划时必须引用其中的 Quest。失败需 `failureContext.recommendedNext` 与 `retry` 对象。
 - VerifyReport 使用 `gateResults`，每项有 `name / status`；状态为 `pass / fail / warning / skipped / pending / not_applicable`。失败项需要 evidence 和 recommendedNext；`not_applicable` 需要 evidence 写明理由；evidence 必须含实际内容（空白字符串、null 与空容器不算）；存在 fail/pending 时 overallStatus 不能标 pass；overallStatus 为 `not_applicable` 当且仅当 gateResults 非空且全部为 `not_applicable`。
 - LearnCard 的 category 为 `trap / pattern / decision / prompt / feedback`，scope 为 `project / stack / universal`，confidence 为 `low / medium / high`。
+- Knowledge Governance 2.1 的全部治理语义引用 `docs/protocols/knowledge-governance-2.1.md`。
+- Validator 仅校验治理契约是否被满足，不维护独立生命周期、关系图、检索或冲突规则定义。
+- RouteDecision 的知识注入、QuestMap 的规划依据、LearnCard 的知识沉淀必须符合同一 canonical contract。
 
 旧自由 Markdown 仅做基础完整性检查，输出 `protocolMode: legacy` 警告，不等同协议校验通过；新 run 不混用两种格式。结构化对象缺字段、类型错误或 JSON 损坏时必须失败，不回退为关键词检查。
 
@@ -100,6 +107,11 @@ tags:
 Dashboard 直接从当前协议工件调用同一收集器，避免旧 metrics 缓存覆盖新证据；未知观测不进入均值和通过率。回归用例见 `tests/scripts/`。
 
 ---
+
+## Canonical Governance Reference
+
+Knowledge Governance validation semantics originate from `docs/protocols/knowledge-governance-2.1.md`.
+The validator verifies conformance but does not define governance rules.
 
 ## 与 auto-cli 集成
 
@@ -118,5 +130,8 @@ Dashboard 直接从当前协议工件调用同一收集器，避免旧 metrics �
 - [ ] 实现/重构策略下 QuestMap 缺少 `assumptions[]` / `riskMatrix[]` → 阻断 EXECUTE
 - [ ] QuestResult 失败时缺少 `failureContext.recommendedNext` → 阻断 VERIFY
 - [ ] LearnCard 缺少 `category` → 无效，回流 LEARN
+- [ ] LearnCard 缺少 `insightScore` / `lifecycleStatus` / `evidenceStrength` → Governance 校验失败
+- [ ] conflicts / supersedes / supports / depends-on 关系满足治理约束
+- [ ] superseded / archived 知识不参与默认检索与规划依据
 - [ ] 所有验证失败都提供 `recommendedNext`
 - [ ] 不验证 optional 字段（如 `decisionNotes`, `pitfalls`）

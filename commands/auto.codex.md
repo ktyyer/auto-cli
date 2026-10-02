@@ -541,6 +541,8 @@ SCAN 完成后立即建立预算感知：
 - 哪些 feedback 会影响 skill 选择或验证路径
 - 读取 `.auto/feedback/agents.json` 中的 `preferences` + `successRate`：按反馈契约仅 `measuredCount` ≥ 3 时 `successRate < 0.5` 的 agent 才排除，样本不足按无记录处理；有未解决 `knownIssues` 的降优先；`preferences.questGranularity` 等字段注入到 Quest 设计约束
 - 若本次明确复用了某条知识，直接将命中摘要写入 `RouteDecision.notes.relevantInsights`，每条 ≤ 2 行
+- Knowledge Governance 2.1 的排序、检索优先级、Relationship Graph、生命周期与排除规则全部继承自 `docs/protocols/knowledge-governance-2.1.md`
+- 本文件仅消费治理契约，不维护第二套治理定义
 - `QuestResult.validations` 记录这些 insight 在执行或验证中的参考证据
 - `selection.routeHintsUsed` 可记录 insight 标题、feedback key 或历史 runId，但不强制 `[insight:]` / `[feedback:]` / `[run:]` 标记
 

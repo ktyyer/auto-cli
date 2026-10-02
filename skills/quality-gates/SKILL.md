@@ -400,6 +400,22 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 ---
 
+## Knowledge Governance 2.1 验证要求
+
+Canonical source: `docs/protocols/knowledge-governance-2.1.md`.
+
+Quality Gates validate compliance with the contract and do not define governance semantics.
+
+## Governance Compliance Requirements
+
+knowledge-reuse 校验不再只验证是否引用 insight，还需按 canonical contract 校验：
+
+- 被引用知识的生命周期状态符合契约的检索排除规则
+- 知识排序符合契约定义的 InsightScore 排序规则
+- conflicts 关系按契约要求已被显式处理
+- supersedes 链条符合契约的一致性与无环要求
+- PLAN 的知识优先级选择符合契约的 Retrieval / Planner 规则
+
 ## `knowledge-reuse` gate
 
 **验证逻辑**：核对 PLAN 阶段注入 RouteDecision.notes 中的 insight 摘要是否在 EXECUTE 中被参考。

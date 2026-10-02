@@ -72,6 +72,10 @@ allowed_tools: ['Bash', 'Read', 'Write', 'Grep', 'Glob']
   ],
   "tags": ["<tag1>", "<tag2>"],
   "confidence": "low | medium | high",
+  "insightScore": 0,
+  "lifecycleStatus": "candidate | active | validated | superseded | archived",
+  "evidenceStrength": "weak | medium | strong",
+  "supersedes": [],
   "targetInsightFile": ".auto/insights/<file>.md"
 }
 ```
@@ -289,7 +293,7 @@ LEARN 除产出 `LearnCard` 外，还应把可复用的选择信号回灌给下�
 # 1. 扫描所有 insight 文件，按 section（### <标题>）拆解
 # 2. 对每个 section 执行三条规则匹配
 # 3. 标记结果以末尾追加方式写入，不修改原内容
-# 4. 同时更新 .auto/cache/insight-index.json，archived/merged/outdated 条目 confidence 降级
+# 4. 同时更新 .auto/cache/insight-index.json；标记条目的 confidence 降级与检索排除以 canonical contract 的 Retrieval Governance 节为准
 ```
 
 **反模式**：
@@ -300,8 +304,7 @@ LEARN 除产出 `LearnCard` 外，还应把可复用的选择信号回灌给下�
 
 **注入规则**（影响 PHASE 2.1 知识检索）：
 
-- 含 `**状态**: archived / merged / outdated` 的条目，confidence 自动按 (-1) 降级
-- 仅在 SCAN 检索词强命中（tags 全 match）时才注入，不参与默认推荐
+decay 标记条目的排除、降级与强命中例外规则统一以 `docs/protocols/knowledge-governance-2.1.md` 的 Retrieval Governance 节为准，本文件不重复定义。
 
 **跳过条件**：`/auto:learn` 不带 `--decay` 参数时默认轻量模式（只追加新知识），用户显式触发 `/auto:learn --decay` 才扫描全量。
 
@@ -397,7 +400,16 @@ LEARN 完成 `LearnCard` 落盘后，**强制**重建或增量更新 `.auto/cach
 
 ---
 
-## 说明
+## Knowledge Governance 2.1
+
+Canonical source: `docs/protocols/knowledge-governance-2.1.md`.
+
+`/auto:learn` is a governance producer, not a governance authority.
+Lifecycle, scoring, retrieval, relationship, and conflict semantics must be inherited from the canonical contract.
+
+### Learn Integration Notes
+
+InsightScore、Lifecycle、Relationship Graph、Conflict Resolution、Retrieval Ranking 与 Planner Feedback Loop 的语义统一继承 `docs/protocols/knowledge-governance-2.1.md`，本文件不重复定义。
 
 `/auto:learn` 的核心职责是统一知识入口，而不是单独维护另一套知识协议。
 如果未来扩展新的知识来源，也应先映射到 `LearnCard`，再进入 insights / feedback。

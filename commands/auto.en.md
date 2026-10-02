@@ -26,6 +26,15 @@ AI autonomously determines strategy in SCAN phase by synthesizing task semantics
 
 Three orthogonal dimensions decide how a run executes: **strategy** (what), **assurance level** (how strict verification is: `routine` | `reinforced` | `high-assurance`, upgrade-only — recorded in `RouteDecision.assurance`) and **execution mode** (how organized: single-executor | expert-collaboration | bounded-iteration | continuous-monitoring — recorded in `QuestMap.executionMode`). Fast track compresses orchestration, never acceptance: the evidence loop and applicable gates cannot be skipped.
 
+### Knowledge Governance 2.1
+
+Canonical source: `docs/protocols/knowledge-governance-2.1.md`.
+This document consumes governance semantics and must not redefine lifecycle, ranking, retrieval, relationship, or conflict-resolution rules.
+
+### Governance Reference
+
+All retrieval priorities, ranking rules, lifecycle transitions, exclusion rules, planner priorities, and relationship semantics are inherited from `docs/protocols/knowledge-governance-2.1.md`.
+
 ### Loop Mode (orthogonal to strategy)
 
 ⚠️ **Current Limitation**: Loop automatic scheduling depends on runtime environment support. If `ScheduleWakeup` is blocked (error: "/loop dynamic runtime gate is off"), system automatically downgrades to single-execution mode.

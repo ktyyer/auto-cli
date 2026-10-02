@@ -85,6 +85,10 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 - `context`
 - `recommendedAction`
 - `confidence`
+- `insightScore`
+- `lifecycleStatus`
+- `evidenceStrength`
+- `supersedes`
 - `targetInsightFile`
 
 ---
@@ -129,7 +133,7 @@ description: Codex 版知识沉淀入口 - 将运行经验、路由反馈和 Git
 规则纪律：
 
 - 标记类操作（archived / merged / outdated）以末尾追加方式写，不修改原内容
-- 同时更新 `.auto/cache/insight-index.json`，对应条目 confidence 降级
+- 同时更新 `.auto/cache/insight-index.json`；标记条目的 confidence 降级与检索排除以 `docs/protocols/knowledge-governance-2.1.md` 的 Retrieval Governance 节为准
 - 默认 `/auto:learn` 不扫描全量；只有显式 `--decay` 才触发
 - 反模式：直接 `rm` 删除条目 / 用硬时间阈值一刀切 / 不区分 `scope` 一律 decay
 
@@ -204,6 +208,34 @@ run 未完成或需跨会话续接时，`/auto:learn` 负责补全或更新 `.au
 - 哪些内容因证据不足被跳过
 
 `--json` 时输出结构化摘要即可，不必展开全文。
+
+---
+
+## Knowledge Governance 2.1
+
+Canonical source: `docs/protocols/knowledge-governance-2.1.md`.
+
+Codex inherits governance semantics from the canonical contract and must not maintain an independent governance definition.
+
+### Learn Integration Notes
+
+### Governance Contract Reference
+
+All governance semantics are inherited from `docs/protocols/knowledge-governance-2.1.md`.
+
+### Insight Score (Canonical Contract)
+
+InsightScore follows the definition in `docs/protocols/knowledge-governance-2.1.md` and is not restated here.
+
+InsightScore 作为 SCAN 检索优先级与 PLAN 决策依据。
+
+### Lifecycle
+
+Lifecycle states and transition rules follow the canonical definition in `docs/protocols/knowledge-governance-2.1.md` and are not restated here.
+
+### Canonical Governance Reference
+
+Relationship Graph、Conflict Resolution、Retrieval Governance、Planner Feedback Loop 以及 Claude/Codex parity 规则全部继承自 `docs/protocols/knowledge-governance-2.1.md`。本文件仅消费治理契约，不定义治理语义。
 
 ---
 

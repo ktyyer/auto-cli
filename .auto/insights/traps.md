@@ -726,3 +726,29 @@ v2 枚举只在校验器放行，消费者未同步：`collectRunMetrics` 不把
 **规避**：schema 变更的同批清单 = 校验器 + 全部消费者（metrics / dashboard / 报表）+ 文档 + 接受测试 + 拒绝测试 + 消费者测试；用 codegraph_callers 或 grep 字段名枚举消费者后再宣称完成。跨字段一致性规则（如 overallStatus ↔ gateResults）必须双向断言并各配一个拒绝测试；只强制一个方向时，反方向的矛盾记录（全部 gate 不适用却报 pass）照样通过校验并被看板计为成功。
 
 **来源**: run-20261001-optimal-audit
+
+---
+
+### WDA 消息字段是字符串类型，且工具有凭证外发路径
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: wechat, WDA, api-contract, security
+**scope**: project
+
+经 WeChatDataAnalysis API 取微信消息的坑：createTime 是字符串秒（需 parseInt×1000 才能构造 Date）；isSent 是字符串 "True"/"False"；卡片类消息 content 为空需退回 title/url。安全面：WDA 默认向 c3o.re / fqyw.love 上传凭证（key_service.py:1417 等），hosts 封禁段（6 条 0.0.0.0）必须保留——实测封禁不影响本地消息链路，只挡图片密钥/CDN/license 远端。
+
+**规避**: 新消费端直接复用 live-feed.html 的字段归一化代码（`_sent: String(m.isSent) === "True"` 等）；任何 WDA 环境变更后先核对 C:\Windows\System32\drivers\etc\hosts 封禁段仍在。
+
+**来源**: run-20261001-format-monitor 实测 + run-20261001-message-docs 复核
+
+---
+
+### 治理 SSOT 重构复审：字面 \n 残骸与「声明继承+又展开」半吊子陷阱
+
+**日期**: 2026-10-02 | **置信度**: high | **标签**: governance, ssot, markdown-edit, audit
+**scope**: project
+
+Knowledge Governance 2.1 去重重构（SSOT = docs/protocols/knowledge-governance-2.1.md）专家团复审发现两类残留：①「继承声明 + 规则展开」半吊子（learn.codex.md 重述权重 40/25/20/15 与生命周期转移规则；quality-gates / protocol-validator 在校验清单里重述排除规则）——提到词合规、展开规则即违规；② edit 工具替换时 new_string 若写入字面 `\n`（或 old_string 不含块尾标题），会在文件中留下字面 \n 残骸并使标题挤压一行，grep 命中模式 `词\\n` 可复查。
+
+**规避**: 治理审计双 grep——定义性模式（公式/状态链/枚举展开）+ 残骸模式（`\\n\\n` 治理解标题）；edit 含字面 \n 的文件时 old_string 必须写成字面 \n 且 new_string 用真实换行；workflow 子代理连续返回 null 时降级主窗口亲审并在报告标注降级（本 run E2/E3/E4 即如此），不冒充第二视角。
+
+**来源**: run-20261002-governance-ssot-review（workflow E1 独立复核 + 主窗口降级补审 + 字节级 pwsh 核验）

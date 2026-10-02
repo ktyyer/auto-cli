@@ -350,7 +350,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 
 探测方式：通过当前会话已知特征（模型名称、运行时环境、历史行为）推断窗口容量；无法确定时标记 `contextBudget.zone: unknown` 并按中窗口阈值保守加载，不虚构具体占用率数值。
 
-### 1.6 知识注入（替代原 insight-index 反查）
+### 1.6 Knowledge Governance 2.1 知识注入（替代原 insight-index 反查）
 
 **简化注入流程**：不再要求 `[insight:]` 格式标记。检索到相关 insight 后，直接将命中摘要（每条 ≤2 行）注入 `RouteDecision.notes.relevantInsights`。后续 Phase 通过继承 RouteDecision 自然获得知识上下文。
 
@@ -363,6 +363,10 @@ test -f CLAUDE.md && echo "CLAUDE.md: EXISTS" || echo "CLAUDE.md: MISSING"
 3. **节省 token**：跳过无关 scope 的 insights（如 Java 项目不加载 Python 专属经验）
 
 关键词从用户需求提取。命中条目记入 `selection.routeHintsUsed`。
+
+**Knowledge Governance 2.1 协议引用**：
+
+治理语义的唯一真源为 `docs/protocols/knowledge-governance-2.1.md`。检索优先级、排序公式、生命周期、排除规则、规划优先级与 Relationship Graph 全部继承自该契约，SCAN 仅消费治理契约，不在本文件重复定义治理语义。
 
 **相似历史 run 预匹配**：扫描最近 5 个未归档 run 的 `route-decision.md`，语义相似度 > 0.7 时预加载该 run 的 trap/pattern（最多 3 条）。预匹配结果按 1.0 的导航原则处理。
 
@@ -820,7 +824,7 @@ Quest 含 `conditionalNext` 时按 `on_success` / `on_fail` / `on_partial` 映�
 
 **详细实现见 `skills/knowledge-management/SKILL.md`。** 以下为高层流程：
 
-### 6.1 LearnCard 产出与分发
+### 6.1 Knowledge Governance 2.1：LearnCard 产出与分发
 
 产出标准 LearnCard（必须含 category/scope/title/confidence 字段，模板见 `skills/knowledge-management/SKILL.md`），按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）。分发前执行 Curator 检查（查重 / 矛盾检测 / merge-or-append，含被复用 insight 的 helpful/harmful 计数更新，详见 `skills/knowledge-management/SKILL.md`）。硬约束：`scope: stack|universal` 额外写入 `skills.json` 的顶层 `portablePatterns`。无 category 字段的 LearnCard 无效。分发核对在 LEARN 收口执行（原 VERIFY `knowledge-distribution` gate 因时序迁移：VERIFY 时 LearnCard 尚未产出）：未分发或 `category=trap` 未进对应 `traps.md` → run 整体标记 fail 并当场补分发。
 

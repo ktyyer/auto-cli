@@ -21,7 +21,7 @@ tags:
 
 **检查清单** (checklist):
 
-- [ ] LearnCard 含全部必填字段（category/scope/title/confidence 等），无 category 的卡无效
+- [ ] LearnCard 含全部必填字段（category/scope/title/confidence + 治理字段 insightScore/lifecycleStatus/evidenceStrength，枚举见 canonical contract 的 Field Enumerations），无 category 的卡无效
 - [ ] 分发前执行 Curator 检查：查重（同主题 merge）/ 矛盾检测（旧条目标 superseded）/ 复用计数（helpful/harmful/lastConfirmed）
 - [ ] 按 category 分发到 `.auto/insights/` 对应文件（必须 Edit append，不能只留在 learn-cards.md）
 - [ ] feedback 真实化：按反馈契约逐 run 幂等更新计数与观测；successRate 使用已测 run 分母
@@ -40,6 +40,17 @@ tags:
 - PLAN 读 successRate 但 LEARN 从不更新 → 反馈闭环断链
 
 ---
+
+## Knowledge Governance 2.1
+
+Canonical source: `docs/protocols/knowledge-governance-2.1.md`.
+This skill implements governance behavior and must remain semantically consistent with the canonical contract.
+
+### Governance Consumption Rules
+
+本 Skill 只负责执行知识治理流程。
+
+InsightScore、Lifecycle、Retrieval Governance、Relationship Graph、Conflict Resolution 与 Planner Feedback Loop 的语义全部继承自 `docs/protocols/knowledge-governance-2.1.md`，不得在此重新定义。
 
 ## LEARN 执行清单（按序执行，不可跳步）
 
@@ -233,7 +244,7 @@ insight 的价值由实际复用结果决定，不由写入时的 confidence 单
 
 - 条目无复用行时视为 `helpful=0`（旧条目兼容，不批量回填，首次被复用时才补行）
 - `/auto:learn --decay` 的 age-prune 规则中"最后命中时间"以 `lastConfirmed` 为准
-- 含 `**状态**: harmful` 的条目与 archived/merged/outdated 同等处置：仅强命中才注入，confidence 按 (-1) 降级
+- 含 `**状态**: harmful` 的条目按 canonical contract 的 Retrieval Governance 排除与降级规则处置（与 archived/merged/outdated 同级）
 
 ---
 

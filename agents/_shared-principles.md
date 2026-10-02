@@ -24,6 +24,11 @@ tags: [shared, protocol, handoff, agent, principles]
 3. 修复建议（具体到文件和行号）
 4. 验证步骤
 
+## Knowledge Governance Canonical Reference
+
+Knowledge Governance 2.1 semantics are defined exclusively in `docs/protocols/knowledge-governance-2.1.md`.
+All agents, commands, validators, retrieval components and planners must consume that contract and must not redefine governance behavior locally.
+
 ## AUTO_PROTOCOL v1
 
 `/auto` 的标准产物统一为 5 类对象：`RouteDecision`、`QuestMap`、`QuestResult`、`VerifyReport`、`LearnCard`。
@@ -148,6 +153,11 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 - `.auto/insights/` 是长期人类可读知识视图。
 - `.auto/cache/` 仅作派生缓存，不作为长期知识真源。
 - legacy 文件或路径可继续读取，但新写入必须优先走 `.auto/runs/`、`.auto/feedback/`、`.auto/insights/`。
+
+### Knowledge Governance 2.1 Reference
+
+Governance semantics are defined exclusively in `docs/protocols/knowledge-governance-2.1.md`.
+所有 InsightScore、Lifecycle、Relationship Graph、检索排除规则与治理一致性要求均继承自该 Canonical Contract；protocol-validator、quality-gates、knowledge-management 只能消费并执行同一契约，不得在本文件重新定义治理语义。
 
 ### insight-index 派生对象
 
@@ -673,8 +683,8 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
 
 ### LearnCard 标准对象
 
-必填：`id`, `runId`, `correlationId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`。
-选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`, `failureClass`。
+必填：`id`, `runId`, `correlationId`, `status`, `summary`, `category`, `title`, `confidence`, `targetInsightFile`, `scope`, `insightScore`, `lifecycleStatus`, `evidenceStrength`（治理三字段枚举见 `docs/protocols/knowledge-governance-2.1.md` 的 Field Enumerations）。
+选填：`context`, `trigger`, `recommendedAction`, `antiPattern`, `evidenceRefs`, `sourcePhase`, `sourceArtifacts`, `tags`, `failureClass`, `supersedes`。
 
 ```json
 {
@@ -713,6 +723,10 @@ SCAN 阶段根据技术栈自动确定 **可执行 gate 集合**：
   "tags": ["<tag1>", "<tag2>"],
   "failureClass": "timeout | network | logic | resource",
   "confidence": "low | medium | high",
+  "insightScore": 0,
+  "lifecycleStatus": "candidate | active | validated | superseded | archived",
+  "evidenceStrength": "weak | medium | strong",
+  "supersedes": [],
   "targetInsightFile": ".auto/insights/<file>.md"
 }
 ```

@@ -1185,3 +1185,16 @@ scope: project。基础工件和关键词检查通过，不代表协议字段及
 
 **推荐动作**: 未来协议扩展测试：1) 复用 readRunProtocol 真实校验器（不 mock）；2) 按目标 strategy 补齐 QuestMap 条件字段；3) 先跑一遍校验器确认夹具完整性，再测新枚举。
 **来源**: run-20261001-v2-final
+
+---
+
+### WDA 本地 API CORS 全开，file:// 静态页可零后端直连
+
+**日期**: 2026-10-01 | **置信度**: high | **标签**: wechat, WDA, cors, static-page
+**scope**: project
+
+WeChatDataAnalysis 本地 API（127.0.0.1:10392）CORS allow_origins=["*"]（api.py:70），file:// 打开的静态 HTML 可直接 fetch 其端点，无需自建代理/后端。用户明确偏好最小方案（曾拒绝 320 行 Flask 服务的写入）。
+
+**推荐动作**: 微信消息消费端优先做纯静态页；只有需要服务端持久化/推送时才引入后端。
+
+**来源**: run-20261001-format-monitor（file:// 预检实测 + 源码锚点）
