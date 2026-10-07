@@ -143,7 +143,7 @@ for (const envVar of requiredEnvVars) {
 ## 按需加载
 
 > 完整 Docker 配置、错误响应标准代码、SDK 5 项必备实现细节
-> → `production-standards.references/implementation-details.md`
+> → `references/implementation-details.md`
 
 ---
 

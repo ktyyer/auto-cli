@@ -1,6 +1,7 @@
 // Shared contract for run validation and observation tooling (not a workflow runtime).
 import fs from 'node:fs';
 import path from 'node:path';
+import { validateRunEvidence } from './evidence-record.js';
 
 const common = {
   id: 'string',
@@ -145,7 +146,7 @@ export function parseProtocolDocument(content) {
 }
 
 /** Validate available run objects and links; requireAll also checks missing structured files. */
-export function readRunProtocol(runDir, { requireAll = false } = {}) {
+export function readRunProtocol(runDir, { requireAll = false, requireEvidence = false, cwd } = {}) {
   const documents = {};
   const issues = [];
   const warnings = [];
@@ -160,7 +161,9 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
     warnings.push(
       'legacy Markdown: limited completeness check only; protocol fields and metrics are unknown'
     );
-    return { mode: 'legacy', documents: {}, issues, warnings };
+    const executionEvidence = validateRunEvidence(runDir, {}, { cwd, required: requireEvidence });
+    issues.push(...executionEvidence.issues);
+    return { mode: 'legacy', documents: {}, issues, warnings, executionEvidence };
   }
   const check = (value, fields, label) => {
     if (!isObject(value)) {
@@ -287,7 +290,13 @@ export function readRunProtocol(runDir, { requireAll = false } = {}) {
       if (!allowed.includes(card[field])) issues.push(`LearnCard.${field}: invalid value`);
     }
   }
-  return { mode: 'structured', documents, issues, warnings };
+  const executionEvidence = validateRunEvidence(runDir, documents, {
+    cwd,
+    required: requireEvidence
+  });
+  issues.push(...executionEvidence.issues);
+  if (executionEvidence.status !== 'not_checked') warnings.push(...executionEvidence.warnings);
+  return { mode: 'structured', documents, issues, warnings, executionEvidence };
 }
 
 /** Collect declared observations, preserving null for missing data and unmeasured telemetry. */

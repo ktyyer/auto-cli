@@ -91,7 +91,22 @@ tags:
 
 `knowledge-reuse` 声明 pass 时，显式反馈引用使用 `[feedback:skills.json#key]` / `[feedback:agents.json#key]`（兼容旧的 `:key`）。按 `skills/knowledge-management/references/feedback-contract.md` 校验引用条目：扁平为真源，旧包装层兼容；同 key 双处出现拒绝歧义。保留元数据不能作为条目，计数与观测率必须有效；旧率无观测不参与路由。此检查不证明证据内容或因果收益。
 
-## 指标边界
+## 本地执行证据
+
+在目标项目目录使用安装的 `auto-cli/scripts/evidence-collect.js`（仓库内为 `scripts/`）：
+
+```text
+node <tool-root>/evidence-collect.js --cwd <project> --run-dir <project>/.auto/runs/<runId> --quest Q1 --id final --test tests/example.test.js
+node <tool-root>/validate-run-completeness.js --root <project> --run <runId> --require-evidence
+```
+
+`--test` 可重复；只支持 Node 内置测试运行器的真实测试文件，不接收任意 shell 命令。VerifyReport 设置 `evidencePolicy: "local-execution-v1"`，test gate 的 `evidenceRefs` 引用本 run 的 `evidence-final.json`；其他名称的测试门禁设置 `evidenceKind: "test"`。严格模式不能通过 `--allow-missing` 绕过。
+
+记录绑定项目文件状态、实际命令和退出码、发现/执行/跳过数量、日志、时间与采集器来源；代码、测试或配置变化后旧记录失效。空测试、全 skip/TODO、失败和缺日志均不能建立 pass。项目链接仅记录链接本身，不读取外部目标；测试文件及祖先经过链接时拒绝执行。未适配框架保留实际报告并标明限制，不能伪装成不适用。
+
+保证仅为 `local-consistency-only`：同权限进程能同时改证据及哈希，字段或校验通过不构成可信执行证明，也不证明业务期望正确。可信裁判必须有执行者不能改写的独立边界。
+
+## 指标统计
 
 `metrics.json` 使用 `auto-metrics/v2`：技能来自 `skills`，门禁来自 `gateResults`；Quest 完成/失败数按最大 attempt 的结果统计，`completed` 与 `succeeded` 都计为完成。门禁通过率为 pass / 适用门禁（全部门禁减去 `not_applicable`，含 warning、skipped、pending），适用数为零时通过率为 null；`gates.applicable` 记录该分母，`gates.notApplicable` 单独计数。
 

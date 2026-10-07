@@ -4,7 +4,7 @@
 
 **Give Claude Code / Codex a "Super Commander" — say one sentence, watch AI walk through a 6-phase pipeline, and write what it learned into your project's memory.**
 
-[![npm version](https://img.shields.io/badge/version-0.52.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.53.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-why-use-it)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -26,7 +26,7 @@ AI (runs 6 phases automatically):
   1. SCAN       scan project + retrieve past experience
   2. PLAN       break into Quests + declare "won't-do" list
   3. EXECUTE    build quest by quest + live progress
-  4. VERIFY     pass through 18 quality gates
+  4. VERIFY     select applicable checks from 17 gate types
   5. SUMMARIZE  delivery report (NO auto-commit)
   6. LEARN      sediment traps/patterns to .auto/insights, auto-reused next time
 ```
@@ -50,7 +50,7 @@ Before installing auto-cli, you need:
 | Requirement | Why |
 | ----------- | --- |
 | **Claude Code** or **Codex** already installed and working | auto-cli is an instruction pack, **not** a standalone app |
-| **Node.js ≥ 18** + Git (Option B only) | Required for `npm run sync`; Option A (plugin) does not need Node for install |
+| **Node.js ≥ 18** + Git (Option B only) | Required for installer tooling and Node hooks; reading Markdown alone does not require it |
 
 > No Claude Code yet? Install and sign in via its official docs first, then come back.
 
@@ -129,12 +129,12 @@ Mechanisms checked on 2026-09-29; this is not an exclusivity claim or an effecti
 
 ### 7 workflow capabilities
 
-1. **Protocol-driven · 5 standard objects written to disk immediately** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` land in `.auto/runs/<runId>/`. Failures trace precisely to the failing Quest.
+1. **Protocol-driven · 5 standard objects written by phase** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` land in `.auto/runs/<runId>/`. Failures trace to the relevant Quest.
 2. **Knowledge loop · learns YOUR project over time** — every trap/pattern/decision sediments to `.auto/insights/`. Next SCAN **auto-reverse-queries by keyword and injects**. PHASE 4 `knowledge-reuse` gate enforces "actually reused".
-3. **Cross-session resumption · no need to re-explain** — when a run interrupts, `session-continuity.md` is written automatically. Next startup picks up with one line.
-4. **Quest-level failure rollback · doesn't drag the whole repo** — failing quest rolls back only its own files; completed quests stay intact.
+3. **Cross-session resumption** — when continuation is needed, save goals, evidence, remaining work and next steps in `session-continuity.md`.
+4. **Recovery by change ownership** — undo only changes attributable to the current run, preserving pre-existing user edits; retain the current state when ownership is unclear.
 5. **Adaptive validation gates** — multiple quality gates by strategy (stricter on hard tasks); missing evidence reflows. Not “lint passed = done”.
-6. **Context Engineering · manage AI attention budget** — green/yellow/red compression; long runs drift less.
+6. **Context Engineering · manage AI attention budget** — load on demand, preserve continuation records and check goals; quality and cost effects require measurement.
 7. **Loop engine · `/auto 5m <goal>`** — DOER+CHECKER on an interval; **needs host scheduler support**, otherwise falls back to one-shot (see main command docs).
 
 > Context relevance, business acceptance and feedback quality affect coding outcomes. Productivity gains require controlled comparisons with the native host; no speed multiplier is claimed.
@@ -169,7 +169,7 @@ flowchart LR
     end
 
     subgraph VERIFY[4 · VERIFY Gate]
-        V1[18 Gates]
+        V1[17 Gates]
         V2{All pass?}
     end
 
@@ -198,8 +198,8 @@ flowchart LR
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **SCAN**      | Check project's existing assets, look up past traps, judge complexity                                                              | Surveyor measures the house & checks records before renovation |
 | **PLAN**      | Break into quests, each declares what files to touch / NOT touch / how to verify                                                   | Draft blueprints with "load-bearing wall MUST NOT be touched"  |
-| **EXECUTE**   | Build quest by quest, write to disk every step. 3 anti-cheating mechanisms (file lock / expansion-word brake / no-shortcut pledge) | Workers follow blueprint, foreman watches constantly           |
-| **VERIFY**    | Run 18 gates one by one. MUST paste command output, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
+| **EXECUTE**   | Make small changes, preserve existing work, verify actual results and document necessary scope changes within authorization | Workers follow the agreed plan and inspect the result         |
+| **VERIFY**    | Select applicable checks from 17 gates and provide evidence, no "looks fine" allowed                                                        | Home inspection, every room photographed                       |
 | **SUMMARIZE** | Output human-readable summary. **No auto-commit** — commit power stays with YOU                                                    | Delivery checklist for YOUR signature                          |
 | **LEARN**     | Distill traps/patterns into LearnCards, dispatch to 5 files in `.auto/insights/`                                                   | Project retrospective, written to knowledge base               |
 
@@ -227,7 +227,7 @@ flowchart LR
 **What happens**:
 
 - SCAN identifies stack + reads `.auto/insights/traps.md` (avoids last time's "password not salted, rejected in review")
-- PLAN calls `brainstorming` to let you choose JWT/Session/OAuth; calls `test-plan-writer` for a 6-dim test matrix
+- PLAN follows the existing authentication contract; use `brainstorming` for real trade-offs and clarify only unresolved critical requirements; use `test-plan-writer` to select applicable tests
 - Auto breaks into 5 quests: Entity → Service → Controller → Tests → Verification
 - VERIFY runs build / test / lint / coverage / security (5 gates)
 - LEARN writes "Spring Boot password salting template" to `.auto/insights/patterns.md`
@@ -267,24 +267,15 @@ Open session B, type `/auto`:
 - Auto-shows "Last run paused at Quest 3/5 (Read done, waiting for Edit)"
 - Continues by default, **no need to re-explain the prior conversation**
 
-### Case 6 · Loop autonomous run (monitoring / self-heal / convergence)
+### Case 6 · Scheduled monitoring
 
-```bash
-/auto 5m watch CI until green, auto-fix on failure   # default budget $300 cap
-/auto 30m raise test coverage from 62% to 80%
-/auto 5m --budget 10000 refactor the whole module until tests pass  # allow up to $10000
-/auto 5m --budget unlimited keep watching production               # no cost cap (still bounded by 72h + CHECKER)
+```text
+/auto Check CI every 5 minutes for up to 1 hour; fix failures within the authorized scope
 ```
 
-**What happens**:
+Check actual scheduler availability, scope, cancellation and cumulative budget first; report a background task only after obtaining its task ID. Without a scheduler, report that limitation and complete the current available check. “Until complete” continues the current task without authorizing a schedule, spending limit or 72-hour run.
 
-- SCAN parses the interval → enters loop mode, activates the `loop-engineering` skill
-- Writes a loop contract first: goal + **measurable convergence criterion** (CI exit code 0 / coverage ≥ 80%) + budget (default maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h; `--budget` / `--max-time` override per-loop)
-- Schedules each iteration via `ScheduleWakeup` (in-session) or `CronCreate` (overnight, durable)
-- Each iteration runs a focused 6-PHASE pass → CHECKER runs the criterion command → progress: continue / regress: `git reset` + new strategy / met: stop
-- LEARN feeds back across iterations: last run's traps are auto-avoided next run, until convergence or budget exhaustion
-
-> If you can't write a measurable "done" criterion, loop won't start — a loop without a CHECKER is just a money burner.
+Use independent acceptance, actual execution and regression checks to decide completion. Exit zero or a coverage number alone is insufficient. Recovery affects only changes owned by the current iteration and preserves existing user work.
 
 ---
 
@@ -339,6 +330,8 @@ npm run sync
 | Claude Code | `~/.claude/` | commands + agents + skills + rules + hooks  |
 | Codex       | `~/.codex/`  | prompts + skills + `AGENTS.md` bridge layer |
 
+Both hosts preserve `skills/<name>/SKILL.md` and `references/`. Verification tools live under `<host>/auto-cli/scripts/`; ownership records and backups protect existing files. Unverifiable legacy files are retained.
+
 ### Option C · Offline tgz distribution (air-gapped)
 
 ```bash
@@ -358,7 +351,7 @@ npm run reinstall              # macOS / Linux / Git Bash
 scripts\reinstall.bat          # Windows
 ```
 
-Auto runs: pack → clean old resources → unpack new version → cleanup temp files.
+Updates the current source transactionally from its ownership manifest, preserving user files and backups. Does not uninstall the host CLI or fetch a registry release.
 
 ### Uninstall
 
@@ -437,32 +430,32 @@ node scripts/uninstall.js      # In unpacked tgz dir
 | `using-git-worktrees`   | Git Worktree multi-agent parallelism                                  |
 | `constitution`          | `.auto/constitution.md` hard-constraint carrier                       |
 | `incremental-review`    | End-of-session incremental review                                     |
-| `self-critique`         | Per-quest Reflexion self-correction                                   |
-| `quality-gates`         | VERIFY 18-gate definitions                                            |
+| `self-critique`         | Evidence-triggered acceptance review                                   |
+| `quality-gates`         | VERIFY 17-gate definitions                                            |
 | `knowledge-management`  | LEARN knowledge distillation + distribution + archive workflow        |
 | `protocol-validator`    | Protocol object schema / handoff completeness validation              |
 | `world-class-code-standards` | Quantified standards: cyclomatic complexity / coverage / tech debt |
 | `feedback-loop`         | I/O system self-verification loop (bot/daemon/CLI tools)              |
 | `agentless-repair`      | Two-phase bug repair (localization + multi-candidate filtering)       |
-| `predict-verify`        | Predict before impactful commands; wrong prediction = stop & rethink |
+| `predict-verify`        | Check expected state and side effects around consequential actions |
 | `loop-engineering`      | `/auto <interval>` autonomous loop (DOER + CHECKER)                   |
 
 </details>
 
-Each skill contains a `## Activation Summary` section, supporting 3-tier on-demand activation:
+Load skills progressively according to task relevance:
 
-- **Summary level** (match 3-4): read only ~20 lines → ~500 tokens
-- **Full level** (5-6): summary + relevant sub-sections on demand → ~2000 tokens
-- **Deep level** (7+): full + `references/` → ~5000 tokens
+- **Discover**: read names, descriptions or relevant indexes to determine whether the skill is needed.
+- **Apply**: load the instructions needed for the current task and reuse contracts already read.
+- **Investigate**: read `references/` only when the current problem requires them.
 
-Low-match skills only read 20-line summary, **saving up to ~80% context** (summary ~500 vs deep ~5000 tokens, per tier token estimates).
+Read relevant skill indexes first, then load the required instructions and references. Actual input and savings depend on the task and host; this project has no model comparison measurements yet.
 
 ### 23 Hooks (Claude Code automation)
 
 | Event                                     | Count | Key hooks                                                                   |
 | ----------------------------------------- | ----- | --------------------------------------------------------------------------- |
-| `PreToolUse`                              | 7     | TDD Guard / Git Push Review / **Auto-Snapshot** (non-destructive git stash) |
-| `PostToolUse`                             | 8     | Prettier+ESLint / type check / **Incremental Dirty Files**                  |
+| `PreToolUse`                              | 7     | TDD Guard / Git Push Review / **Auto-Snapshot** (isolated index, including untracked files) |
+| `PostToolUse`                             | 8     | Read-only format and lint checks / type check / **Incremental Dirty Files** |
 | `SessionStart`                            | 1     | Inject CLAUDE.md + constitution + last session-continuity                   |
 | `PreCompact` / `PostCompact`              | 2     | Context compression rescue                                                  |
 | `UserPromptSubmit`                        | 1     | Secret leak detection                                                       |
@@ -486,13 +479,15 @@ Every `/auto` run is forced to produce these, landing in `.auto/runs/<runId>/`:
 SCAN     → RouteDecision   routing decision (strategy + agent + budget + capability snapshot)
 PLAN     → QuestMap        quest map (quest list + outOfScope + acceptance commands)
 EXECUTE  → QuestResult     per-quest result (diff + validation + skill application evidence)
-VERIFY   → VerifyReport    gate report (18 gates × status + actual evidence)
+VERIFY   → VerifyReport    gate report (17 gates × status + actual evidence)
 LEARN    → LearnCard       experience card (dispatched by category to insights/)
 ```
 
 **Analogy**: factory assembly line work orders — each station consumes upstream standard parts, produces downstream standard parts. Failures locate precisely.
 
-### 18-Gate validation matrix
+### 17-Gate validation matrix
+
+These are candidate gates. Apply them to the current task, explain inapplicable items, and retain unverified status when evidence is missing.
 
 | Gate                     | Meaning                                | Explore | Fix | Implement | Refactor |
 | ------------------------ | -------------------------------------- | :-----: | :-: | :-------: | :------: |
@@ -500,13 +495,13 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 | `build`                  | Compile passes                         |    —    |  ✓  |     ✓     |    ✓     |
 | `test`                   | Tests pass                             |    —    |  ✓  |     ✓     |    ✓     |
 | `lint`                   | Code style                             |    —    |  —  |     ✓     |    ✓     |
-| `coverage`               | Coverage ≥ 80%                         |    —    |  —  |     ✓     |    ✓     |
+| `coverage`               | Project-defined coverage target        |    —    |  —  |     ✓     |    ✓     |
 | `security`               | Security review                        |    —    |  —  |     —     |    ✓     |
 | `adversarial`            | Red-team validation                    |    —    |  —  |     —     |    ✓     |
 | `self-verification`      | AI self-check (code)                   |    —    |  ✓  |     ✓     |    ✓     |
 | `world-class-standards`  | Cyclomatic / coverage quantification   |    —    |  ✓  |     ✓     |    ✓     |
 | `production-readiness`   | Production readiness standards         |    —    |  ✓  |     ✓     |    ✓     |
-| `self-critique`          | Reflexion self-correction (per quest)  |    —    |  —  |     ✓     |    ✓     |
+| `self-critique`          | Evidence-triggered acceptance review  |    —    |  —  |     ✓     |    ✓     |
 | `production-governance`  | Production governance loop             |    —    |  —  |     ✓     |    ✓     |
 | `protocol-validator`     | Protocol object completeness           |    —    |  ✓  |     ✓     |    ✓     |
 | `skill-activation`       | Skill application evidence             |    ✓    |  ✓  |     ✓     |    ✓     |
@@ -517,21 +512,21 @@ LEARN    → LearnCard       experience card (dispatched by category to insights
 
 **Core constraints** (across all gates):
 
-- **Run-Don't-Claim**: never say "tests passed" — must paste command + last 3 lines of output
-- **Predict-Then-Verify**: before running any verify command, predict the result first. Wrong prediction = wrong understanding, stop and fix understanding
+- **Run-Don't-Claim**: support pass claims with the actual command, exit code, execution counts and relevant output; check skips and final artifacts
+- **Predict-Then-Verify**: define expected state and side effects before consequential actions, then compare actual evidence and investigate meaningful differences
 - **Protocol pre-validation**: `protocol-validator` checks required fields, conditional fields, and failed-gate next steps before phase handoff
-- **Verification context isolation**: Claude Code may use subagents; Codex uses the main agent with minimal-context validation views by default, lowering hallucination risk and token cost
+- **Verification context isolation**: use actual host capabilities and authorization; distinguish independent acceptance criteria from model-generated content, and measure the effect
 
 ### Context Engineering
 
 | Mechanism                            | What it does                                             | Benefit                               |
 | ------------------------------------ | -------------------------------------------------------- | ------------------------------------- |
-| **3-zone budget** (green/yellow/red) | Auto-writes `session-continuity.md` on entering red zone | AI never "forgets"                    |
-| **Progressive disclosure**           | Skill 3-tier activation, low-match reads only 20 lines   | Save up to ~80% tokens                |
-| **Verification context isolation**   | Validation views receive only minimal context            | Less hallucination + lower token cost |
-| **Drift protection**                 | Echo the ask + reverse diff + expansion-word brake       | Long runs stay on mainline            |
-| **Knowledge distillation**           | LearnCards atomic (≤5 lines) + scope-tagged              | Reuse actually works                  |
-| **Run-level budget**                 | `maxIterations` 25 + `noProgressThreshold` 3             | Prevent runaway token burn            |
+| **Continuation records**            | Save goals, evidence and next steps when resuming is needed | Provide a basis for task recovery |
+| **Progressive disclosure**           | Read relevant indexes, then load required instructions | Reduce irrelevant context; savings unmeasured |
+| **Verification context isolation**   | Provide requirements, necessary code and independent acceptance criteria | Reduce circular validation; effect unmeasured |
+| **Drift checks**                     | Compare original goals, actual changes and authorized scope | Detect and address deviations |
+| **Knowledge distillation**           | Preserve sources, scope and confidence in LearnCards | Support evidence-based reuse |
+| **Execution limits**                 | Honor actual budgets and host limits; change approach when progress stalls | Control repeated execution cost |
 
 See `skills/context-engineering/SKILL.md` for details.
 

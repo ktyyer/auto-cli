@@ -1,14 +1,17 @@
 #!/bin/bash
-# Auto-clean old runs: 自动归档超过阈值天数的 run
-# 由 SessionStart Hook 调用，每次会话启动时自动检查
+# List old run candidates without moving files, including during SessionStart.
+# Archiving requires the main workflow to review active state, dependencies and paths.
 
 set -euo pipefail
 
 # 配置项（可通过环境变量覆盖）
 RETENTION_DAYS="${AUTO_CLEAN_RETENTION_DAYS:-30}"
-DRY_RUN="${AUTO_CLEAN_DRY_RUN:-false}"
 RUNS_DIR="${AUTO_RUNS_DIR:-.auto/runs}"
-ARCHIVE_DIR="${RUNS_DIR}/archive"
+# Historical AUTO_CLEAN_DRY_RUN=false is no longer permission to move artifacts.
+if [[ ! "$RETENTION_DAYS" =~ ^[1-9][0-9]{0,4}$ ]]; then
+  echo "[Auto-clean] AUTO_CLEAN_RETENTION_DAYS must be an integer from 1 to 99999" >&2
+  exit 1
+fi
 
 # 确保在 Git 仓库中
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
@@ -43,7 +46,7 @@ else
   fi
 fi
 
-archived_count=0
+candidate_count=0
 skipped_count=0
 
 # 遍历所有 run 目录
@@ -112,30 +115,15 @@ for run_dir in "$RUNS_DIR"/*; do
 
   # 检查是否超过阈值
   if [ "$run_ts" -lt "$threshold_ts" ]; then
-    # 创建 archive 目录（如果不存在）
-    mkdir -p "$ARCHIVE_DIR"
-
     age_days=$(( (current_ts - run_ts) / 86400 ))
-
-    if [ "$DRY_RUN" = "true" ]; then
-      echo "[DRY RUN] Would archive: $run_name (age: $age_days days)" >&2
-    else
-      # 移动到 archive
-      mv "$run_dir" "$ARCHIVE_DIR/"
-      echo "[Auto-clean] Archived: $run_name (age: $age_days days)" >&2
-    fi
-    archived_count=$((archived_count + 1))
+    echo "[Auto-clean] Candidate: $run_name (age: $age_days days; active-state and dependency review required)" >&2
+    candidate_count=$((candidate_count + 1))
   fi
 done
 
-# 输出摘要（仅在有归档时）
-if [ "$archived_count" -gt 0 ]; then
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "[Auto-clean] DRY RUN: Would archive $archived_count run(s) older than $RETENTION_DAYS days" >&2
-  else
-    echo "[Auto-clean] Archived $archived_count run(s) older than $RETENTION_DAYS days to $ARCHIVE_DIR" >&2
-    echo "[Auto-clean] Recover with: mv $ARCHIVE_DIR/run-<id> $RUNS_DIR/" >&2
-  fi
+# Listing is informational: it does not authorize archiving or establish run inactivity.
+if [ "$candidate_count" -gt 0 ]; then
+  echo "[Auto-clean] No files moved. Review $candidate_count candidate(s) in the authorized main workflow before archiving." >&2
 elif [ "$skipped_count" -gt 0 ]; then
   echo "[Auto-clean] Skipped $skipped_count run(s) (unable to parse timestamp)" >&2
 fi

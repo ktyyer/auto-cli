@@ -1,6 +1,6 @@
 ---
 name: quality-gates
-description: VERIFY 门禁定义 — 18 个 gate 的详细触发条件、验证逻辑、输出格式和处置规则。VERIFY Phase 执行门禁时按需加载对应 gate 定义，不预加载全量。
+description: VERIFY 门禁定义 — 17 个 gate 的适用条件、证据标准与处置规则。按当前变更风险加载相关定义；实际执行、独立期望与反例证据不能由退出码、自评分或结构完整性替代。
 tags:
   - verify
   - gate
@@ -11,24 +11,26 @@ tags:
 
 # Quality Gates — VERIFY 门禁定义
 
-> auto.md 只保留各策略的必需 gate 清单表，本文件提供每个 gate 的完整定义。
+共享语义见 [执行契约](../production-governance/references/workflow-contract.md) 的证据回路；阶段边界与实际工具见同目录的 workflow-phases.md、host-adapters.md。本文件细化现有 taxonomy，不新增平行 gate。
 
 ## 激活摘要 (Activation Digest)
 
 **检查清单** (checklist):
 
-- [ ] 按当前策略查"各策略必需 gate"表，确定本次必检 gate 集合
+- [ ] 按当前策略与实际变更风险确定本次适用 gate，记录不适用项的理由
 - [ ] 按需加载对应 gate 的详细定义（不预加载全量 17 个）
-- [ ] 每个 gate 输出 `status` + `evidence`（实际命令 + 输出，不接受"看起来没问题"）
+- [ ] 每个 gate 输出 `name` + `status` + `evidence`；实际执行附命令与输出，规则审查附来源与位置
 - [ ] 任一 gate fail 必须同时给出 `recommendedNext`
-- [ ] gate 状态与 verify-report.md 同步收口（命令已 PASS 的 gate 不得仍标 pending）
+- [ ] gate 状态与 verify-report.md 同步；实际验收完成才移除 pending，不从命令 exit 0 直接推导 pass
 
 **硬约束** (constraints):
 
-- 实测优先于断言：任何验证声明必须附实际命令 + 输出
+- 实测优先于断言：声称执行过必须附真实命令与输出；文档/规则审查引用已读事实，不虚构命令
 - 业务验收须附独立规则来源与版本；仅模型生成的测试或 mutation 结果不能证明业务预期正确。来源缺失且影响结论时标未验证，不得写 pass。
-- 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行探索 gate 集
+- 简单探索可压缩为原问题与证据核对；结构化探索按下表评估相关 gate，不能无依据宣布全部通过
 - `knowledge-distribution` 收口检查归属 LEARN（VERIFY 时 LearnCard 尚未产出，时序上不可能通过）：LearnCard 未分发到 `.auto/insights/` 即 run 收口 fail，由 `knowledge-management` skill 执行
+- 状态使用 `pass | fail | warning | skipped | pending | not_applicable`；不适用须有理由，必需验证因环境缺失未执行不能伪装成不适用。存在 fail/pending 时整体不能 pass，但允许如实失败/部分完成总结。
+- 运行证据绑定 run/quest/cwd、相关产物状态、命令自身退出码、输出、时间与来源。相关代码/测试/配置改动后重新验证；本地可写记录只声明本地一致性。
 
 **反模式** (anti-patterns):
 
@@ -40,11 +42,13 @@ tags:
 
 `analysis` | `build` | `test` | `lint` | `coverage` | `security` | `adversarial` | `self-verification` | `world-class-standards` | `production-readiness` | `self-critique` | `production-governance` | `protocol-validator` | `skill-activation` | `knowledge-reuse` | `clean-state` | `cost`
 
-## 各策略必需 gate
+下文 JSON 展示单项检查字段，不是可原样复制的完成记录。写入 VerifyReport 时补全当前 evidence；fail 补 recommendedNext，最终对象由 protocol-validator 校验。涉及未知测量时，不得采用示例中的 pass 或数字。
 
-> 探索策略走快速通道时跳过全部 gate；仅结构化分析路径执行以下 gate。
+## 各策略 gate 选择
 
-| 策略 | 必需 gate                                                                                                                                                                                                                                                                       |
+下表为候选集合，不要求不适用的检查实际执行。实现/重构保留 production-governance 与协议核对；应用 build/test/coverage、容量、运维按本次交付判断。纯 Markdown 修改使用结构、引用、协议及安装验证，不为凑门禁创建应用测试。self-critique 没有触发信号时可附理由记 not_applicable。
+
+| 策略 | 候选 gate                                                                                                                                                                                                                                                                       |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 探索 | `analysis` + `skill-activation`(evidence: read-only) + `knowledge-reuse`(evidence: analysis-only) + `clean-state`                                                                                                                                                               |
 | 修复 | `build` + `test` + `self-verification` + `world-class-standards` + `production-readiness` + `protocol-validator` + `skill-activation` + `knowledge-reuse`(evidence: relevant) + `clean-state`                                                                                   |
@@ -55,7 +59,7 @@ tags:
 
 ## `self-verification` gate
 
-**触发**：策略 = 修复/实现/重构，每个 QuestResult 产出后自动触发。
+**触发**：修复/实现/重构的相关实现与验收核对；复用已有检查，新增变更、失败或未解疑点才扩大验证，不机械重复所有检查。
 
 **验证维度**：语法正确性 | 逻辑一致性 | 边界值覆盖 | 错误处理 | 性能影响
 
@@ -63,14 +67,14 @@ tags:
 
 ```json
 {
-  "gate": "self-verification",
+  "name": "self-verification",
   "status": "pass | warning | fail",
   "issues": [
     {
       "severity": "critical | high | medium | low",
       "category": "syntax | logic | boundary | error-handling | performance",
       "description": "具体问题描述",
-      "autoFixed": true | false,
+      "autoFixed": false,
       "location": "file:line"
     }
   ],
@@ -84,11 +88,11 @@ tags:
 
 ## `world-class-standards` gate
 
-**触发**：策略 = 实现/重构，每个 QuestResult 产出后自动触发（与 self-verification 并行）。
+**触发**：代码变更需要复杂度、维护性或覆盖率审查时；纯文档或无适用测量的项目说明范围，不机械运行代码指标工具。
 
 **验证维度**：圈复杂度 | 认知复杂度 | 函数长度 | 文件长度 | 嵌套层数 | 重复代码率 | 测试覆盖率 | 问题严重级别
 
-**量化阈值**：
+**量化参考**（优先项目实际规则；只有已确认适用的阈值才作为门槛，不从模型估算判定）：
 
 - 圈复杂度 ≤ 10（每个函数）
 - 认知复杂度 ≤ 15（每个函数）
@@ -100,11 +104,11 @@ tags:
 - 严重问题 = 0
 - 高优先级问题 ≤ 2
 
-**输出格式**：
+**输出格式**（以下数字仅示意结构；实际缺少测量时用 null/unknown，不复制为结果）：
 
 ```json
 {
-  "gate": "world-class-standards",
+  "name": "world-class-standards",
   "status": "pass | warning | fail",
   "metrics": {
     "complexity": {
@@ -130,15 +134,15 @@ tags:
 
 **处置**：
 
-- pass：评级 ≥ A（所有指标达标）→ 继续
-- warning：评级 B（部分指标接近阈值）→ 记录放行 + 建议优化
-- fail：评级 ≤ C 或严重问题 > 0 → 回流 EXECUTE
+- pass：适用的项目约束与验收均有证据 → 继续
+- warning：非关键指标或测量存在已声明限制 → 记录影响
+- fail：实际违反必要约束或存在严重问题 → 回流 EXECUTE
 
 **硬约束**：
 
-- 圈复杂度 > 15 → 必须重构（不可放行）
-- 严重问题 > 0 → 必须修复（不可放行）
-- 测试覆盖率 < 70% → 必须补充测试
+- 严重问题须修复；项目明确规定的指标不得悄悄降低。
+- 通用复杂度/行数/覆盖率建议是调查信号，不能无视业务正确性或为评分重构无关代码。
+- 覆盖率需来自当前产物的真实报告；没有适用工具时保留未验证状态，不编造数值或等级。
 
 **详细定义**: 见 `skills/world-class-code-standards/SKILL.md`
 
@@ -146,24 +150,24 @@ tags:
 
 ## `self-critique` gate
 
-**触发**：策略 = 实现/重构，每关完成后立即触发。产出 `.auto/runs/<runId>/quest-<N>-critique.md`。
+**触发**：简短目标核对发现验收差异、范围漂移、失败证据或高影响未知项，或用户明确要求逐关复核。复用 QuestResult/VerifyReport，不强制每关独立文件。
 
 **与 self-verification 的差异**：
 
-| Gate              | 关注层次                                 | 输出                              |
-| ----------------- | ---------------------------------------- | --------------------------------- |
-| self-verification | 代码语法/逻辑/边界/错误处理              | 代码缺陷修正                      |
-| self-critique     | 本关是否真满足 objective（主线漂移防范） | 达成度评分 + 盲点 + 是否回退 PLAN |
+| Gate              | 关注层次                                 | 输出                      |
+| ----------------- | ---------------------------------------- | ------------------------- |
+| self-verification | 代码语法/逻辑/边界/错误处理              | 代码缺陷修正              |
+| self-critique     | 本关是否真满足 objective（主线漂移防范） | 实际差异与证据 + 后续动作 |
 
-**验证维度**：objective 满足度 | 盲点暴露（≥1 条「最不放心的事」）| outOfScope 合规 | 达成度自评分（仅参考信号）
+**验证维度**：objective 与 diff 的对应关系 | 未解决验收 | 范围与授权 | 影响结论的未知项。不要求评分或补一条盲点。
 
 **处置**：
 
-- pass：acceptance 全部满足且盲点已处理 → 继续
-- warning：存在已声明的次要盲点但不影响 acceptance → 记录放行
-- fail：acceptance 存在未满足项或 outOfScope 违规 → 修补或回流 PLAN（自评分不构成量化放行/阻断门槛）
+- pass：触发差异已处理且相关验收有当前证据 → 继续
+- warning：次要未知项已声明且不影响必要 acceptance → 记录影响
+- fail：必要 acceptance 未满足或目标偏移未解决 → 修补或回流 PLAN
 
-**跳过**：策略=探索；策略=修复且单关 < 20 行。
+**不适用**：没有深入自纠信号，简短目标核对无异常。授权内必要关联修改记 scope-expand 后继续，不自动重新询问；缺证据允许失败总结。
 
 ---
 
@@ -179,7 +183,7 @@ tags:
 
 ```json
 {
-  "gate": "production-governance",
+  "name": "production-governance",
   "status": "pass | warning | fail",
   "goalDrift": "none | minor | major",
   "artifactTruth": "pass | warning | fail",
@@ -196,17 +200,19 @@ tags:
 | warning | 轻微目标偏移或非关键证据缺失，但不影响交付判断                      | 记录放行         |
 | fail    | `goalDrift=major`、关键工件缺失、未知状态被当成功、生产级任务缺证据 | 回流 PLAN/VERIFY |
 
-**反馈写入**：skill 被激活但无应用证据时，`.auto/feedback/skills.json` 中对应 skill 的 `evidence_missing_count` +1；治理 gate 失败时 `governance_fail_count` +1。
+**反馈写入**：按 knowledge-management 契约记录真实观察并按 runId 幂等更新；unknown 不算失败、不进成功率分母，重复核对不能重复累加。
 
 ---
 
 ## `adversarial` gate
 
-**触发**：策略 = 实现/重构，每关完成后由 `verification` agent 执行（红蓝对抗）。
+**触发**：按实际变更风险选择反例。默认可由主执行者运行；仅在有授权、独立性有价值且工具可用时委派，不能将自检伪称独立验证。
 
 **验证维度**：边界值攻击 | 并发场景 | 幂等性验证 | 异常路径覆盖 | 注入攻击 | **容量/伸缩性**
 
 **对抗场景**（按风险选择：凡与本次变更风险相关的都必须覆盖，选中/不选均写明风险依据，无相关的记 `not_applicable` 并在 evidence 写明理由；不固定凑数量，通常 2-4 类；涉及数据/集合/I/O 的任务必须包含容量探针）：
+
+高保障任务逐项处理以下六类场景，适用项执行，不适用项说明理由；强化任务明确 A/B/C 三链结论，不用场景数量替代覆盖依据。
 
 1. **边界值攻击** — 0, -1, null, undefined, 空字符串, 超长字符串 (10MB), MAX_INT, MIN_INT, Infinity, NaN
 2. **并发场景** — 并行请求同一接口，检查竞态条件、重复创建、数据损坏
@@ -217,7 +223,7 @@ tags:
 
 ```json
 {
-  "gate": "adversarial",
+  "name": "adversarial",
   "status": "pass | warning | fail",
   "attacks": [
     {
@@ -274,35 +280,29 @@ tags:
 - 并发导致数据重复/损坏 → 必须加锁或幂等性保证
 - 注入攻击成功 → 必须修复（不可放行）
 
-**调用方式**：
-
-```markdown
-Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderService.createOrder")
-```
-
-**详细定义**: 见 `agents/verification.md`
+**执行方式**：使用当前宿主真实工具；验证提示提供独立规则、当前产物与风险场景。mutation 仅在隔离副本进行，记录是否等价；有限反例通过不能证明业务规则完整。Codex 不依赖 `agents/` 定义。
 
 ---
 
 ## `production-readiness` gate
 
-**触发**：策略 = 实现/重构，每个 QuestResult 产出后自动触发（与 self-verification 并行）。
+**触发**：本次交付涉及服务运行、部署或外部 I/O 时，检查实际适用的运行风险；无运行系统的文档改动说明不适用。
 
 **验证维度**：错误处理 | 配置管理 | 日志规范 | 安全头 | 边界值验证
 
-**核心检查清单**（5 项强制）：
+**核心检查清单**（按系统类型适用，不固定凑齐五项）：
 
-1. **错误处理完整** — 无裸 try-catch，所有异常必须记录日志 + 返回用户友好错误
+1. **错误处理完整** — 错误被正确传播、处理或记录，不能吞掉失败；不要求每层重复日志
 2. **无硬编码配置** — 数据库连接、API Key、环境特定配置必须走环境变量
-3. **日志结构化** — JSON 格式 + correlationId + timestamp + level
-4. **安全头完整** — HTTP 响应必须包含 HSTS / CSP / X-Frame-Options
+3. **日志可诊断** — 服务按项目规范提供结构化字段、关联标识与级别，不向用户泄露敏感信息
+4. **安全头适用** — HTTP 服务按内容类型、TLS 与部署方式检查实际响应，CLI/纯文档不适用
 5. **边界值验证** — 所有外部输入必须验证（长度、类型、范围、格式）
 
-**输出格式**：
+**输出格式**（示例字段与定位命令不是运行证据；需用真实响应、测试或配置生效检查补全）：
 
 ```json
 {
-  "gate": "production-readiness",
+  "name": "production-readiness",
   "status": "pass | warning | fail",
   "checks": {
     "errorHandling": {
@@ -343,14 +343,14 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 **处置**：
 
-- pass：5 项全部通过 → 继续
+- pass：适用项目全部通过且有证据 → 继续
 - warning：有硬编码但非敏感信息（如默认端口）→ 记录放行 + 建议修复
 - fail：任一项严重违规（硬编码密钥、无错误处理、无输入验证）→ 回流 EXECUTE
 
 **硬约束**：
 
 - 硬编码密钥/密码 → 必须修复（不可放行）
-- 无错误处理的外部调用 → 必须加 try-catch
+- 外部调用失败无法正确处理或传播 → 修复错误路径，不能只机械包 try-catch
 - 无输入验证的 API 端点 → 必须加验证
 
 **详细定义**: 见 `skills/production-standards/SKILL.md`
@@ -373,17 +373,19 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 | warning | 仅 optional 字段缺失或非阻断字段不完整         | 记录放行                |
 | fail    | 缺少必填字段、条件字段或失败项 recommendedNext | 回流对应上游 Phase 补全 |
 
+此 gate 的 pass 仅证明协议结构符合要求，不能替代其他 gate 的业务、执行或证据新鲜性判定。
+
 ---
 
 ## `skill-activation` gate
 
-**验证逻辑**：对每个激活 Skill（top-3）检查 QuestResult.validations 中的证据条目。每条证据须包含 skill 名称 + 提取要素 + 代码位置/决策点。
+**验证逻辑**：对本轮实际应用的 Skill 检查 QuestResult.validations 中的证据条目。每条证据包含 skill 名称、应用规则与代码位置/决策点；只读过索引不等于应用，无关 skill 不为凑数量激活。
 
-| 结果    | 条件                             | 处置         |
-| ------- | -------------------------------- | ------------ |
-| pass    | 所有激活 Skill 均有 ≥1 条证据    | 继续         |
-| warning | ≤50% 缺少证据但核心 Skill 已应用 | 记录放行     |
-| fail    | >50% 无证据或核心 Skill 未应用   | 回流 EXECUTE |
+| 结果    | 条件                                     | 处置         |
+| ------- | ---------------------------------------- | ------------ |
+| pass    | 所有激活 Skill 均有 ≥1 条证据            | 继续         |
+| warning | 非关键应用证据缺失，已说明影响           | 记录限制     |
+| fail    | 必要规则未应用并影响验收，或伪造应用证据 | 回流对应阶段 |
 
 **跳过**：探索模式且无激活 Skill。
 
@@ -413,8 +415,8 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 | 结果    | 处置                                   |
 | ------- | -------------------------------------- |
 | pass    | 有注入的 insight 且 EXECUTE 有参考证据 |
-| warning | 首次未达标，记录但放行                 |
-| fail    | 同项目/同关键词组连续 2 次未达标       |
+| warning | 相关性或复用效果未知，记录原因         |
+| fail    | 忽略适用硬约束导致当前验收失败         |
 
 **跳过**：RouteDecision.notes.relevantInsights 为空。
 
@@ -422,13 +424,13 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 ## `knowledge-distribution` 收口检查（LEARN 期执行，非 VERIFY gate）
 
-**验证逻辑**：核对 LearnCard 是否已从 `learn-cards.md` 分发（Edit append）到 `.auto/insights/` 对应文件。只停留在 `learn-cards.md` 未 append = 未分发。
+**验证逻辑**：有新增 LearnCard 时，按 knowledge-management 查重后分发或合并到 `.auto/insights/`，记录实际目标。无新增经验可明确说明，不为分发数量制造卡片。
 
 **验证步骤**：
 
 1. Read `learn-cards.md`，提取所有 `category` 字段
-2. 对每张有 category 的 LearnCard，Grep 其 `title` 在对应 insights 文件中是否存在
-3. 未找到 → 未分发
+2. 检查目标内容、来源 run 与实际合并结果，标题命中仅作定位
+3. 未分发的必要记录 → 补写或记录真实失败；不得用复制标题冒充内容已分发
 
 **分发清单（硬约束）**：
 
@@ -442,9 +444,9 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 | 结果    | 条件                                            | 处置       |
 | ------- | ----------------------------------------------- | ---------- |
-| pass    | 所有 LearnCard 已 append 到对应文件             | 关闭 run   |
-| warning | <50% 未分发但全部 trap/critical decision 已分发 | 记录放行   |
-| fail    | ≥50% 未分发或任意 trap 未进 traps.md            | 当场补分发 |
+| pass    | 新知识已写入/合并且来源可追溯，或明确无新增知识 | 关闭 run   |
+| warning | 非必要分发存在限制且实际影响已声明              | 记录限制   |
+| fail    | 必要记录遗漏、来源丢失或分发结果被虚报          | 当场补分发 |
 
 **最小 append 格式**：
 
@@ -464,10 +466,10 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 1. startupAndTestsPass — 启动验证命令通过
 2. progressLogReflectsReality — quest-status.json 与实际代码状态一致
-3. noHalfFinishedWorkRemains — 无孤立变更
+3. noHalfFinishedWorkRemains — 本任务无未解释的半成品；用户原有变更保留并区分归属
 4. repoRestartableViaStandardPath — 新会话可标准路径启动
 
-**处置**：4 项全 pass → 关闭 run | 1-2 项 false 但非关键 → warning 放行 | 关键项 false → 阻断 LEARN
+**处置**：适用项目有证据且交付可解释 → pass；次要限制 → warning；关键项未满足 → fail，不能宣称完成，但仍可失败总结与 LEARN。clean-state 不要求 Git 干净，不得为此提交、stash、reset 或清理用户既有修改。
 
 ---
 
@@ -479,24 +481,26 @@ Agent(subagent_type: "verification", prompt: "对抗性验证 Quest 3 的 orderS
 
 ## `build` / `test` / `lint` / `coverage` / `security` / `adversarial` / `cost` gates
 
-**通用模式**：运行对应命令（如 `npm run build`、`npm test`、`npm run lint`），收集输出，判定 pass/warning/fail。
+**通用模式**：先定位项目真实命令与适用规则，运行并收集命令自身输出、退出码、产物状态及来源。不存在对应命令时说明不适用或验证缺口，不能假定 npm 脚本存在。
 
 **关键规则**：
 
-- 实测优先于断言（Run-Don't-Claim）：必须附带实际命令 + 输出尾部 ≥3 行作为 evidence
-- 预测后验证（Predict-Then-Verify）：跑命令前先预测结果，预测错 = 理解错，必须停下修理解
+- evidence 保留能支撑结论的真实输出与完整日志指针，不为满足行数补写输出。
+- test 还检查非空发现/执行数量、失败、skip 与回归；exit 0、全部跳过、过期记录或日志中的 passed 均不能单独放行。
+- coverage 读取当前实际报告，数值达标不能替代行为验收；cost 无遥测写 null/unknown，不把估算当已授权支出。
+- 重要影响命令先说明预期；结果不符时调查原因，不凭预测本身判定成功或失败。
 
 ---
 
 ## Phase 交接自检原则
 
-以下自检在各 Phase 关键节点触发。严重命中需回流加固。
+以下问题是风险相关的核对提示，不是每关固定问卷；只记录实际发现与来源。重大偏差回流，已授权范围内的必要修补自主继续。
 
-| 节点           | 自检项                                                                                                                                                               |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SCAN → PLAN    | `[C]` 自己用会满意？回避了最痛边角？ `[P]` 有更小版本？ `[A]` 触及哪些架构边界？                                                                                     |
-| PLAN → EXECUTE | `[A]` SOLID/单一职责？ `[P]` 每关有用户价值？ `[T]` 6维矩阵？ `[D]` acceptance 可执行？ `[C]` 满足用户原话？                                                         |
-| EXECUTE 每关后 | `[D]` 变更可追溯？错误处理覆盖？ `[B]` SQL参数化？N+1？ `[O]` graceful shutdown？ `[T]` 红灯先行？                                                                   |
-| VERIFY 后      | `[C]` 最丑输入？反例覆盖？ `[T]` coverage≥80%？并发？ `[B]` 数据迁移可回滚？ `[O]` 监控埋点？ `[A]` 无必要抽象？                                                     |
-| SUMMARIZE 前   | `[C]` 用户原话被满足？ `[P]` 核心指标变好？                                                                                                                          |
-| LEARN 前       | `[C]` 哪刻差点偷懒？ `[P]` 用户洞察被忽略？ `[A]` 架构决策值得复用？ `[D]` 技巧值得固化？ `[T]` 测试漏检？ `[B]` 数据问题？ `[O]` 生产问题？每命中产出一张 LearnCard |
+| 节点           | 自检项                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| SCAN → PLAN    | `[C]` 自己用会满意？回避了最痛边角？ `[P]` 有更小版本？ `[A]` 触及哪些架构边界？                                 |
+| PLAN → EXECUTE | `[A]` SOLID/单一职责？ `[P]` 每关有用户价值？ `[T]` 6维矩阵？ `[D]` acceptance 可执行？ `[C]` 满足用户原话？     |
+| EXECUTE 每关后 | `[D]` 变更可追溯？错误处理覆盖？ `[B]` SQL参数化？N+1？ `[O]` graceful shutdown？ `[T]` 红灯先行？               |
+| VERIFY 后      | `[C]` 最丑输入？反例覆盖？ `[T]` coverage≥80%？并发？ `[B]` 数据迁移可回滚？ `[O]` 监控埋点？ `[A]` 无必要抽象？ |
+| SUMMARIZE 前   | `[C]` 用户原话被满足？ `[P]` 核心指标变好？                                                                      |
+| LEARN 前       | 有哪些可复用的新事实、失效假设或验收遗漏？仅对有来源的新结论写/合并 LearnCard，无新增则说明                      |

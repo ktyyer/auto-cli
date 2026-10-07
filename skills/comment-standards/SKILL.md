@@ -98,7 +98,7 @@ async function batchInsert(items: Item[]) { ... }
 
 公共 API（export 的函数/类/接口）必须有文档注释，含：一句话摘要 + @param + @returns + @throws（条件）+ @example（推荐）
 
-> 完整的多语言示例（TypeScript/Python/Go）→ `comment-standards.references/examples.md`
+> 完整的多语言示例（TypeScript/Python/Go）→ `references/examples.md`
 
 ---
 

@@ -132,7 +132,7 @@ tags: [refactoring, code-health, design-improvement, extract-method, split-file,
 
 ## 按需加载
 
-> 具体手法详解 + 代码示例 → `refactoring-patterns.references/techniques.md`
+> 具体手法详解 + 代码示例 → `references/techniques.md`
 
 ---
 

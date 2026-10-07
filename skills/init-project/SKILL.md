@@ -55,7 +55,7 @@ tags: [init, setup, claude-md, project-context, onboarding]
 
 ### 方式 2：手动参考模板
 
-按需加载 7 板块完整模板 → `init-project.references/template-blocks.md`
+按需加载 7 板块完整模板 → `references/template-blocks.md`
 
 ---
 
@@ -71,7 +71,7 @@ tags: [init, setup, claude-md, project-context, onboarding]
 | 6   | AI 行为约束       | **必填** | 明确红线避免破坏性操作               |
 | 7   | 已知问题/待办     | 可选     | AI 修改相关代码时主动考虑约束        |
 
-> 完整代码块模板 → `init-project.references/template-blocks.md`
+> 完整代码块模板 → `references/template-blocks.md`
 > 快速启动最小模板 → 同上文件末尾「快速启动模板」节
 
 ---

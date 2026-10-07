@@ -113,7 +113,7 @@ MyBatis Plus: orderItemService.saveBatch(items, 500)
 ## 按需加载
 
 > React 渲染优化、组件懒加载、列表虚拟化、异步并行、防抖节流、内存管理、性能检测工具
-> → `performance-patterns.references/react-and-general.md`
+> → `references/react-and-general.md`
 
 ---
 

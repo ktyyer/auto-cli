@@ -1,131 +1,23 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { detectTools } from './manifest.js';
+import { SOURCE_ROOT } from './install-plan.js';
+import { prepareUninstall, applyPlans } from './managed-install.js';
 
-/**
- * Auto CLI 卸载脚本
- * 移除所有检测到的工具目录（Claude Code ~/.claude/ + Codex ~/.codex/）下
- * 由 install.js 安装的文件。
- *
- * 用法：
- *   node scripts/uninstall.js
- */
-
-import fs from 'fs';
-import path from 'path';
-import {
-  CODEX_MANAGED_FILES,
-  MANAGED_FILES,
-  detectTools,
-} from './manifest.js';
-
-let removed = 0;
-
-function removeIfExists(filePath) {
-  if (fs.existsSync(filePath)) {
-    fs.rmSync(filePath, { recursive: true, force: true });
-    removed++;
+try {
+  if (!fs.existsSync(path.join(SOURCE_ROOT, 'commands/auto.md')))
+    throw new Error('Uninstall requires the complete Auto CLI source package');
+  const plans = detectTools().map(prepareUninstall);
+  const count = applyPlans(plans);
+  console.log(`Uninstalled: ${count} changes; personal files, backups and configuration preserved`);
+  for (const plan of plans) {
+    if (plan.retained.length)
+      console.log(
+        `${plan.tool.name}: retained ${plan.retained.length} modified or unverified files; see auto-cli/install-manifest.json`
+      );
   }
-}
-
-function removeAutoCliHooksFromSettings(settingsPath) {
-  if (!fs.existsSync(settingsPath)) return;
-
-  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-  if (!settings.hooks) return;
-
-  let changed = false;
-  for (const [event, entries] of Object.entries(settings.hooks)) {
-    const filtered = entries.filter((e) => e._source !== 'auto-cli');
-    if (filtered.length !== entries.length) {
-      settings.hooks[event] = filtered;
-      changed = true;
-    }
-    if (settings.hooks[event].length === 0) {
-      delete settings.hooks[event];
-    }
-  }
-  if (Object.keys(settings.hooks).length === 0) {
-    delete settings.hooks;
-  }
-
-  if (changed) {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
-  }
-}
-
-console.log('Auto CLI 卸载');
-console.log('');
-
-const tools = detectTools();
-
-if (tools.length === 0) {
-  console.log('未检测到 Claude Code (~/.claude/) 或 Codex (~/.codex/)。');
-  console.log('无需卸载。');
-  process.exit(0);
-}
-
-console.log(
-  `检测到: ${tools.map((t) => (t.name === 'claude' ? 'Claude Code' : 'Codex')).join(' + ')}`,
-);
-console.log('');
-
-for (const tool of tools) {
-  const dir = tool.dir;
-
-  if (tool.name === 'claude') {
-    // Claude: use MANAGED_FILES list
-    for (const { dir: managedDir, files, subdirs } of MANAGED_FILES) {
-      for (const file of files) {
-        removeIfExists(path.join(managedDir, file));
-      }
-      if (subdirs) {
-        for (const sub of subdirs) {
-          removeIfExists(path.join(managedDir, sub));
-        }
-      }
-    }
-
-    // 清理 backup 残留
-    for (const { dir: managedDir } of MANAGED_FILES) {
-      if (!fs.existsSync(managedDir)) continue;
-      const entries = fs.readdirSync(managedDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.name.includes('.backup.')) {
-          fs.unlinkSync(path.join(managedDir, entry.name));
-          removed++;
-        }
-      }
-    }
-
-    // 从 settings.json 精准移除 auto-cli hooks（保留用户自定义 hooks）
-    removeAutoCliHooksFromSettings(path.join(dir, 'settings.json'));
-    console.log('  settings.json: auto-cli hooks 已移除（用户自定义 hooks 保留）');
-  } else {
-    // Codex: remove AGENTS.md, prompts/auto.md, prompts/auto/, skills/<skillName>/
-    for (const rootFile of CODEX_MANAGED_FILES.rootFiles || []) {
-      removeIfExists(path.join(dir, rootFile));
-    }
-
-    const promptsDir = path.join(dir, 'prompts');
-    for (const promptFile of CODEX_MANAGED_FILES.prompts) {
-      removeIfExists(path.join(promptsDir, promptFile));
-    }
-    for (const promptDir of CODEX_MANAGED_FILES.promptDirs) {
-      removeIfExists(path.join(promptsDir, promptDir));
-    }
-
-    const skillsDir = path.join(dir, 'skills');
-    if (fs.existsSync(skillsDir)) {
-      for (const skillName of CODEX_MANAGED_FILES.skills) {
-        removeIfExists(path.join(skillsDir, skillName));
-      }
-    }
-  }
-}
-
-console.log(`卸载完成: 已移除 ${removed} 项`);
-if (tools.some((t) => t.name === 'claude')) {
-  console.log('~/.claude/ 目录保留（可能包含其他配置）');
-}
-if (tools.some((t) => t.name === 'codex')) {
-  console.log('~/.codex/ 目录保留（可能包含其他配置）');
+} catch (error) {
+  console.error(`Uninstall failed: ${error.message}`);
+  process.exitCode = 1;
 }

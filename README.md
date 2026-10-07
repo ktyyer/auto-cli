@@ -4,7 +4,7 @@
 
 **给 Claude Code / Codex 装一个"超级司令官" — 一句话需求，自动走完 6 步流水线，并把这次的经验写进项目记忆。**
 
-[![npm version](https://img.shields.io/badge/version-0.52.0-blue.svg)](./CHANGELOG.md)
+[![npm version](https://img.shields.io/badge/version-0.53.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Pure Markdown](https://img.shields.io/badge/runtime-pure%20markdown-orange.svg)](#-为什么用它)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-native-purple.svg)](https://claude.com/claude-code)
@@ -26,7 +26,7 @@ AI（自动走 6 步）：
   1. SCAN     扫项目 + 查历史经验
   2. PLAN     拆 Quest + 列「不做清单」
   3. EXECUTE  逐关施工 + 实时进度
-  4. VERIFY   过 18 道质检关
+  4. VERIFY   按适用条件选择 17 类质检关
   5. SUMMARIZE 交付清单（不自动 commit）
   6. LEARN    踩坑/模式写进 .auto/insights，下次自动复用
 ```
@@ -50,7 +50,7 @@ AI（自动走 6 步）：
 | 你需要 | 说明 |
 | ------ | ---- |
 | **Claude Code** 或 **Codex** 已安装并能对话 | auto-cli 是指令包，**不是**独立 App；没有宿主则 `/auto` 无处运行 |
-| （方式 B）**Node.js ≥ 18** + Git | 仅源码 `npm run sync` 需要；插件方式 A 不强制本机 Node |
+| （方式 B）**Node.js ≥ 18** + Git | 安装工具与 Node hooks 需要；仅阅读 Markdown 不需要 |
 
 > 还没有 Claude Code？先完成其官方安装与登录，再回到本页。
 
@@ -129,12 +129,12 @@ Auto CLI 是基于宿主原生能力的编码工作流增强层：用 `/auto` �
 
 ### 7 项工作流能力
 
-1. **协议驱动 · 5 个标准对象立刻写盘** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` 落到 `.auto/runs/<runId>/`，失败可精确回溯到具体 Quest。
+1. **协议驱动 · 5 个标准对象按阶段写盘** — `RouteDecision` / `QuestMap` / `QuestResult` / `VerifyReport` / `LearnCard` 落到 `.auto/runs/<runId>/`，失败可回溯到具体 Quest。
 2. **知识闭环 · 越用越懂你的项目** — 每次踩坑/模式/决策沉淀到 `.auto/insights/`，下次 SCAN **按关键词自动反查注入**，PHASE 4 `knowledge-reuse` gate 强制验证"真复用了"。
-3. **跨会话续接 · 不需要把上次对话再讲一遍** — run 中断时自动写 `session-continuity.md`，下次启动一行回到现场。
-4. **Quest 级失败回滚 · 不连累整个仓库** — 某关失败只回滚当前 Quest 触及文件，已完成 Quest 的成果不受影响。
+3. **跨会话续接** — 需要续接时写 `session-continuity.md`，保存目标、证据、未完成项和下一步。
+4. **按变更归属恢复** — 失败时只撤销本轮归属明确的变更，保留用户既有修改；归属不明先保留现场。
 5. **自适应验证门禁** — 按策略选多道质量关（复杂任务更严），缺证据就回流补强；不是「lint 过了就算完」。
-6. **Context Engineering · 管理 AI 的注意力预算** — 绿/黄/红区动态压缩，最小上下文验证降低幻觉风险，长 run 不跑偏。
+6. **Context Engineering · 管理 AI 的注意力预算** — 按需加载、保留续接记录并核对目标；对质量与成本的影响需实测。
 7. **Loop 引擎 · `/auto 5m <goal>` 自主循环到收敛** — interval 把单次流水线变成 DOER+CHECKER 循环；**需宿主支持调度**，不可用时降级为单次执行（见主命令说明）。
 
 > 上下文相关性、业务验收和反馈质量都会影响编码结果。Auto CLI 的效率收益需要与原生宿主在相同任务和模型下对照评测；当前不承诺提速倍数。
@@ -198,8 +198,8 @@ flowchart LR
 | ------------- | -------------------------------------------------------------------- | ---------------------------- |
 | **SCAN**      | 看项目家底、查历史踩坑、判断这事简单还是复杂                         | 装修前先量房、查老房子档案   |
 | **PLAN**      | 拆成几关，每关明确改哪些文件、不改哪些文件、怎么算完成               | 出施工图，写"承重墙绝不能动" |
-| **EXECUTE**   | 逐关施工，每关写盘，三件套防偷工（圈定文件 / 扩张词刹车 / 不偷捷径） | 工人按图施工，监工随时盯     |
-| **VERIFY**    | 18 个门禁过一遍，必须贴命令输出，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
+| **EXECUTE**   | 逐关施工，每关写盘，对照目标与范围，保存实际验证证据 | 工人按图施工，监工随时盯     |
+| **VERIFY**    | 从 17 类门禁选适用项，必须提供证据，不准说"看起来对"                    | 验房，每个房间都拍照存档     |
 | **SUMMARIZE** | 给出人类可读总结，**不自动提交**——commit 权在你手里                  | 交付清单，由你签字           |
 | **LEARN**     | 把踩坑/模式提炼成 LearnCard，分发到 `.auto/insights/` 5 个文件       | 项目复盘，写进知识库         |
 
@@ -227,7 +227,7 @@ flowchart LR
 **会发生什么**：
 
 - SCAN 识别项目栈 + 读 `.auto/insights/traps.md`（避开上次"密码没加盐被审查打回"）
-- PLAN 调用 `brainstorming` 让你选 JWT/Session/OAuth；调用 `test-plan-writer` 出 6 维测试矩阵
+- PLAN 沿用项目现有认证契约；存在真实取舍时用 `brainstorming` 比较方案，关键需求仍无法确定才澄清；用 `test-plan-writer` 确定适用测试
 - 自动拆成 5 关：Entity → Service → Controller → 测试 → 验证
 - VERIFY 跑 build / test / lint / coverage / security 5 个 gate
 - LEARN 把"Spring Boot 加盐模板"写到 `.auto/insights/patterns.md`
@@ -281,24 +281,15 @@ flowchart LR
 - EXECUTE：AI 写代码 → 跑 CLI 测试 → 读结构化日志 → 自主修复 → 再跑，**全程无人工介入**
 - VERIFY：`clean-state` gate 要求 CLI 驱动器全量 PASS
 
-### 场景 6 · Loop 自主循环（盯盘 / 自愈 / 收敛目标）
+### 场景 6 · 定时巡检
 
-```bash
-/auto 5m 盯 CI 直到全绿，失败了自动修             # 默认预算 $300 兜底
-/auto 30m 把测试覆盖率从 62% 提到 80%
-/auto 5m --budget 10000 把整个模块重构到测试全过   # 这个 loop 允许花到 $10000
-/auto 5m --budget unlimited 持续盯生产             # 不限费用（仍受 72h + CHECKER 约束）
+```text
+/auto 每 5 分钟检查 CI，最多 1 小时，失败时在当前授权范围内修复
 ```
 
-**会发生什么**：
+先核对真实调度能力、任务范围、取消方式和累计预算，再建立周期任务；记录任务 ID 后才报告已启动。没有可用调度器时如实说明，并完成当前可执行检查。普通“直到完成”继续当前任务，不自动创建定时任务，也不默认授权费用或 72 小时运行。
 
-- SCAN 解析 interval 参数 → 进入 loop 模式，激活 `loop-engineering` skill
-- 先写 loop 契约：目标 + **可度量收敛判据**（CI 退出码 0 / 覆盖率 ≥ 80%）+ 预算（默认 maxIterations 10 / maxBudgetUsd 300 / maxWallClock 72h；`--budget` / `--max-time` 可 per-loop 覆盖）
-- 用 `ScheduleWakeup`（会话内）或 `CronCreate`（过夜持久）按时触发每一轮
-- 每轮跑聚焦版 6 PHASE → CHECKER 跑判据命令 → 收敛度↑ 续跑 / 回退则 `git reset` 换策略 / 达成则停
-- LEARN 跨迭代回灌：上轮 trap 下轮自动避坑，直到收敛或预算耗尽
-
-> 写不出可度量「够了没」就不开 loop —— CHECKER 缺位的 loop 只是烧钱机器。
+每轮按独立验收、实际执行与回归判断是否完成。命令 exit 0 或单个覆盖率数字不能独自代表收敛；退回只处理本轮归属明确的变更，保留用户既有修改。
 
 ---
 
@@ -353,6 +344,8 @@ npm run sync
 | Claude Code | `~/.claude/` | commands + agents + skills + rules + hooks |
 | Codex       | `~/.codex/`  | prompts + skills + `AGENTS.md` 桥接层      |
 
+两端技能均安装为 `skills/<name>/SKILL.md` 与 `references/`，校验工具位于 `<host>/auto-cli/scripts/`。清单记录版本与哈希；覆盖前备份，卸载仅处理可确认归属的内容。旧版无清单且内容已变时可能保留旧文件。
+
 ### 方式 C · 离线 tgz 分发（无外网环境）
 
 ```bash
@@ -372,7 +365,7 @@ npm run reinstall              # macOS / Linux / Git Bash
 scripts\reinstall.bat          # Windows
 ```
 
-自动完成：打包 → 清理旧资源 → 解压新版 → 清理临时文件。
+按受管清单事务更新当前源码版本，保留用户修改和私人文件；不卸载宿主 CLI、不从注册表拉取另一个版本。
 
 ### 卸载
 
@@ -451,32 +444,32 @@ node scripts/uninstall.js      # tgz 解压目录内
 | `using-git-worktrees`   | Git Worktree 多 Agent 并行                    |
 | `constitution`          | `.auto/constitution.md` 硬约束载体            |
 | `incremental-review`    | 会话末增量审查                                |
-| `self-critique`         | 每关 Reflexion 自纠                           |
-| `quality-gates`         | VERIFY 18 Gate 门禁定义                       |
+| `self-critique`         | 证据触发的目标与验收自纠                           |
+| `quality-gates`         | VERIFY 17 Gate 门禁定义                       |
 | `knowledge-management`  | LEARN 知识蒸馏 + 分发 + 归档全流程            |
 | `protocol-validator`    | 协议对象 Schema / handoff 完整性校验          |
 | `world-class-code-standards` | 圈复杂度 / 覆盖率 / 技术债量化标准       |
 | `feedback-loop`         | I/O 系统自验证闭环（bot/daemon/CLI 工具）     |
 | `agentless-repair`      | 两阶段 Bug 修复（定位 + 多候选过滤）          |
-| `predict-verify`        | 影响性命令前预测，预测错即停下重想           |
+| `predict-verify`        | 影响性操作前后核对预期状态与副作用         |
 | `loop-engineering`      | `/auto <interval>` 自主循环（DOER+CHECKER）   |
 
 </details>
 
-每个 Skill 含 `## 激活摘要` 段落，支持三级按需激活：
+Skill 按任务相关性逐步加载：
 
-- **摘要级**（匹配度 3-4）：只读 ~20 行 → ~500 tokens
-- **全文级**（5-6）：摘要 + 按需子段落 → ~2000 tokens
-- **深度级**（7+）：全文 + `references/` → ~5000 tokens
+- **发现**：读取名称、描述或相关索引，判断是否需要。
+- **应用**：加载当前任务需要的正文，复用已经读取的契约。
+- **深入**：只有当前问题需要时才读取 `references/`。
 
-低匹配 Skill 只读 20 行摘要，**最高可省约 80% 上下文**（摘要级 ~500 vs 深度级 ~5000 tokens，按三级 token 估算）。
+先读相关 Skill 索引，命中后按需加载正文与参考资料。实际输入量与节省幅度取决于任务和宿主；本项目尚无模型对照测量结果。
 
 ### 23 个 Hook（Claude Code 自动化）
 
 | 事件                                      | 数量 | 关键 Hook                                                                 |
 | ----------------------------------------- | ---- | ------------------------------------------------------------------------- |
-| `PreToolUse`                              | 7    | TDD Guard / Git Push Review / **Auto-Snapshot**（git stash 非破坏性快照） |
-| `PostToolUse`                             | 8    | Prettier+ESLint / 类型检查 / **Incremental Dirty Files**                  |
+| `PreToolUse`                              | 7    | TDD Guard / Git Push Review / **Auto-Snapshot**（隔离索引快照，含未跟踪文件） |
+| `PostToolUse`                             | 8    | 只读格式与 lint 检查 / 类型检查 / **Incremental Dirty Files**             |
 | `SessionStart`                            | 1    | 注入 CLAUDE.md + constitution + 上次 session-continuity                   |
 | `PreCompact` / `PostCompact`              | 2    | 上下文压缩前后救援                                                        |
 | `UserPromptSubmit`                        | 1    | 密钥泄露检测                                                              |
@@ -500,13 +493,15 @@ node scripts/uninstall.js      # tgz 解压目录内
 SCAN     → RouteDecision   路由决策书（策略 + Agent + 预算 + 能力快照）
 PLAN     → QuestMap        闯关地图（Quest 列表 + outOfScope + 验收命令）
 EXECUTE  → QuestResult     每关战绩（diff + 验证 + skill 应用证据）
-VERIFY   → VerifyReport    质检报告（18 gate × 状态 + 实测证据）
+VERIFY   → VerifyReport    质检报告（17 gate × 状态 + 实测证据）
 LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 ```
 
 **类比**：工厂流水线工单——每个工位收上游标准件，出下游标准件，谁出问题精确定位。
 
-### 18 Gate 验证矩阵
+### 17 Gate 验证矩阵
+
+下表是候选门禁；按当前任务适用条件执行，不适用项注明理由，缺测保持未验证。
 
 | Gate                     | 说明                   | 探索 | 修复 | 实现 | 重构 |
 | ------------------------ | ---------------------- | :--: | :--: | :--: | :--: |
@@ -514,13 +509,13 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 | `build`                  | 编译通过               |  —   |  ✓   |  ✓   |  ✓   |
 | `test`                   | 测试通过               |  —   |  ✓   |  ✓   |  ✓   |
 | `lint`                   | 代码风格               |  —   |  —   |  ✓   |  ✓   |
-| `coverage`               | 覆盖率 ≥ 80%           |  —   |  —   |  ✓   |  ✓   |
+| `coverage`               | 项目约定的覆盖率目标   |  —   |  —   |  ✓   |  ✓   |
 | `security`               | 安全审查               |  —   |  —   |  —   |  ✓   |
 | `adversarial`            | 红蓝对抗               |  —   |  —   |  —   |  ✓   |
 | `self-verification`      | AI 自查代码            |  —   |  ✓   |  ✓   |  ✓   |
 | `world-class-standards`  | 圈复杂度 / 覆盖率量化  |  —   |  ✓   |  ✓   |  ✓   |
 | `production-readiness`   | 生产就绪标准           |  —   |  ✓   |  ✓   |  ✓   |
-| `self-critique`          | Reflexion 自纠（每关） |  —   |  —   |  ✓   |  ✓   |
+| `self-critique`          | 证据触发的验收自纠 |  —   |  —   |  ✓   |  ✓   |
 | `production-governance`  | 生产治理闭环           |  —   |  —   |  ✓   |  ✓   |
 | `protocol-validator`     | 协议对象完整性校验     |  —   |  ✓   |  ✓   |  ✓   |
 | `skill-activation`       | Skill 应用证据         |  ✓   |  ✓   |  ✓   |  ✓   |
@@ -531,21 +526,21 @@ LEARN    → LearnCard       经验卡片（按 category 分发到 insights/）
 
 **核心约束**（贯穿全 gate）：
 
-- **实测优先（Run-Don't-Claim）**：不准说"测试通过"——必须贴命令 + 输出尾 ≥ 3 行
-- **预测后验证（Predict-Then-Verify）**：跑命令前先猜结果，猜错说明理解错，停下来想清楚
+- **实测优先（Run-Don't-Claim）**：通过结论必须引用实际命令、返回码、执行数量和相关输出，核对跳过项及最终产物
+- **预测后验证（Predict-Then-Verify）**：影响性操作前明确预期状态和副作用，执行后以实际证据核对；差异按原因调查
 - **协议先验校验**：`protocol-validator` 在 Phase 交接前检查必填字段、条件字段和失败项下一步建议
-- **验证上下文隔离**：Claude Code 可用 subagent；Codex 默认主代理按最小上下文执行验证视角，降低幻觉风险与 token 消耗
+- **验证上下文隔离**：按实际宿主能力与授权提供必要上下文；独立验收与模型生成内容区分，效果需实测
 
 ### Context Engineering（上下文工程）
 
 | 机制                     | 干嘛                                         | 收益                     |
 | ------------------------ | -------------------------------------------- | ------------------------ |
-| **预算三区**（绿/黄/红） | 进入红区自动写 `session-continuity.md` 续接  | 不让 AI 失忆             |
-| **渐进披露**             | Skill 三级激活，低匹配只读 20 行             | 最高可省约 80% token      |
-| **验证上下文隔离**       | 验证视角只给最小上下文                       | 减幻觉 + 降低 token 消耗 |
-| **漂移防护**             | 复读原话 + 反向翻译 + 扩张词刹车             | 长 run 不跑偏            |
-| **知识蒸馏**             | LearnCard 原子化（≤5 行）+ 标 scope          | 复用真正有效             |
-| **运行级 Budget**        | `maxIterations` 25 + `noProgressThreshold` 3 | 防 runaway 烧 token      |
+| **续接记录**             | 需要压缩或跨会话续接时保存目标、证据和下一步 | 为恢复任务提供依据       |
+| **渐进披露**             | 先读相关索引，命中后按需加载正文             | 减少无关上下文，幅度待测 |
+| **验证上下文隔离**       | 验证者取得需求依据、必要代码与独立验收       | 减少相互自证，效果待测   |
+| **漂移检查**             | 对照原目标、实际差异与授权范围               | 发现并处理偏离           |
+| **知识蒸馏**             | LearnCard 保留来源、适用范围与置信度         | 支持有依据的后续复用     |
+| **运行边界**             | 遵循真实预算和宿主限制，无进展时换调查方法   | 控制重复执行成本         |
 
 详见 `skills/context-engineering/SKILL.md`。
 

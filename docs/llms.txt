@@ -54,7 +54,7 @@ auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN
 #### Testing & Verification
 - `test-plan-writer` → 测试计划编写（单元/集成/E2E 全覆盖）
 - `self-verification` → 自我验证（语法/逻辑/边界/性能检查）
-- `self-critique` → 自我批判（acceptance 未满足或盲点暴露回流，自评分仅参考）
+- `self-critique` → 证据触发的验收与范围复核（不强制评分或盲点）
 - `predict-verify` → 预测后验证（影响性命令前先预测结果）
 
 #### Security & Robustness
@@ -82,7 +82,7 @@ auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN
 - `protocol-validator` → 协议验证（Phase handoff 检查必填字段）
 
 #### Specialized
-- `loop-engineering` → 自主循环引擎（DOER+CHECKER + 收敛判据硬门禁）
+- `loop-engineering` → 自主循环引擎（DOER+CHECKER + 实际证据判据与可取消调度）
 - `feedback-loop` → I/O 系统自验证闭环（CLI/bot/daemon 的 Reflexion 集成）
 - `agentless-repair` → 两阶段 Bug 修复（定位 → 修复，SWE-Bench 27.33%）
 - `using-git-worktrees` → Git Worktree 并行执行（≥3 Quest 无交集时触发）
@@ -125,7 +125,7 @@ auto-cli 是 Claude Code 的智能超级命令，通过 6 PHASE 工作流（SCAN
 - `/hooks` → Default hooks configuration (PreToolUse/PostToolUse/SessionStart)
 - `/.auto` → Protocol落盘真源（runs/ + insights/ + feedback/ + cache/ + memory/）
 - `/CLAUDE.md` → Project instructions (architecture constraints + coding norms)
-- `/CHANGELOG.md` → Version history (v0.31.0 → v0.52.0 detailed records)
+- `/CHANGELOG.md` → Version history (v0.31.0 → v0.53.0 detailed records)
 
 ## Getting Started
 
@@ -154,7 +154,7 @@ npm run sync  # 复制 commands/agents/skills/hooks 到 ~/.claude/
 
 ## Advanced Topics
 
-- **Loop Engineering** → 自主循环引擎（interval 参数 + DOER/CHECKER 分离 + 收敛判据硬门禁）
+- **Loop Engineering** → 自主循环引擎（interval 参数 + DOER/CHECKER 分离 + 实际证据判据与可取消调度）
 - **Adversarial Verification** → 对抗性验证（红蓝对抗 + 边界值攻击 + 并发场景）
 - **Context Engineering** → 上下文工程（预算感知 + 渐进披露 + Subagent 隔离）
 - **Git Worktree Parallelization** → Git Worktree 并行执行（≥3 Quest 无交集触发）
@@ -166,4 +166,4 @@ npm run sync  # 复制 commands/agents/skills/hooks 到 ~/.claude/
 - Issues: https://github.com/ktyyer/auto-cli/issues
 - Discussions: https://github.com/ktyyer/auto-cli/discussions (生产案例征集)
 - Marketplace: `/plugin install auto-cli@auto-cli`
-- Version: v0.52.0 (loop-engineering 引擎 + 自动 run 清理)
+- Version: v0.53.0 (共享执行契约 + 本地执行证据 + 受管安装)

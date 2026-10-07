@@ -16,6 +16,8 @@ tags:
 
 > 本 Skill 治理 `/auto` 的运行质量，不提供后台 runtime、daemon、远程执行、Web UI 或部署能力。
 
+三端入口共用 [执行契约](references/workflow-contract.md)；阶段细则按需读取 [阶段参考](references/workflow-phases.md)，工具路径和能力边界见 [宿主适配](references/host-adapters.md)。不要在每关重复加载全部正文。
+
 ## 快速使用
 
 ```text
@@ -38,7 +40,7 @@ tags:
 
 **硬约束** (constraints):
 
-- `goalDrift=major` → 回流 PLAN，不允许进入 SUMMARIZE
+- `goalDrift=major` → 回流 PLAN，禁止成功声明；仍允许如实失败总结
 - 缺少关键真源工件 → `artifactTruth=fail`，回流对应 Phase 补写
 - 生产级实现/重构任务缺少 `production-governance` 证据 → VERIFY fail
 - 治理只读 `.auto/cache/`，不得把 cache 当长期真源

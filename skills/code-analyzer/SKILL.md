@@ -140,10 +140,10 @@ fi
 
 ## 按需加载
 
-| 内容             | 文件                                              | 何时加载       |
-| ---------------- | ------------------------------------------------- | -------------- |
-| 语言特定提取细节 | `code-analyzer.references/language-extraction.md` | 非 JS/TS 项目  |
-| MCP 集成增强     | `code-analyzer.references/mcp-integration.md`     | 项目已配置 MCP |
+| 内容             | 文件                                | 何时加载       |
+| ---------------- | ----------------------------------- | -------------- |
+| 语言特定提取细节 | `references/language-extraction.md` | 非 JS/TS 项目  |
+| MCP 集成增强     | `references/mcp-integration.md`     | 项目已配置 MCP |
 
 ---
 

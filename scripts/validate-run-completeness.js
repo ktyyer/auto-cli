@@ -7,9 +7,10 @@ import { readRunProtocol } from './run-protocol.js';
 import { validateFeedbackReference } from './feedback-contract.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = process.env.AUTO_CLI_TEST_ROOT
-  ? path.resolve(process.env.AUTO_CLI_TEST_ROOT)
-  : path.resolve(__dirname, '..');
+const OPTIONS = parseArgs(process.argv);
+const ROOT = path.resolve(
+  OPTIONS.root || process.env.AUTO_CLI_TEST_ROOT || path.resolve(__dirname, '..')
+);
 const RUNS_DIR = path.join(ROOT, '.auto', 'runs');
 const INSIGHTS_DIR = path.join(ROOT, '.auto', 'insights');
 const FEEDBACK_DIR = path.join(ROOT, '.auto', 'feedback');
@@ -300,7 +301,9 @@ function parseArgs(argv) {
     runId: null,
     latest: false,
     json: false,
-    allowMissing: false
+    allowMissing: false,
+    requireEvidence: false,
+    root: null
   };
 
   for (let index = 0; index < args.length; index++) {
@@ -315,6 +318,16 @@ function parseArgs(argv) {
     }
     if (value === '--allow-missing') {
       parsed.allowMissing = true;
+      continue;
+    }
+    if (value === '--require-evidence') {
+      parsed.requireEvidence = true;
+      continue;
+    }
+    if (value === '--root') {
+      if (!args[index + 1] || args[index + 1].startsWith('--'))
+        throw new Error('--root requires a project directory');
+      parsed.root = args[++index];
       continue;
     }
     if (value === '--run' && args[index + 1]) {
@@ -435,7 +448,11 @@ function validateRun(runId) {
   );
   const routeMarkers = extractKnowledgeMarkers(routeDecisionContent);
   const verifyMarkers = extractKnowledgeMarkers(verifyReportContent);
-  const protocol = readRunProtocol(runPath, { requireAll: true });
+  const protocol = readRunProtocol(runPath, {
+    requireAll: true,
+    requireEvidence: OPTIONS.requireEvidence,
+    cwd: ROOT
+  });
   const protocolIssues = [...protocol.issues];
   const softWarnings = [...protocol.warnings];
   const verifyConsistencyIssues = validateVerifyConsistency(verifyReportContent, runId);
@@ -502,6 +519,7 @@ function validateRun(runId) {
     ok: missingFiles.length === 0 && invalidFiles.length === 0 && protocolIssues.length === 0,
     softWarnings,
     protocolMode: protocol.mode,
+    executionEvidence: protocol.executionEvidence,
     runId,
     runPath,
     missingFiles,
@@ -570,10 +588,11 @@ function printHuman(result) {
 }
 
 function main() {
-  const options = parseArgs(process.argv);
+  const options = OPTIONS;
   const runId = resolveRunId(options);
   const result = validateRun(runId);
-  const shouldAllowMissing = options.allowMissing && result.runId === null;
+  const shouldAllowMissing =
+    options.allowMissing && !options.requireEvidence && result.runId === null;
 
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));

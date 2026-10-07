@@ -2,6 +2,8 @@
 
 > Claude Code `/auto` 超级命令。本仓库的目标是让 `/auto` 统一发现、推理、编排并复用各类能力。
 
+当前本地版本 **v0.53.0**：按需共享契约、实际执行证据、事件反馈修复及受管安装。历史条目中的旧预算/快照实现不代表当前行为。
+
 ## 定位
 
 纯 Markdown 指令仓库，通过 Claude Code 的 slash command 机制运行。
@@ -10,7 +12,7 @@
 
 ## 项目结构
 
-- `commands/auto.md`：`/auto` 主命令，定义 6 PHASE 工作流
+- `commands/auto.md`：`/auto` 主入口；三端共用 `skills/production-governance/references/` 契约与按需阶段细则
 - `commands/auto/`：子命令（doctor、learn、status、route、create-hook、dashboard）
 - `agents/`：内置 agent 清单与说明
 - `skills/`：可复用技能知识
@@ -37,8 +39,8 @@
 
 ## 安装与卸载
 
-- `npm run sync` — 复制 commands/agents/skills/hooks 到 ~/.claude/（主推路径）
-- `npm run uninstall` — 移除已安装的文件
+- `npm run sync` — 按清单安装到已存在的 Claude/Codex 宿主目录，保留目录型技能与工具
+- `npm run uninstall` — 仅移除归属与哈希匹配的安装内容，恢复备份并保留用户改动
 
 ## Git 与发布
 

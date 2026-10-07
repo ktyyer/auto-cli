@@ -39,7 +39,7 @@ tags: [java, spring-boot, mybatis-plus, patterns, rest, pagination, transaction,
 
 **输出模板** (output):
 
-- 参考 `java-patterns.references/controller-service.md` 完整模板
+- 参考 `references/controller-service.md` 完整模板
 
 **反模式** (anti-patterns):
 
@@ -114,17 +114,17 @@ public class GlobalExceptionHandler {
 ### Controller + Service 完整模板
 
 接口定义、Service 实现、事务管理：
-→ 读取 `java-patterns.references/controller-service.md`
+→ 读取 `references/controller-service.md`
 
 ### DTO + Entity + Mapper 模板
 
 Entity 定义、DTO 转换、QueryRequest、Mapper XML：
-→ 读取 `java-patterns.references/dto-entity-mapper.md`
+→ 读取 `references/dto-entity-mapper.md`
 
 ### 常见编译错误速查
 
 错误关键词 → 根因 → 速修方案，以及分层架构约束：
-→ 读取 `java-patterns.references/common-errors.md`
+→ 读取 `references/common-errors.md`
 
 ---
 

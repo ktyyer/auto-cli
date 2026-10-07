@@ -153,37 +153,16 @@ LEARN 阶段必须按以下顺序执行。每步完成后才进入下一步。
 
 ### 步骤 5：归档检查
 
-扫描 `.auto/runs/` 下的目录，创建时间超过 30 天的移入 `.auto/runs/archive/`。
-
-**配置**（环境变量覆盖默认行为）：
+按名称日期列出超过 30 天的候选，不根据年龄自动认定可归档。当前脚本只读，即使旧 `AUTO_CLEAN_DRY_RUN=false` 也不移动文件。
 
 ```bash
-# 修改保留天数（默认 30 天）
-export AUTO_CLEAN_RETENTION_DAYS=60
-
-# 启用 DRY RUN 模式（仅预览，不实际归档）
-export AUTO_CLEAN_DRY_RUN=true
+# 从目标项目运行；保留天数只影响候选列表
+AUTO_CLEAN_RETENTION_DAYS=60 bash ~/.claude/auto-cli/hooks/lib/auto-clean-runs.sh
 ```
 
-**手动触发清理**（Codex 无 SessionStart Hook 时同样适用）：
+Codex 可使用 `~/.codex/auto-cli/hooks/lib/auto-clean-runs.sh`。真正归档由授权主流程执行：核对 run 状态，保留 running/partial/blocked 等未结束任务；检查续接与引用依赖；确认源和目标的绝对路径位于项目 `.auto/runs/` / `archive/` 内，拒绝符号链接逃逸及同名目标覆盖或嵌套。使用当前平台的文件操作，不从不可信目录名拼接 shell。
 
-```bash
-# 立即归档超过 30 天的 run
-bash ~/.claude/hooks/lib/auto-clean-runs.sh
-
-# 预览将被归档的 run
-AUTO_CLEAN_DRY_RUN=true bash ~/.claude/hooks/lib/auto-clean-runs.sh
-```
-
-**恢复已归档 run**：
-
-```bash
-# 列出已归档 run
-ls .auto/runs/archive/
-
-# 恢复指定 run
-mv .auto/runs/archive/run-<id> .auto/runs/
-```
+恢复时同样先核对目标不存在、路径与依赖，然后移动明确的已归档目录。归档不删除证据，也不为了收尾批量移动无关历史。
 
 ---
 

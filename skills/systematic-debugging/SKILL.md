@@ -128,7 +128,7 @@ tags: [debugging, root-cause, hypothesis-testing, multi-component, defense-in-de
    **当错误在调用栈深处时：**
 
    完整的向后追踪技术：
-   → 读取 `systematic-debugging.references/root-cause-tracing.md`
+   → 读取 `references/root-cause-tracing.md`
 
    **快速版：**
    - 错误值从哪里产生的？
@@ -228,7 +228,7 @@ tags: [debugging, root-cause, hypothesis-testing, multi-component, defense-in-de
    这不是假说失败——这是架构错误。
 
    修复后追加多层防御：
-   → 读取 `systematic-debugging.references/defense-in-depth.md`
+   → 读取 `references/defense-in-depth.md`
 
 ---
 
@@ -282,21 +282,21 @@ tags: [debugging, root-cause, hypothesis-testing, multi-component, defense-in-de
 
 ## 按需加载：辅助技术
 
-| 技术             | 文件                                                         | 适用场景                                      |
-| ---------------- | ------------------------------------------------------------ | --------------------------------------------- |
-| **根因向后追踪** | `systematic-debugging.references/root-cause-tracing.md`      | 错误在调用栈深处，需从症状回溯到触发源        |
-| **多层防御验证** | `systematic-debugging.references/defense-in-depth.md`        | 修复根因后，在每层添加验证使 bug 不可能再发生 |
-| **条件轮询等待** | `systematic-debugging.references/condition-based-waiting.md` | 测试中的竞态条件，用条件等待替代任意延时      |
+| 技术             | 文件                                    | 适用场景                                      |
+| ---------------- | --------------------------------------- | --------------------------------------------- |
+| **根因向后追踪** | `references/root-cause-tracing.md`      | 错误在调用栈深处，需从症状回溯到触发源        |
+| **多层防御验证** | `references/defense-in-depth.md`        | 修复根因后，在每层添加验证使 bug 不可能再发生 |
+| **条件轮询等待** | `references/condition-based-waiting.md` | 测试中的竞态条件，用条件等待替代任意延时      |
 
 ---
 
 ## 与现有 Skill 的关系
 
-| 场景             | 快速参考（轻量）                             | 完整方法论（深度）                                      |
-| ---------------- | -------------------------------------------- | ------------------------------------------------------- |
-| Bug 修复路由决策 | `workflow-patterns` 的 fix 工作流            | `systematic-debugging` 的 4 阶段流程                    |
-| 错误模式速查     | `error-patterns` 的分类表                    | `systematic-debugging` 的根因追踪                       |
-| 根因快速定位     | `workflow-patterns.references/root-cause.md` | `systematic-debugging.references/root-cause-tracing.md` |
+| 场景             | 快速参考（轻量）                                | 完整方法论（深度）                   |
+| ---------------- | ----------------------------------------------- | ------------------------------------ |
+| Bug 修复路由决策 | `workflow-patterns` 的 fix 工作流               | `systematic-debugging` 的 4 阶段流程 |
+| 错误模式速查     | `error-patterns` 的分类表                       | `systematic-debugging` 的根因追踪    |
+| 根因快速定位     | `../workflow-patterns/references/root-cause.md` | `references/root-cause-tracing.md`   |
 
 ---
 

@@ -1,101 +1,72 @@
 ---
 name: self-critique
-description: 当 run 自纠机制 — 每个 Quest 完成后强制自我评审（Reflexion 模式），产出达成度评分 / 盲点清单 / 是否回退 PLAN 的判定，避免「功能做了但偏离主线」「换形式满足用户」的隐性偏移。补 LEARN（跨 run 沉淀）的盲区：当下自纠。
-tags:
-  [self-critique, reflexion, self-refine, execute-phase, verify-phase, quality-gate, methodology]
+description: 当 run 自纠 — 在验收差异、范围漂移、失败证据或高影响未知项出现时，对照用户目标与实际产物决定补救或回流 PLAN。保留每关简短目标核对，不强制自评分、虚构盲点或每关独立文件。
+tags: [self-critique, reflexion, execute-phase, verify-phase, quality-gate, methodology]
 ---
 
 # Self-Critique — 当 run 自纠
 
-> 借鉴 [Reflexion](https://www.promptingguide.ai/techniques/reflexion) 与 Self-Refine 经典方法论。
-> 核心原则：**LEARN 是事后跨 run 沉淀，self-critique 是当下当 run 自纠**。两者互补，缺一不可。
+LEARN 沉淀跨 run 经验，本 skill 处理当前任务已经出现的偏差。共同依据见 [共享执行契约](../production-governance/references/workflow-contract.md) 的证据回路与按需加载边界。
 
-## 激活摘要
+## 使用时机
 
-**何时激活**：
+完成一关后，简短核对 objective 与 diff 是否一致。以下任一信号需要进一步自纠：
 
-- 策略 = `实现` 或 `重构`（多关任务、Quest ≥ 2）
-- 用户希望「每关完成就验一遍」「避免最后一起发现漂移」
-- 项目 VERIFY 已挂全套 gate 仍漏掉「主线偏移」类问题
+- 验收未满足，或测试结果与预期、业务规则不一致。
+- 实际改动偏离用户目标，触及 outOfScope，或关键假设被推翻。
+- 已有失败、回归或独立复核证据；同一路径连续两轮没有进展。
+- 尚未核实的事项可能改变权限、数据一致性、可恢复性或其他关键结果。
+- 用户明确要求逐关复核。
 
-**检查清单（每关执行）**：
+策略名称、Quest 数量和 diff 行数不是单独的触发条件。探索也可能偏离原问题；单关修复也可能存在重大风险。没有信号且验收充分时，记录简短核对结果并继续，不制造额外工作。
 
-1. 本关 `objective` 是否被本关 diff **真满足**（不是换形式、不是半满足）？
-2. 本关有无引入「用户原话里没有」的内容？（参考 Touch-set Lock + Expansion-Word Stop）
-3. 本关测试是否覆盖了"如果用户用最丑陋的输入怎么办"？
-4. 本关是否引入了 outOfScope 清单上的内容？
+## 自纠流程
 
-**输出模板**（写入 `.auto/runs/<runId>/quest-<N>-critique.md`）：
+1. **对照目标**：引用用户原话、Quest objective 和独立 acceptance，用 1–3 句话将实际 diff 反向翻译为行为变化。
+2. **定位差异**：列出已发现的问题及文件、命令、输出或规则来源。推断标为假设，未验证标为 unknown；未发现问题可以明确写“未发现新增偏差”。
+3. **选择行动**：
+   - 原目标未变且只是局部实现/验证缺口：在已授权范围内修补并复验。
+   - 必要关联文件超出初始 touchFiles：记 scope-expand 并更新计划，不自动重新请求许可。
+   - 原架构假设失效或核心目标未覆盖：回流 PLAN。
+   - 影响结果的关键用户选择无法从会话和仓库确定：只澄清该缺口，同时继续独立工作。
+4. **验证补救**：修改后运行受影响验收，引用最终状态的新证据。没有进展时重新调查或换候选，不靠反复自评刷绿。
+
+## 记录
+
+默认写入当前 `QuestResult.validations` 或 `verify-report.md`；复用既有事实与日志引用即可。只有复杂偏差需要独立分析时才增加文件，不要求 `quest-<N>-critique.md`。
 
 ```markdown
-# Quest <N> Self-Critique
-
-- **objective**: <复述本关目标>
-- **diff 反向翻译**: <用 ≤ 3 句话把 diff 描述成需求>
-- **达成度评分**: 0-100 (100 = 完全满足 objective，0 = 完全偏离)
-- **盲点**:
-  1. <盲点 1>
-  2. <盲点 2>
-- **建议**:
-  - [ ] 继续下一关
-  - [ ] 修补当前关（列出补丁要点）
-  - [ ] 回退 PLAN（说明哪条假设需要重做）
+- 目标核对：<objective 与实际行为的对应关系>
+- 触发依据：<差异/失败/高影响未知项及来源；无则说明>
+- 处置：next / patch / replan / clarify
+- 验证：<当前产物的验证结果与引用，或未验证原因>
 ```
 
-**强制约束**：
+自评分和盲点数量不构成通过条件。不要求补一条“最不放心的事”，也不将“无法证明绝对没有盲点”当作无限阻断理由。
 
-- acceptance 存在未满足项或暴露明显盲点 → 必须回流 PLAN 或修补，禁止直接进入下一关（达成度自评分仅作参考信号）
-- 盲点列表为空时必须主动补 1 条「最不放心的事」— 永远有可改进点
-- critique 文件必须落盘到 `.auto/runs/<runId>/`，不得仅在上下文存在
+## 与 VERIFY 的关系
 
-**反模式（禁止）**：
+`self-critique` 属于现有 17 个 gate 的 taxonomy，不新增 gate。它检查目标与交付是否一致；`self-verification` 检查实现及边界，二者均不能替代独立业务依据与真实执行证据，也不依赖特定模型版本自动完成。
 
-- 写 critique 时复制 QuestResult 的内容（critique 必须是独立视角的再评）
-- 给自己打 100 分（强制要求"最不放心的事"避免自满）
-- 把 critique 当装饰，不影响后续动作（critique 必须有 actionable 输出）
+| 状态           | 条件与后续动作                                           |
+| -------------- | -------------------------------------------------------- |
+| pass           | 已触发的差异得到解释/修复，相关验收有当前证据            |
+| warning        | 次要未知项已声明且不影响必要验收；说明实际影响           |
+| fail           | 核心验收未满足、目标偏移未解决；附证据与 recommendedNext |
+| not_applicable | 没有深入自纠触发信号，简短目标核对无异常；记录理由       |
 
-## 与 PHASE 4 gate 的关系
+缺证据禁止成功声明，但允许失败或部分完成总结。用户取消时保留状态，不以未完成 critique 为由继续执行。
 
-**新增 gate**：`self-critique`（落地时为第 14 个）
+## 验收场景
 
-| 字段     | 内容                                                                    |
-| -------- | ----------------------------------------------------------------------- |
-| 触发策略 | 实现、重构（修复策略可选）                                              |
-| 触发时机 | EXECUTE 每关完成后立即触发（不是最后统一）                              |
-| 通过条件 | 所有 Quest 的 acceptance 全满足且无遗漏盲点（达成度自评分仅作参考信号） |
-| 失败处置 | 回流 PLAN 修订 QuestMap，或修补当前关                                   |
-
-**与现有 gate 的差异**：
-
-| Gate                           | 关注点                                   | 视角             |
-| ------------------------------ | ---------------------------------------- | ---------------- |
-| skill-activation               | 激活 skill 是否被应用                    | 流程合规         |
-| knowledge-reuse                | insights 是否被复用                      | 知识闭环         |
-| self-verification (Claude 4.7) | 代码语法/逻辑/边界                       | 代码质量         |
-| **self-critique**              | **本关是否真满足 objective**             | **主线漂移防范** |
-| knowledge-distribution         | LearnCard 分发是否完成（LEARN 收口检查） | 沉淀闭环         |
-
-self-verification 是 Claude 4.7 模型能力（自动检查代码），**self-critique 是 Quest 级语义检查**，两者关注层次不同。
-
-## 何时不用
-
-- 修复策略且单关（< 20 行变更，快速通道直接跳过）
-- 探索策略（无代码变更，主线漂移风险低）
-- 用户显式禁用（`--no-critique`）
-
-## 实施位置
-
-PHASE 3.3 QuestResult 落盘后，每关追加：
-
-```
-触发 self-critique skill → 产出 .auto/runs/<runId>/quest-<N>-critique.md
-读取 critique → 决定下一动作：next / patch / replan
-```
-
-VERIFY taxonomy 应加入 `self-critique`，实现/重构策略的最少 gate 列表包含此项。
+- 文档修正目标明确且引用检查通过：简短核对后继续，不评分、不造盲点、不新增逐关文件。
+- 测试全绿，但用户要求保留的数据被删掉：依据用户约束判失败，修补或重新规划。
+- 为修复调用方必须修改未列出的测试文件：记录 scope-expand 并自主完成验证。
+- 连续两轮相同测试失败且无进展：回到根因调查，不能只再写一篇自评。
 
 ## 参考
 
 - [Reflexion 方法论](https://www.promptingguide.ai/techniques/reflexion)
-- Self-Refine: [arXiv 2303.17651](https://arxiv.org/abs/2303.17651)
-- auto-cli 内部 LearnCard：`.auto/runs/run-20260524-external-research/learn-cards.md` #5
+- [Self-Refine](https://arxiv.org/abs/2303.17651)
+
+以上是方法参考；不能从研究结果推断本项目任务的准确率或普适收益。

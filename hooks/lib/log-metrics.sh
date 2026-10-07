@@ -5,7 +5,7 @@
 input=$(cat)
 
 # Extract tool info
-tool=$(echo "$input" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool||'')")
+tool=$(echo "$input" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_name||'')")
 timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Find latest run directory
@@ -13,7 +13,6 @@ latest_run=$(ls -1t .auto/runs 2>/dev/null | grep -v archive | head -1)
 
 if [ -z "$latest_run" ]; then
   # No run directory, skip metrics
-  echo "$input"
   exit 0
 fi
 
@@ -59,5 +58,3 @@ metrics.tools.calls.push({
 });
 fs.writeFileSync('$metrics_file', JSON.stringify(metrics, null, 2));
 " 2>/dev/null || true
-
-echo "$input"

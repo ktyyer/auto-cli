@@ -106,12 +106,12 @@ tags:
 ### Multi-Agent 编排模式
 
 完整决策树、4 种模式详解、最佳实践、Agent 交接规则：
-→ 读取 `workflow-patterns.references/multi-agent.md`
+→ 读取 `references/multi-agent.md`
 
 ### 根因追踪方法论
 
 快速参考（五步流程、常见根因模式）：
-→ 读取 `workflow-patterns.references/root-cause.md`
+→ 读取 `references/root-cause.md`
 
 完整调试方法论（4 阶段强制流程、铁律约束、假说验证）：
 → 加载 `systematic-debugging` skill
@@ -119,7 +119,7 @@ tags:
 ### 10 维度代码审查清单
 
 完整 10 维度审查项、精简版 5 维度、自动化建议：
-→ 读取 `workflow-patterns.references/review-checklist.md`
+→ 读取 `references/review-checklist.md`
 
 ---
 

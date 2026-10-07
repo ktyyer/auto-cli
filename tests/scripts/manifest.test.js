@@ -5,9 +5,19 @@ import os from 'node:os';
 import path from 'node:path';
 
 const originalHome = os.homedir;
+const originalCodexHome = process.env.CODEX_HOME;
+const originalClaudeRoot = process.env.CLAUDE_CONFIG_DIR;
+const originalIsolatedHome = process.env.AUTO_CLI_INSTALL_HOME;
 
 async function importManifestWithHome(homePath) {
+  fs.writeFileSync(
+    path.join(homePath, '.auto-cli-install-test-root'),
+    'auto-cli isolated installation fixture\n'
+  );
   os.homedir = () => homePath;
+  process.env.AUTO_CLI_INSTALL_HOME = homePath;
+  process.env.CODEX_HOME = path.join(homePath, '.codex');
+  process.env.CLAUDE_CONFIG_DIR = path.join(homePath, '.claude');
   const moduleUrl = new URL(
     `../../scripts/manifest.js?home=${encodeURIComponent(homePath)}&t=${Date.now()}`,
     import.meta.url
@@ -17,6 +27,12 @@ async function importManifestWithHome(homePath) {
 
 test.afterEach(() => {
   os.homedir = originalHome;
+  if (originalIsolatedHome === undefined) delete process.env.AUTO_CLI_INSTALL_HOME;
+  else process.env.AUTO_CLI_INSTALL_HOME = originalIsolatedHome;
+  if (originalCodexHome === undefined) delete process.env.CODEX_HOME;
+  else process.env.CODEX_HOME = originalCodexHome;
+  if (originalClaudeRoot === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+  else process.env.CLAUDE_CONFIG_DIR = originalClaudeRoot;
 });
 
 test('detectTools returns empty list when no tool directories exist', async () => {
@@ -59,4 +75,38 @@ test('managed file lists expose expected core entries', async () => {
         entry.dir === path.join(tempHome, '.claude', 'commands') && entry.files.includes('auto.md')
     )
   );
+});
+
+test('test isolation rejects inherited host paths outside its marked root', async () => {
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-manifest-boundary-'));
+  const manifest = await importManifestWithHome(tempHome);
+  assert.throws(
+    () =>
+      manifest.assertInstallIsolation(
+        [{ name: 'codex', dir: path.join(os.tmpdir(), 'outside-codex') }],
+        tempHome
+      ),
+    /outside installation isolation root/
+  );
+  fs.unlinkSync(path.join(tempHome, '.auto-cli-install-test-root'));
+  assert.throws(
+    () => manifest.assertInstallIsolation([], tempHome),
+    /missing its isolation marker/
+  );
+  fs.rmdirSync(tempHome);
+});
+
+test('host roots reject a junction in an ancestor even outside test isolation checks', async () => {
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-manifest-junction-'));
+  const manifest = await importManifestWithHome(tempHome);
+  const target = path.join(tempHome, 'target');
+  fs.mkdirSync(target);
+  const link = path.join(tempHome, 'link');
+  fs.symlinkSync(target, link, 'junction');
+  assert.throws(
+    () => manifest.assertSafeHostRoot(path.join(link, '.codex')),
+    /cannot traverse a symlink/
+  );
+  fs.unlinkSync(link);
+  fs.rmSync(tempHome, { recursive: true, force: true });
 });

@@ -135,7 +135,7 @@ app.use((req, res, next) => {
 ## 按需加载
 
 > 可观测性三支柱（日志/指标/追踪）、必埋指标、告警阈值、敏感信息过滤实现
-> → `logging-patterns.references/observability.md`
+> → `references/observability.md`
 
 ---
 

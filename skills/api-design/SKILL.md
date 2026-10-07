@@ -177,7 +177,7 @@ Java 项目使用 `Result<T>` 包装（参考 `java-patterns`），前端项目�
 
 ## 按需加载
 
-> OpenAPI 3.0 完整模板、认证方案详解 → `api-design.references/openapi-template.md`
+> OpenAPI 3.0 完整模板、认证方案详解 → `references/openapi-template.md`
 
 ---
 

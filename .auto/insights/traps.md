@@ -726,3 +726,25 @@ v2 枚举只在校验器放行，消费者未同步：`collectRunMetrics` 不把
 **规避**：schema 变更的同批清单 = 校验器 + 全部消费者（metrics / dashboard / 报表）+ 文档 + 接受测试 + 拒绝测试 + 消费者测试；用 codegraph_callers 或 grep 字段名枚举消费者后再宣称完成。跨字段一致性规则（如 overallStatus ↔ gateResults）必须双向断言并各配一个拒绝测试；只强制一个方向时，反方向的矛盾记录（全部 gate 不适用却报 pass）照样通过校验并被看板计为成功。
 
 **来源**: run-20261001-optimal-audit
+
+
+---
+
+### 安装测试必须覆盖宿主专用环境变量
+
+**日期**: 2026-10-08 | **置信度**: high | **scope**: project
+
+只覆盖 HOME/USERPROFILE 不能隔离读取 CODEX_HOME 或 CLAUDE_CONFIG_DIR 的安装器。本轮真实事故证明测试必须显式覆盖所有宿主路径，并在检测、规划、写入三层校验独立 fixture 根、标记文件和符号链接边界。测试前后比较真实宿主文件哈希；事后无变化不能证明事前事故已恢复。
+
+**来源**: run-20261007-optimize-and-reinstall/install-incident.md、install-independent-review.md、npm-test-integrated.json。
+
+
+---
+
+### 隔离宿主验证要保留必要连接配置
+
+**日期**: 2026-10-08 | **置信度**: high | **scope**: project
+
+隔离 HOME 和宿主目录时，也要从实际设置核对模型映射、代理与认证的来源。仅继承 shell 环境可能漏掉 settings 中的必要配置。此次补齐后实际选用模型改变，hook 助手仍正常执行，但模型仍超时；不能把此前超时直接归因于服务故障，也不能把 hook 执行当成模型接收成功。配置值不进入报告，真实设置只读。
+
+**来源**: run-20261008-host-feedback-retry-010056/host-smoke.json、host-smoke-configured.json。

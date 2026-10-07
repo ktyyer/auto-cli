@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-10-08 (local, unpublished)
+
+### Evidence and installation
+
+- SessionStart 的历史 run 清理收口为只读候选提示，归档交回主流程检查活动状态、引用和目标路径。
+
+- 三端入口共享执行契约，阶段细则与技能按需加载；移除机械自评分、重复澄清和隐式长期调度，保留业务验收与工作区归属保护。
+- Node 测试采集绑定真实命令、退出码、执行数量、日志与最终文件状态；严格检查拒绝旧证据、空测试及跳过项。本地记录仅证明一致性，不提供可信执行证明。
+- Hooks 改用事件对应的反馈协议、真实输入及只读 lint；快照通过隔离索引保存暂存、未暂存、非忽略未跟踪内容，并仅恢复到独立新目录。
+- 两端安装保留目录型技能、references 与校验工具；清单、哈希、备份、路径隔离和冲突感知回滚保护用户文件。重装更新当前源码，不卸载宿主 CLI。
+- 验证包括真实开源 ms 缺陷的 base/gold/bad 链路；没有有效模型对照结果，不宣称质量全面优于原生宿主。
+
 ### Added
 
 - **证据优先执行回路（Evidence-First Execution Loop）**：实现/修复类任务的默认执行顺序从「读码 → 修改 → 必要时验证」改为「证据锁定（真实符号/测试命令）→ 失败证据或最小失败测试 → 最小修改 → 立即验证」；同一路径连续 2 轮无进展强制切换 `agentless-repair`；修复快速通道不再跳过证据回路；VERIFY 补强 Run-Don't-Claim——无命令输出 + exit code 的 gate 只能 `skipped` 不能 `pass`（`commands/auto.md` 快速通道 + PHASE 3.2 + PHASE 4 / `commands/auto.codex.md` 核心规则 14 + PHASE 3/4 / `commands/auto.en.md` PHASE Conventions 三端同步）

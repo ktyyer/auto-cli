@@ -1,7 +1,7 @@
 {
   "name": "auto-cli",
   "description": "Claude Code / Codex /auto: 6-phase protocol orchestration + LearnCard knowledge loop. Pure Markdown instructions; Node only for install/validate/metrics.",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "author": {
     "name": "Auto CLI Team"
   },

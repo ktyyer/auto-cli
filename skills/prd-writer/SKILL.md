@@ -36,7 +36,7 @@ tags: [prd, requirements, product, writing, discovery]
 
 **输出模板** (output):
 
-- 概念版 PRD → 落地板 PRD（模板见 `prd-writer.references/prd-structure.md`）
+- 概念版 PRD → 落地板 PRD（模板见 `references/prd-structure.md`）
 
 **反模式** (anti-patterns):
 
@@ -108,7 +108,7 @@ tags: [prd, requirements, product, writing, discovery]
 ## 按需加载
 
 > 完整 PRD 文档结构模板 + 详细两阶段提问模板 + 使用示例
-> → `prd-writer.references/prd-structure.md`
+> → `references/prd-structure.md`
 
 ---
 

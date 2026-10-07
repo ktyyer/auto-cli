@@ -1,11 +1,12 @@
 # REPO_MAP.md
 
-> 2026-07-24 | Pure Markdown instructions + Node tooling (install/validate/metrics) | v0.52.0
+> 2026-10-08 | Pure Markdown instructions + Node tooling (install/validate/metrics) | v0.53.0
 
-**最新优化**（v0.49-0.52）:
+**最新优化**（v0.53.0）:
 
-- ✅ loop-engineering skill：`/auto <interval>` 自主循环引擎（DOER+CHECKER，ScheduleWakeup/CronCreate 调度，跨迭代收敛与学习回灌）
-- ✅ plan-ensemble skill：PLAN 阶段多视角并行规划与评审合成（NeurIPS 2025 多 agent 辩论评审）
+- ✅ 三端入口共用执行契约，阶段细则按需加载；测试证据绑定实际执行与最终文件
+- ✅ loop-engineering skill：明确持续任务按实际宿主调度能力执行；普通“直到完成”继续当前任务
+- ✅ plan-ensemble skill：有授权且存在独立分析收益时取得多视角草案，以证据处理分歧
 - ✅ 知识闭环演化：ACE Curator 检查 + Insight 复用计数 + AWM 工作流归纳（v0.48）
 - ✅ Codex 双端对齐：constitution / self-critique / VERIFY gate 集 / LEARN 反馈闭环补齐
 - ✅ 全仓审计修复：版本计数统一、幽灵引用清除、manifest 卸载清单补齐
@@ -50,7 +51,7 @@
 | -------------------------- | ------------------------------------------------------- |
 | `agentless-repair`         | 两阶段 Bug 修复（精确定位 → 多候选 patch 测试筛选）     |
 | `api-design`               | API 设计规范（RESTful、分页、错误码、OpenAPI）          |
-| `brainstorming`            | 方案探索（动手前列 2-3 个实现方案对比）                 |
+| `brainstorming`            | 存在真实架构取舍时比较方案并推荐                       |
 | `code-analyzer`            | tree-sitter 驱动的代码分析（AST 提取、代码结构理解）    |
 | `code-style-enforcer`      | 代码风格强制执行                                        |
 | `comment-standards`        | 注释规范                                                |
@@ -67,18 +68,18 @@
 | `logging-patterns`         | 日志和可观测性模式                                      |
 | `loop-engineering`         | `/auto` 自主循环引擎（DOER + CHECKER 迭代）             |
 | `performance-patterns`     | 性能优化模式                                            |
-| `plan-ensemble`            | 视角集成规划（异质视角并行出案 → 评分矩阵合成）         |
+| `plan-ensemble`            | 按需取得独立草案，以证据处理分歧并合成计划             |
 | `prd-writer`               | PRD 需求文档写作（两阶段：概念版 → 落地板）             |
-| `predict-verify`           | 影响性命令前预测结果，预测错即理解错                    |
+| `predict-verify`           | 影响性操作的预期状态、副作用与实际结果核验             |
 | `production-governance`    | 生产治理闭环（目标收敛、产物真源、成本质量）            |
 | `production-standards`     | 生产环境标准                                            |
 | `protocol-validator`       | 协议对象 Schema / handoff 完整性校验                    |
-| `quality-gates`            | VERIFY 18 Gate 门禁定义                                 |
+| `quality-gates`            | VERIFY 17 Gate 门禁定义                                 |
 | `refactoring-patterns`     | 安全重构方法论（测试保护网、分批策略、常见重构手法）    |
-| `requirement-clarifier`    | 需求澄清（模糊需求回问用户）                            |
+| `requirement-clarifier`    | 查证后仍影响交付的关键需求缺口才澄清                   |
 | `research-analyst`         | 自主调研方法论（先调研再动手）                          |
 | `robustness-patterns`      | 鲁棒性模式（重试、熔断、限流）                          |
-| `self-critique`            | 每关 Reflexion 自纠                                     |
+| `self-critique`            | 证据触发的验收与范围自纠                                     |
 | `skill-creator`            | Skill 编写方法论（意图捕获 → SKILL.md 编写 → 测试迭代） |
 | `skill-evaluator`          | Skill 健康度评估（静态 D1-D7 + 效果 D8 双路径）         |
 | `spec-driven`              | 规格驱动开发（需求 → 接口契约 → 可执行 acceptance）     |
@@ -88,12 +89,16 @@
 | `workflow-patterns`        | 工作流模式                                              |
 | `world-class-code-standards` | 圈复杂度 / 覆盖率 / 技术债量化标准                    |
 
+共享执行语义：`skills/production-governance/references/workflow-contract.md`；阶段细则按需加载 `workflow-phases.md`，宿主工具边界见 `host-adapters.md`。
+
 ## hooks/
 
 - `hooks.json` — 23 个 Hook 配置（PreToolUse 7 / PostToolUse 8 / SessionStart 1 / PreCompact 1 / PostCompact 1 / UserPromptSubmit 1 / TeammateIdle 1 / TaskCompleted 1 / Stop 2）
 - `lib/tdd-guard.js` — TDD 守卫逻辑
 - `lib/tdd-guard-cli.js` — TDD 守卫 CLI 入口
 - `lib/codemaps-hook.sh` — Codemaps 钩子脚本
+- `lib/hook-cli.cjs` / `hook-output.cjs` / `hook-checks.cjs` — 事件反馈与只读检查
+- `lib/snapshot.cjs` — 隔离索引快照与独立目录恢复
 
 ## rules/
 
@@ -112,7 +117,9 @@
 
 - `install.js` / `install.sh` / `install.bat` — 安装脚本
 - `uninstall.js` / `uninstall.bat` — 卸载脚本
-- `reinstall.sh` / `reinstall.bat` — 一键重装
+- `reinstall.sh` / `reinstall.bat` — 按受管清单更新当前源码
+- `managed-install.js` / `install-plan.js` — 归属、备份、路径检查与事务回滚
+- `evidence-collect.js` / `evidence-record.js` — 实际 Node 测试采集与最终状态一致性检查
 - `rebuild-skill-extracts.js` — 重建 `.auto/cache/skill-extracts/`
 - `rebuild-insight-index.js` — 重建 `.auto/cache/insight-index.json`
 - `validate-references.js` — Markdown 引用完整性校验
@@ -124,8 +131,8 @@
 ```text
 .auto/
 ├── cache/
-│   ├── capability-snapshot.json
-│   └── pattern-cards.json
+│   ├── skill-extracts/
+│   └── insight-index.json
 ├── runs/
 │   └── <runId>/
 │       ├── route-decision.md
