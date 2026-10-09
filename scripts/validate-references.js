@@ -3,13 +3,13 @@
 // Auto CLI 引用完整性校验脚本
 //
 // 功能：
-// 1. 扫描 commands/**/*.md 中的 agent / skill 引用
+// 1. 从 commands/**/*.md、AGENTS.md 沿技能 Markdown 路径扫描引用
 // 2. 支持多种引用语法：
 //    - Agent(subagent_type: "xxx") / agent:xxx / subagent_type: "xxx"
 //    - skill:xxx
-//    - Markdown 表格单元格中的纯文本 agent/skill 名
-//    - 行内反引号 `agent-name` 或 `skill-name`
-// 3. 报告断链引用（failed）与真正孤立的能力（warn）
+//    - 表格、反引号及明确加载/调用语句中的 agent/skill 名
+//    - skills/<name>/...md、<name>/references/...md 与相对 Markdown 链接
+// 3. 报告断链引用（failed）与未从入口文档提及的能力（warn）；不证明运行时激活
 // 4. 输出 JSON 格式报告
 //
 // 用法：
@@ -25,6 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SCAN_FILES = [path.join(ROOT, 'AGENTS.md')];
 const LOCAL_ABSOLUTE_LINK_PATTERN = /\[[^\]]+\]\(([A-Za-z]:\/[^)\s]+)(?::\d+)?\)/g;
+const SKILL_DOCUMENT_SHORTHAND = /^(?:community\/)?[a-zA-Z0-9_-]+\/(?:references\/|SKILL\.md$)/;
 
 const RESULTS = {
   passed: [],
@@ -172,27 +173,99 @@ function validatePortableLinks(filePath, content) {
   }
 }
 
-// 记录"文档中出现过该 agent/skill 名称"（任何形式，含表格/反引号/纯文本）
-// 用于消除 agent/skill 已在 auto.md 表格中登记但被判为 orphan 的假阳性
+// 保留表格/反引号的静态提及规则；新增裸词识别必须有加载/调用语句。
+// 文档提及不表示实际激活，普通散文中的同名词与纯示例名单不补成依赖。
 function recordMentions(content, availableAgents, availableSkills) {
-  // 只采集 "被 ` 包裹" 或 "出现在 | ... |" 表格单元格 中的 token，避免误杀散文字
-  const tokenRegex = /`([a-zA-Z0-9-_]+)`|\|\s*([a-zA-Z0-9-_]+)\s*\|/g;
+  const tokenRegex = /`([a-zA-Z0-9_-]+)`|\|\s*([a-zA-Z0-9_-]+)\s*\|/g;
   let match;
   while ((match = tokenRegex.exec(content)) !== null) {
     const token = match[1] || match[2];
-    if (!token) continue;
     if (availableAgents.has(token)) RESULTS.mentioned.agents.add(token);
     if (availableSkills.has(token)) RESULTS.mentioned.skills.add(token);
   }
 
-  // 额外识别：行首表格式列表 `| agent-name | 描述 |`（上一条已覆盖）
-  // 以及独立行内 pipe 表格 `xxx.md` 路径中的 name.md
-  const mdFileRegex = /`([a-zA-Z0-9-_]+)\.md`/g;
+  const mdFileRegex = /`([a-zA-Z0-9_-]+)\.md`/g;
   while ((match = mdFileRegex.exec(content)) !== null) {
     const name = match[1];
     if (availableAgents.has(name)) RESULTS.mentioned.agents.add(name);
     if (availableSkills.has(name)) RESULTS.mentioned.skills.add(name);
   }
+
+  const invocationPattern =
+    /(?:\b(?:read|load|use|invoke|apply|consult)\b|采用|加载|读取|调用|使用|选用|调度|才用|才读|再取|做)\s+([a-zA-Z0-9_-]+)(?![a-zA-Z0-9_/\\-]|\.[a-zA-Z0-9_])/gi;
+  for (const invocation of withoutFencedCode(content).matchAll(invocationPattern)) {
+    const name = invocation[1];
+    if (availableAgents.has(name)) RESULTS.mentioned.agents.add(name);
+    if (availableSkills.has(name)) RESULTS.mentioned.skills.add(name);
+  }
+}
+
+function withoutFencedCode(content) {
+  let fence = null;
+  return content
+    .split(/\r?\n/)
+    .map((line) => {
+      const marker = line.match(/^[ \t]{0,3}(`{3,}|~{3,})(.*)$/);
+      if (!fence) {
+        if (!marker) return line;
+        fence = marker[1];
+      } else if (
+        marker &&
+        marker[1][0] === fence[0] &&
+        marker[1].length >= fence.length &&
+        !marker[2].trim()
+      ) {
+        fence = null;
+      }
+      return '';
+    })
+    .join('\n');
+}
+
+function isWithin(directory, filePath) {
+  const relative = path.relative(directory, filePath);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function extractMarkdownReferences(content) {
+  content = withoutFencedCode(content);
+  const targets = new Set();
+  const linkPattern =
+    /\[[^\]]*\]\(\s*<?([^<>\s)]+\.md(?:#[^<>\s)]*)?)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g;
+  const pathPattern =
+    /(?<![\w.~:/\\<>-])((?:\.{1,2}\/|[\w.-]+\/)+[\w.-]+\.md)(?:#[\w.-]+)?(?![\w./\\-])/g;
+  for (const match of content.matchAll(linkPattern)) targets.add(match[1].split('#')[0]);
+  // 散文里的 index.md 等是产物名称；只有明确的技能路径才作为非链接引用。
+  for (const match of content.matchAll(pathPattern)) {
+    if (
+      /^(?:skills\/|references\/|\.{1,2}\/)/.test(match[1]) ||
+      SKILL_DOCUMENT_SHORTHAND.test(match[1])
+    ) {
+      targets.add(match[1]);
+    }
+  }
+  return targets;
+}
+
+function resolveSkillDocument(filePath, target) {
+  if (
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(target) ||
+    path.isAbsolute(target) ||
+    /[<>*?{}~]/.test(target) ||
+    /(^|\/)\.auto\//.test(target)
+  )
+    return null;
+
+  const skillsDir = path.join(ROOT, 'skills');
+  let targetPath;
+  if (target.startsWith('skills/')) {
+    targetPath = path.resolve(ROOT, target);
+  } else if (SKILL_DOCUMENT_SHORTHAND.test(target)) {
+    targetPath = path.resolve(skillsDir, target);
+  } else {
+    targetPath = path.resolve(path.dirname(filePath), target);
+  }
+  return isWithin(skillsDir, targetPath) ? targetPath : null;
 }
 
 // 获取可用文件列表（不含 _shared-principles.md 等非实体文件）
@@ -211,7 +284,7 @@ function getAvailableFiles(dir) {
 
 // 获取可用 Skill 列表（dir 结构：skills/<name>/SKILL.md）
 function getAvailableSkills(dir) {
-  const exclude = new Set([]);  // 移除 'community' 排除，让社区 skill 也参与校验
+  const exclude = new Set([]); // 移除 'community' 排除，让社区 skill 也参与校验
 
   if (!fs.existsSync(dir)) {
     return [];
@@ -269,18 +342,31 @@ function validateReferences() {
   console.log(`可用 Skills: ${availableSkills.size}`);
   console.log('');
 
+  const visited = new Set();
+  const realRoot = fs.realpathSync.native(ROOT);
+  const realSkillsDir = fs.realpathSync.native(skillsDir);
   const scanFile = (filePath) => {
     if (!fs.existsSync(filePath)) return;
 
     const relativePath = path.relative(ROOT, filePath);
+    const realPath = fs.realpathSync.native(filePath);
+    if (!isWithin(realRoot, realPath)) {
+      RESULTS.failed.push({
+        file: relativePath,
+        type: 'markdown-reference',
+        name: relativePath,
+        message: '链接超出仓库目录'
+      });
+      return;
+    }
+    if (visited.has(realPath)) return;
+    visited.add(realPath);
     const content = fs.readFileSync(filePath, 'utf-8');
     recordMentions(content, availableAgents, availableSkills);
     validatePortableLinks(filePath, content);
     const refs = extractReferences(content);
 
-    if (refs.length === 0) return;
-
-    console.log(`扫描: ${relativePath}`);
+    if (refs.length > 0) console.log(`扫描: ${relativePath}`);
 
     for (const ref of refs) {
       const availableSet = ref.type === 'agent' ? availableAgents : availableSkills;
@@ -288,10 +374,34 @@ function validateReferences() {
 
       if (exists) {
         RESULTS.passed.push({ file: relativePath, ...ref });
+        RESULTS.mentioned[ref.type === 'agent' ? 'agents' : 'skills'].add(ref.name);
       } else {
         RESULTS.failed.push({ file: relativePath, ...ref });
         console.log(`  ❌ ${ref.type}:${ref.name} - 文件不存在`);
       }
+    }
+
+    for (const target of extractMarkdownReferences(content)) {
+      const targetPath = resolveSkillDocument(filePath, target);
+      if (!targetPath) continue;
+      const reference = {
+        file: relativePath,
+        type: 'markdown-reference',
+        name: path.relative(ROOT, targetPath).split(path.sep).join('/')
+      };
+      if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
+        RESULTS.failed.push({ ...reference, message: '被引用的技能文档不存在或不是文件' });
+        continue;
+      }
+      if (!isWithin(realSkillsDir, fs.realpathSync.native(targetPath))) {
+        RESULTS.failed.push({ ...reference, message: '技能文档链接超出 skills 目录' });
+        continue;
+      }
+      RESULTS.passed.push(reference);
+      const parts = path.relative(skillsDir, targetPath).split(path.sep);
+      const owner = parts[0] === 'community' ? parts[1] : parts[0];
+      if (availableSkills.has(owner)) RESULTS.mentioned.skills.add(owner);
+      scanFile(targetPath);
     }
   };
 
@@ -302,8 +412,6 @@ function validateReferences() {
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      const relativePath = path.relative(ROOT, fullPath);
-
       if (entry.isDirectory()) {
         scanDir(fullPath);
       } else if (entry.name.endsWith('.md')) {
@@ -327,9 +435,7 @@ function validateReferences() {
     }
   }
 
-  // Orphan 判定：能力文件存在，但在任何 commands/*.md 中都没有以任何形式被提及
-  // 白名单：下沉实现 skill（从 auto.md 提取的细节，隐式引用）
-  const implicitSkills = new Set(['knowledge-management', 'quality-gates']);
+  // 只从入口及其明确引用的技能文档记录提及；不把全部技能正文作为扫描入口。
 
   for (const agent of availableAgents) {
     if (!RESULTS.mentioned.agents.has(agent)) {
@@ -338,7 +444,7 @@ function validateReferences() {
   }
 
   for (const skill of availableSkills) {
-    if (!RESULTS.mentioned.skills.has(skill) && !implicitSkills.has(skill)) {
+    if (!RESULTS.mentioned.skills.has(skill)) {
       RESULTS.warnings.push({ type: 'skill', name: skill, message: '定义了但未被提及' });
     }
   }
@@ -362,7 +468,7 @@ function validateReferences() {
 
   if (RESULTS.warnings.length > 0) {
     console.log('');
-    console.log('警告（真正孤立的能力）:');
+    console.log('警告（静态文档检查）:');
     for (const warn of RESULTS.warnings) {
       console.log(`  - ${warn.type}:${warn.name} - ${warn.message}`);
     }

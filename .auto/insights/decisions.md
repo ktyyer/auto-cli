@@ -550,7 +550,7 @@ mutation spot-check 只能证明断言对选定改动敏感，不能证明业务
 Auto CLI 定位为宿主原生能力上的编码工作流增强层，保留单入口、Markdown 指令、可审计 run 与知识复用；收益须用固定任务、模型与独立验收的对照试验验证。
 
 **来源**: run-20260929-strategic-research
-**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-29
+**复用**: helpful=1 | harmful=0 | lastConfirmed=2026-10-08 | lastRunId=run-20261008-value-assessment
 **修复说明**: 本条原中文编码损坏；据该 run 的 research-brief.md 重新摘要，原文保存在本轮 before 快照。
 
 ### 区分工具验证与编码收益
@@ -560,6 +560,7 @@ Auto CLI 定位为宿主原生能力上的编码工作流增强层，保留单�
 保持证据边界：协议与指标校验通过不能证明业务正确或编码提速；Auto CLI 的效果需要独立任务对照评测，缺失观测保留 unknown。
 
 **来源**: run-20260929-strategic-confirmation
+**复用**: helpful=1 | harmful=0 | lastConfirmed=2026-10-08 | lastRunId=run-20261008-value-assessment
 **修复说明**: 据该 run 的 LearnCard summary（Keep evidence boundaries explicit）及前述研究报告重述乱码条目，不恢复未经核验的收益结论。
 
 ---
@@ -574,7 +575,7 @@ Auto CLI 定位为宿主原生能力上的编码工作流增强层，保留单�
 
 **证据**: npm.cmd test：34/34；计数破坏实验 6/7、还原后 7/7；历史 run 复核得到 3 skills、8 gates、7 pass、1 warning。
 **来源**: run-20260929-p0-trust
-**复用**: helpful=0 | harmful=0 | lastConfirmed=2026-09-29
+**复用**: helpful=1 | harmful=0 | lastConfirmed=2026-10-08 | lastRunId=run-20261008-value-assessment
 
 ---
 
@@ -614,6 +615,9 @@ knowledge-distribution 迁出 VERIFY gate 体系（18→17 gate），分发核�
 **推荐动作**: 未来剪枝 run 沿用双源判定；双语镜像维护已停止（对齐战略方向 Phase 1），新增 .en 镜像需先过双源判定。
 **来源**: run-20261001-topdown-prune
 
+**补充**: 2026-10-08 | run-20261008-value-assessment。本轮引用检查为 40 pass / 0 fail / 34 warnings；扫描器仅扫描 commands 与根 AGENTS 的部分引用语法，未覆盖共享参考和 REPO_MAP 中的关系，入口明确引用的 production-governance 也被告警。因此“当前扫描器未识别”不能等同于“可删除孤儿”；先校正扫描范围和引用识别，再结合装运清单判断。此反例不证明 34 条警告全部误报。
+**补充证据**: .auto/runs/run-20261008-value-assessment/evidence/reference-diagnostics.json、evidence/verification-commands.json；scripts/validate-references.js:257；commands/auto.codex.md:14。
+
 ---
 
 ### v2 枚举语义：succeeded 超额完成 / cancelled 用户取消 / suspended 暂停续接 / not_applicable 策略不适用
@@ -627,3 +631,15 @@ QuestResult.status v2 枚举语义：`succeeded` 表示超额完成（区别于 
 
 **推荐动作**: 文档更新：commands/auto.md / agents/_shared-principles.md / skills/quality-gates 同步 v2 枚举语义与使用场景示例；skills/knowledge-management 补充 QuestResult 状态转换图。
 **来源**: run-20261001-v2-final
+
+---
+
+### 双宿主实验须核验 Auto 激活并共享修复基线
+
+**日期**: 2026-10-08 | **置信度**: high | **来源**: run-20261008-dual-host-research | **Scope**: project
+
+相同任务正文不能证明 Auto 控制器实际运行；只比较原版和混合修复候选也无法归因单一机制。每端保留正常项目规范和相同业务信息，分别记录原生入口与 Auto 控制器版本、RouteDecision/Plan 和 run 绑定，并将入口开销及加载失败计入结果。
+
+推荐动作：先单独诊断 native/original，再冻结共同 repaired 基线与仅增加机制 M 的 candidate；在新任务中比较 repaired/candidate，不跨批次归因修复效果。
+
+证据：.auto/runs/run-20261008-dual-host-research/review-summary.md；.auto/runs/run-20261008-dual-host-research/evaluation-plan.md

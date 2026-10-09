@@ -1,81 +1,65 @@
 ---
 name: incremental-review
-description: 增量代码审查 — 只审本次会话改动的文件而非全量项目。当用户希望「会话结束前自动跑一遍 review」「降低 review 成本」或「确保每次提交前已被审查过」时使用。配合 PostToolUse 累积 dirty 清单与 Stop hook 触发 code-reviewer subagent，实现「只审改了的，没改的跳过」。
+description: 增量代码审查 — 根据当前 run 的已确认改动做必要评审。当用户希望会话结束前 review、降低评审成本或提交前审查时使用。已绑定的 PostToolUse 可辅助累积 dirty 清单；当前执行者负责核对最终 diff 与验收，不能把 Stop 提示视为自动完成评审。
 tags: [code-review, incremental, post-tool-use, stop-hook, dirty-files, ci-light, methodology]
 ---
 
 # Incremental Review — 增量代码审查
 
 > 借鉴 [O'Reilly: Auto-Reviewing Claude's Code](https://www.oreilly.com/radar/auto-reviewing-claudes-code/) 与 Nick Tune (Medium) 的 Stop-hook critical-reviewer 模式。
-> 核心原则：**全量审太贵，全跳过又漏**。只审 dirty files，由 hook 自动驱动，与 VERIFY gate 体系互补。
+> 核心原则：按当前 run 的实际变更确定评审范围，与 VERIFY gate 体系互补。dirty 清单是辅助记录，最终范围还需核对 Git diff、用户既有修改与必要的调用关系。
 
 ## 激活摘要
 
 **何时激活**：
 
 - 用户希望 Claude Code 在会话结束前自动跑一遍代码审查
-- 项目已有 code-reviewer agent 但缺触发链
+- 当前任务的改动需要独立视角或最终 diff 核对
 - 团队规范要求每次提交前必须经过 review
 
 **检查清单**：
 
-1. 是否存在 `.auto/runs/<runId>/dirty.txt` 累积清单？（由 PostToolUse hook 维护）
-2. Stop 阶段是否对 dirty 文件触发了 code-reviewer subagent？
+1. 当前 run、宿主、角色和 prompt/绑定代际是否已确认？不能选择最近修改的 run。
+2. `.auto/runs/<runId>/dirty.txt` 与实际 diff 是否一致？未归属的 hook 不代表没有改动。
 3. Review 结果是否落盘到 `.auto/runs/<runId>/incremental-review.md`？
-4. 严重问题（critical/high）是否阻塞会话结束？
+4. 发现的严重问题是否修复并核验，或在结果中明确标记尚未完成？
 
 **机制三件套**：
 
-- **PostToolUse 累积**：每次 Write/Edit 完成后追加 `tool_input.file_path` 到 `.auto/runs/<latest>/dirty.txt`（去重）
-- **Stop 触发**：会话结束前读取 dirty 清单，仅对清单内文件传给 code-reviewer subagent
-- **结果落盘**：review 报告写入 `.auto/runs/<runId>/incremental-review.md`，critical 问题以 exit 2 阻塞
+- **已归属改动累积**：确认 session/worktree/actor/prompt 后，将 Write/Edit 的 `tool_input.file_path` 追加到绑定 run 的 `dirty.txt`（去重）。字段缺失、失效或冲突时保持 `unattributed`。
+- **最终 diff 核对**：当前执行者按变更风险做评审。只有已有委派授权且存在独立子任务时才调用可用 reviewer；不从 Stop 自动拉起团队。
+- **结果落盘**：报告记录问题、修复和实际验证。Stop 提示不能替代评审，也不能自动把报告记为 passed。
 
 **反模式（禁止）**：
 
-- 把整个项目目录传给 code-reviewer（违背"增量"初衷）
-- review 失败但不阻塞 Stop（沦为装饰，无强制力）
-- dirty 清单累积跨 run 不清理（导致下次 run 审错文件）
+- 无依据地扩大到全项目，或仅因文件不在 dirty 清单就跳过必要的依赖检查
+- 只凭 hook 退出码或提醒，声称已完成 review / 已阻止所有严重问题
+- 按目录 mtime 选择 run、共用跨 run 清单，或把缺少 `agent_id` 当作 controller 证明
 
-## Hook 配置（参考模板）
+## Hook 接线与显式回退
 
-将以下两段加入 `hooks/hooks.json`：
+实际接线以 [hooks.json](../../hooks/hooks.json) 为准，身份登记见 [Claude 宿主适配](../production-governance/references/host-adapters.md)。安装时沿用受管配置，不复制选择“最新 run”的 shell 模板。
 
-```jsonc
-// PostToolUse — 累积 dirty 清单
-{
-  "matcher": "(tool == \"Write\" || tool == \"Edit\") && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx|java|py|go|rs)$\"",
-  "hooks": [{
-    "type": "command",
-    "command": "#!/bin/bash\ninput=$(cat)\nfp=$(echo \"$input\" | node -e \"const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);process.stdout.write(j.tool_input?.file_path||'')\")\nif [ -z \"$fp\" ]; then echo \"$input\"; exit 0; fi\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -n \"$latest_run\" ]; then\n  mkdir -p .auto/runs/$latest_run\n  echo \"$fp\" >> .auto/runs/$latest_run/dirty.txt\nfi\necho \"$input\""
-  }],
-  "description": "Accumulate dirty file list per run for incremental review"
-}
-
-// Stop — 触发增量 review
-{
-  "matcher": "*",
-  "hooks": [{
-    "type": "command",
-    "command": "#!/bin/bash\nlatest_run=$(ls -1t .auto/runs 2>/dev/null | head -1)\nif [ -z \"$latest_run\" ] || [ ! -f \".auto/runs/$latest_run/dirty.txt\" ]; then exit 0; fi\nfiles=$(sort -u .auto/runs/$latest_run/dirty.txt | tr '\\n' ' ')\nif [ -z \"$files\" ]; then exit 0; fi\necho \"[Hook] Incremental review pending for run $latest_run:\" >&2\necho \"  Files: $files\" >&2\necho \"  Run: claude /review or invoke code-reviewer subagent on listed files\" >&2"
-  }],
-  "description": "Stop hook: prompt incremental review of dirty files (no auto-block; informational)"
-}
+```text
+node <helper> record --root <project> --binding <bindingId> --generation <generation> --proof <controller-proof> --kind dirty --file <changed-file>
 ```
 
-> **当前接线状态（以 `hooks/hooks.json` 为准）**：仅 PostToolUse 的 `dirty.txt` 累积已实际接入 hooks.json；上面的 **Stop 提示 hook 为参考模板，尚未安装**。要启用会话末增量审查提示，需手动把 Stop 段加入 hooks.json；阻塞型（critical 以 exit 2 拦截）需 Claude Code 支持 Stop hook 调用 subagent，仍为未来项。
+占位符替换为实际参数；`<helper>` 是仓库或安装后的 `hooks/lib/run-bindings.cjs`。controller 在已绑定后可显式记录自己的改动；可用时补 `--prompt <bound-prompt-id>`。无可靠身份时直接按已明确的 run 路径保存人工核对结果，不伪造 receipt 或宿主字段。
+
+已登记 worker 的原生 tool 事件仍需有效的 agent/prompt 证据。worker 不触发主 run 的 Stop 汇总、不读写 controller pending；控制器的 proof 不传给 worker。当前没有安装自动 reviewer Stop 链，不能承诺一个提示 hook 会执行审查或阻止会话结束。
 
 ## 与现有 gate 的关系
 
-| Gate / 机制            | 触发时机              | 关系                                  |
-| ---------------------- | --------------------- | ------------------------------------- |
-| 13 个 VERIFY gate      | PHASE 4 每个 Quest 后 | 关注 contract 合规、质量门禁          |
-| **incremental-review** | **Stop hook，会话末** | **关注"全局视角下的可读性 / 维护性"** |
-| code-reviewer agent    | 主动调度              | 增量 review 的执行者                  |
-| TDD Guard              | PreToolUse            | 文件级别守卫                          |
+| Gate / 机制            | 触发时机                 | 关系                             |
+| ---------------------- | ------------------------ | -------------------------------- |
+| 17 类 VERIFY gate      | 按当前任务风险选择       | 关注适用契约、独立期望与执行证据 |
+| **incremental-review** | **冻结本次最终 diff 后** | **核对变更范围、正确性与维护性** |
+| reviewer               | 有授权且确有独立任务时   | 可选执行者；默认由当前执行者完成 |
+| TDD Guard              | PreToolUse               | 文件级别守卫                     |
 
 ## 何时不用
 
-- 单文件、< 20 行的快速通道任务（增量审本身比改动还大）
+- 低影响、可逆的小改动，已有必要核对足以满足验收
 - 探索策略（无代码变更）
 - 已有 PR 评审流程的项目（避免重复）
 

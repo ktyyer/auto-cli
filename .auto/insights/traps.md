@@ -748,3 +748,27 @@ v2 枚举只在校验器放行，消费者未同步：`collectRunMetrics` 不把
 隔离 HOME 和宿主目录时，也要从实际设置核对模型映射、代理与认证的来源。仅继承 shell 环境可能漏掉 settings 中的必要配置。此次补齐后实际选用模型改变，hook 助手仍正常执行，但模型仍超时；不能把此前超时直接归因于服务故障，也不能把 hook 执行当成模型接收成功。配置值不进入报告，真实设置只读。
 
 **来源**: run-20261008-host-feedback-retry-010056/host-smoke.json、host-smoke-configured.json。
+
+---
+
+### Codex 全局桥不能直接复制项目 AGENTS
+
+**日期**: 2026-10-08 | **置信度**: high | **来源**: run-20261008-dual-host-research | **Scope**: project
+
+v0.53.0 的安装计划把仓库 AGENTS.md 整体装入 Codex 全局 AGENTS.md，因而把本仓库专用的 Markdown、运行时和 agents 目录限制带到其他项目。字节级审计确认分发内容，但没有测量模型受到这些规则的具体影响。
+
+推荐动作：使用专门的跨项目桥模板识别 /auto 与 /prompts:auto 并交接实际控制器；升级保留未受管文本，以隔离安装、实际 tarball 和缺源坏例验证作用域。
+
+证据：.auto/runs/run-20261008-dual-host-research/evidence/codex-bridge-audit.json；.auto/runs/run-20261008-dual-host-research/implementation-plan.md
+
+---
+
+### Claude hook 用最新目录归属会串写 run
+
+**日期**: 2026-10-08 | **置信度**: high | **来源**: run-20261008-dual-host-research | **Scope**: project
+
+v0.53.0 的 latestRun 按 mtime 选 run，压缩提醒还共用项目单文件；六次隔离 helper 调用观察到五项错误归属现象。该结果是构造反例，不是真实会话故障率，也未验证真实宿主事件投递。
+
+推荐动作：由真实事件和 /auto 建立 session/run/controller 绑定，委派预登记并握手后归属；controller 提醒隔离到绑定代际，未知身份不回退 mtime，并验证真实生产端到消费端。
+
+证据：.auto/runs/run-20261008-dual-host-research/claude/hook-ownership-reproduction.json；.auto/runs/run-20261008-dual-host-research/implementation-plan.md

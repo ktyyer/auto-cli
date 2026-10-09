@@ -4,6 +4,7 @@ const { spawnSync } = require('node:child_process');
 const { readInput, emit } = require('./hook-output.cjs');
 const { checks } = require('./hook-checks.cjs');
 const { create } = require('./snapshot.cjs');
+const bindings = require('./run-bindings.cjs');
 
 function git(cwd, args) {
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
@@ -48,21 +49,11 @@ function dirty(root) {
   const staged = git(root, ['diff', '--cached', '--name-only', '-z']);
   return [...new Set(`${changed}${staged}`.split('\0').filter(Boolean))];
 }
-function latestRun(cwd) {
-  const runs = path.join(cwd, '.auto/runs');
-  if (!fs.existsSync(runs)) return null;
-  const names = fs
-    .readdirSync(runs)
-    .filter((name) => name !== 'archive' && fs.statSync(path.join(runs, name)).isDirectory());
-  names.sort(
-    (a, b) => fs.statSync(path.join(runs, b)).mtimeMs - fs.statSync(path.join(runs, a)).mtimeMs
-  );
-  return names[0] ? path.join(runs, names[0]) : null;
-}
-function projectContext(cwd) {
+function projectContext(cwd, input) {
   const files = ['CLAUDE.md', '.auto/constitution.md'];
-  const latest = latestRun(cwd);
-  if (latest) files.push(path.relative(cwd, path.join(latest, 'session-continuity.md')));
+  const binding = bindings.resolve(input, cwd);
+  if (binding.status === 'bound' && binding.role === 'controller')
+    files.push(path.relative(cwd, path.join(binding.runDirectory, 'session-continuity.md')));
   return files.filter((file) => fs.existsSync(path.join(cwd, file)));
 }
 function coverage(input) {
@@ -86,27 +77,9 @@ function coverage(input) {
     ? `[Hook] Coverage below 80%: ${percent}%. This is a reported coverage value, not proof that tests passed.`
     : '';
 }
-function pendingContext(cwd, consume) {
-  const file = path.join(cwd, '.auto/hook-context.json');
-  if (!fs.existsSync(file)) return '';
-  const message = JSON.parse(fs.readFileSync(file, 'utf8')).message;
-  if (consume) fs.unlinkSync(file);
-  return typeof message === 'string' ? message : '';
-}
-function compactContext(cwd) {
-  const directory = path.join(cwd, '.auto');
-  fs.mkdirSync(directory, { recursive: true });
-  const file = path.join(directory, 'hook-context.json');
-  const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(
-    temporary,
-    JSON.stringify({
-      message:
-        "[Hook] Compaction hook ran. Read CLAUDE.md, .auto/constitution.md and the latest session-continuity.md if present before continuing. A hook cannot save the model's in-memory progress."
-    }),
-    { flag: 'wx' }
-  );
-  fs.renameSync(temporary, file);
+function pendingContext(cwd, input) {
+  const result = bindings.consume(input, cwd);
+  return typeof result === 'string' ? result : '';
 }
 
 function handle(name, input, cwd) {
@@ -211,17 +184,23 @@ function handle(name, input, cwd) {
       ? `[Hook] Skill edited: ${file}. Consider skill-evaluator health checks.`
       : '';
   if (name === 'session') {
-    const files = projectContext(cwd);
+    let identity = '';
+    try {
+      identity = bindings.receiptContext(bindings.observe(input, cwd, 'session'));
+    } catch (error) {
+      identity = bindings.diagnostic(input, cwd, { status: 'unattributed', reason: error.message });
+    }
+    const files = projectContext(cwd, input);
     return [
       files.length ? `[Hook] SessionStart: Read project context: ${files.join(', ')}` : '',
-      pendingContext(cwd, true)
+      identity,
+      pendingContext(cwd, input)
     ]
       .filter(Boolean)
       .join('\n');
   }
   if (name === 'compact') {
-    compactContext(cwd);
-    return '';
+    return bindings.diagnostic(input, cwd, bindings.compact(input, cwd));
   }
   if (name === 'prompt') {
     const prompt = typeof input.prompt === 'string' ? input.prompt : '';
@@ -231,31 +210,41 @@ function handle(name, input, cwd) {
       )
         ? '[Hook] WARNING: Potential secret/API key detected. Use environment variables instead of pasting keys.'
         : '';
-    return [pendingContext(cwd, true), warning].filter(Boolean).join('\n');
+    let identity = '';
+    try {
+      identity = bindings.receiptContext(bindings.observe(input, cwd, 'prompt'));
+    } catch (error) {
+      identity = bindings.diagnostic(input, cwd, { status: 'unattributed', reason: error.message });
+    }
+    return [identity, pendingContext(cwd, input), warning].filter(Boolean).join('\n');
+  }
+  if (name === 'worker-start') {
+    const receipt = bindings.observe(input, cwd, 'worker');
+    return `${bindings.receiptContext(receipt)}\n[Auto worker] This native SubagentStart receipt has no run ownership yet. Use only the delegation ID/ticket supplied in your assigned task to call bind-worker; no handshake means unattributed. Do not restart /auto or use controller pending context.`;
   }
   if (name === 'teammate')
     return `[Hook] Teammate '${input.teammate_name || 'unknown'}' is idle. Check available tasks or conclude the teammate's work.`;
   if (name === 'dirty-list') {
-    const latest = latestRun(cwd);
-    if (!file || !latest || !/\.(ts|tsx|js|jsx|java|py|go|rs|md)$/.test(file)) return '';
-    const target = path.join(latest, 'dirty.txt');
-    fs.appendFileSync(target, `${file}\n`);
-    return '';
+    return bindings.diagnostic(input, cwd, bindings.recordDirty(input, cwd));
   }
+  if (name === 'tool-observation')
+    return bindings.diagnostic(input, cwd, bindings.recordTool(input, cwd));
   if (name === 'metrics') {
-    const latest = latestRun(cwd);
     const script = path.resolve(__dirname, '../../scripts/generate-metrics.js');
-    if (!latest || fs.existsSync(path.join(latest, 'metrics.json')) || !fs.existsSync(script))
-      return '';
-    const result = spawnSync(process.execPath, [script, path.basename(latest)], {
-      cwd,
-      encoding: 'utf8',
-      timeout: 15000,
-      windowsHide: true
+    const result = bindings.withBinding(input, cwd, 'controller', (binding) => {
+      const file = bindings.safePath(binding.root, binding.runDirectory, 'metrics.json');
+      if (fs.existsSync(file) || !fs.existsSync(script)) return '';
+      const generated = spawnSync(process.execPath, [script, binding.runId], {
+        cwd: binding.root,
+        encoding: 'utf8',
+        timeout: 15000,
+        windowsHide: true
+      });
+      if (generated.status !== 0)
+        return `[Hook] WARNING: metrics generation failed: ${generated.error?.message || generated.stderr}`;
+      return `[Hook] metrics.json generated for ${binding.runId}`;
     });
-    if (result.status !== 0)
-      return `[Hook] WARNING: metrics generation failed: ${result.error?.message || result.stderr}`;
-    return `[Hook] metrics.json generated for ${path.basename(latest)}`;
+    return typeof result === 'string' ? result : bindings.diagnostic(input, cwd, result);
   }
   throw new Error(`Unknown hook handler: ${name}`);
 }

@@ -9,6 +9,7 @@ import {
   SOURCE_ROOT,
   buildInstallFiles,
   managedBlock,
+  unmanagedBridgeDiagnostics,
   parseSettings,
   updateHooks
 } from './install-plan.js';
@@ -141,7 +142,7 @@ function isManagedNamespace(tool, entry) {
 }
 
 function planFor(tool) {
-  return { tool, operations: new Map(), expected: new Map(), retained: [] };
+  return { tool, operations: new Map(), expected: new Map(), retained: [], diagnostics: [] };
 }
 
 function setFile(plan, relative, contents) {
@@ -245,6 +246,7 @@ function blockEntry(plan, file, previous) {
     removeText = `${prefix ? '\n\n' : ''}${blockText}\n`;
     contents = Buffer.from(prefix + removeText);
   }
+  plan.diagnostics.push(...unmanagedBridgeDiagnostics(contents, file.contents));
   setFile(plan, 'AGENTS.md', contents);
   return {
     path: 'AGENTS.md',

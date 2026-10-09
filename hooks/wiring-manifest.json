@@ -87,6 +87,12 @@
       "evidenceIncludes": "hook-cli.cjs\" session"
     },
     {
+      "event": "SubagentStart",
+      "descriptionIncludes": "SubagentStart: expose native worker identity receipt",
+      "backs": "feature:host-run-binding",
+      "evidenceIncludes": "hook-cli.cjs\" worker-start"
+    },
+    {
       "event": "PostCompact",
       "descriptionIncludes": "Persist a reminder",
       "backs": "skill:context-engineering"

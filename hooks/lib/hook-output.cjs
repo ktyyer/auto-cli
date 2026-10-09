@@ -1,6 +1,12 @@
 const fs = require('node:fs');
 
-const contextEvents = new Set(['PreToolUse', 'PostToolUse', 'SessionStart', 'UserPromptSubmit']);
+const contextEvents = new Set([
+  'PreToolUse',
+  'PostToolUse',
+  'SessionStart',
+  'UserPromptSubmit',
+  'SubagentStart'
+]);
 
 function readInput() {
   const value = JSON.parse(fs.readFileSync(0, 'utf8') || '{}');

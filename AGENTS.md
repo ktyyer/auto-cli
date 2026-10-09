@@ -66,3 +66,7 @@ Auto CLI 在 Codex 中的详细规则以仓库内 `commands/auto.codex.md` 为�
 - 不修改 `agents/` 目录（Codex 不使用 agent 文件）
 - 不承诺文档中尚未实现的功能
 - 修改 `.md` 文件时保持最小 diff，不顺手重构无关内容
+
+## 本仓库的 DSH 同步维护
+
+本仓库优化、升级、重新打包或安装后，同时按 [DSH 同步维护记录](docs/dsh-sync.md) 核对并更新本机 Auto-DSH 超级编码的适配源码与已安装预设，保留 DSH 原生能力和本地扩展，并记录验证结果。

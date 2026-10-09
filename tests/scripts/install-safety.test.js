@@ -7,7 +7,12 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { prepareInstall, applyPlans } from '../../scripts/managed-install.js';
-import { listSourceFiles } from '../../scripts/install-plan.js';
+import {
+  BLOCK_START,
+  BLOCK_END,
+  listSourceFiles,
+  managedBlock
+} from '../../scripts/install-plan.js';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -65,6 +70,121 @@ test('clean install preserves extras and personal backups; uninstall restores co
   assert.equal(fs.readFileSync(colliding, 'utf8'), '# Third party skill\n');
   for (const file of [extra, command, backup]) assert.ok(fs.existsSync(file), file);
   assert.equal(fs.readFileSync(hookPackage, 'utf8'), '{"type":"commonjs"}\n');
+});
+
+test('Codex global bridge routes Auto without distributing this repository rules', (t) => {
+  const f = fixture(t);
+  const personal = '# Personal rules\r\nKeep my editor preferences.\r\n';
+  const agents = f.write('.codex/AGENTS.md', personal);
+  const projectRules = '# Business project\nUse Node.js and update agents/ when needed.\n';
+  const project = f.write('business-project/AGENTS.md', projectRules);
+  const otherSkill = f.write('.agents/skills/personal/SKILL.md', '# Personal agent skill\n');
+  f.ok('install.js');
+
+  const installed = fs.readFileSync(agents, 'utf8');
+  const bridge = managedBlock(Buffer.from(installed)).text;
+  assert.ok(installed.startsWith(personal));
+  assert.doesNotMatch(
+    bridge,
+    /本仓库是纯 Markdown|不引入 JS\/Node 运行时代码|不修改.*agents\/|当前版本/
+  );
+  assert.match(bridge, /\/auto/);
+  assert.match(bridge, /\/prompts:auto/);
+  assert.match(bridge, /commands\/auto\.codex\.md/);
+  assert.match(bridge, /<host-root>\/prompts\/auto\.md/);
+  assert.match(bridge, /RouteDecision/);
+  assert.match(bridge, /Plan/);
+  assert.equal(fs.readFileSync(project, 'utf8'), projectRules);
+  assert.equal(fs.readFileSync(otherSkill, 'utf8'), '# Personal agent skill\n');
+  assert.ok(fs.existsSync(path.join(f.home, '.codex/skills/api-design/SKILL.md')));
+  assert.equal(fs.existsSync(path.join(f.home, '.agents/skills/api-design')), false);
+  assert.match(f.ok('install.js').stdout, /0 changes/);
+  f.ok('uninstall.js');
+  assert.equal(fs.readFileSync(agents, 'utf8'), personal);
+  assert.equal(fs.readFileSync(project, 'utf8'), projectRules);
+});
+
+test('an unmanaged historical whole-file bridge is preserved and diagnosed', (t) => {
+  const f = fixture(t);
+  const legacy = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'));
+  const agents = f.write('.codex/AGENTS.md', legacy);
+  const result = f.ok('install.js');
+  const installed = fs.readFileSync(agents);
+  assert.ok(
+    installed.subarray(0, legacy.length).equals(legacy),
+    'the unmanaged legacy bytes must remain intact'
+  );
+  assert.match(result.stderr, /AGENTS\.md:1-\d+: unmanaged Auto section preserved/);
+  assert.match(result.stderr, /lines only in unmanaged section/);
+  assert.match(result.stderr, /lines only in managed bridge/);
+  const bridge = managedBlock(installed).text;
+  assert.doesNotMatch(bridge, /本仓库是纯 Markdown|不引入 JS\/Node 运行时代码/);
+  assert.match(f.ok('install.js').stdout, /0 changes/);
+  f.ok('uninstall.js');
+  assert.deepEqual(fs.readFileSync(agents), legacy);
+});
+
+test('upgrade replaces only a receipted historical block and preserves unmanaged sections', (t) => {
+  const f = fixture(t);
+  f.ok('install.js');
+  const legacy = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8').trimEnd();
+  const prefix = `# Personal rules\nKeep my preferences.\n\n${legacy}`;
+  const suffix = '\n# Personal footer\nKeep this too.\n';
+  const oldBlock = `${BLOCK_START}\n${legacy}\n${BLOCK_END}`;
+  const oldRemoval = `\n\n${oldBlock}\n`;
+  const agents = f.write('.codex/AGENTS.md', prefix + oldRemoval + suffix);
+  const receiptPath = path.join(f.home, '.codex/auto-cli/install-manifest.json');
+  const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+  const entry = receipt.files.find((file) => file.path === 'AGENTS.md');
+  Object.assign(entry, {
+    source: 'AGENTS.md',
+    sourceSha256: createHash('sha256').update(legacy).digest('hex'),
+    sha256: createHash('sha256').update(fs.readFileSync(agents)).digest('hex'),
+    blockText: oldBlock,
+    removeText: oldRemoval,
+    preserveEmpty: true
+  });
+  fs.writeFileSync(receiptPath, JSON.stringify(receipt));
+
+  const result = f.ok('install.js');
+  const installed = fs.readFileSync(agents, 'utf8');
+  const block = managedBlock(Buffer.from(installed));
+  assert.equal(installed.slice(0, block.start), `${prefix}\n\n`);
+  assert.equal(installed.slice(block.end), `\n${suffix}`);
+  assert.doesNotMatch(block.text, /本仓库是纯 Markdown|不引入 JS\/Node 运行时代码/);
+  assert.match(result.stderr, /AGENTS\.md:4-\d+: unmanaged Auto section preserved/);
+  assert.match(f.ok('install.js').stdout, /0 changes/);
+  f.ok('uninstall.js');
+  assert.equal(fs.readFileSync(agents, 'utf8'), prefix + suffix);
+});
+
+test('an edited global bridge blocks reinstall and survives uninstall with its receipt', (t) => {
+  const f = fixture(t);
+  const personal = '# Personal rules\n';
+  const agents = f.write('.codex/AGENTS.md', personal);
+  f.ok('install.js');
+  const edited = fs
+    .readFileSync(agents, 'utf8')
+    .replace(BLOCK_END, `Personal block edit.\n${BLOCK_END}`);
+  fs.writeFileSync(agents, edited);
+  const before = new Map(
+    listSourceFiles(f.home).map((file) => [file, fs.readFileSync(path.join(f.home, file))])
+  );
+  const rejected = f.run('install.js');
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /unowned or edited auto-cli block/);
+  assert.deepEqual(listSourceFiles(f.home), [...before.keys()]);
+  for (const [file, value] of before)
+    assert.deepEqual(fs.readFileSync(path.join(f.home, file)), value, file);
+  f.ok('uninstall.js');
+  assert.equal(fs.readFileSync(agents, 'utf8'), edited);
+  const retained = JSON.parse(
+    fs.readFileSync(path.join(f.home, '.codex/auto-cli/install-manifest.json'), 'utf8')
+  );
+  assert.deepEqual(
+    retained.files.map((file) => file.path),
+    ['AGENTS.md']
+  );
 });
 
 test('invalid settings fail before any host is modified', (t) => {

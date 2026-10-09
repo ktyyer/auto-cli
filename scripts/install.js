@@ -17,6 +17,15 @@ try {
   console.log(
     'Ownership/version: <host>/auto-cli/install-manifest.json; originals: <host>/auto-cli/backups/'
   );
+  for (const plan of plans) {
+    for (const diagnostic of plan.diagnostics) {
+      console.warn(
+        `${path.join(plan.tool.dir, diagnostic.path)}:${diagnostic.startLine}-${diagnostic.endLine}: ` +
+          `unmanaged Auto section preserved; ${diagnostic.unmanagedOnlyLines} lines only in unmanaged section, ` +
+          `${diagnostic.bridgeOnlyLines} lines only in managed bridge. Review retained rules separately.`
+      );
+    }
+  }
 } catch (error) {
   console.error(`Install failed: ${error.message}`);
   process.exitCode = 1;

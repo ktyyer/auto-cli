@@ -5,6 +5,7 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main]
+  workflow_call:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -13,11 +14,17 @@ permissions:
   contents: read
 
 jobs:
-  format:
-    name: Format Check
-    runs-on: ubuntu-latest
+  checks:
+    name: Contracts and Unit Tests (Node 24, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v5
         with:
@@ -26,14 +33,16 @@ jobs:
 
       - run: npm ci
 
-      - name: Prettier check
-        run: npm run format:check
+      - name: Format, references, contracts, wiring, package, run and unit checks
+        run: npm test
 
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v5
         with:
@@ -49,11 +58,14 @@ jobs:
     name: Install Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         node-version: ['18', '22', '24']
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v5
         with:
@@ -62,9 +74,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Prepare environment
-        run: mkdir -p ~/.claude ~/.codex
-        shell: bash
-
-      - name: Verify install script
-        run: node scripts/install.js
+      - name: Verify installation in an isolated host home
+        env:
+          AUTO_CLI_INSTALL_HOME: ${{ runner.temp }}/auto-cli-install
+          AUTO_CLI_INSTALL_TEST_MODE: '1'
+          CODEX_HOME: ${{ runner.temp }}/auto-cli-install/.codex
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/auto-cli-install/.claude
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; import path from 'node:path'; const root = process.env.AUTO_CLI_INSTALL_HOME; for (const name of ['.claude', '.codex']) fs.mkdirSync(path.join(root, name), { recursive: true }); fs.writeFileSync(path.join(root, '.auto-cli-install-test-root'), 'auto-cli isolated installation fixture\n');"
+          node scripts/install.js

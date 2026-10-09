@@ -57,6 +57,7 @@ test('detectTools returns claude and codex tool descriptors when directories exi
   );
   assert.equal(tools[0].commandsDir, path.join(tempHome, '.claude', 'commands'));
   assert.equal(tools[1].commandsDir, path.join(tempHome, '.codex', 'prompts'));
+  assert.equal(tools[1].skillsDir, path.join(tempHome, '.codex', 'skills'));
   assert.equal(tools[1].skillFileName, 'SKILL.md');
 });
 
@@ -65,6 +66,7 @@ test('managed file lists expose expected core entries', async () => {
   const manifest = await importManifestWithHome(tempHome);
 
   assert.ok(manifest.CODEX_MANAGED_FILES.prompts.includes('auto.md'));
+  assert.deepEqual(manifest.CODEX_MANAGED_FILES.rootFiles, ['AGENTS.md']);
   assert.ok(manifest.CODEX_MANAGED_FILES.skills.includes('loop-engineering'));
   assert.ok(manifest.CODEX_MANAGED_FILES.skills.includes('world-class-code-standards'));
   // install 会装 community-hello-auto；卸载清单必须同名，否则 Codex 侧泄漏

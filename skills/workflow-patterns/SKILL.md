@@ -1,6 +1,6 @@
 ---
 name: workflow-patterns
-description: 开发工作流编排方法论 — 选择正确的 Plan Mode 工作流（explore/fix/implement/refactor）、Multi-Agent 编排模式（串行链/并行扇出/主从/评估优化）、根因追踪五步法、10 维度代码审查清单。适用于所有 /auto 任务的 PHASE 1 路由和 PHASE 2 Quest 设计阶段。当用户提到 bug 修复、代码审查、性能优化、新功能实现、架构重构、multi-agent 协作、代码质量审查时，必须加载此 skill。
+description: 开发工作流编排方法论 — 在策略、依赖或协作方式存在真实取舍时，按需选择 explore/fix/implement/refactor、编排模式、根因追踪和审查方法；以共享执行契约、当前授权与宿主能力为准。
 tags:
   [
     workflow,
@@ -23,7 +23,7 @@ tags:
 # Workflow Patterns — 开发工作流模式集合
 
 > 四大核心方法论合一：Plan Mode 工作流选择、Multi-Agent 编排模式、结构化根因追踪、10 维度代码审查清单。
-> 让 quest-designer 在 PHASE 2 自动匹配最优工作流。
+> 由当前执行者依据任务选择工作流；默认单执行者，角色名称不代表实际已调用的 agent。
 
 ## 快速使用
 
@@ -48,9 +48,9 @@ tags:
 
 **硬约束** (constraints):
 
-- 重构策略必须走 quest-designer，不可直接执行
-- Agent 交接只向下游传递，不反向调用
-- 安全敏感场景必须调 security-reviewer
+- 重构先形成可验证计划；由当前执行者完成，存在已授权的独立任务时才委派
+- 交接按依赖执行；失败证据可受控回流 PLAN 或 EXECUTE，并保留原因
+- 安全敏感场景必须做对应安全审查；是否委派取决于授权、能力和独立审查收益
 - 多 Agent 或多 Quest 只表达依赖与交接，不引入运行时调度器
 
 **输出模板** (output):
@@ -70,12 +70,12 @@ tags:
 
 > 这里的工作流名称直接对应 canonical `RouteDecision.strategy`：`explore | fix | implement | refactor`。
 
-| 信号关键词                   | 工作流      | 上下文预算               |
-| ---------------------------- | ----------- | ------------------------ |
-| 审查/review/检查/安全/质量   | `explore`   | 3-6 文件, 1000-2000 行   |
-| bug/错误/失败/error/fix/修复 | `fix`       | 3-5 文件, 500-1500 行    |
-| 实现/开发/新增/功能/feature  | `implement` | 5-8 文件, 1500-3000 行   |
-| 重构/迁移/架构/系统/redesign | `refactor`  | 10-15 文件, 3000-5000 行 |
+| 信号关键词                   | 工作流      | 初始定位参考（非读取配额） |
+| ---------------------------- | ----------- | -------------------------- |
+| 审查/review/检查/安全/质量   | `explore`   | 3-6 文件, 1000-2000 行     |
+| bug/错误/失败/error/fix/修复 | `fix`       | 3-5 文件, 500-1500 行      |
+| 实现/开发/新增/功能/feature  | `implement` | 5-8 文件, 1500-3000 行     |
+| 重构/迁移/架构/系统/redesign | `refactor`  | 10-15 文件, 3000-5000 行   |
 
 ### 自动检测逻辑
 
@@ -90,12 +90,12 @@ tags:
 
 ### 与 Auto CLI 对应
 
-| 工作流      | PHASE 1              | quest-designer                       | Canonical Router                     |
-| ----------- | -------------------- | ------------------------------------ | ------------------------------------ |
-| `explore`   | 完整扫描（不用缓存） | 可跳过，由主窗口生成最小 `QuestMap`  | 默认 direct analysis / code-reviewer |
-| `fix`       | 最小化               | 可跳过，先走 direct / tdd-guide 修复 | 默认 direct / tdd-guide              |
-| `implement` | 缓存优先             | 读取 5-8 文件                        | 默认 quest-designer                  |
-| `refactor`  | 完整扫描（深度）     | 读取 10-15 文件                      | 默认 quest-designer                  |
+| 工作流      | PHASE 1              | PLAN                         | 执行方式               |
+| ----------- | -------------------- | ---------------------------- | ---------------------- |
+| `explore`   | 问题相关资料与来源   | 最小 `QuestMap`              | 默认单执行者           |
+| `fix`       | 复现与故障链         | 独立期望、失败证据与修复范围 | 默认单执行者           |
+| `implement` | 业务依据与现有接口   | 契约、假设、取舍、风险与验证 | 授权且有独立任务才协作 |
+| `refactor`  | 受影响依赖与回归基线 | 不变量、分批范围与恢复边界   | 授权且有独立任务才协作 |
 
 > 注：本 Skill 的工作流选择逻辑由 `/auto:route` 的 `RouteDecision` 复杂度与策略判定承接，此处保留为设计参考和人类可读文档。
 
@@ -142,11 +142,11 @@ tags:
 
 ## 使用时机
 
-**必须加载**（PHASE 1 SCAN 和 PHASE 2 PLAN）：
+**按需加载**（PHASE 1 SCAN 和 PHASE 2 PLAN）：
 
-- 任意 /auto 任务的路由决策阶段
-- quest-designer 生成 QuestMap 之前
-- code-reviewer 执行代码审查前
+- 策略或任务依赖存在真实取舍
+- 已授权多 Agent 协作，需要明确 owner、隔离与交接
+- 审查范围或调试方法需要补充参考
 
 **按需加载**（具体方法论）：
 
@@ -157,9 +157,9 @@ tags:
 ## 验收标准
 
 - [ ] 每次 /auto 任务的 PHASE 1 输出包含 `RouteDecision.strategy`（explore/fix/implement/refactor 之一）
-- [ ] 每次 /auto 任务的 PHASE 2 QuestMap 包含对应的 Quest 数量（1-5/6-15/15+）
-- [ ] 每次 Bug 修复任务执行了根因追踪五步法中的至少三步
-- [ ] 每次代码审查覆盖了精简版清单的 5 个核心维度
+- [ ] QuestMap 按真实依赖与验收拆分，不为满足数量或角色配额增加任务
+- [ ] Bug 修复能以复现、根因和验证证据解释结果，不按步骤数量判定通过
+- [ ] 代码审查覆盖当前改动的实际风险，未覆盖的重要风险明确报告
 
 ## 来源
 
@@ -167,4 +167,4 @@ tags:
 - Andrew Ng "AI Agent Design Patterns"：Reflection、Multi-Agent
 - linux.do 社区验证数据
 - Vibe Coding 实战策略
-- 社区实测：AI 自我审查降低 60% Bug 率
+- 社区经验仅作候选方法；本项目的缺陷率与净收益需要独立任务对照

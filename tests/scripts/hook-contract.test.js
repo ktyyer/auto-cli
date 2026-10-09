@@ -50,6 +50,47 @@ function context(result, event) {
   return output.hookSpecificOutput.additionalContext;
 }
 
+function controllerBinding(dir, runId) {
+  const sessionId = 'installed-session';
+  const promptId = 'installed-prompt';
+  context(
+    hook(dir, 'SessionStart', 'SessionStart', { session_id: sessionId, source: 'startup' }),
+    'SessionStart'
+  );
+  const message = context(
+    hook(dir, 'UserPromptSubmit', 'Warn if user prompt', {
+      session_id: sessionId,
+      prompt_id: promptId,
+      prompt: '/auto installed fixture'
+    }),
+    'UserPromptSubmit'
+  );
+  const receiptLine = message.split('\n').find((line) => line.startsWith('[Auto host identity] '));
+  assert.ok(receiptLine, message);
+  const receipt = JSON.parse(receiptLine.slice('[Auto host identity] '.length));
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(dir, '.claude/auto-cli/hooks/lib/run-bindings.cjs'),
+      'bind-controller',
+      '--root',
+      dir,
+      '--run',
+      runId,
+      '--receipt',
+      receipt.receipt
+    ],
+    { cwd: dir, encoding: 'utf8', windowsHide: true, timeout: 8000 }
+  );
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  const binding = JSON.parse(result.stdout);
+  return {
+    session_id: sessionId,
+    prompt_id: promptId,
+    auto_binding: { id: binding.bindingId, generation: binding.generation, proof: binding.proof }
+  };
+}
+
 test('SessionStart delivers project reminders as model context', (t) => {
   const dir = fixture(t);
   fs.writeFileSync(path.join(dir, 'CLAUDE.md'), 'project');
@@ -76,7 +117,8 @@ test('installed metrics helper targets the caller project without its own script
   const dir = fixture(t);
   const run = path.join(dir, '.auto/runs/run-installed-metrics');
   fs.mkdirSync(run, { recursive: true });
-  const result = hook(dir, 'Stop', 'lacks metrics.json');
+  const identity = controllerBinding(dir, 'run-installed-metrics');
+  const result = hook(dir, 'Stop', 'lacks metrics.json', identity);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(fs.existsSync(path.join(run, 'metrics.json')));
   assert.ok(!fs.existsSync(path.join(dir, '.claude/auto-cli/.auto')));
@@ -216,22 +258,39 @@ test('push warning handles quoted subcommands without matching commit messages',
   );
 });
 
-test('compaction reminder is persisted and delivered on the next supported event', (t) => {
+test('confirmed compaction persists a run reminder and delivers it on the next supported event', (t) => {
   const dir = fixture(t);
-  const result = hook(dir, 'PreCompact', 'Persist a reminder');
+  fs.mkdirSync(path.join(dir, '.auto/runs/compact-run'), { recursive: true });
+  const identity = controllerBinding(dir, 'compact-run');
+  const result = hook(dir, 'PreCompact', 'Persist a reminder', identity);
   assert.equal(result.status, 0);
   assert.equal(result.stdout, '');
   assert.match(
     context(
-      hook(dir, 'UserPromptSubmit', 'Warn if user prompt', { prompt: 'continue' }),
+      hook(dir, 'UserPromptSubmit', 'Warn if user prompt', { ...identity, prompt: 'continue' }),
       'UserPromptSubmit'
     ),
     /Compaction hook ran/
   );
-  assert.equal(
-    hook(dir, 'UserPromptSubmit', 'Warn if user prompt', { prompt: 'continue' }).stdout,
-    ''
+  assert.doesNotMatch(
+    hook(dir, 'UserPromptSubmit', 'Warn if user prompt', { ...identity, prompt: 'continue' })
+      .stdout,
+    /Compaction hook ran/
   );
+});
+
+test('native compact without controller role proof cannot create a pending reminder', (t) => {
+  const dir = fixture(t);
+  const run = path.join(dir, '.auto/runs/compact-run');
+  fs.mkdirSync(run, { recursive: true });
+  const identity = controllerBinding(dir, 'compact-run');
+  const result = hook(dir, 'PreCompact', 'Persist a reminder', {
+    session_id: identity.session_id,
+    prompt_id: identity.prompt_id
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /unattributed|attribution unavailable/);
+  assert.equal(fs.existsSync(path.join(run, 'host-pending')), false);
 });
 
 test('coverage supports stderr summaries and does not report passing values', (t) => {
@@ -316,19 +375,36 @@ test('optional metrics logger records official tool_name without echoing the inp
   const dir = fixture(t);
   const run = path.join(dir, '.auto/runs/fixture');
   fs.mkdirSync(run, { recursive: true });
+  const identity = controllerBinding(dir, 'fixture');
+  const businessMetrics = '{"scope":"business","tokens":{"total":null}}\n';
+  fs.writeFileSync(path.join(run, 'metrics.json'), businessMetrics);
   const result = spawnSync(
     bash,
-    [path.join(root, 'hooks/lib/log-metrics.sh').replaceAll('\\', '/')],
+    [path.join(dir, '.claude/auto-cli/hooks/lib/log-metrics.sh').replaceAll('\\', '/')],
     {
       cwd: dir,
-      input: JSON.stringify({ tool_name: 'Edit', tool: 'Wrong legacy value' }),
+      input: JSON.stringify({
+        ...identity,
+        cwd: dir,
+        hook_event_name: 'PostToolUse',
+        tool_name: 'Edit',
+        tool_use_id: 'tool-one',
+        tool: 'Wrong legacy value'
+      }),
       encoding: 'utf8'
     }
   );
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
-  const metrics = JSON.parse(fs.readFileSync(path.join(run, 'metrics.json'), 'utf8'));
-  assert.equal(metrics.tools.calls[0].tool, 'Edit');
+  const event = JSON.parse(
+    fs.readFileSync(path.join(run, 'host-tool-events.jsonl'), 'utf8').trim()
+  );
+  assert.equal(event.tool, 'Edit');
+  assert.equal(event.role, 'controller');
+  assert.equal(event.toolUseId, 'tool-one');
+  assert.equal(event.tokens, null);
+  assert.equal(event.cost, null);
+  assert.equal(fs.readFileSync(path.join(run, 'metrics.json'), 'utf8'), businessMetrics);
 });
 
 test('existing documentation and TDD guards still consume stdin and keep their decisions', (t) => {

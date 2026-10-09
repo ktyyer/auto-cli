@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { validateRunEvidence } from './evidence-record.js';
+import { readHostObservation } from './import-host-observation.js';
 
 const common = {
   id: 'string',
@@ -302,6 +303,7 @@ export function readRunProtocol(runDir, { requireAll = false, requireEvidence = 
 /** Collect declared observations, preserving null for missing data and unmeasured telemetry. */
 export function collectRunMetrics(runDir) {
   const protocol = readRunProtocol(runDir);
+  const hostObservation = readHostObservation(runDir);
   const valid = protocol.mode === 'structured' && protocol.issues.length === 0;
   const get = (file) => (valid ? protocol.documents[file]?.objects : undefined);
   const route = get('route-decision.md')?.[0];
@@ -322,6 +324,8 @@ export function collectRunMetrics(runDir) {
     'duration, files and agent invocations: no tool telemetry source'
   ];
   if (protocol.issues.length) unavailable.push('protocol-derived metrics: invalid protocol');
+  if (hostObservation?.status === 'invalid')
+    unavailable.push('host observation: invalid provenance or derivation');
   for (const file of Object.keys(RUN_CONTRACT).slice(0, 4))
     if (!get(file)) unavailable.push(`${file}: structured observation unavailable`);
   return {
@@ -357,6 +361,7 @@ export function collectRunMetrics(runDir) {
     files: { read: null, written: null, modified: null },
     protocolMode: protocol.mode,
     protocolIssues: protocol.issues,
+    ...(hostObservation ? { hostObservation } : {}),
     unavailable
   };
 }

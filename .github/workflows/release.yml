@@ -14,20 +14,32 @@ on:
           - major
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
+
+concurrency:
+  group: auto-cli-release
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   release:
     name: Create Release
+    needs: checks
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout the checked input commit
         uses: actions/checkout@v5
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -35,47 +47,57 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
+          cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Bump version
-        run: |
-          current_version=$(node -p "require('./package.json').version")
-          echo "Current version: $current_version"
-          npm version ${{ github.event.inputs.version_bump }} --no-git-tag-version
-          new_version=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+      - name: Check the clean pinned source before changing versions
+        run: node scripts/release-checks.js preflight --source "$GITHUB_SHA" --output "$RUNNER_TEMP/auto-cli-release"
 
-      - name: Generate CHANGELOG
+      - name: Bump npm and Claude plugin versions locally
+        env:
+          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
-          git fetch --tags
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          node scripts/release-checks.js bump --bump "$VERSION_BUMP" --output "$RUNNER_TEMP/auto-cli-release"
+          new_version=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$new_version" >> "$GITHUB_ENV"
+          git add package.json package-lock.json .claude-plugin/plugin.json
+
+      - name: Recheck versions and build the single release archive
+        run: |
+          node scripts/release-checks.js prepare --output "$RUNNER_TEMP/auto-cli-release"
+          archive_name=$(node -p "JSON.parse(require('node:fs').readFileSync(process.env.RUNNER_TEMP + '/auto-cli-release/release.json')).tarball")
+          echo "RELEASE_TARBALL=$RUNNER_TEMP/auto-cli-release/$archive_name" >> "$GITHUB_ENV"
+
+      - name: Generate release notes from the pinned history
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 "$GITHUB_SHA" 2>/dev/null || true)
           if [ -z "$latest_tag" ]; then
-            git log --pretty=format:"- %s (%h)" --reverse > CHANGELOG_NEW.md
+            git log --pretty=format:"- %s (%h)" --reverse "$GITHUB_SHA" > "$RUNNER_TEMP/auto-cli-release/CHANGELOG_NEW.md"
           else
-            git log ${latest_tag}..HEAD --pretty=format:"- %s (%h)" > CHANGELOG_NEW.md
+            git log --pretty=format:"- %s (%h)" "$latest_tag..$GITHUB_SHA" > "$RUNNER_TEMP/auto-cli-release/CHANGELOG_NEW.md"
           fi
 
-      - name: Commit version bump
+      - name: Commit the checked version manifests locally
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ env.NEW_VERSION }}"
-          git push
+          git commit -m "chore: bump version to $NEW_VERSION"
 
-      - name: Create Git Tag
+      - name: Verify the commit and archive before atomic branch and tag push
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
         run: |
-          git tag v${{ env.NEW_VERSION }}
-          git push origin v${{ env.NEW_VERSION }}
+          node scripts/release-checks.js verify --output "$RUNNER_TEMP/auto-cli-release"
+          git tag "v$NEW_VERSION"
+          git push --atomic origin "HEAD:refs/heads/$RELEASE_BRANCH" "refs/tags/v$NEW_VERSION"
 
-      - name: Build package
-        run: npm run pack
-
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Publish the checked archive to npm
+        run: |
+          node scripts/release-checks.js verify --output "$RUNNER_TEMP/auto-cli-release"
+          npm publish "$RELEASE_TARBALL" --provenance --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -84,6 +106,9 @@ jobs:
         with:
           tag_name: v${{ env.NEW_VERSION }}
           name: Release v${{ env.NEW_VERSION }}
-          body_path: CHANGELOG_NEW.md
+          body_path: ${{ runner.temp }}/auto-cli-release/CHANGELOG_NEW.md
+          files: |
+            ${{ env.RELEASE_TARBALL }}
+            ${{ runner.temp }}/auto-cli-release/release.json
           draft: false
           prerelease: false

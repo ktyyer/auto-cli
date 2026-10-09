@@ -15,6 +15,7 @@ SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN。
 3. 加载 **production-governance/references/workflow-contract.md** 一次。这是跨端共享执行契约，不在入口复制细则。
 4. 当前阶段需要时才读取 **workflow-phases.md** 的对应章节；安装工具与版本限制查 **host-adapters.md**。不预加载所有 skills。
 5. 解析路径：本仓库使用 skills/production-governance/references/；安装后从本命令所在 commands/ 的宿主根查 skills/production-governance/references/。文件缺失时明确缺少安装产物，不猜规则已生效。
+6. 创建 `.auto/runs/<runId>/` 后，读取本机 SessionStart / UserPromptSubmit 注入的 `Auto host identity`（真实 session、workspace、receipt 与可用的 prompt）。按 **host-adapters.md → Claude 身份登记** 调用 `run-bindings.cjs bind-controller`，核验返回的 run、角色与 generation，并读取非空 `pendingContext`。缺 receipt 或绑定失败就记录 `unattributed`，手动使用明确 run 路径；不根据最近目录或 transcript 文件名猜身份。
 
 ## RouteDecision 与 Plan
 
@@ -23,6 +24,7 @@ SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN。
 - skills / verifyGates 仅选择当前任务适用项，记录选择理由与相关经验来源。
 - 计划写目标、不变量、独立验收、工作区基线、touchFiles、恢复方式；实现/重构先有测试计划。
 - 普通任务由当前执行者完成。只有用户授权或任务需要且宿主实际支持时分派专家，owner 负责合并验证，worker 不重启全套 /auto。
+- 每次原生委派前调用 `register-delegation`；将返回的 root/runId/questId/workerRoot/delegationId/ticket 放入实际任务，禁止传 controller proof。worker 从自己的 SubagentStart 取得 receipt 后调用 `bind-worker`，成功后才启用该 worker 的 run 副作用；没完成握手的跨 session/worktree 模式保持 `unattributed`。
 - 已授权必要可逆步骤继续推进；关键需求确实缺失才澄清。不要因“有多种写法”让用户再作选择。
 
 **容量假设** <!-- capacity-contract: assumption -->：涉及集合、数据或 I/O 时考虑数据量 ×100 / 明确容量上限，排查无界查询；不适用则记 capacity: not-applicable 并给理由。
@@ -46,4 +48,5 @@ SCAN → PLAN → EXECUTE → VERIFY → SUMMARIZE → LEARN。
 ## 收尾
 
 报告业务变化、实际变更、验证、未验证项与交付状态；有 .auto 则补 index、VerifyReport 与有依据的 LearnCard/分发。
+已完成且不再续接的 run，在必要汇总落盘后用当前控制器凭据调用 `close`，使关联 worker 同时失效；进行中的 run 保留有效绑定。
 工作流检查通过不等于编码收益。清楚区分脚本行为、宿主集成和真实任务效果；未经对照不声称“最优”或固定提速。

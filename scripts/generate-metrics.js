@@ -45,6 +45,17 @@ function generateMetrics(runId) {
   const naNote = notApplicable ? `, ${notApplicable} not applicable` : '';
   console.log(`Gates: ${display(passed)}/${display(applicable)} passed (${rate})${naNote}`);
   console.log(`Skills: ${display(metrics.skills.count)} activated`);
+  if (metrics.hostObservation) {
+    console.log(
+      'Host observations: ' +
+        metrics.hostObservation.status +
+        '; task acceptance is measured separately'
+    );
+    if (metrics.hostObservation.issues.length) {
+      console.error(metrics.hostObservation.issues.join('\n'));
+      process.exitCode = 1;
+    }
+  }
   if (metrics.protocolIssues.length) {
     console.error(metrics.protocolIssues.join('\n'));
     process.exitCode = 1;

@@ -7,6 +7,7 @@ export const SOURCE_ROOT = fileURLToPath(new URL('../', import.meta.url));
 export const RECEIPT = 'auto-cli/install-manifest.json';
 export const BLOCK_START = '<!-- auto-cli:managed:start -->';
 export const BLOCK_END = '<!-- auto-cli:managed:end -->';
+export const CODEX_GLOBAL_BRIDGE = 'scripts/templates/codex-global-bridge.md';
 
 export function listSourceFiles(root, prefix = '') {
   const directory = path.join(root, prefix);
@@ -69,7 +70,7 @@ export function buildInstallFiles(tool) {
     for (const source of listSourceFiles(SOURCE_ROOT, directory)) add(source, `auto-cli/${source}`);
   }
   add('package.json', 'auto-cli/package.json');
-  if (tool.name === 'codex') add('AGENTS.md');
+  if (tool.name === 'codex') add(CODEX_GLOBAL_BRIDGE, 'AGENTS.md');
   return files;
 }
 
@@ -129,4 +130,39 @@ export function managedBlock(contents) {
     throw new Error('AGENTS.md: malformed auto-cli managed block');
   }
   return { start, end: end + BLOCK_END.length, text: text.slice(start, end + BLOCK_END.length) };
+}
+
+export function unmanagedBridgeDiagnostics(contents, bridgeContents) {
+  const text = contents.toString('utf8');
+  const block = managedBlock(contents);
+  const ranges = block
+    ? [
+        [0, block.start],
+        [block.end, text.length]
+      ]
+    : [[0, text.length]];
+  const bridgeLines = new Set(
+    bridgeContents.toString('utf8').trim().split(/\r?\n/).filter(Boolean)
+  );
+  return ranges.flatMap(([start, end]) => {
+    const section = text.slice(start, end);
+    const headings = [...section.matchAll(/^# Auto CLI For Codex[ \t]*\r?$/gm)];
+    return headings.map((heading) => {
+      const following = section.slice(heading.index + heading[0].length);
+      const nextHeading = following.search(/^# /m);
+      const sectionEnd =
+        nextHeading === -1 ? section.length : heading.index + heading[0].length + nextHeading;
+      const legacy = section.slice(heading.index, sectionEnd).trimEnd();
+      const legacyLines = new Set(legacy.split(/\r?\n/).filter(Boolean));
+      const startLine = text.slice(0, start + heading.index).split('\n').length;
+      return {
+        code: 'unmanaged-auto-bridge',
+        path: 'AGENTS.md',
+        startLine,
+        endLine: startLine + legacy.split('\n').length - 1,
+        unmanagedOnlyLines: [...legacyLines].filter((line) => !bridgeLines.has(line)).length,
+        bridgeOnlyLines: [...bridgeLines].filter((line) => !legacyLines.has(line)).length
+      };
+    });
+  });
 }

@@ -154,7 +154,7 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}/hooks/lib/hook-cli.cjs\" dirty-list"
           }
         ],
-        "description": "Incremental review: accumulate dirty file list at .auto/runs/<latest>/dirty.txt for per-run incremental code review. See skills/incremental-review/SKILL.md"
+        "description": "Incremental review: accumulate dirty file list only for an explicitly bound run/actor/prompt; unknown identity is unattributed. See skills/incremental-review/SKILL.md"
       }
     ],
     "SessionStart": [
@@ -170,7 +170,19 @@
             "command": "#!/bin/bash\n# List old run candidates; never move files from SessionStart\n# Main workflow must review state, references and paths before archiving\nCLAUDE_HOME=\"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}\"\nclean_script=\"${CLAUDE_HOME}/hooks/lib/auto-clean-runs.sh\"\nif [ -f \"$clean_script\" ]; then\n  bash \"$clean_script\" 2>&1 || true\nfi\nexit 0"
           }
         ],
-        "description": "SessionStart: surface CLAUDE.md / .auto/constitution.md / last-run session-continuity.md + list old run candidates without moving files (informational, never blocks)"
+        "description": "SessionStart: surface CLAUDE.md / .auto/constitution.md, native identity receipt and only bound session-continuity.md + list old run candidates without moving files (informational, never blocks)"
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}/hooks/lib/hook-cli.cjs\" worker-start"
+          }
+        ],
+        "description": "SubagentStart: expose native worker identity receipt; only an explicit preregistered delegation handshake binds a run"
       }
     ],
     "PostCompact": [
@@ -182,19 +194,19 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}/hooks/lib/hook-cli.cjs\" compact"
           }
         ],
-        "description": "Persist a reminder for the next SessionStart/UserPromptSubmit after compaction (no immediate model injection)"
+        "description": "Persist a reminder only for a confirmed controller binding after compaction; ambiguous identity is unattributed (no immediate model injection)"
       }
     ],
     "PreCompact": [
       {
-        "matcher": "auto",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}/hooks/lib/hook-cli.cjs\" compact"
           }
         ],
-        "description": "Persist a reminder for the next SessionStart/UserPromptSubmit; PreCompact cannot deliver non-blocking model context"
+        "description": "Persist a reminder only for a confirmed controller binding; PreCompact cannot deliver non-blocking model context"
       }
     ],
     "UserPromptSubmit": [
@@ -252,7 +264,7 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/auto-cli}/hooks/lib/hook-cli.cjs\" metrics"
           }
         ],
-        "description": "If latest run lacks metrics.json, run scripts/generate-metrics.js (LEARN default path backup)"
+        "description": "If the explicitly bound controller run lacks metrics.json, run scripts/generate-metrics.js; workers and unattributed events cannot summarize a run"
       }
     ]
   }

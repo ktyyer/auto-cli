@@ -10,8 +10,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { protocolRun, writeProtocolRun } from '../fixtures/protocol-run.js';
+import { importHostObservation } from '../../scripts/import-host-observation.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
@@ -30,6 +32,40 @@ function makeRun(runsDir, name) {
 
 function run(cwd, args = []) {
   return spawnSync(process.execPath, [script, ...args], { cwd, encoding: 'utf8' });
+}
+
+function addHostObservation(root, runDir) {
+  const sourceDir = path.join(root, 'host-source');
+  fs.mkdirSync(sourceDir);
+  const raw = Buffer.from(
+    JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 20, output_tokens: 5 } }) + '\n'
+  );
+  fs.writeFileSync(path.join(sourceDir, 'raw.jsonl'), raw);
+  const manifestPath = path.join(sourceDir, 'manifest.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      schemaVersion: 'auto-host-attempts/v1',
+      runId: path.basename(runDir),
+      attempts: [
+        {
+          attemptId: 'codex-1',
+          host: 'codex',
+          surface: 'exec-json',
+          hostVersion: '0.154.0',
+          model: 'gpt-6-astra',
+          status: 'succeeded',
+          startedAt: '2026-10-08T11:00:00Z',
+          finishedAt: '2026-10-08T11:00:01Z',
+          wallTimeMs: 1000,
+          exitCode: 0,
+          usageScope: 'attempt',
+          log: { path: 'raw.jsonl', sha256: createHash('sha256').update(raw).digest('hex') }
+        }
+      ]
+    })
+  );
+  return importHostObservation({ manifestPath, runDir });
 }
 
 test('a later failed attempt in a different fence replaces the earlier completed observation', (t) => {
@@ -86,6 +122,111 @@ test('canonical counts ignore nested statuses and use latest quest attempt', (t)
   assert.equal(m.files.read, null);
   assert.equal(m.agents.count, null);
   assert.notEqual(m.status, 'completed');
+  assert.equal('hostObservation' in m, false, 'old runs retain their existing metrics shape');
+});
+
+test('optional host completion preserves all prior run, gate and unmeasured telemetry semantics', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const dir = writeProtocolRun(tmp, 'run-host-metrics', protocolRun('run-host-metrics'));
+  assert.equal(run(tmp, ['run-host-metrics']).status, 0);
+  const before = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  addHostObservation(tmp, dir);
+  const result = run(tmp, ['run-host-metrics']);
+  assert.equal(result.status, 0, result.stderr);
+  const after = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  assert.equal(after.hostObservation.status, 'verified');
+  assert.equal(after.hostObservation.summary.byHost.codex.totalTokens, 25);
+  assert.equal(after.hostObservation.summary.taskAcceptance, 'not-measured');
+  assert.match(result.stdout, /task acceptance is measured separately/);
+  delete before.timestamp;
+  delete after.timestamp;
+  delete after.hostObservation;
+  assert.deepEqual(after, before);
+});
+
+test('metrics preserve unknown resumed-session cost while retaining incremental tokens and gate verdicts', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const runId = 'run-resume-metrics';
+  const dir = writeProtocolRun(tmp, runId, protocolRun(runId));
+  assert.equal(run(tmp, [runId]).status, 0);
+  const before = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  const sourceDir = path.join(tmp, 'host-source');
+  fs.mkdirSync(sourceDir);
+  const attempts = [0.3, 0.5].map((cost, index) => {
+    const raw = Buffer.from(
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        session_id: 'resumed-session',
+        usage: {
+          input_tokens: 10,
+          output_tokens: 4,
+          cache_read_input_tokens: 20,
+          cache_creation_input_tokens: 0
+        },
+        total_cost_usd: cost
+      }) + '\n'
+    );
+    const file = 'attempt-' + index + '.jsonl';
+    fs.writeFileSync(path.join(sourceDir, file), raw);
+    return {
+      attemptId: 'claude-' + index,
+      host: 'claude',
+      surface: 'stream-json',
+      hostVersion: '2.1.281',
+      model: 'glm-5.3',
+      status: 'succeeded',
+      startedAt: '2026-10-08T11:00:00Z',
+      finishedAt: '2026-10-08T11:00:01Z',
+      wallTimeMs: 1000,
+      exitCode: 0,
+      usageScope: 'attempt',
+      resumeSessionId: index ? 'resumed-session' : null,
+      log: { path: file, sha256: createHash('sha256').update(raw).digest('hex') }
+    };
+  });
+  const manifestPath = path.join(sourceDir, 'manifest.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({ schemaVersion: 'auto-host-attempts/v1', runId, attempts })
+  );
+  importHostObservation({ manifestPath, runDir: dir });
+  const result = run(tmp, [runId]);
+  assert.equal(result.status, 0, result.stderr);
+  const after = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  const summary = after.hostObservation.summary.byHost.claude;
+  assert.equal(after.hostObservation.status, 'verified');
+  assert.equal(summary.reportedEstimateUsd, null);
+  assert.equal(summary.totalTokens, 68);
+  assert.equal(summary.estimateAccounting, 'unknown-session-overlap');
+  assert.deepEqual(summary.nonAdditiveEstimateAttemptIds, ['claude-0', 'claude-1']);
+  delete before.timestamp;
+  delete after.timestamp;
+  delete after.hostObservation;
+  assert.deepEqual(after, before);
+});
+
+test('a tampered optional host observation fails metrics CLI explicitly without rewriting gate verdicts', (t) => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-cli-metrics-'));
+  t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const dir = writeProtocolRun(tmp, 'run-host-invalid', protocolRun('run-host-invalid'));
+  assert.equal(run(tmp, ['run-host-invalid']).status, 0);
+  const before = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  const observed = addHostObservation(tmp, dir);
+  observed.summary.byHost.codex.totalTokens = 0;
+  fs.writeFileSync(path.join(dir, 'host-observation.json'), JSON.stringify(observed));
+  const result = run(tmp, ['run-host-invalid']);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /derivation differs/);
+  const after = JSON.parse(fs.readFileSync(path.join(dir, 'metrics.json'), 'utf8'));
+  assert.equal(after.hostObservation.status, 'invalid');
+  assert.equal(after.hostObservation.summary, null);
+  assert.equal(after.status, before.status);
+  assert.deepEqual(after.gates, before.gates);
+  assert.match(after.unavailable.join('\n'), /host observation: invalid/);
 });
 
 test('legacy/missing observations stay unknown and invalid structured input is reported', (t) => {
